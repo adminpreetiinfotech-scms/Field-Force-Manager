@@ -67,6 +67,7 @@ export default function StaffHome() {
     startTrip,
     endTrip,
     updateActiveTripKm,
+    appendTripPoint,
     updateStaffLocation,
   } = useApp();
 
@@ -110,6 +111,7 @@ export default function StaffHome() {
               longitude: loc.coords.longitude,
             };
             updateStaffLocation(p);
+            appendTripPoint(p);
             if (lastPosRef.current) {
               const d = haversine(lastPosRef.current, p);
               if (d > 0.01 && d < 5) {

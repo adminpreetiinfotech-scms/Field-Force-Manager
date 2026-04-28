@@ -41,6 +41,10 @@ function RootLayoutNav() {
         name="meter/add"
         options={{ headerShown: false, presentation: "fullScreenModal" }}
       />
+      <Stack.Screen
+        name="route/[staffId]"
+        options={{ headerShown: false }}
+      />
     </Stack>
   );
 }

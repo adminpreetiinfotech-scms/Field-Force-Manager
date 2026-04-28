@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Location from "expo-location";
+import { router } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Platform,
@@ -212,6 +213,25 @@ export default function AdminMap() {
                 {selected.status === "in" ? "On shift" : "Off shift"}
               </Text>
             </View>
+          </View>
+        ) : null}
+
+        {selected ? (
+          <View style={{ paddingHorizontal: 18, paddingTop: 10 }}>
+            <Pressable
+              onPress={() => router.push(`/route/${selected.staffId}`)}
+              style={({ pressed }) => [
+                styles.routeCta,
+                {
+                  backgroundColor: colors.primary,
+                  opacity: pressed ? 0.85 : 1,
+                },
+              ]}
+            >
+              <Feather name="navigation" size={14} color="#fff" />
+              <Text style={styles.routeCtaText}>View today's route</Text>
+              <Feather name="chevron-right" size={16} color="#fff" />
+            </Pressable>
           </View>
         ) : null}
 
@@ -451,6 +471,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderWidth: StyleSheet.hairlineWidth,
+  },
+  routeCta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  routeCtaText: {
+    color: "#fff",
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+    flex: 1,
+    letterSpacing: -0.2,
   },
   webPin: {
     width: 28,
