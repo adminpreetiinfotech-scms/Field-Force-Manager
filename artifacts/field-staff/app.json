@@ -1,0 +1,62 @@
+{
+  "expo": {
+    "name": "Field Staff Manager",
+    "slug": "field-staff",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "field-staff",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B2545"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSCameraUsageDescription": "We use the camera to capture a live selfie at every check-in and a photo of the meter when you record a reading. This proves you were on site.",
+        "NSLocationWhenInUseUsageDescription": "Your GPS is used to stamp every check-in, meter reading, and trip so kilometers are auto-calculated and audit-ready.",
+        "NSPhotoLibraryUsageDescription": "Used to attach photos to records when needed."
+      }
+    },
+    "android": {
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/images/icon.png"
+    },
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "origin": "https://replit.com/"
+        }
+      ],
+      "expo-font",
+      "expo-web-browser",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Field Staff Manager to access your camera for selfie check-ins and meter photos.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Field Staff Manager to use your location to stamp check-ins and auto-track field trips."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
