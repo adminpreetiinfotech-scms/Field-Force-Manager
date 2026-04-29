@@ -257,6 +257,11 @@ export const GetLeaderboardResponseItem = zod
       .describe(
         'Human-readable label for the period (e.g. \"Today\" or \"Apr 2026\").',
       ),
+    hasNotes: zod
+      .boolean()
+      .describe(
+        "True when this staff member has at least one admin note saved.",
+      ),
   })
   .describe(
     "A single staff member's aggregated distance stats for the leaderboard.",

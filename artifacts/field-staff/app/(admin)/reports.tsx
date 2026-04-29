@@ -1095,6 +1095,19 @@ function LeaderboardRow({
           <Text style={[styles.boardCode, { color: colors.mutedForeground }]}>
             {entry.empCode}
           </Text>
+          {entry.hasNotes && (
+            <View
+              style={[
+                styles.notesBadge,
+                { backgroundColor: "#0ea5e920", borderColor: "#0ea5e940" },
+              ]}
+            >
+              <Feather name="file-text" size={9} color="#0ea5e9" />
+              <Text style={[styles.notesBadgeText, { color: "#0ea5e9" }]}>
+                Notes
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Distance bar */}
@@ -1411,6 +1424,20 @@ const styles = StyleSheet.create({
   boardCode: {
     fontSize: 11,
     fontFamily: "Inter_500Medium",
+  },
+  notesBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  notesBadgeText: {
+    fontSize: 9,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.2,
   },
   barTrack: {
     height: 5,

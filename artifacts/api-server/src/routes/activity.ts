@@ -407,15 +407,19 @@ router.get("/activity/leaderboard", async (req, res, next) => {
       }
     }
 
-    // Fetch empCodes for everyone in the result set.
+    // Fetch empCodes + notes presence for everyone in the result set.
     const ids = Array.from(staffMap.keys());
     const empMap = new Map<string, string>();
+    const notesMap = new Map<string, boolean>();
     if (ids.length > 0) {
       const staffRows = await db
-        .select({ id: staffTable.id, empCode: staffTable.empCode })
+        .select({ id: staffTable.id, empCode: staffTable.empCode, notes: staffTable.notes })
         .from(staffTable)
         .where(inArray(staffTable.id, ids));
-      for (const s of staffRows) empMap.set(s.id, s.empCode);
+      for (const s of staffRows) {
+        empMap.set(s.id, s.empCode);
+        notesMap.set(s.id, typeof s.notes === "string" && s.notes.trim().length > 0);
+      }
     }
 
     const round1 = (n: number) => Math.round(n * 10) / 10;
@@ -430,6 +434,7 @@ router.get("/activity/leaderboard", async (req, res, next) => {
         totalKm: round1(s.totalKm),
         tripCount: s.tripCount,
         periodLabel,
+        hasNotes: notesMap.get(s.staffId) ?? false,
       }));
 
     res.json(sorted);

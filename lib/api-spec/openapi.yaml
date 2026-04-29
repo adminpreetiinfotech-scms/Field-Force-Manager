@@ -855,7 +855,10 @@ components:
         periodLabel:
           type: string
           description: Human-readable label for the period (e.g. "Today" or "Apr 2026").
-      required: [rank, staffId, staffName, empCode, totalKm, tripCount, periodLabel]
+        hasNotes:
+          type: boolean
+          description: True when this staff member has at least one admin note saved.
+      required: [rank, staffId, staffName, empCode, totalKm, tripCount, periodLabel, hasNotes]
 
     TripReportRow:
       type: object

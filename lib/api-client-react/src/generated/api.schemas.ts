@@ -273,6 +273,8 @@ export interface LeaderboardEntry {
   tripCount: number;
   /** Human-readable label for the period (e.g. "Today" or "Apr 2026"). */
   periodLabel: string;
+  /** True when this staff member has at least one admin note saved. */
+  hasNotes: boolean;
 }
 
 /**
