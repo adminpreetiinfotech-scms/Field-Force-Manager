@@ -2,6 +2,7 @@ import { Router } from "express";
 import crypto from "node:crypto";
 import { and, eq, gt } from "drizzle-orm";
 import { db, otpsTable } from "@workspace/db";
+import { getTwilioClient, getTwilioFromPhone } from "../lib/twilio";
 
 const router = Router();
 
@@ -24,19 +25,6 @@ router.post("/otp/send", async (req, res) => {
     return;
   }
 
-  const accountSid = process.env["TWILIO_ACCOUNT_SID"];
-  const authToken = process.env["TWILIO_AUTH_TOKEN"];
-  const twilioPhone = process.env["TWILIO_PHONE_NUMBER"];
-
-  if (!accountSid || !authToken || !twilioPhone) {
-    req.log.warn({ phone }, "Twilio not configured — OTP not sent");
-    res.status(503).json({
-      title: "SMS service is not configured. Please contact the administrator.",
-      status: 503,
-    });
-    return;
-  }
-
   const code = generateOtp();
   const salt = crypto.randomBytes(16).toString("hex");
   const codeHash = `${salt}:${hashCode(code, salt)}`;
@@ -46,11 +34,13 @@ router.post("/otp/send", async (req, res) => {
   await db.insert(otpsTable).values({ phone, codeHash, expiresAt });
 
   try {
-    const twilio = (await import("twilio")).default;
-    const client = twilio(accountSid, authToken);
+    const [client, fromPhone] = await Promise.all([
+      getTwilioClient(),
+      getTwilioFromPhone(),
+    ]);
     await client.messages.create({
       body: `Your JSDMS/DDU-GKY verification code is ${code}. Valid for 10 minutes. Do not share this code with anyone.`,
-      from: twilioPhone,
+      from: fromPhone,
       to: `+91${phone}`,
     });
   } catch (smsErr) {
