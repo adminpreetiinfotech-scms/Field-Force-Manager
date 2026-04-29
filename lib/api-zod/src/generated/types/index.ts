@@ -31,6 +31,7 @@ export * from "./registerInputKind";
 export * from "./rideCalendarDay";
 export * from "./rideCalendarMonth";
 export * from "./staff";
+export * from "./staffApprovalStatus";
 export * from "./staffDistance";
 export * from "./staffProfileStats";
 export * from "./staffRole";

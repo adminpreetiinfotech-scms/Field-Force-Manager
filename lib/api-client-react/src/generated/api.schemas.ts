@@ -16,6 +16,18 @@ export const StaffRole = {
   admin: "admin",
 } as const;
 
+/**
+ * Approval workflow status. Staff are pending until an admin approves them.
+ */
+export type StaffApprovalStatus =
+  (typeof StaffApprovalStatus)[keyof typeof StaffApprovalStatus];
+
+export const StaffApprovalStatus = {
+  pending: "pending",
+  approved: "approved",
+  rejected: "rejected",
+} as const;
+
 export interface Staff {
   id: string;
   empCode: string;
@@ -28,6 +40,10 @@ export interface Staff {
   area?: string | null;
   /** Invite code that staff can use to link to this admin's organization. */
   adminCode?: string | null;
+  /** Approval workflow status. Staff are pending until an admin approves them. */
+  approvalStatus: StaffApprovalStatus;
+  /** Registration timestamp (ISO 8601). */
+  createdAt?: string | null;
 }
 
 /**

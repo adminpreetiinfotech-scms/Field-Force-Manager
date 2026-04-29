@@ -40,6 +40,15 @@ export const ListStaffResponseItem = zod.object({
     .describe(
       "Invite code that staff can use to link to this admin's organization.",
     ),
+  approvalStatus: zod
+    .enum(["pending", "approved", "rejected"])
+    .describe(
+      "Approval workflow status. Staff are pending until an admin approves them.",
+    ),
+  createdAt: zod.coerce
+    .date()
+    .nullish()
+    .describe("Registration timestamp (ISO 8601)."),
 });
 export const ListStaffResponse = zod.array(ListStaffResponseItem);
 
@@ -94,6 +103,123 @@ export const UpdateStaffNotesBody = zod
 export const UpdateStaffNotesResponse = zod.object({
   staffId: zod.string().uuid(),
   notes: zod.string().nullable(),
+});
+
+/**
+ * @summary List all staff with pending approval status
+ */
+export const ListPendingStaffResponseItem = zod.object({
+  id: zod.string().uuid(),
+  empCode: zod.string(),
+  name: zod.string(),
+  phone: zod.string(),
+  role: zod.enum(["staff", "admin"]),
+  organization: zod
+    .string()
+    .nullish()
+    .describe(
+      "Company \/ organization name (populated for admins and linked staff).",
+    ),
+  area: zod
+    .string()
+    .nullish()
+    .describe("Assigned territory or area (staff only)."),
+  adminCode: zod
+    .string()
+    .nullish()
+    .describe(
+      "Invite code that staff can use to link to this admin's organization.",
+    ),
+  approvalStatus: zod
+    .enum(["pending", "approved", "rejected"])
+    .describe(
+      "Approval workflow status. Staff are pending until an admin approves them.",
+    ),
+  createdAt: zod.coerce
+    .date()
+    .nullish()
+    .describe("Registration timestamp (ISO 8601)."),
+});
+export const ListPendingStaffResponse = zod.array(ListPendingStaffResponseItem);
+
+/**
+ * @summary Approve a pending staff member
+ */
+export const ApproveStaffParams = zod.object({
+  staffId: zod.coerce.string().uuid(),
+});
+
+export const ApproveStaffResponse = zod.object({
+  id: zod.string().uuid(),
+  empCode: zod.string(),
+  name: zod.string(),
+  phone: zod.string(),
+  role: zod.enum(["staff", "admin"]),
+  organization: zod
+    .string()
+    .nullish()
+    .describe(
+      "Company \/ organization name (populated for admins and linked staff).",
+    ),
+  area: zod
+    .string()
+    .nullish()
+    .describe("Assigned territory or area (staff only)."),
+  adminCode: zod
+    .string()
+    .nullish()
+    .describe(
+      "Invite code that staff can use to link to this admin's organization.",
+    ),
+  approvalStatus: zod
+    .enum(["pending", "approved", "rejected"])
+    .describe(
+      "Approval workflow status. Staff are pending until an admin approves them.",
+    ),
+  createdAt: zod.coerce
+    .date()
+    .nullish()
+    .describe("Registration timestamp (ISO 8601)."),
+});
+
+/**
+ * @summary Reject a pending staff member
+ */
+export const RejectStaffParams = zod.object({
+  staffId: zod.coerce.string().uuid(),
+});
+
+export const RejectStaffResponse = zod.object({
+  id: zod.string().uuid(),
+  empCode: zod.string(),
+  name: zod.string(),
+  phone: zod.string(),
+  role: zod.enum(["staff", "admin"]),
+  organization: zod
+    .string()
+    .nullish()
+    .describe(
+      "Company \/ organization name (populated for admins and linked staff).",
+    ),
+  area: zod
+    .string()
+    .nullish()
+    .describe("Assigned territory or area (staff only)."),
+  adminCode: zod
+    .string()
+    .nullish()
+    .describe(
+      "Invite code that staff can use to link to this admin's organization.",
+    ),
+  approvalStatus: zod
+    .enum(["pending", "approved", "rejected"])
+    .describe(
+      "Approval workflow status. Staff are pending until an admin approves them.",
+    ),
+  createdAt: zod.coerce
+    .date()
+    .nullish()
+    .describe("Registration timestamp (ISO 8601)."),
 });
 
 /**

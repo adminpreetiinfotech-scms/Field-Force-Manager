@@ -3,6 +3,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useMemo } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Platform,
   Pressable,
   ScrollView,
@@ -14,8 +16,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
   getGetDistanceStatsQueryKey,
+  getListPendingStaffQueryKey,
+  useApproveStaff,
   useGetDistanceStats,
+  useListPendingStaff,
+  useRejectStaff,
 } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { LiveActivityFeed } from "@/components/admin/LiveActivityFeed";
 import { PillarsRow } from "@/components/PillarBadge";
@@ -138,6 +145,8 @@ export default function AdminDashboard() {
 
         <View style={{ padding: 18, gap: 14 }}>
           <SyncBanner />
+
+          <PendingApprovalsSection />
 
           <View style={styles.row}>
             <StatCard
@@ -277,6 +286,152 @@ export default function AdminDashboard() {
           </View>
         </View>
       </ScrollView>
+    </View>
+  );
+}
+
+function PendingApprovalsSection() {
+  const colors = useColors();
+  const qc = useQueryClient();
+
+  const { data: pending = [], isLoading } = useListPendingStaff({
+    query: {
+      queryKey: getListPendingStaffQueryKey(),
+      refetchInterval: 30_000,
+      staleTime: 10_000,
+    },
+  });
+
+  const onSettled = () => {
+    qc.invalidateQueries({ queryKey: getListPendingStaffQueryKey() });
+  };
+
+  const { mutate: approve, isPending: approving } = useApproveStaff({
+    mutation: { onSettled },
+  });
+  const { mutate: reject, isPending: rejecting } = useRejectStaff({
+    mutation: { onSettled },
+  });
+
+  if (!isLoading && pending.length === 0) return null;
+
+  const fmt = (iso: string | null | undefined) => {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  };
+
+  return (
+    <View
+      style={[
+        styles.section,
+        {
+          backgroundColor: colors.card,
+          borderColor: "#F59E0B",
+          borderRadius: colors.radius + 4,
+          borderWidth: 1,
+        },
+      ]}
+    >
+      <View style={styles.sectionHeader}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <View style={{ backgroundColor: "#F59E0B22", borderRadius: 8, padding: 5 }}>
+            <Feather name="user-check" size={14} color="#F59E0B" />
+          </View>
+          <View>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              Pending Approvals
+            </Text>
+            {!isLoading && (
+              <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
+                {pending.length} mobilizer{pending.length !== 1 ? "s" : ""} waiting for review
+              </Text>
+            )}
+          </View>
+        </View>
+        {isLoading && <ActivityIndicator size={14} color={colors.primary} />}
+      </View>
+
+      {pending.map((staff, idx) => (
+        <View
+          key={staff.id}
+          style={[
+            styles.pendingRow,
+            {
+              borderTopColor: colors.border,
+              borderTopWidth: idx === 0 ? 0 : StyleSheet.hairlineWidth,
+            },
+          ]}
+        >
+          <View style={{ flex: 1, gap: 3 }}>
+            <Text style={{ color: colors.foreground, fontSize: 14, fontFamily: "Inter_600SemiBold" }}>
+              {staff.name}
+            </Text>
+            <Text style={{ color: colors.mutedForeground, fontSize: 12, fontFamily: "Inter_400Regular" }}>
+              {staff.phone}  ·  {staff.empCode}
+            </Text>
+            {staff.area ? (
+              <Text style={{ color: colors.mutedForeground, fontSize: 12, fontFamily: "Inter_400Regular" }}>
+                Area: {staff.area}
+              </Text>
+            ) : null}
+            <Text style={{ color: colors.mutedForeground, fontSize: 11, fontFamily: "Inter_400Regular" }}>
+              Registered {fmt(staff.createdAt)}
+            </Text>
+          </View>
+
+          <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+            <Pressable
+              onPress={() =>
+                Alert.alert(
+                  "Reject staff?",
+                  `Reject registration for ${staff.name}? They will not be able to log in.`,
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Reject",
+                      style: "destructive",
+                      onPress: () => reject({ staffId: staff.id }),
+                    },
+                  ],
+                )
+              }
+              disabled={rejecting || approving}
+              style={({ pressed }) => [
+                styles.pendingBtn,
+                {
+                  backgroundColor: "#FEE2E2",
+                  borderRadius: colors.radius,
+                  opacity: pressed || rejecting || approving ? 0.6 : 1,
+                },
+              ]}
+            >
+              <Feather name="x" size={13} color="#DC2626" />
+              <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#DC2626" }}>
+                Reject
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => approve({ staffId: staff.id })}
+              disabled={approving || rejecting}
+              style={({ pressed }) => [
+                styles.pendingBtn,
+                {
+                  backgroundColor: "#D1FAE5",
+                  borderRadius: colors.radius,
+                  opacity: pressed || approving || rejecting ? 0.6 : 1,
+                },
+              ]}
+            >
+              <Feather name="check" size={13} color="#059669" />
+              <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#059669" }}>
+                Approve
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      ))}
     </View>
   );
 }
@@ -452,5 +607,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: 1,
+  },
+  pendingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingTop: 14,
+    marginTop: 12,
+    gap: 10,
+  },
+  pendingBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
   },
 });

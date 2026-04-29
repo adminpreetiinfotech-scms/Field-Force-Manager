@@ -14,6 +14,8 @@ function toStaffDTO(r: typeof staffTable.$inferSelect) {
     organization: r.organization ?? null,
     area: r.area ?? null,
     adminCode: r.adminCode ?? null,
+    approvalStatus: r.approvalStatus,
+    createdAt: r.createdAt?.toISOString() ?? null,
   };
 }
 
@@ -130,6 +132,8 @@ router.post("/staff/register", async (req, res, next) => {
         organization: resolvedOrganization,
         area: area?.trim() || null,
         adminCode: resolvedAdminCode,
+        // Admins are immediately approved; new staff must wait for admin approval.
+        approvalStatus: kind === "admin" ? "approved" : "pending",
       })
       .returning();
 
@@ -389,6 +393,65 @@ router.get("/staff/:staffId/profile-stats", async (req, res, next) => {
       monthly,
       recentTrips,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── Admin approval workflow ───────────────────────────────────────────────────
+
+router.get("/admin/pending-staff", async (_req, res, next) => {
+  try {
+    const rows = await db
+      .select()
+      .from(staffTable)
+      .where(eq(staffTable.approvalStatus, "pending"))
+      .orderBy(staffTable.createdAt);
+    res.json(rows.map(toStaffDTO));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch("/admin/staff/:staffId/approve", async (req, res, next) => {
+  try {
+    const { staffId } = req.params;
+    if (!/^[0-9a-fA-F-]{36}$/.test(staffId)) {
+      res.status(400).json({ title: "Invalid staffId", status: 400 });
+      return;
+    }
+    const [updated] = await db
+      .update(staffTable)
+      .set({ approvalStatus: "approved" })
+      .where(eq(staffTable.id, staffId))
+      .returning();
+    if (!updated) {
+      res.status(404).json({ title: "Staff not found", status: 404 });
+      return;
+    }
+    res.json(toStaffDTO(updated));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch("/admin/staff/:staffId/reject", async (req, res, next) => {
+  try {
+    const { staffId } = req.params;
+    if (!/^[0-9a-fA-F-]{36}$/.test(staffId)) {
+      res.status(400).json({ title: "Invalid staffId", status: 400 });
+      return;
+    }
+    const [updated] = await db
+      .update(staffTable)
+      .set({ approvalStatus: "rejected" })
+      .where(eq(staffTable.id, staffId))
+      .returning();
+    if (!updated) {
+      res.status(404).json({ title: "Staff not found", status: 404 });
+      return;
+    }
+    res.json(toStaffDTO(updated));
   } catch (err) {
     next(err);
   }

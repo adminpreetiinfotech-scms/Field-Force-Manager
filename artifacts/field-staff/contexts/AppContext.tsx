@@ -99,7 +99,7 @@ type AppState = {
   /** Phone number waiting for OTP during a login flow. */
   pendingPhone: string | null;
   /** User record created during registration, waiting for OTP verification. */
-  pendingRegistration: { user: User } | null;
+  pendingRegistration: { user: User; approvalStatus: string } | null;
   attendance: AttendanceRecord[];
   meterReadings: MeterReading[];
   trips: Trip[];
@@ -470,7 +470,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setState((s) => ({
       ...s,
       pendingPhone: data.phone,
-      pendingRegistration: { user },
+      pendingRegistration: { user, approvalStatus: staff.approvalStatus },
     }));
     return user;
   }, []);
@@ -487,9 +487,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       throw new Error("Invalid OTP. Use 1234 for demo.");
     }
 
-    // Registration flow: the user was just created — no lookup needed.
+    // Registration flow: the user was just created — check approval status.
     const pending = stateRef.current.pendingRegistration;
     if (pending) {
+      if (pending.approvalStatus === "pending") {
+        // Clear pending state so they don't get stuck, but don't log them in.
+        setState((s) => ({ ...s, pendingPhone: null, pendingRegistration: null }));
+        throw new Error(
+          "Your account is pending admin approval. Please wait for your admin to review your registration.",
+        );
+      }
+      if (pending.approvalStatus === "rejected") {
+        setState((s) => ({ ...s, pendingPhone: null, pendingRegistration: null }));
+        throw new Error(
+          "Your registration was rejected. Please contact admin.",
+        );
+      }
       setState((s) => ({
         ...s,
         user: pending.user,
@@ -506,6 +519,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const staff = await listStaff();
       const found = staff.find((s) => s.phone === phone);
       if (found) {
+        // Block unapproved staff from logging in.
+        if (found.approvalStatus === "pending") {
+          throw new Error(
+            "Your account is pending admin approval. Please contact your admin.",
+          );
+        }
+        if (found.approvalStatus === "rejected") {
+          throw new Error(
+            "Your registration was rejected. Please contact admin.",
+          );
+        }
         user = {
           id: found.id,
           name: found.name,
@@ -514,7 +538,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           empCode: found.empCode,
         };
       }
-    } catch {
+    } catch (err) {
+      // Re-throw approval errors; swallow network/offline errors.
+      const msg = (err as Error)?.message ?? "";
+      if (msg.includes("pending") || msg.includes("rejected")) throw err;
       /* offline — fall through to demo fallback */
     }
 

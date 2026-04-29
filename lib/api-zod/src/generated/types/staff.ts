@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { StaffApprovalStatus } from "./staffApprovalStatus";
 import type { StaffRole } from "./staffRole";
 
 export interface Staff {
@@ -19,4 +20,8 @@ export interface Staff {
   area?: string | null;
   /** Invite code that staff can use to link to this admin's organization. */
   adminCode?: string | null;
+  /** Approval workflow status. Staff are pending until an admin approves them. */
+  approvalStatus: StaffApprovalStatus;
+  /** Registration timestamp (ISO 8601). */
+  createdAt?: Date | null;
 }

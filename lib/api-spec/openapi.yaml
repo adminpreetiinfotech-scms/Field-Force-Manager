@@ -115,6 +115,73 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
 
+  /admin/pending-staff:
+    get:
+      operationId: listPendingStaff
+      tags: [admin]
+      summary: List all staff with pending approval status
+      responses:
+        "200":
+          description: List of pending staff members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Staff"
+
+  /admin/staff/{staffId}/approve:
+    patch:
+      operationId: approveStaff
+      tags: [admin]
+      summary: Approve a pending staff member
+      parameters:
+        - in: path
+          name: staffId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Staff approved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Staff"
+        "404":
+          description: Staff not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /admin/staff/{staffId}/reject:
+    patch:
+      operationId: rejectStaff
+      tags: [admin]
+      summary: Reject a pending staff member
+      parameters:
+        - in: path
+          name: staffId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Staff rejected.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Staff"
+        "404":
+          description: Staff not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
   /staff/{staffId}/profile-stats:
     get:
       operationId: getStaffProfileStats
@@ -416,7 +483,16 @@ components:
           type: string
           nullable: true
           description: Invite code that staff can use to link to this admin's organization.
-      required: [id, empCode, name, phone, role]
+        approvalStatus:
+          type: string
+          enum: [pending, approved, rejected]
+          description: Approval workflow status. Staff are pending until an admin approves them.
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Registration timestamp (ISO 8601).
+      required: [id, empCode, name, phone, role, approvalStatus]
 
     RegisterInput:
       type: object

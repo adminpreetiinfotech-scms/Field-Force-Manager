@@ -363,6 +363,249 @@ export const useUpdateStaffNotes = <
 };
 
 /**
+ * @summary List all staff with pending approval status
+ */
+export const getListPendingStaffUrl = () => {
+  return `/api/admin/pending-staff`;
+};
+
+export const listPendingStaff = async (
+  options?: RequestInit,
+): Promise<Staff[]> => {
+  return customFetch<Staff[]>(getListPendingStaffUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListPendingStaffQueryKey = () => {
+  return [`/api/admin/pending-staff`] as const;
+};
+
+export const getListPendingStaffQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPendingStaff>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPendingStaff>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListPendingStaffQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPendingStaff>>
+  > = ({ signal }) => listPendingStaff({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPendingStaff>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPendingStaffQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPendingStaff>>
+>;
+export type ListPendingStaffQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all staff with pending approval status
+ */
+
+export function useListPendingStaff<
+  TData = Awaited<ReturnType<typeof listPendingStaff>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPendingStaff>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPendingStaffQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Approve a pending staff member
+ */
+export const getApproveStaffUrl = (staffId: string) => {
+  return `/api/admin/staff/${staffId}/approve`;
+};
+
+export const approveStaff = async (
+  staffId: string,
+  options?: RequestInit,
+): Promise<Staff> => {
+  return customFetch<Staff>(getApproveStaffUrl(staffId), {
+    ...options,
+    method: "PATCH",
+  });
+};
+
+export const getApproveStaffMutationOptions = <
+  TError = ErrorType<ProblemDetails>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof approveStaff>>,
+    TError,
+    { staffId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof approveStaff>>,
+  TError,
+  { staffId: string },
+  TContext
+> => {
+  const mutationKey = ["approveStaff"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof approveStaff>>,
+    { staffId: string }
+  > = (props) => {
+    const { staffId } = props ?? {};
+
+    return approveStaff(staffId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ApproveStaffMutationResult = NonNullable<
+  Awaited<ReturnType<typeof approveStaff>>
+>;
+
+export type ApproveStaffMutationError = ErrorType<ProblemDetails>;
+
+/**
+ * @summary Approve a pending staff member
+ */
+export const useApproveStaff = <
+  TError = ErrorType<ProblemDetails>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof approveStaff>>,
+    TError,
+    { staffId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof approveStaff>>,
+  TError,
+  { staffId: string },
+  TContext
+> => {
+  return useMutation(getApproveStaffMutationOptions(options));
+};
+
+/**
+ * @summary Reject a pending staff member
+ */
+export const getRejectStaffUrl = (staffId: string) => {
+  return `/api/admin/staff/${staffId}/reject`;
+};
+
+export const rejectStaff = async (
+  staffId: string,
+  options?: RequestInit,
+): Promise<Staff> => {
+  return customFetch<Staff>(getRejectStaffUrl(staffId), {
+    ...options,
+    method: "PATCH",
+  });
+};
+
+export const getRejectStaffMutationOptions = <
+  TError = ErrorType<ProblemDetails>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rejectStaff>>,
+    TError,
+    { staffId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof rejectStaff>>,
+  TError,
+  { staffId: string },
+  TContext
+> => {
+  const mutationKey = ["rejectStaff"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof rejectStaff>>,
+    { staffId: string }
+  > = (props) => {
+    const { staffId } = props ?? {};
+
+    return rejectStaff(staffId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RejectStaffMutationResult = NonNullable<
+  Awaited<ReturnType<typeof rejectStaff>>
+>;
+
+export type RejectStaffMutationError = ErrorType<ProblemDetails>;
+
+/**
+ * @summary Reject a pending staff member
+ */
+export const useRejectStaff = <
+  TError = ErrorType<ProblemDetails>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rejectStaff>>,
+    TError,
+    { staffId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof rejectStaff>>,
+  TError,
+  { staffId: string },
+  TContext
+> => {
+  return useMutation(getRejectStaffMutationOptions(options));
+};
+
+/**
  * @summary Detailed stats for a single mobilizer (rides, km, periods, monthly, recent trips)
  */
 export const getGetStaffProfileStatsUrl = (staffId: string) => {

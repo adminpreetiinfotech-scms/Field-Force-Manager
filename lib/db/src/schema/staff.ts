@@ -14,6 +14,18 @@ export const staffTable = pgTable("staff", {
   adminCode: text("admin_code").unique(),
   /** Admin performance notes / area assignment text for this staff member. */
   notes: text("notes"),
+  /**
+   * Approval workflow status.
+   * - 'pending'  — newly registered staff, not yet approved by admin
+   * - 'approved' — admin approved; staff can log in
+   * - 'rejected' — admin rejected; staff cannot log in
+   * Admins are always 'approved' on registration.
+   */
+  approvalStatus: text("approval_status", {
+    enum: ["pending", "approved", "rejected"],
+  })
+    .notNull()
+    .default("approved"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
