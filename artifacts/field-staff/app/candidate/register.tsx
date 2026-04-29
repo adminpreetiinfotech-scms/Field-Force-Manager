@@ -3,11 +3,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import * as Linking from "expo-linking";
 import * as Network from "expo-network";
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   Image,
   Platform,
   Pressable,
@@ -27,7 +28,59 @@ import { useApp } from "@/contexts/AppContext";
 type ImageData = { uri: string; base64: string; mimeType: string };
 type SubmittedDto = { id: string; name: string; phone: string; status: string; pdfUrl?: string | null };
 
-const DRAFT_KEY = "@candidate-draft-v3";
+// ─── Multi-draft store ────────────────────────────────────────────────────────
+const DRAFTS_STORE_KEY = "@candidate-drafts-v1";
+
+type CandidateDraft = {
+  id: string;
+  savedAt: string;
+  pendingSync: boolean;
+  // text / radio fields
+  name: string; phone: string; email: string;
+  fatherName: string; motherName: string; dob: string;
+  gender: string | null; maritalStatus: string | null;
+  religion: string | null; caste: string | null;
+  pwd: string | null; disabilityType: string;
+  address: string; village: string; policeStation: string;
+  postOffice: string; district: string; state: string; pin: string; area: string;
+  course: string; skillCentreName: string; aadhaarNumber: string;
+  bpl: string | null; bplNumber: string;
+  education: string | null; yearOfPassing: string;
+  bankAccount: string; bankName: string; bankBranch: string; ifsc: string;
+  mobilizer: string;
+  // images
+  photo: ImageData | null;
+  aadhaarFront: ImageData | null;
+  aadhaarBack: ImageData | null;
+  educationCert: ImageData | null;
+  bankPassbook: ImageData | null;
+  casteCert: ImageData | null;
+  signature: ImageData | null;
+};
+
+async function loadAllDrafts(): Promise<CandidateDraft[]> {
+  try {
+    const s = await AsyncStorage.getItem(DRAFTS_STORE_KEY);
+    return s ? (JSON.parse(s) as CandidateDraft[]) : [];
+  } catch { return []; }
+}
+
+async function upsertDraft(draft: CandidateDraft): Promise<void> {
+  const all = await loadAllDrafts();
+  const idx = all.findIndex((d) => d.id === draft.id);
+  if (idx >= 0) all[idx] = draft;
+  else all.unshift(draft);
+  await AsyncStorage.setItem(DRAFTS_STORE_KEY, JSON.stringify(all));
+}
+
+async function removeDraftById(id: string): Promise<void> {
+  const all = await loadAllDrafts();
+  await AsyncStorage.setItem(DRAFTS_STORE_KEY, JSON.stringify(all.filter((d) => d.id !== id)));
+}
+
+function makeDraftId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
 
 const FORM_BG = "#FFFDF6";
 const BORDER = "#1a1a1a";
@@ -53,6 +106,15 @@ function getApiBase(): string {
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
   if (!domain) return "";
   return domain.startsWith("http") ? domain : `https://${domain}`;
+}
+
+function formatRelTime(d: Date): string {
+  const diff = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (diff < 10) return "just now";
+  if (diff < 60) return `${diff}s ago`;
+  const m = Math.floor(diff / 60);
+  if (m < 60) return `${m}m ago`;
+  return `${Math.floor(m / 60)}h ago`;
 }
 
 async function pickImage(setter: (img: ImageData | null) => void): Promise<void> {
@@ -331,6 +393,7 @@ export default function CandidateRegisterScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useApp();
   const webTop = Platform.OS === "web" ? 67 : 0;
+  const { draftId: paramDraftId } = useLocalSearchParams<{ draftId?: string }>();
 
   // Collapsible section states
   const [secA, setSecA] = useState(true);
@@ -427,26 +490,43 @@ export default function CandidateRegisterScreen() {
   // ─ UI state
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState<SubmittedDto | null>(null);
-  const [hasDraft, setHasDraft] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [approvalBlocked, setApprovalBlocked] = useState(false);
   const networkPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // ─ Draft state
+  const [draftId] = useState<string>(() => makeDraftId());
+  const activeDraftId = useRef<string>(draftId);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [pendingSync, setPendingSync] = useState(false);
+  const pendingSyncRef = useRef(false);
+  const [draftCount, setDraftCount] = useState(0);
+  const autoSyncTriggeredRef = useRef(false);
+
   // ── Draft helpers ───────────────────────────────────────────────────────────
 
-  const buildDraft = useCallback(() => ({
+  const buildDraft = useCallback((): CandidateDraft => ({
+    id: activeDraftId.current,
+    savedAt: new Date().toISOString(),
+    pendingSync: pendingSyncRef.current,
     name, phone, email, fatherName, motherName, dob,
     gender, maritalStatus, religion, caste, pwd, disabilityType,
     address, village, policeStation, postOffice, district, state, pin, area,
     course, skillCentreName, aadhaarNumber, bpl, bplNumber,
     education, yearOfPassing, bankAccount, bankName, bankBranch, ifsc, mobilizer,
+    photo, aadhaarFront, aadhaarBack, educationCert, bankPassbook, casteCert, signature,
   }), [name, phone, email, fatherName, motherName, dob, gender, maritalStatus,
     religion, caste, pwd, disabilityType, address, village, policeStation,
     postOffice, district, state, pin, area, course, skillCentreName,
     aadhaarNumber, bpl, bplNumber, education, yearOfPassing, bankAccount,
-    bankName, bankBranch, ifsc, mobilizer]);
+    bankName, bankBranch, ifsc, mobilizer,
+    photo, aadhaarFront, aadhaarBack, educationCert, bankPassbook, casteCert, signature]);
 
-  const restoreDraft = useCallback((d: Record<string, string | null>) => {
+  const restoreDraft = useCallback((d: CandidateDraft) => {
+    activeDraftId.current = d.id;
+    pendingSyncRef.current = d.pendingSync;
+    setPendingSync(d.pendingSync);
     setName(d.name ?? ""); setPhone(d.phone ?? ""); setEmail(d.email ?? "");
     setFatherName(d.fatherName ?? ""); setMotherName(d.motherName ?? "");
     setDob(d.dob ?? ""); setGender(d.gender ?? null);
@@ -464,7 +544,34 @@ export default function CandidateRegisterScreen() {
     setBankAccount(d.bankAccount ?? ""); setBankName(d.bankName ?? "");
     setBankBranch(d.bankBranch ?? ""); setIfsc(d.ifsc ?? "");
     setMobilizer(d.mobilizer ?? user?.name ?? "");
+    setPhoto(d.photo ?? null);
+    setAadhaarFront(d.aadhaarFront ?? null);
+    setAadhaarBack(d.aadhaarBack ?? null);
+    setEducationCert(d.educationCert ?? null);
+    setBankPassbook(d.bankPassbook ?? null);
+    setCasteCert(d.casteCert ?? null);
+    setSignature(d.signature ?? null);
+    setLastSavedAt(new Date(d.savedAt));
   }, [user?.name]);
+
+  const saveDraftNow = useCallback(async (asPendingSync?: boolean) => {
+    if (!name.trim() && !phone.trim()) return;
+    setAutoSaveStatus("saving");
+    const syncFlag = asPendingSync !== undefined ? asPendingSync : pendingSyncRef.current;
+    if (asPendingSync !== undefined) {
+      pendingSyncRef.current = syncFlag;
+      setPendingSync(syncFlag);
+    }
+    const draft = buildDraft();
+    draft.pendingSync = syncFlag;
+    draft.savedAt = new Date().toISOString();
+    await upsertDraft(draft);
+    const all = await loadAllDrafts();
+    setDraftCount(all.length);
+    setLastSavedAt(new Date());
+    setAutoSaveStatus("saved");
+    setTimeout(() => setAutoSaveStatus("idle"), 2500);
+  }, [buildDraft, name, phone]);
 
   const clearForm = useCallback(async () => {
     setName(""); setPhone(""); setEmail(""); setFatherName(""); setMotherName("");
@@ -479,20 +586,33 @@ export default function CandidateRegisterScreen() {
     setPhoto(null); setAadhaarFront(null); setAadhaarBack(null);
     setEducationCert(null); setBankPassbook(null); setCasteCert(null);
     setSignature(null);
-    setHasDraft(false);
-    await AsyncStorage.removeItem(DRAFT_KEY);
+    await removeDraftById(activeDraftId.current);
+    activeDraftId.current = makeDraftId();
+    setPendingSync(false); pendingSyncRef.current = false;
+    setLastSavedAt(null); setAutoSaveStatus("idle");
+    autoSyncTriggeredRef.current = false;
+    const all = await loadAllDrafts();
+    setDraftCount(all.length);
   }, [user?.name]);
+
+  // ── Load draft from route param & count drafts ──────────────────────────────
 
   useFocusEffect(useCallback(() => {
     let cancelled = false;
     void (async () => {
       const s = await Network.getNetworkStateAsync();
       if (!cancelled) setIsOffline(!s.isConnected);
-      const saved = await AsyncStorage.getItem(DRAFT_KEY);
-      if (!cancelled && saved) setHasDraft(true);
+      const all = await loadAllDrafts();
+      if (!cancelled) setDraftCount(all.length);
+      if (paramDraftId) {
+        const draft = all.find((d) => d.id === paramDraftId);
+        if (draft && !cancelled) restoreDraft(draft);
+      }
     })();
     return () => { cancelled = true; };
-  }, []));
+  }, [paramDraftId, restoreDraft]));
+
+  // ── Network polling (while offline) ────────────────────────────────────────
 
   useEffect(() => {
     if (!isOffline) {
@@ -501,24 +621,62 @@ export default function CandidateRegisterScreen() {
     }
     networkPollRef.current = setInterval(() => {
       void Network.getNetworkStateAsync().then((s) => { if (s.isConnected) setIsOffline(false); });
-    }, 15_000);
+    }, 10_000);
     return () => { if (networkPollRef.current) clearInterval(networkPollRef.current); };
   }, [isOffline]);
 
+  // ── Auto-save on text changes (debounced 3 s) ──────────────────────────────
+
+  const textSnapshot = [
+    name, phone, email, fatherName, motherName, dob, gender ?? "", maritalStatus ?? "",
+    religion ?? "", caste ?? "", pwd ?? "", disabilityType, address, village,
+    policeStation, postOffice, district, state, pin, area, course, skillCentreName,
+    aadhaarNumber, bpl ?? "", bplNumber, education ?? "", yearOfPassing,
+    bankAccount, bankName, bankBranch, ifsc, mobilizer,
+  ].join("|");
+
   useEffect(() => {
-    if (!isOffline && hasDraft) {
-      Alert.alert("Draft found", "Restore your saved draft?", [
-        {
-          text: "Restore",
-          onPress: async () => {
-            const saved = await AsyncStorage.getItem(DRAFT_KEY);
-            if (saved) { restoreDraft(JSON.parse(saved) as Record<string, string | null>); setHasDraft(false); }
-          },
-        },
-        { text: "Dismiss", style: "cancel" },
-      ]);
+    if (!name.trim() && !phone.trim()) return;
+    const timer = setTimeout(() => { void saveDraftNow(); }, 3000);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [textSnapshot]);
+
+  // ── Auto-save on image changes (immediate) ─────────────────────────────────
+
+  useEffect(() => {
+    if (!name.trim() && !phone.trim()) return;
+    void saveDraftNow();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photo, aadhaarFront, aadhaarBack, educationCert, bankPassbook, casteCert, signature]);
+
+  // ── Save on app going to background (prevent data loss) ───────────────────
+
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (nextState) => {
+      if ((nextState === "background" || nextState === "inactive") && (name.trim() || phone.trim())) {
+        void saveDraftNow();
+      }
+    });
+    return () => sub.remove();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [name, phone, saveDraftNow]);
+
+  // ── Auto-sync when internet is restored ────────────────────────────────────
+
+  const handleSubmitRef = useRef<(() => Promise<void>) | undefined>(undefined);
+
+  useEffect(() => {
+    if (!isOffline && pendingSync && !autoSyncTriggeredRef.current && !loading) {
+      autoSyncTriggeredRef.current = true;
+      const timer = setTimeout(() => {
+        void handleSubmitRef.current?.();
+      }, 1200);
+      return () => clearTimeout(timer);
     }
-  }, [isOffline, hasDraft, restoreDraft]);
+    if (isOffline) autoSyncTriggeredRef.current = false;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOffline, pendingSync, loading]);
 
   // ── Submit ──────────────────────────────────────────────────────────────────
 
@@ -526,7 +684,6 @@ export default function CandidateRegisterScreen() {
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
-      // Expand sections that have errors
       if (validationErrors.name || validationErrors.phone || validationErrors.email || validationErrors.dob || validationErrors.aadhaarNumber) setSecA(true);
       if (validationErrors.pin) setSecC(true);
       if (validationErrors.ifsc || validationErrors.bankAccount) setSecF(true);
@@ -538,9 +695,7 @@ export default function CandidateRegisterScreen() {
     const networkState = await Network.getNetworkStateAsync();
     if (!networkState.isConnected) {
       setIsOffline(true);
-      await AsyncStorage.setItem(DRAFT_KEY, JSON.stringify(buildDraft()));
-      setHasDraft(true);
-      Alert.alert("No Internet", "Form saved as draft. Submit when you're back online.");
+      await saveDraftNow(true);
       return;
     }
 
@@ -633,15 +788,21 @@ export default function CandidateRegisterScreen() {
       const data = await res.json() as SubmittedDto & { title?: string };
       if (res.status === 403) { setApprovalBlocked(true); return; }
       if (!res.ok) throw new Error(data.title ?? "Submission failed");
-      await AsyncStorage.removeItem(DRAFT_KEY);
-      setHasDraft(false);
+      await removeDraftById(activeDraftId.current);
+      setPendingSync(false); pendingSyncRef.current = false;
+      autoSyncTriggeredRef.current = false;
+      const all = await loadAllDrafts();
+      setDraftCount(all.length);
       setSubmitted(data);
     } catch (e) {
-      Alert.alert("Error", (e as Error).message);
+      Alert.alert("Submission Failed", (e as Error).message);
+      autoSyncTriggeredRef.current = false;
     } finally {
       setLoading(false);
     }
   };
+
+  handleSubmitRef.current = handleSubmit;
 
   // ── Approval blocked screen ─────────────────────────────────────────────────
 
@@ -709,28 +870,53 @@ export default function CandidateRegisterScreen() {
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
           <Feather name="arrow-left" size={20} color="#fff" />
         </Pressable>
-        <Text style={styles.navTitle}>Candidate Registration</Text>
-        <View style={{ width: 36 }} />
+        <View style={{ flex: 1, alignItems: "center" }}>
+          <Text style={styles.navTitle}>Candidate Registration</Text>
+          {autoSaveStatus === "saving" && (
+            <Text style={styles.autoSaveText}>Saving...</Text>
+          )}
+          {autoSaveStatus === "saved" && (
+            <Text style={styles.autoSaveText}>✓ Draft saved</Text>
+          )}
+          {autoSaveStatus === "idle" && lastSavedAt && (
+            <Text style={styles.autoSaveText}>Last saved {formatRelTime(lastSavedAt)}</Text>
+          )}
+        </View>
+        <Pressable
+          onPress={() => router.push("/candidate/drafts")}
+          style={styles.draftsBtn}
+          hitSlop={8}
+        >
+          <Feather name="folder" size={18} color="#fff" />
+          {draftCount > 0 && (
+            <View style={styles.draftsBadge}>
+              <Text style={styles.draftsBadgeText}>{draftCount > 9 ? "9+" : draftCount}</Text>
+            </View>
+          )}
+        </Pressable>
       </View>
 
       {/* Banners */}
-      {isOffline && (
+      {isOffline && !pendingSync && (
         <View style={styles.offlineBanner}>
           <Feather name="wifi-off" size={14} color="#fff" />
-          <Text style={styles.bannerText}>Offline — form will save as draft on submit</Text>
+          <Text style={styles.bannerText}>Offline — form auto-saves as draft</Text>
         </View>
       )}
-      {hasDraft && !isOffline && (
-        <Pressable
-          style={styles.draftBanner}
-          onPress={async () => {
-            const saved = await AsyncStorage.getItem(DRAFT_KEY);
-            if (saved) { restoreDraft(JSON.parse(saved) as Record<string, string | null>); setHasDraft(false); Alert.alert("Draft Restored", "Re-upload any document photos."); }
-          }}
-        >
-          <Feather name="save" size={14} color={ACCENT} />
-          <Text style={styles.draftBannerText}>Saved draft found — tap to restore</Text>
-        </Pressable>
+      {isOffline && pendingSync && (
+        <View style={[styles.offlineBanner, { backgroundColor: "#92400E" }]}>
+          <Feather name="wifi-off" size={14} color="#fff" />
+          <Text style={styles.bannerText}>Draft saved (offline) — will auto-submit when internet is available</Text>
+        </View>
+      )}
+      {!isOffline && pendingSync && (
+        <View style={[styles.draftBanner, { backgroundColor: "#D1FAE5", borderBottomColor: "#6EE7B7" }]}>
+          <Feather name="wifi" size={14} color={SUCCESS_GREEN} />
+          <Text style={[styles.draftBannerText, { color: SUCCESS_GREEN, flex: 1 }]}>
+            {loading ? "Submitting saved draft..." : "Internet restored — submitting draft..."}
+          </Text>
+          {loading && <ActivityIndicator size="small" color={SUCCESS_GREEN} />}
+        </View>
       )}
 
       <ScrollView
@@ -920,9 +1106,21 @@ export default function CandidateRegisterScreen() {
                 : (
                   <>
                     <Feather name="send" size={18} color="#fff" />
-                    <Text style={styles.submitBtnText}>Submit Registration Form</Text>
+                    <Text style={styles.submitBtnText}>
+                      {pendingSync ? "Submit Saved Draft" : "Submit Registration Form"}
+                    </Text>
                   </>
                 )}
+            </Pressable>
+            <Pressable
+              onPress={async () => {
+                await saveDraftNow(false);
+                router.push("/candidate/drafts");
+              }}
+              style={({ pressed }) => [styles.saveDraftBtn, { opacity: pressed ? 0.8 : 1 }]}
+            >
+              <Feather name="save" size={15} color={ACCENT} />
+              <Text style={styles.saveDraftBtnText}>Save & Continue Later</Text>
             </Pressable>
           </View>
         </View>
@@ -953,11 +1151,39 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   navTitle: {
-    flex: 1,
-    textAlign: "center",
     color: "#fff",
     fontSize: 16,
     fontFamily: "Inter_600SemiBold",
+  },
+  autoSaveText: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 10,
+    fontFamily: "Inter_400Regular",
+    marginTop: 1,
+  },
+  draftsBtn: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+  draftsBadge: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    backgroundColor: "#EF4444",
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 3,
+  },
+  draftsBadgeText: {
+    color: "#fff",
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
   },
   offlineBanner: {
     flexDirection: "row",
@@ -1384,6 +1610,22 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Inter_700Bold",
     letterSpacing: 0.3,
+  },
+  saveDraftBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderColor: ACCENT,
+    borderRadius: 4,
+    paddingVertical: 10,
+    marginTop: 8,
+  },
+  saveDraftBtnText: {
+    color: ACCENT,
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
   },
 
   // ── Centered screens ──────────────────────────────────────────

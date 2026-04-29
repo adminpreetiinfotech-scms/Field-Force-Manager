@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Linking from "expo-linking";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
@@ -74,6 +75,7 @@ export default function MyCandidatesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [draftCount, setDraftCount] = useState(0);
 
   const fetchMyCandidates = useCallback(async () => {
     if (!user?.phone) return;
@@ -93,7 +95,15 @@ export default function MyCandidatesScreen() {
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
-      fetchMyCandidates().finally(() => setLoading(false));
+      void fetchMyCandidates().finally(() => setLoading(false));
+      void AsyncStorage.getItem("@candidate-drafts-v1").then((s) => {
+        if (s) {
+          try { setDraftCount((JSON.parse(s) as unknown[]).length); }
+          catch { setDraftCount(0); }
+        } else {
+          setDraftCount(0);
+        }
+      });
     }, [fetchMyCandidates]),
   );
 
@@ -122,9 +132,21 @@ export default function MyCandidatesScreen() {
           <Feather name="arrow-left" size={20} color={colors.foreground} />
         </Pressable>
         <Text style={[ss.headerTitle, { color: colors.foreground }]}>My Candidates</Text>
-        <Pressable onPress={() => router.push("/candidate/register")} style={ss.iconBtn} hitSlop={8}>
-          <Feather name="user-plus" size={20} color={colors.primary} />
-        </Pressable>
+        <View style={{ flexDirection: "row", gap: 6 }}>
+          {draftCount > 0 && (
+            <Pressable
+              onPress={() => router.push("/candidate/drafts")}
+              style={[ss.iconBtn, { backgroundColor: "#FEF3C7", borderRadius: 8, paddingHorizontal: 8, gap: 4, flexDirection: "row" }]}
+              hitSlop={8}
+            >
+              <Feather name="folder" size={16} color="#92400E" />
+              <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: "#92400E" }}>{draftCount}</Text>
+            </Pressable>
+          )}
+          <Pressable onPress={() => router.push("/candidate/register")} style={ss.iconBtn} hitSlop={8}>
+            <Feather name="user-plus" size={20} color={colors.primary} />
+          </Pressable>
+        </View>
       </View>
 
       {/* Summary chips */}
