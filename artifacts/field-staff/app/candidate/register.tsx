@@ -162,19 +162,41 @@ async function pickImage(setter: (img: ImageData | null) => void): Promise<void>
 function FormHeader() {
   return (
     <View style={styles.formHeader}>
-      <View style={styles.formHeaderAccent} />
-      <View style={styles.formHeaderInner}>
-        <View style={{ flex: 1, alignItems: "center" }}>
-          <Text style={styles.orgTitle}>JHARKHAND SKILL DEVELOPMENT MISSION SOCIETY</Text>
-          <Text style={styles.orgTitleHindi}>झारखंड कौशल विकास मिशन सोसाइटी (JSDMS)</Text>
-          <View style={styles.orgDivider} />
-          <Text style={styles.orgSub}>Deen Dayal Upadhyay Grameen Kaushalya Yojana (DDU-GKY)</Text>
-          <Text style={styles.orgSubHindi}>दीन दयाल उपाध्याय ग्रामीण कौशल्या योजना</Text>
-          <Text style={styles.orgSub}>Deen Dayal Upadhyay Kaushal Kendra (DDUKK)</Text>
-          <View style={styles.hRule} />
-          <Text style={styles.formTitle}>STUDENT / CANDIDATE REGISTRATION FORM</Text>
-          <Text style={styles.formTitleHindi}>छात्र / अभ्यर्थी पंजीकरण फॉर्म</Text>
+      {/* ── Three-column letterhead ── */}
+      <View style={styles.letterhead}>
+        {/* Left — English org details */}
+        <View style={styles.letterheadLeft}>
+          <Text style={styles.lhEngBold}>Jharkhand Skill Development Mission Society</Text>
+          <Text style={styles.lhEngSm}>Labour Employment and skill Development Department</Text>
+          <Text style={styles.lhEngSm}>Govt. of Jharkhand</Text>
+          <Text style={styles.lhEngSm}>Training Centre ID :–</Text>
         </View>
+        {/* Centre — emblem circle */}
+        <View style={styles.letterheadLogo}>
+          <View style={styles.logoCircleOuter}>
+            <View style={styles.logoCircleInner}>
+              <Text style={styles.logoText}>JSDMS</Text>
+            </View>
+          </View>
+        </View>
+        {/* Right — Hindi org details */}
+        <View style={styles.letterheadRight}>
+          <Text style={styles.lhHinBold}>झारखण्ड कौशल विकास मिशन सांसाइटी</Text>
+          <Text style={styles.lhHinSm}>श्रम नियोजन प्रशिक्षण एवं कौशल विकास विभाग</Text>
+          <Text style={styles.lhHinSm}>झारखण्ड सरकार द्वारा वित्त प्रदत्त</Text>
+        </View>
+      </View>
+
+      {/* ── Letterhead bottom rule ── */}
+      <View style={styles.lhRule} />
+
+      {/* ── Big Hindi title ── */}
+      <Text style={styles.megaTitle}>मेगा स्कील सेन्टर</Text>
+      <Text style={styles.ddukTitle}>DEEN DAYAL UPADHYAY KAUSHAL KENDRA (DDUKK)</Text>
+
+      {/* ── Form name in a bordered box ── */}
+      <View style={styles.formTitleBox}>
+        <Text style={styles.formTitleBoxText}>STUDENT REGISTRATION FORM</Text>
       </View>
     </View>
   );
@@ -1264,76 +1286,126 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
 
-  // ── Form Header ───────────────────────────────────────────────
+  // ── Form header — matches JSDMS reference letterhead ────────────────────
   formHeader: {
+    backgroundColor: "#fff",
     borderBottomWidth: 1.5,
-    borderBottomColor: ACCENT,
-    backgroundColor: "#EEF2FF",
+    borderBottomColor: "#111",
+    paddingBottom: 10,
   },
-  formHeaderAccent: {
-    height: 5,
-    backgroundColor: ACCENT,
+
+  // Three-column letterhead
+  letterhead: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    paddingHorizontal: 10,
+    paddingTop: 10,
+    paddingBottom: 8,
+    gap: 4,
   },
-  formHeaderInner: {
-    padding: 12,
-    paddingBottom: 14,
+  letterheadLeft: {
+    flex: 1,
+    gap: 1,
   },
-  orgDivider: {
-    height: 1,
-    backgroundColor: "#BBC8E8",
-    alignSelf: "stretch",
-    marginVertical: 5,
+  letterheadLogo: {
+    width: 54,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 2,
   },
-  orgTitle: {
-    fontSize: 13,
+  letterheadRight: {
+    flex: 1,
+    gap: 1,
+    alignItems: "flex-end",
+  },
+  lhEngBold: {
+    fontSize: 8.5,
     fontFamily: F_ENG_BOL,
-    color: ACCENT,
-    textAlign: "center",
-    letterSpacing: 0.3,
+    color: "#111",
+    lineHeight: 12,
   },
-  orgTitleHindi: {
-    fontSize: 11,
-    fontFamily: F_HIN_MED,
-    color: ACCENT,
-    textAlign: "center",
-    marginTop: 2,
-    opacity: 0.9,
+  lhEngSm: {
+    fontSize: 7.5,
+    fontFamily: F_ENG_REG,
+    color: "#222",
+    lineHeight: 11,
   },
-  orgSub: {
-    fontSize: 9.5,
-    fontFamily: F_ENG_MED,
-    color: "#334",
-    textAlign: "center",
-    marginTop: 1,
+  lhHinBold: {
+    fontSize: 8,
+    fontFamily: F_HIN_BOL,
+    color: "#111",
+    lineHeight: 12,
+    textAlign: "right",
   },
-  orgSubHindi: {
-    fontSize: 9.5,
+  lhHinSm: {
+    fontSize: 7,
     fontFamily: F_HIN_REG,
-    color: "#445",
+    color: "#222",
+    lineHeight: 11,
+    textAlign: "right",
+  },
+  logoCircleOuter: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 1,
+    borderColor: "#111",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  logoCircleInner: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 0.5,
+    borderColor: "#555",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  logoText: {
+    fontSize: 7,
+    fontFamily: F_ENG_BOL,
+    color: "#111",
+  },
+  lhRule: {
+    height: 1,
+    backgroundColor: "#111",
+    marginHorizontal: 0,
+  },
+
+  // Big Hindi title section
+  megaTitle: {
+    fontSize: 26,
+    fontFamily: F_HIN_BOL,
+    color: "#111",
     textAlign: "center",
-    marginTop: 1,
-    opacity: 0.85,
+    marginTop: 8,
+    letterSpacing: 1,
   },
-  hRule: {
-    height: 2,
-    backgroundColor: ACCENT,
-    alignSelf: "stretch",
-    marginVertical: 8,
-    opacity: 0.2,
-  },
-  formTitle: {
-    fontSize: 13.5,
+  ddukTitle: {
+    fontSize: 10,
     fontFamily: F_ENG_BOL,
     color: "#111",
     textAlign: "center",
-    letterSpacing: 0.5,
-  },
-  formTitleHindi: {
-    fontSize: 12,
-    fontFamily: F_HIN_MED,
-    color: "#333",
-    textAlign: "center",
     marginTop: 3,
+    letterSpacing: 0.3,
+  },
+
+  // "STUDENT REGISTRATION FORM" in border box
+  formTitleBox: {
+    borderWidth: 1.5,
+    borderColor: "#111",
+    alignSelf: "center",
+    paddingHorizontal: 18,
+    paddingVertical: 4,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  formTitleBoxText: {
+    fontSize: 12,
+    fontFamily: F_ENG_BOL,
+    color: "#111",
+    letterSpacing: 0.5,
   },
 
   // ── Borders / rows ────────────────────────────────────────────
