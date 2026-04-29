@@ -232,6 +232,7 @@ export default function ReportsScreen() {
   // ── Leaderboard state ──────────────────────────────────────────────────────
   const [period, setPeriod] = useState<Period>("weekly");
   const [boardSearch, setBoardSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"km" | "rides">("km");
 
   // Clear search when switching periods so stale filter doesn't linger.
   const handlePeriodChange = useCallback(
@@ -319,7 +320,26 @@ export default function ReportsScreen() {
     [colors, router],
   );
 
-  const maxKm = board?.[0]?.totalKm ?? 1;
+  // Re-sort and re-rank client-side based on the chosen sort metric.
+  const sortedBoard = React.useMemo(
+    () =>
+      board
+        ? [...board]
+            .sort((a, b) =>
+              sortBy === "km"
+                ? b.totalKm - a.totalKm || b.tripCount - a.tripCount
+                : b.tripCount - a.tripCount || b.totalKm - a.totalKm,
+            )
+            .map((e, i) => ({ ...e, rank: i + 1 }))
+        : board,
+    [board, sortBy],
+  );
+
+  // Max value for the proportional bar in each row.
+  const maxVal =
+    sortBy === "km"
+      ? sortedBoard?.[0]?.totalKm ?? 1
+      : sortedBoard?.[0]?.tripCount ?? 1;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -606,8 +626,58 @@ export default function ReportsScreen() {
               <Feather name="award" size={15} color="#F59E0B" />
             </View>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Distance Leaderboard
+              Leaderboard
             </Text>
+            {/* Sort toggle */}
+            <View
+              style={[
+                styles.sortToggle,
+                {
+                  backgroundColor: colors.muted,
+                  borderColor: colors.border,
+                  borderRadius: colors.radius + 2,
+                },
+              ]}
+            >
+              {(["km", "rides"] as const).map((opt) => {
+                const active = sortBy === opt;
+                return (
+                  <Pressable
+                    key={opt}
+                    onPress={() => setSortBy(opt)}
+                    style={[
+                      styles.sortOption,
+                      active && {
+                        backgroundColor: colors.card,
+                        shadowColor: "#000",
+                        shadowOpacity: 0.07,
+                        shadowRadius: 3,
+                        shadowOffset: { width: 0, height: 1 },
+                        elevation: 1,
+                        borderRadius: colors.radius,
+                      },
+                    ]}
+                  >
+                    <Feather
+                      name={opt === "km" ? "map" : "repeat"}
+                      size={10}
+                      color={active ? colors.foreground : colors.mutedForeground}
+                    />
+                    <Text
+                      style={[
+                        styles.sortOptionText,
+                        {
+                          color: active ? colors.foreground : colors.mutedForeground,
+                          fontFamily: active ? "Inter_700Bold" : "Inter_500Medium",
+                        },
+                      ]}
+                    >
+                      {opt === "km" ? "km" : "rides"}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
 
           {/* Period tabs */}
@@ -693,11 +763,11 @@ export default function ReportsScreen() {
           )}
 
           {/* Period label */}
-          {board?.[0] && (
+          {sortedBoard?.[0] && (
             <Text
               style={[styles.periodLabel, { color: colors.mutedForeground }]}
             >
-              {board[0].periodLabel}
+              {sortedBoard[0].periodLabel}
             </Text>
           )}
 
@@ -720,9 +790,9 @@ export default function ReportsScreen() {
             </View>
           )}
 
-          {/* Board rows — filtered by search */}
+          {/* Board rows — filtered by search, sorted by sortBy */}
           {!boardLoading &&
-            board
+            sortedBoard
               ?.filter((e) =>
                 boardSearch.trim().length === 0
                   ? true
@@ -734,7 +804,8 @@ export default function ReportsScreen() {
                 <LeaderboardRow
                   key={entry.staffId}
                   entry={entry}
-                  maxKm={maxKm}
+                  maxVal={maxVal}
+                  sortBy={sortBy}
                   colors={colors}
                   onPress={() =>
                     router.push(`/(admin)/mobilizer/${entry.staffId}`)
@@ -749,9 +820,9 @@ export default function ReportsScreen() {
 
           {/* No search results */}
           {!boardLoading &&
-            (board?.length ?? 0) > 0 &&
+            (sortedBoard?.length ?? 0) > 0 &&
             boardSearch.trim().length > 0 &&
-            board?.filter((e) =>
+            sortedBoard?.filter((e) =>
               e.staffName
                 .toLowerCase()
                 .includes(boardSearch.trim().toLowerCase()),
@@ -1116,18 +1187,21 @@ export default function ReportsScreen() {
 
 function LeaderboardRow({
   entry,
-  maxKm,
+  maxVal,
+  sortBy,
   colors,
   onPress,
   onAddNote,
 }: {
   entry: LeaderboardEntry;
-  maxKm: number;
+  maxVal: number;
+  sortBy: "km" | "rides";
   colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
   onPress?: () => void;
   onAddNote?: () => void;
 }) {
-  const barPct = maxKm > 0 ? entry.totalKm / maxKm : 0;
+  const activeVal = sortBy === "km" ? entry.totalKm : entry.tripCount;
+  const barPct = maxVal > 0 ? activeVal / maxVal : 0;
   const isTop3 = entry.rank <= 3;
   const medalColor = isTop3
     ? MEDAL_COLORS[entry.rank - 1]
@@ -1210,12 +1284,28 @@ function LeaderboardRow({
         </View>
       </View>
 
-      {/* Stats */}
+      {/* Stats — active sort metric is emphasised */}
       <View style={styles.boardStats}>
-        <Text style={[styles.boardKm, { color: colors.foreground }]}>
+        <Text
+          style={[
+            styles.boardKm,
+            {
+              color: sortBy === "km" ? colors.foreground : colors.mutedForeground,
+              fontFamily: sortBy === "km" ? "Inter_700Bold" : "Inter_500Medium",
+            },
+          ]}
+        >
           {entry.totalKm} km
         </Text>
-        <Text style={[styles.boardTrips, { color: colors.mutedForeground }]}>
+        <Text
+          style={[
+            styles.boardTrips,
+            {
+              color: sortBy === "rides" ? colors.foreground : colors.mutedForeground,
+              fontFamily: sortBy === "rides" ? "Inter_700Bold" : "Inter_400Regular",
+            },
+          ]}
+        >
           {entry.tripCount} {entry.tripCount === 1 ? "trip" : "trips"}
         </Text>
       </View>
@@ -1568,6 +1658,24 @@ const styles = StyleSheet.create({
   addNoteBtnText: {
     fontSize: 11,
     fontFamily: "Inter_600SemiBold",
+  },
+  // Sort toggle
+  sortToggle: {
+    flexDirection: "row",
+    borderWidth: 1,
+    padding: 2,
+    gap: 2,
+  },
+  sortOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  sortOptionText: {
+    fontSize: 11,
+    letterSpacing: 0.1,
   },
   barTrack: {
     height: 5,
