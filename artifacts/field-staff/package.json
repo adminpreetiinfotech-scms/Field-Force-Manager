@@ -56,6 +56,7 @@
     "zod-validation-error": "^3.4.0"
   },
   "dependencies": {
+    "@expo-google-fonts/noto-sans-devanagari": "^0.4.1",
     "expo-camera": "~17.0.10",
     "expo-document-picker": "^55.0.13",
     "expo-file-system": "^55.0.17",

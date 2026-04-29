@@ -93,6 +93,15 @@ const ERROR_RED = "#D32F2F";
 const SUCCESS_GREEN = "#1B5E20";
 const ACCENT = "#1E3A5F";
 
+// Font aliases — use Noto Sans Devanagari for Hindi text
+const F_ENG_REG = "Inter_400Regular";
+const F_ENG_MED = "Inter_500Medium";
+const F_ENG_SEM = "Inter_600SemiBold";
+const F_ENG_BOL = "Inter_700Bold";
+const F_HIN_REG = "NotoSansDevanagari_400Regular";
+const F_HIN_MED = "NotoSansDevanagari_500Medium";
+const F_HIN_BOL = "NotoSansDevanagari_700Bold";
+
 const GENDERS = ["Male", "Female", "Other"] as const;
 const MARITAL = ["Single", "Married", "Divorced", "Widowed"] as const;
 const CASTES = ["General", "OBC", "SC", "ST"] as const;
@@ -153,12 +162,12 @@ async function pickImage(setter: (img: ImageData | null) => void): Promise<void>
 function FormHeader() {
   return (
     <View style={styles.formHeader}>
-      {/* Navy accent bar at top */}
       <View style={styles.formHeaderAccent} />
       <View style={styles.formHeaderInner}>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, alignItems: "center" }}>
           <Text style={styles.orgTitle}>JHARKHAND SKILL DEVELOPMENT MISSION SOCIETY</Text>
           <Text style={styles.orgTitleHindi}>झारखंड कौशल विकास मिशन सोसाइटी (JSDMS)</Text>
+          <View style={styles.orgDivider} />
           <Text style={styles.orgSub}>Deen Dayal Upadhyay Grameen Kaushalya Yojana (DDU-GKY)</Text>
           <Text style={styles.orgSubHindi}>दीन दयाल उपाध्याय ग्रामीण कौशल्या योजना</Text>
           <Text style={styles.orgSub}>Deen Dayal Upadhyay Kaushal Kendra (DDUKK)</Text>
@@ -388,6 +397,7 @@ function PhotoBox({ label, value, onPick, onClear }: {
 function DocUploadCard({ label, value, onPick, onClear, checked }: {
   label: string; value: ImageData | null; onPick: () => void; onClear: () => void; checked?: boolean;
 }) {
+  const [eng, hin] = splitBilingual(label);
   return (
     <View style={[styles.docCard, value && styles.docCardDone]}>
       <View style={styles.docCheck}>
@@ -395,7 +405,10 @@ function DocUploadCard({ label, value, onPick, onClear, checked }: {
           ? <Feather name="check-square" size={16} color={SUCCESS_GREEN} />
           : <Feather name="square" size={16} color={MUTED} />}
       </View>
-      <Text style={[styles.docLabel, value && styles.docLabelDone]} numberOfLines={2}>{label}</Text>
+      <View style={{ flex: 2 }}>
+        <Text style={[styles.docLabelEng, value && styles.docLabelDone]}>{eng}</Text>
+        {hin ? <Text style={[styles.docLabelHin]}>{hin}</Text> : null}
+      </View>
       <View style={{ flex: 1 }} />
       {value ? (
         <View style={styles.docRight}>
@@ -1253,62 +1266,72 @@ const styles = StyleSheet.create({
 
   // ── Form Header ───────────────────────────────────────────────
   formHeader: {
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER,
-    backgroundColor: "#F0F4FF",
+    borderBottomWidth: 1.5,
+    borderBottomColor: ACCENT,
+    backgroundColor: "#EEF2FF",
   },
   formHeaderAccent: {
-    height: 4,
+    height: 5,
     backgroundColor: ACCENT,
   },
   formHeaderInner: {
-    flexDirection: "row",
     padding: 12,
+    paddingBottom: 14,
+  },
+  orgDivider: {
+    height: 1,
+    backgroundColor: "#BBC8E8",
+    alignSelf: "stretch",
+    marginVertical: 5,
   },
   orgTitle: {
-    fontSize: 12,
-    fontFamily: "Inter_700Bold",
+    fontSize: 13,
+    fontFamily: F_ENG_BOL,
     color: ACCENT,
-    marginBottom: 1,
-    letterSpacing: 0.2,
+    textAlign: "center",
+    letterSpacing: 0.3,
   },
   orgTitleHindi: {
-    fontSize: 10,
-    fontFamily: "Inter_500Medium",
+    fontSize: 11,
+    fontFamily: F_HIN_MED,
     color: ACCENT,
-    marginBottom: 4,
-    opacity: 0.85,
+    textAlign: "center",
+    marginTop: 2,
+    opacity: 0.9,
   },
   orgSub: {
     fontSize: 9.5,
-    fontFamily: "Inter_500Medium",
+    fontFamily: F_ENG_MED,
     color: "#334",
-    marginBottom: 1,
+    textAlign: "center",
+    marginTop: 1,
   },
   orgSubHindi: {
-    fontSize: 9,
-    fontFamily: "Inter_400Regular",
-    color: "#556",
-    marginBottom: 3,
-    opacity: 0.8,
+    fontSize: 9.5,
+    fontFamily: F_HIN_REG,
+    color: "#445",
+    textAlign: "center",
+    marginTop: 1,
+    opacity: 0.85,
   },
   hRule: {
-    height: 1.5,
+    height: 2,
     backgroundColor: ACCENT,
+    alignSelf: "stretch",
     marginVertical: 8,
-    opacity: 0.3,
+    opacity: 0.2,
   },
   formTitle: {
-    fontSize: 13,
-    fontFamily: "Inter_700Bold",
-    color: BORDER,
+    fontSize: 13.5,
+    fontFamily: F_ENG_BOL,
+    color: "#111",
     textAlign: "center",
-    letterSpacing: 0.4,
+    letterSpacing: 0.5,
   },
   formTitleHindi: {
-    fontSize: 11,
-    fontFamily: "Inter_500Medium",
-    color: "#444",
+    fontSize: 12,
+    fontFamily: F_HIN_MED,
+    color: "#333",
     textAlign: "center",
     marginTop: 3,
   },
@@ -1339,13 +1362,13 @@ const styles = StyleSheet.create({
   sectionBandTextEng: {
     color: "#fff",
     fontSize: 11,
-    fontFamily: "Inter_700Bold",
+    fontFamily: F_ENG_BOL,
     letterSpacing: 0.4,
   },
   sectionBandTextHin: {
-    color: "rgba(255,255,255,0.75)",
-    fontSize: 9.5,
-    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.78)",
+    fontSize: 10,
+    fontFamily: F_HIN_REG,
     marginTop: 1,
   },
   sectionBody: {
@@ -1370,31 +1393,31 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontSize: 10.5,
-    fontFamily: "Inter_600SemiBold",
-    color: "#222",
+    fontFamily: F_ENG_SEM,
+    color: "#1a1a2e",
   },
   fieldLabelEng: {
     fontSize: 10.5,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: F_ENG_SEM,
     color: "#1a1a2e",
   },
   fieldLabelHin: {
-    fontSize: 9.5,
-    fontFamily: "Inter_400Regular",
+    fontSize: 10,
+    fontFamily: F_HIN_REG,
     color: "#666",
     marginTop: 0,
   },
   textBox: {
     borderWidth: 1,
-    borderColor: "#aaa",
+    borderColor: "#B0B8C8",
     borderRadius: 3,
     paddingHorizontal: 10,
     paddingVertical: 8,
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
+    fontSize: 13.5,
+    fontFamily: F_ENG_REG,
     color: VALUE_COLOR,
     backgroundColor: "#fff",
-    minHeight: 36,
+    minHeight: 38,
   },
   dateDisplay: {
     justifyContent: "center",
@@ -1433,11 +1456,11 @@ const styles = StyleSheet.create({
   },
   radioLabel: {
     fontSize: 12.5,
-    fontFamily: "Inter_400Regular",
+    fontFamily: F_ENG_REG,
     color: "#333",
   },
   radioLabelActive: {
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: F_ENG_SEM,
     color: ACCENT,
   },
 
@@ -1559,12 +1582,23 @@ const styles = StyleSheet.create({
   docLabel: {
     flex: 2,
     fontSize: 12.5,
-    fontFamily: "Inter_500Medium",
+    fontFamily: F_ENG_MED,
     color: "#333",
+  },
+  docLabelEng: {
+    fontSize: 12.5,
+    fontFamily: F_ENG_MED,
+    color: "#333",
+  },
+  docLabelHin: {
+    fontSize: 11,
+    fontFamily: F_HIN_REG,
+    color: "#666",
+    marginTop: 1,
   },
   docLabelDone: {
     color: SUCCESS_GREEN,
-    fontFamily: "Inter_500Medium",
+    fontFamily: F_ENG_MED,
   },
   docRight: {
     flexDirection: "row",
@@ -1608,15 +1642,15 @@ const styles = StyleSheet.create({
   },
   declarationText: {
     fontSize: 11.5,
-    fontFamily: "Inter_400Regular",
+    fontFamily: F_ENG_REG,
     color: "#1a1a2e",
-    lineHeight: 17,
+    lineHeight: 18,
   },
   declarationHindi: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
-    color: "#445",
-    lineHeight: 16,
+    fontSize: 11.5,
+    fontFamily: F_HIN_REG,
+    color: "#334",
+    lineHeight: 18,
   },
 
   // ── Signature ─────────────────────────────────────────────────
