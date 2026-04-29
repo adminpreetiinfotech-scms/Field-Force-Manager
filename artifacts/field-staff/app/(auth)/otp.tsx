@@ -23,9 +23,9 @@ export default function OtpScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { verifyOtp, pendingPhone, requestOtp } = useApp();
-  const [digits, setDigits] = useState<string[]>(["", "", "", ""]);
+  const [digits, setDigits] = useState<string[]>(["", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
-  const [seconds, setSeconds] = useState(30);
+  const [seconds, setSeconds] = useState(60);
   const inputs = useRef<(TextInput | null)[]>([]);
 
   useEffect(() => {
@@ -39,7 +39,7 @@ export default function OtpScreen() {
     const next = [...digits];
     next[i] = clean;
     setDigits(next);
-    if (clean && i < 3) inputs.current[i + 1]?.focus();
+    if (clean && i < 5) inputs.current[i + 1]?.focus();
     if (next.every((d) => d.length === 1)) {
       onVerify(next.join(""));
     }
@@ -53,8 +53,8 @@ export default function OtpScreen() {
 
   const onVerify = async (code?: string) => {
     const otp = code || digits.join("");
-    if (otp.length !== 4) {
-      Alert.alert("Incomplete", "Enter all 4 digits.");
+    if (otp.length !== 6) {
+      Alert.alert("Incomplete", "Enter all 6 digits.");
       return;
     }
     setLoading(true);
@@ -74,7 +74,7 @@ export default function OtpScreen() {
         );
       }
       Alert.alert("Verification failed", e?.message || "Try again");
-      setDigits(["", "", "", ""]);
+      setDigits(["", "", "", "", "", ""]);
       inputs.current[0]?.focus();
     } finally {
       setLoading(false);
@@ -136,10 +136,12 @@ export default function OtpScreen() {
               Verify it's you
             </Text>
             <Text style={[styles.sub, { color: colors.mutedForeground }]}>
-              Enter the 4-digit code sent to{" "}
+              Enter the 6-digit code sent via SMS to{" "}
               <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold" }}>
                 +91 {pendingPhone || "—"}
               </Text>
+              {". "}
+              <Text style={{ fontFamily: "Inter_400Regular" }}>Valid for 10 minutes.</Text>
             </Text>
           </View>
 
@@ -172,7 +174,7 @@ export default function OtpScreen() {
             label="Verify & Continue"
             onPress={() => onVerify()}
             loading={loading}
-            disabled={digits.join("").length !== 4}
+            disabled={digits.join("").length !== 6}
             size="lg"
             fullWidth
             style={{ marginTop: 24 }}
@@ -193,21 +195,6 @@ export default function OtpScreen() {
             </Text>
           </Pressable>
 
-          <View
-            style={[
-              styles.hint,
-              {
-                backgroundColor: colors.muted,
-                borderColor: colors.border,
-                borderRadius: colors.radius,
-              },
-            ]}
-          >
-            <Feather name="info" size={13} color={colors.mutedForeground} />
-            <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
-              Demo OTP: <Text style={{ fontFamily: "Inter_600SemiBold", color: colors.foreground }}>1234</Text>
-            </Text>
-          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -260,13 +247,4 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: 16,
   },
-  hint: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    padding: 12,
-    marginTop: 24,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  hintText: { fontSize: 12, fontFamily: "Inter_400Regular" },
 });

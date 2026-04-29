@@ -201,27 +201,6 @@ export default function PhoneScreen() {
             </Text>
           </Pressable>
 
-          <View
-            style={[
-              styles.demoCard,
-              {
-                backgroundColor: colors.muted,
-                borderRadius: colors.radius,
-                borderColor: colors.border,
-              },
-            ]}
-          >
-            <Feather name="info" size={14} color={colors.mutedForeground} />
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.demoTitle, { color: colors.foreground }]}>
-                Demo access
-              </Text>
-              <Text style={[styles.demoText, { color: colors.mutedForeground }]}>
-                Use 9999999999 (admin) or 9876543210 (staff) to sign in without
-                registering. OTP is 1234.
-              </Text>
-            </View>
-          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>

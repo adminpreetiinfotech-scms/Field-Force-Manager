@@ -476,15 +476,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const requestOtp = useCallback(async (phone: string) => {
-    // Clear any stale registration state when starting a plain login.
     setState((s) => ({ ...s, pendingPhone: phone, pendingRegistration: null }));
-    // Demo: OTP is always 1234. A real impl would call an SMS provider.
-    return "1234";
+    const res = await fetch("/api/otp/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({})) as Record<string, unknown>;
+      throw new Error((err["title"] as string) || "Failed to send OTP. Please try again.");
+    }
   }, []);
 
   const verifyOtp = useCallback(async (otp: string) => {
-    if (otp !== "1234") {
-      throw new Error("Invalid OTP. Use 1234 for demo.");
+    const phone = stateRef.current.pendingPhone || "";
+    const res = await fetch("/api/otp/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone, otp }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({})) as Record<string, unknown>;
+      throw new Error((err["title"] as string) || "Invalid OTP. Please try again.");
     }
 
     // Registration flow: the user was just created — check approval status.
@@ -513,7 +526,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Login flow: resolve the user by looking up the phone on the server.
-    const phone = stateRef.current.pendingPhone || "";
     let user: User | null = null;
     try {
       const staff = await listStaff();

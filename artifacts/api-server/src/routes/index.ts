@@ -4,10 +4,12 @@ import activityRouter from "./activity";
 import staffRouter from "./staff";
 import candidatesRouter from "./candidates";
 import adminRouter from "./admin";
+import otpRouter from "./otp";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(otpRouter);
 router.use(staffRouter);
 router.use(activityRouter);
 router.use(adminRouter);
