@@ -7,6 +7,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -69,6 +70,26 @@ export default function PhoneScreen() {
           }}
           keyboardShouldPersistTaps="handled"
         >
+          {/* Back to welcome */}
+          <View style={{ paddingHorizontal: 22, marginBottom: 4 }}>
+            <Pressable
+              onPress={() => router.replace("/(auth)/welcome")}
+              style={({ pressed }) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                alignSelf: "flex-start",
+                opacity: pressed ? 0.7 : 1,
+              })}
+              hitSlop={8}
+            >
+              <Feather name="arrow-left" size={16} color="rgba(255,255,255,0.85)" />
+              <Text style={{ color: "rgba(255,255,255,0.85)", fontSize: 13, fontFamily: "Inter_500Medium" }}>
+                Back
+              </Text>
+            </Pressable>
+          </View>
+
           <View style={styles.headerWrap}>
             <View style={styles.brand}>
               <View
@@ -89,8 +110,7 @@ export default function PhoneScreen() {
               Sign in to start{"\n"}your shift
             </Text>
             <Text style={styles.heroSub}>
-              Powered by attendance proof, GPS-verified meter reads and
-              tamper-resistant audit trails.
+              Enter your registered phone number to receive an OTP.
             </Text>
             <View style={{ marginTop: 14 }}>
               <PillarsRow />
@@ -153,6 +173,34 @@ export default function PhoneScreen() {
             </Text>
           </View>
 
+          {/* Register link */}
+          <Pressable
+            onPress={() => router.replace("/(auth)/welcome")}
+            style={({ pressed }) => ({
+              marginHorizontal: 18,
+              marginTop: 14,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              paddingVertical: 12,
+              borderRadius: colors.radius,
+              backgroundColor: "rgba(255,255,255,0.08)",
+              opacity: pressed ? 0.8 : 1,
+            })}
+          >
+            <Feather name="user-plus" size={14} color="rgba(255,255,255,0.85)" />
+            <Text
+              style={{
+                color: "rgba(255,255,255,0.85)",
+                fontSize: 13,
+                fontFamily: "Inter_600SemiBold",
+              }}
+            >
+              New here? Register your account
+            </Text>
+          </Pressable>
+
           <View
             style={[
               styles.demoCard,
@@ -169,8 +217,8 @@ export default function PhoneScreen() {
                 Demo access
               </Text>
               <Text style={[styles.demoText, { color: colors.mutedForeground }]}>
-                Use 9999999999 for the admin console. Any other 10-digit number
-                opens the field staff app. OTP for both is 1234.
+                Use 9999999999 (admin) or 9876543210 (staff) to sign in without
+                registering. OTP is 1234.
               </Text>
             </View>
           </View>

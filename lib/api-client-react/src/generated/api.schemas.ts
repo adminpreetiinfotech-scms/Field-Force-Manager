@@ -22,6 +22,45 @@ export interface Staff {
   name: string;
   phone: string;
   role: StaffRole;
+  /** Company / organization name (populated for admins and linked staff). */
+  organization?: string | null;
+  /** Assigned territory or area (staff only). */
+  area?: string | null;
+  /** Invite code that staff can use to link to this admin's organization. */
+  adminCode?: string | null;
+}
+
+/**
+ * Whether to create an admin or staff account.
+ */
+export type RegisterInputKind =
+  (typeof RegisterInputKind)[keyof typeof RegisterInputKind];
+
+export const RegisterInputKind = {
+  admin: "admin",
+  staff: "staff",
+} as const;
+
+/**
+ * Unified registration body. `kind` determines the role.
+Admin accounts require `organization`.
+Staff accounts optionally supply `empCode`, `area`, and `adminCode`.
+
+ */
+export interface RegisterInput {
+  /** Whether to create an admin or staff account. */
+  kind: RegisterInputKind;
+  name: string;
+  /** 10-digit mobile number (no country code). */
+  phone: string;
+  /** Company / organization name — required for admin registration. */
+  organization?: string | null;
+  /** Custom employee code. Auto-generated if omitted. */
+  empCode?: string | null;
+  /** Assigned territory (staff only). */
+  area?: string | null;
+  /** Invite code of an existing admin org to link to. */
+  adminCode?: string | null;
 }
 
 export interface GeoPoint {

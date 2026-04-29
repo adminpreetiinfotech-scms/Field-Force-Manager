@@ -44,6 +44,37 @@ paths:
                 items:
                   $ref: "#/components/schemas/Staff"
 
+  /staff/register:
+    post:
+      operationId: registerStaff
+      tags: [staff]
+      summary: Register a new staff member or admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Staff"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
+          description: Phone number already registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
   /activity:
     get:
       operationId: listActivity
@@ -198,7 +229,53 @@ components:
         role:
           type: string
           enum: [staff, admin]
+        organization:
+          type: string
+          nullable: true
+          description: Company / organization name (populated for admins and linked staff).
+        area:
+          type: string
+          nullable: true
+          description: Assigned territory or area (staff only).
+        adminCode:
+          type: string
+          nullable: true
+          description: Invite code that staff can use to link to this admin's organization.
       required: [id, empCode, name, phone, role]
+
+    RegisterInput:
+      type: object
+      description: |
+        Unified registration body. `kind` determines the role.
+        Admin accounts require `organization`.
+        Staff accounts optionally supply `empCode`, `area`, and `adminCode`.
+      properties:
+        kind:
+          type: string
+          enum: [admin, staff]
+          description: Whether to create an admin or staff account.
+        name:
+          type: string
+        phone:
+          type: string
+          description: 10-digit mobile number (no country code).
+        organization:
+          type: string
+          nullable: true
+          description: Company / organization name — required for admin registration.
+        empCode:
+          type: string
+          nullable: true
+          description: Custom employee code. Auto-generated if omitted.
+        area:
+          type: string
+          nullable: true
+          description: Assigned territory (staff only).
+        adminCode:
+          type: string
+          nullable: true
+          description: Invite code of an existing admin org to link to.
+      required: [kind, name, phone]
 
     GeoPoint:
       type: object

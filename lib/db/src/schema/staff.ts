@@ -6,6 +6,12 @@ export const staffTable = pgTable("staff", {
   name: text("name").notNull(),
   phone: text("phone").notNull(),
   role: text("role", { enum: ["staff", "admin"] }).notNull().default("staff"),
+  /** Organization / company name (set by admin on registration). */
+  organization: text("organization"),
+  /** Assigned territory or area (set by staff on registration). */
+  area: text("area"),
+  /** Short invite code generated for admin orgs so staff can link to them. */
+  adminCode: text("admin_code").unique(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

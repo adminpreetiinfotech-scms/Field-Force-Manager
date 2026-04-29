@@ -17,6 +17,8 @@ export * from "./getDistanceStatsParams";
 export * from "./healthStatus";
 export * from "./listActivityParams";
 export * from "./problemDetails";
+export * from "./registerInput";
+export * from "./registerInputKind";
 export * from "./staff";
 export * from "./staffDistance";
 export * from "./staffRole";

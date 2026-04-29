@@ -26,6 +26,7 @@ import type {
   HealthStatus,
   ListActivityParams,
   ProblemDetails,
+  RegisterInput,
   Staff,
 } from "./api.schemas";
 
@@ -178,6 +179,92 @@ export function useListStaff<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Register a new staff member or admin
+ */
+export const getRegisterStaffUrl = () => {
+  return `/api/staff/register`;
+};
+
+export const registerStaff = async (
+  registerInput: RegisterInput,
+  options?: RequestInit,
+): Promise<Staff> => {
+  return customFetch<Staff>(getRegisterStaffUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(registerInput),
+  });
+};
+
+export const getRegisterStaffMutationOptions = <
+  TError = ErrorType<ProblemDetails>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof registerStaff>>,
+    TError,
+    { data: BodyType<RegisterInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof registerStaff>>,
+  TError,
+  { data: BodyType<RegisterInput> },
+  TContext
+> => {
+  const mutationKey = ["registerStaff"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof registerStaff>>,
+    { data: BodyType<RegisterInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return registerStaff(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RegisterStaffMutationResult = NonNullable<
+  Awaited<ReturnType<typeof registerStaff>>
+>;
+export type RegisterStaffMutationBody = BodyType<RegisterInput>;
+export type RegisterStaffMutationError = ErrorType<ProblemDetails>;
+
+/**
+ * @summary Register a new staff member or admin
+ */
+export const useRegisterStaff = <
+  TError = ErrorType<ProblemDetails>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof registerStaff>>,
+    TError,
+    { data: BodyType<RegisterInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof registerStaff>>,
+  TError,
+  { data: BodyType<RegisterInput> },
+  TContext
+> => {
+  return useMutation(getRegisterStaffMutationOptions(options));
+};
 
 /**
  * Returns the activity feed in reverse-chronological order. Use `cursor`

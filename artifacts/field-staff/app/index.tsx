@@ -24,7 +24,7 @@ export default function Index() {
     );
   }
 
-  if (!user) return <Redirect href="/(auth)/phone" />;
+  if (!user) return <Redirect href="/(auth)/welcome" />;
   if (user.role === "admin") return <Redirect href="/(admin)/dashboard" />;
   return <Redirect href="/(staff)/shift" />;
 }

@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { listStaff } from "@workspace/api-client-react";
+import { listStaff, registerStaff } from "@workspace/api-client-react";
 import React, {
   createContext,
   useCallback,
@@ -83,10 +83,23 @@ export type StaffLocation = {
   updatedAt: number;
 };
 
+export type RegisterData = {
+  kind: "admin" | "staff";
+  name: string;
+  phone: string;
+  organization?: string;
+  empCode?: string;
+  area?: string;
+  adminCode?: string;
+};
+
 type AppState = {
   bootstrapped: boolean;
   user: User | null;
+  /** Phone number waiting for OTP during a login flow. */
   pendingPhone: string | null;
+  /** User record created during registration, waiting for OTP verification. */
+  pendingRegistration: { user: User } | null;
   attendance: AttendanceRecord[];
   meterReadings: MeterReading[];
   trips: Trip[];
@@ -96,6 +109,7 @@ type AppState = {
 };
 
 type AppActions = {
+  register: (data: RegisterData) => Promise<User>;
   requestOtp: (phone: string) => Promise<string>;
   verifyOtp: (otp: string) => Promise<User>;
   signOut: () => Promise<void>;
@@ -313,6 +327,7 @@ const defaultState: AppState = {
   bootstrapped: false,
   user: null,
   pendingPhone: null,
+  pendingRegistration: null,
   attendance: [],
   meterReadings: [],
   trips: [],
@@ -433,9 +448,37 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(t);
   }, [state.attendance, state.meterReadings, state.trips]);
 
+  const register = useCallback(async (data: RegisterData) => {
+    const staff = await registerStaff({
+      kind: data.kind,
+      name: data.name,
+      phone: data.phone,
+      organization: data.organization ?? null,
+      empCode: data.empCode ?? null,
+      area: data.area ?? null,
+      adminCode: data.adminCode ?? null,
+    });
+    const user: User = {
+      id: staff.id,
+      name: staff.name,
+      phone: staff.phone,
+      role: staff.role as UserRole,
+      empCode: staff.empCode,
+    };
+    // Store the freshly-created user and set pendingPhone so the OTP screen
+    // can display the number. OTP verification will use pendingRegistration.
+    setState((s) => ({
+      ...s,
+      pendingPhone: data.phone,
+      pendingRegistration: { user },
+    }));
+    return user;
+  }, []);
+
   const requestOtp = useCallback(async (phone: string) => {
-    setState((s) => ({ ...s, pendingPhone: phone }));
-    // Demo: OTP is always 1234. Real impl would call an SMS provider.
+    // Clear any stale registration state when starting a plain login.
+    setState((s) => ({ ...s, pendingPhone: phone, pendingRegistration: null }));
+    // Demo: OTP is always 1234. A real impl would call an SMS provider.
     return "1234";
   }, []);
 
@@ -443,10 +486,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (otp !== "1234") {
       throw new Error("Invalid OTP. Use 1234 for demo.");
     }
-    const phone = stateRef.current.pendingPhone || "";
 
-    // Try to look up the real staff record from the server first.
-    // This resolves the real UUID so API calls pass server-side validation.
+    // Registration flow: the user was just created — no lookup needed.
+    const pending = stateRef.current.pendingRegistration;
+    if (pending) {
+      setState((s) => ({
+        ...s,
+        user: pending.user,
+        pendingPhone: null,
+        pendingRegistration: null,
+      }));
+      return pending.user;
+    }
+
+    // Login flow: resolve the user by looking up the phone on the server.
+    const phone = stateRef.current.pendingPhone || "";
     let user: User | null = null;
     try {
       const staff = await listStaff();
@@ -461,19 +515,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         };
       }
     } catch {
-      /* offline — fall through to local mapping */
+      /* offline — fall through to demo fallback */
+    }
+
+    // Demo fallback: known seed phone numbers still work offline.
+    if (!user) {
+      const knownId = KNOWN_STAFF_UUID[phone];
+      if (knownId) {
+        const isAdmin = phone === seedAdminPhone;
+        user = {
+          id: knownId,
+          name: isAdmin ? "Anita Sharma" : "Staff " + phone.slice(-4),
+          phone,
+          role: isAdmin ? "admin" : "staff",
+          empCode: isAdmin ? "ADM-001" : "FS-" + phone.slice(-4),
+        };
+      }
     }
 
     if (!user) {
-      const knownId = KNOWN_STAFF_UUID[phone];
-      const isAdmin = phone === seedAdminPhone;
-      user = {
-        id: knownId ?? (isAdmin ? "A-001" : "S-" + phone.slice(-4)),
-        name: isAdmin ? "Anita Sharma" : "Staff " + phone.slice(-4),
-        phone,
-        role: isAdmin ? "admin" : "staff",
-        empCode: isAdmin ? "ADM-001" : "FS-" + phone.slice(-4),
-      };
+      throw new Error(
+        "Phone number not registered. Please register first or use a demo number.",
+      );
     }
 
     setState((s) => ({ ...s, user, pendingPhone: null }));
@@ -707,6 +770,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<AppContextValue>(
     () => ({
       ...state,
+      register,
       requestOtp,
       verifyOtp,
       signOut,
@@ -722,6 +786,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }),
     [
       state,
+      register,
       requestOtp,
       verifyOtp,
       signOut,

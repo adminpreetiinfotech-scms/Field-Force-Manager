@@ -13,4 +13,10 @@ export interface Staff {
   name: string;
   phone: string;
   role: StaffRole;
+  /** Company / organization name (populated for admins and linked staff). */
+  organization?: string | null;
+  /** Assigned territory or area (staff only). */
+  area?: string | null;
+  /** Invite code that staff can use to link to this admin's organization. */
+  adminCode?: string | null;
 }

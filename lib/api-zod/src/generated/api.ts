@@ -24,8 +24,54 @@ export const ListStaffResponseItem = zod.object({
   name: zod.string(),
   phone: zod.string(),
   role: zod.enum(["staff", "admin"]),
+  organization: zod
+    .string()
+    .nullish()
+    .describe(
+      "Company \/ organization name (populated for admins and linked staff).",
+    ),
+  area: zod
+    .string()
+    .nullish()
+    .describe("Assigned territory or area (staff only)."),
+  adminCode: zod
+    .string()
+    .nullish()
+    .describe(
+      "Invite code that staff can use to link to this admin's organization.",
+    ),
 });
 export const ListStaffResponse = zod.array(ListStaffResponseItem);
+
+/**
+ * @summary Register a new staff member or admin
+ */
+export const RegisterStaffBody = zod
+  .object({
+    kind: zod
+      .enum(["admin", "staff"])
+      .describe("Whether to create an admin or staff account."),
+    name: zod.string(),
+    phone: zod.string().describe("10-digit mobile number (no country code)."),
+    organization: zod
+      .string()
+      .nullish()
+      .describe(
+        "Company \/ organization name — required for admin registration.",
+      ),
+    empCode: zod
+      .string()
+      .nullish()
+      .describe("Custom employee code. Auto-generated if omitted."),
+    area: zod.string().nullish().describe("Assigned territory (staff only)."),
+    adminCode: zod
+      .string()
+      .nullish()
+      .describe("Invite code of an existing admin org to link to."),
+  })
+  .describe(
+    "Unified registration body. `kind` determines the role.\nAdmin accounts require `organization`.\nStaff accounts optionally supply `empCode`, `area`, and `adminCode`.\n",
+  );
 
 /**
  * Returns the activity feed in reverse-chronological order. Use `cursor`
