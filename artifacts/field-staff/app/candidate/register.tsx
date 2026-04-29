@@ -153,10 +153,14 @@ async function pickImage(setter: (img: ImageData | null) => void): Promise<void>
 function FormHeader() {
   return (
     <View style={styles.formHeader}>
+      {/* Navy accent bar at top */}
+      <View style={styles.formHeaderAccent} />
       <View style={styles.formHeaderInner}>
         <View style={{ flex: 1 }}>
           <Text style={styles.orgTitle}>JHARKHAND SKILL DEVELOPMENT MISSION SOCIETY</Text>
+          <Text style={styles.orgTitleHindi}>झारखंड कौशल विकास मिशन सोसाइटी (JSDMS)</Text>
           <Text style={styles.orgSub}>Deen Dayal Upadhyay Grameen Kaushalya Yojana (DDU-GKY)</Text>
+          <Text style={styles.orgSubHindi}>दीन दयाल उपाध्याय ग्रामीण कौशल्या योजना</Text>
           <Text style={styles.orgSub}>Deen Dayal Upadhyay Kaushal Kendra (DDUKK)</Text>
           <View style={styles.hRule} />
           <Text style={styles.formTitle}>STUDENT / CANDIDATE REGISTRATION FORM</Text>
@@ -167,20 +171,43 @@ function FormHeader() {
   );
 }
 
+function splitBilingual(text: string): [string, string] {
+  const match = text.match(/[\u0900-\u097F]/);
+  if (!match || match.index == null) return [text, ""];
+  const eng = text.slice(0, match.index).replace(/\s*[/]\s*$/, "").trim();
+  const hin = text.slice(match.index).trim();
+  return [eng, hin];
+}
+
 function SectionBand({ title, onToggle, expanded }: { title: string; onToggle: () => void; expanded: boolean }) {
+  const [eng, hin] = splitBilingual(title);
   return (
     <Pressable onPress={onToggle} style={styles.sectionBand}>
-      <Text style={styles.sectionBandText}>{title}</Text>
-      <Feather name={expanded ? "chevron-up" : "chevron-down"} size={14} color="#fff" />
+      <View style={styles.sectionBandAccent} />
+      <View style={{ flex: 1 }}>
+        <Text style={styles.sectionBandTextEng}>{eng}</Text>
+        {hin ? <Text style={styles.sectionBandTextHin}>{hin}</Text> : null}
+      </View>
+      <Feather name={expanded ? "chevron-up" : "chevron-down"} size={14} color="rgba(255,255,255,0.8)" />
     </Pressable>
   );
 }
 
 function FieldLabel({ label, required }: { label: string; required?: boolean }) {
+  const [eng, hin] = splitBilingual(label);
+  if (hin) {
+    return (
+      <View>
+        <Text style={styles.fieldLabelEng}>
+          {eng}{required ? <Text style={{ color: ERROR_RED }}> *</Text> : null}
+        </Text>
+        <Text style={styles.fieldLabelHin}>{hin}</Text>
+      </View>
+    );
+  }
   return (
-    <Text style={styles.fieldLabel}>
-      {label}
-      {required ? <Text style={{ color: ERROR_RED }}> *</Text> : null}
+    <Text style={styles.fieldLabelEng}>
+      {label}{required ? <Text style={{ color: ERROR_RED }}> *</Text> : null}
     </Text>
   );
 }
@@ -934,7 +961,7 @@ export default function CandidateRegisterScreen() {
           <View style={[styles.borderRow, { alignItems: "flex-start" }]}>
             <View style={{ flex: 1, paddingRight: 8 }}>
               <TextBox label="Course Name / कोर्स का नाम" value={course} onChangeText={setCourse} placeholder="e.g. Tailoring, Computer" />
-              <TextBox label="Skill Centre Name / कौशल केंद्र नाम" value={skillCentreName} onChangeText={setSkillCentreName} />
+              <TextBox label="Skill Centre Name / कौशल केंद्र का नाम" value={skillCentreName} onChangeText={setSkillCentreName} />
             </View>
             <PhotoBox
               label="Passport Photo"
@@ -948,14 +975,14 @@ export default function CandidateRegisterScreen() {
           <SectionBand title="A.  PERSONAL DETAILS  /  व्यक्तिगत विवरण" onToggle={() => setSecA(!secA)} expanded={secA} />
           {secA && (
             <View style={styles.sectionBody}>
-              <TextBox label="Candidate Name (English) / नाम (अंग्रेजी)*" value={name} onChangeText={(v) => { setName(v); if (errors.name) setErrors((prev) => ({ ...prev, name: "" })); }} required error={errors.name} />
+              <TextBox label="Candidate Name (English) / नाम (अंग्रेजी)" value={name} onChangeText={(v) => { setName(v); if (errors.name) setErrors((prev) => ({ ...prev, name: "" })); }} required error={errors.name} />
               <HalfRow>
-                <HalfField label="Father/Husband Name / पिता का नाम" value={fatherName} onChangeText={setFatherName} />
+                <HalfField label="Father / Husband Name / पिता / पति का नाम" value={fatherName} onChangeText={setFatherName} />
                 <HalfField label="Mother's Name / माता का नाम" value={motherName} onChangeText={setMotherName} />
               </HalfRow>
               <HalfRow>
                 <HalfField label="Date of Birth / जन्म तिथि (DD/MM/YYYY)" value={dob} onChangeText={(v) => { setDob(v); if (errors.dob) setErrors((prev) => ({ ...prev, dob: "" })); }} placeholder="DD/MM/YYYY" error={errors.dob} />
-                <HalfField label="Mobile No. / मोबाइल नं.*" value={phone} onChangeText={(v) => { setPhone(v); if (errors.phone) setErrors((prev) => ({ ...prev, phone: "" })); }} keyboardType="phone-pad" required error={errors.phone} />
+                <HalfField label="Mobile No. / मोबाइल नंबर" value={phone} onChangeText={(v) => { setPhone(v); if (errors.phone) setErrors((prev) => ({ ...prev, phone: "" })); }} keyboardType="phone-pad" required error={errors.phone} />
               </HalfRow>
               <HalfRow>
                 <HalfRadio label="Marital Status / वैवाहिक स्थिति" options={MARITAL} value={maritalStatus} onSelect={setMaritalStatus} />
@@ -1228,42 +1255,62 @@ const styles = StyleSheet.create({
   formHeader: {
     borderBottomWidth: 1,
     borderBottomColor: BORDER,
-    backgroundColor: "#FFF8E7",
+    backgroundColor: "#F0F4FF",
+  },
+  formHeaderAccent: {
+    height: 4,
+    backgroundColor: ACCENT,
   },
   formHeaderInner: {
     flexDirection: "row",
-    padding: 10,
+    padding: 12,
   },
   orgTitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: "Inter_700Bold",
     color: ACCENT,
-    marginBottom: 2,
+    marginBottom: 1,
+    letterSpacing: 0.2,
   },
-  orgSub: {
-    fontSize: 9,
+  orgTitleHindi: {
+    fontSize: 10,
     fontFamily: "Inter_500Medium",
     color: ACCENT,
+    marginBottom: 4,
+    opacity: 0.85,
+  },
+  orgSub: {
+    fontSize: 9.5,
+    fontFamily: "Inter_500Medium",
+    color: "#334",
     marginBottom: 1,
   },
+  orgSubHindi: {
+    fontSize: 9,
+    fontFamily: "Inter_400Regular",
+    color: "#556",
+    marginBottom: 3,
+    opacity: 0.8,
+  },
   hRule: {
-    height: 1,
-    backgroundColor: BORDER,
-    marginVertical: 6,
+    height: 1.5,
+    backgroundColor: ACCENT,
+    marginVertical: 8,
+    opacity: 0.3,
   },
   formTitle: {
-    fontSize: 12,
+    fontSize: 13,
     fontFamily: "Inter_700Bold",
     color: BORDER,
     textAlign: "center",
-    letterSpacing: 0.3,
+    letterSpacing: 0.4,
   },
   formTitleHindi: {
-    fontSize: 10,
-    fontFamily: "Inter_400Regular",
-    color: "#555",
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    color: "#444",
     textAlign: "center",
-    marginTop: 2,
+    marginTop: 3,
   },
 
   // ── Borders / rows ────────────────────────────────────────────
@@ -1280,51 +1327,74 @@ const styles = StyleSheet.create({
     backgroundColor: SECTION_BG,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingRight: 14,
+    paddingVertical: 9,
   },
-  sectionBandText: {
+  sectionBandAccent: {
+    width: 4,
+    alignSelf: "stretch",
+    backgroundColor: "#F59E0B",
+    marginRight: 10,
+  },
+  sectionBandTextEng: {
     color: "#fff",
-    fontSize: 10,
+    fontSize: 11,
     fontFamily: "Inter_700Bold",
-    letterSpacing: 0.3,
+    letterSpacing: 0.4,
+  },
+  sectionBandTextHin: {
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 9.5,
+    fontFamily: "Inter_400Regular",
+    marginTop: 1,
   },
   sectionBody: {
-    padding: 12,
+    padding: 14,
     borderBottomWidth: 0.5,
-    borderBottomColor: "#CCC",
-    gap: 10,
+    borderBottomColor: "#D0D0D0",
+    gap: 12,
+    backgroundColor: FORM_BG,
   },
 
   // ── Fields ────────────────────────────────────────────────────
   fieldCell: {
-    gap: 4,
+    gap: 5,
   },
   halfRow: {
     flexDirection: "row",
-    gap: 8,
+    gap: 10,
   },
   halfCell: {
     flex: 1,
-    gap: 4,
+    gap: 5,
   },
   fieldLabel: {
+    fontSize: 10.5,
+    fontFamily: "Inter_600SemiBold",
+    color: "#222",
+  },
+  fieldLabelEng: {
+    fontSize: 10.5,
+    fontFamily: "Inter_600SemiBold",
+    color: "#1a1a2e",
+  },
+  fieldLabelHin: {
     fontSize: 9.5,
-    fontFamily: "Inter_500Medium",
-    color: LABEL_COLOR,
+    fontFamily: "Inter_400Regular",
+    color: "#666",
+    marginTop: 0,
   },
   textBox: {
     borderWidth: 1,
-    borderColor: BORDER,
-    borderRadius: 2,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    borderColor: "#aaa",
+    borderRadius: 3,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     fontSize: 13,
     fontFamily: "Inter_400Regular",
     color: VALUE_COLOR,
     backgroundColor: "#fff",
-    minHeight: 34,
+    minHeight: 36,
   },
   dateDisplay: {
     justifyContent: "center",
@@ -1362,9 +1432,9 @@ const styles = StyleSheet.create({
     backgroundColor: ACCENT,
   },
   radioLabel: {
-    fontSize: 12,
+    fontSize: 12.5,
     fontFamily: "Inter_400Regular",
-    color: VALUE_COLOR,
+    color: "#333",
   },
   radioLabelActive: {
     fontFamily: "Inter_600SemiBold",
@@ -1488,9 +1558,9 @@ const styles = StyleSheet.create({
   },
   docLabel: {
     flex: 2,
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    color: "#555",
+    fontSize: 12.5,
+    fontFamily: "Inter_500Medium",
+    color: "#333",
   },
   docLabelDone: {
     color: SUCCESS_GREEN,
@@ -1530,23 +1600,23 @@ const styles = StyleSheet.create({
   // ── Declaration ───────────────────────────────────────────────
   declarationBox: {
     borderWidth: 1,
-    borderColor: BORDER,
-    borderRadius: 2,
-    padding: 10,
-    backgroundColor: "#FFFDE7",
-    gap: 4,
+    borderColor: "#B8C4D8",
+    borderRadius: 4,
+    padding: 12,
+    backgroundColor: "#EEF3FF",
+    gap: 6,
   },
   declarationText: {
-    fontSize: 11,
+    fontSize: 11.5,
     fontFamily: "Inter_400Regular",
-    color: VALUE_COLOR,
-    lineHeight: 16,
+    color: "#1a1a2e",
+    lineHeight: 17,
   },
   declarationHindi: {
-    fontSize: 10.5,
+    fontSize: 11,
     fontFamily: "Inter_400Regular",
-    color: "#555",
-    lineHeight: 15,
+    color: "#445",
+    lineHeight: 16,
   },
 
   // ── Signature ─────────────────────────────────────────────────
