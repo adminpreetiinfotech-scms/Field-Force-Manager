@@ -264,23 +264,22 @@ export async function generateCandidatePdf(
     box(doc, ML, MT, CW, A4_H - MT * 2, 1.0);
 
     // ══════════════════════════════════════════════════════════════════════════
-    // PHOTO BOX  (top-right corner)
+    // PHOTO AREA  (top-right, no border box)
+    // Reserved slot: 99 × 120 pt (≈ 3.5 × 4.5 cm passport portrait).
+    // When a photo is captured from camera it is placed here directly.
     // ══════════════════════════════════════════════════════════════════════════
-    // Photo box — passport portrait ratio (3.5 × 4.5 cm ≈ 99 × 128 pt at 72dpi)
     const PW = 99; const PH = 120;
     const PX = ML + CW - PW; const PY = MT;
-    box(doc, PX, PY, PW, PH, 0.8);
 
-    // Photo area fills nearly the whole box; small top/bottom labels
-    const PAX = PX + 5; const PAY = PY + 5; const PAW = PW - 10; const PAH = PH - 22;
-    const photoOk = safeImg(doc, c.photoPath, PAX, PAY,
-      { width: PAW, height: PAH, cover: [PAW, PAH] });
-    if (!photoOk) box(doc, PAX, PAY, PAW, PAH, 0.4, LGRAY);
+    const photoOk = safeImg(doc, c.photoPath, PX, PY,
+      { width: PW, height: PH, cover: [PW, PH] });
 
-    // Bottom label — passport size note (no "Cross Sign" text)
-    doc.font("DVR").fontSize(5.5).fillColor(GRAY)
-      .text("Passport Size Photo",  PX, PY + PH - 15, { width: PW, align: "center", lineBreak: false })
-      .text("(3.5 x 4.5 cm)",       PX, PY + PH -  7, { width: PW, align: "center", lineBreak: false });
+    if (!photoOk) {
+      // No photo yet — show plain text label only, no box or border
+      doc.font("DVR").fontSize(7).fillColor(GRAY)
+        .text("Passport Size Photo", PX, PY + 44, { width: PW, align: "center", lineBreak: false })
+        .text("(3.5 x 4.5 cm)",      PX, PY + 55, { width: PW, align: "center", lineBreak: false });
+    }
 
     // ══════════════════════════════════════════════════════════════════════════
     // LETTERHEAD  (English left | JSDMS Logo centre | Hindi right)
@@ -359,9 +358,8 @@ export async function generateCandidatePdf(
              rX, hY + 46, { width: colW, align: "right", lineBreak: false });
     hl(doc, rX + 2, hY + 56, rX + colW - 2, 0.45, LGRAY);
 
-    // ── Header bottom divider ──────────────────────────────────────────────
+    // Header bottom (no divider line — keep title area clean)
     const sepY = MT + HEADER_H;
-    hl(doc, ML, sepY, ML + CW, 0.8);
 
     // ══════════════════════════════════════════════════════════════════════════
     // TITLE AREA  (left of photo box)
