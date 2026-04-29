@@ -10,6 +10,7 @@ import {
   Alert,
   AppState,
   Image,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -126,36 +127,45 @@ function formatRelTime(d: Date): string {
   return `${Math.floor(m / 60)}h ago`;
 }
 
-async function pickImage(setter: (img: ImageData | null) => void): Promise<void> {
-  if (Platform.OS !== "web") {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Permission Needed", "Please allow photo library access.");
-      return;
-    }
+/**
+ * Camera-only capture. Gallery upload is intentionally disabled.
+ * Validates: not blank (base64 length), not > 5 MB.
+ */
+async function captureWithCamera(setter: (img: ImageData | null) => void): Promise<void> {
+  const { status } = await ImagePicker.requestCameraPermissionsAsync();
+  if (status !== "granted") {
+    Alert.alert(
+      "Camera Permission Required",
+      "Please allow camera access. Gallery upload is disabled — documents must be captured live.",
+    );
+    return;
   }
-  const result = await ImagePicker.launchImageLibraryAsync({
+  const result = await ImagePicker.launchCameraAsync({
     mediaTypes: ["images"] as ImagePicker.MediaType[],
     base64: true,
-    quality: 0.65,
-    allowsEditing: false,
+    quality: 0.75,
+    allowsEditing: true,
   });
   if (!result.canceled && result.assets[0]) {
     const a = result.assets[0];
-    const MAX_BYTES = 5 * 1024 * 1024;
-    if (a.fileSize && a.fileSize > MAX_BYTES) {
-      Alert.alert("File Too Large", "Please select an image smaller than 5 MB.");
+    // Blank / very dark image guard — genuine captures are always > 2 KB
+    if (!a.base64 || a.base64.length < 2000) {
+      Alert.alert(
+        "Image Appears Blank",
+        "The captured image seems blank or very dark. Please try again in better lighting.",
+      );
       return;
     }
-    const allowedMimes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-    const mime = (a.mimeType ?? "image/jpeg").toLowerCase();
-    if (!allowedMimes.includes(mime)) {
-      Alert.alert("Invalid File Type", "Only JPEG, PNG, and WebP images are accepted.");
+    if (a.fileSize && a.fileSize > 5 * 1024 * 1024) {
+      Alert.alert("File Too Large", "Image must be smaller than 5 MB.");
       return;
     }
-    setter({ uri: a.uri, base64: a.base64 ?? "", mimeType: mime });
+    setter({ uri: a.uri, base64: a.base64 ?? "", mimeType: a.mimeType ?? "image/jpeg" });
   }
 }
+
+// Keep legacy alias so all existing () => pickImage(setState) call-sites work unchanged
+const pickImage = captureWithCamera;
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
 
@@ -416,6 +426,158 @@ function PhotoBox({ label, value, onPick, onClear }: {
   );
 }
 
+// ─── Aadhaar 2-step camera capture modal ────────────────────────────────────
+
+type AadhaarStep = "front-prompt" | "front-preview" | "back-prompt" | "back-preview";
+
+function AadhaarCaptureModal({
+  visible, onClose, onSave,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onSave: (front: ImageData, back: ImageData) => void;
+}) {
+  const [step, setStep] = useState<AadhaarStep>("front-prompt");
+  const [front, setFront] = useState<ImageData | null>(null);
+  const [back, setBack]   = useState<ImageData | null>(null);
+
+  function reset() { setStep("front-prompt"); setFront(null); setBack(null); }
+
+  async function doCapture(side: "front" | "back") {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Camera Permission", "Camera access is required to capture documents.");
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ["images"] as ImagePicker.MediaType[],
+      base64: true,
+      quality: 0.75,
+      allowsEditing: true,
+    });
+    if (!result.canceled && result.assets[0]) {
+      const a = result.assets[0];
+      if (!a.base64 || a.base64.length < 2000) {
+        Alert.alert(
+          "Blank Image",
+          "Image appears blank or too dark. Try again in better lighting.",
+        );
+        return;
+      }
+      const img: ImageData = { uri: a.uri, base64: a.base64 ?? "", mimeType: a.mimeType ?? "image/jpeg" };
+      if (side === "front") { setFront(img); setStep("front-preview"); }
+      else                  { setBack(img);  setStep("back-preview"); }
+    }
+  }
+
+  return (
+    <Modal visible={visible} animationType="slide" onRequestClose={() => { reset(); onClose(); }}>
+      <View style={{ flex: 1, backgroundColor: "#fff" }}>
+
+        {/* Header */}
+        <View style={styles.camModalHeader}>
+          <Text style={styles.camModalTitle}>Aadhaar Card Capture  /  आधार कार्ड</Text>
+          <TouchableOpacity onPress={() => { reset(); onClose(); }}>
+            <Feather name="x" size={22} color="#333" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Step progress bar */}
+        <View style={styles.camStepBar}>
+          {(["Front", "Back"] as const).map((lbl, idx) => {
+            const done = idx === 0
+              ? step !== "front-prompt"
+              : (step === "back-prompt" || step === "back-preview");
+            return (
+              <React.Fragment key={lbl}>
+                <View style={[styles.camStepDot, done && styles.camStepDotDone]}>
+                  <Text style={[styles.camStepNum, done && { color: "#fff" }]}>{idx + 1}</Text>
+                </View>
+                <Text style={styles.camStepLbl}>{lbl}</Text>
+                {idx === 0 && <View style={styles.camStepLine} />}
+              </React.Fragment>
+            );
+          })}
+        </View>
+
+        {/* Body */}
+        <View style={styles.camModalBody}>
+
+          {step === "front-prompt" && (
+            <>
+              <Feather name="credit-card" size={56} color={ACCENT} style={{ marginBottom: 12 }} />
+              <Text style={styles.camSideLabel}>आगे का भाग — Front Side</Text>
+              <Text style={styles.camHint}>
+                Place the FRONT of the Aadhaar card flat in good light.
+                {"\n"}Keep the full card in frame before tapping capture.
+              </Text>
+              <TouchableOpacity style={styles.camCaptureBtn} onPress={() => doCapture("front")}>
+                <Feather name="camera" size={20} color="#fff" />
+                <Text style={styles.camCaptureBtnText}>Open Camera — Capture Front</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {step === "front-preview" && front && (
+            <>
+              <Text style={styles.camSideLabel}>Front Side — Preview</Text>
+              <Image source={{ uri: front.uri }} style={styles.camPreviewImg} resizeMode="contain" />
+              <Text style={styles.camHint}>Is the name and Aadhaar number clearly readable?</Text>
+              <View style={styles.camPreviewActions}>
+                <TouchableOpacity style={styles.camRetakeBtn} onPress={() => doCapture("front")}>
+                  <Feather name="refresh-cw" size={15} color={ACCENT} />
+                  <Text style={styles.camRetakeBtnText}>Retake</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.camConfirmBtn} onPress={() => setStep("back-prompt")}>
+                  <Feather name="arrow-right" size={15} color="#fff" />
+                  <Text style={styles.camConfirmBtnText}>Looks Good — Next</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+
+          {step === "back-prompt" && (
+            <>
+              <Feather name="credit-card" size={56} color={ACCENT} style={{ marginBottom: 12 }} />
+              <Text style={styles.camSideLabel}>पीछे का भाग — Back Side</Text>
+              <Text style={styles.camHint}>
+                Flip the Aadhaar card and capture the BACK side clearly.
+                {"\n"}Ensure the address is fully visible.
+              </Text>
+              <TouchableOpacity style={styles.camCaptureBtn} onPress={() => doCapture("back")}>
+                <Feather name="camera" size={20} color="#fff" />
+                <Text style={styles.camCaptureBtnText}>Open Camera — Capture Back</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {step === "back-preview" && back && (
+            <>
+              <Text style={styles.camSideLabel}>Back Side — Preview</Text>
+              <Image source={{ uri: back.uri }} style={styles.camPreviewImg} resizeMode="contain" />
+              <Text style={styles.camHint}>Is the address and QR code clearly visible?</Text>
+              <View style={styles.camPreviewActions}>
+                <TouchableOpacity style={styles.camRetakeBtn} onPress={() => doCapture("back")}>
+                  <Feather name="refresh-cw" size={15} color={ACCENT} />
+                  <Text style={styles.camRetakeBtnText}>Retake</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.camConfirmBtn}
+                  onPress={() => { if (front && back) { onSave(front, back); reset(); } }}>
+                  <Feather name="check" size={15} color="#fff" />
+                  <Text style={styles.camConfirmBtnText}>Save Both Sides</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ─── Document upload card (camera-only, with Retake) ─────────────────────────
+
 function DocUploadCard({ label, value, onPick, onClear, checked }: {
   label: string; value: ImageData | null; onPick: () => void; onClear: () => void; checked?: boolean;
 }) {
@@ -435,14 +597,19 @@ function DocUploadCard({ label, value, onPick, onClear, checked }: {
       {value ? (
         <View style={styles.docRight}>
           <Image source={{ uri: value.uri }} style={styles.docThumb} />
+          {/* Retake — re-opens camera for this document */}
+          <TouchableOpacity onPress={onPick} style={styles.docRetakeBtn}>
+            <Feather name="refresh-cw" size={12} color={ACCENT} />
+            <Text style={styles.docRetakeText}>Retake</Text>
+          </TouchableOpacity>
           <TouchableOpacity onPress={onClear} style={styles.docClearBtn}>
             <Feather name="x-circle" size={16} color={ERROR_RED} />
           </TouchableOpacity>
         </View>
       ) : (
         <TouchableOpacity onPress={onPick} style={styles.docUploadBtn}>
-          <Feather name="upload" size={13} color={ACCENT} />
-          <Text style={styles.docUploadText}>Upload</Text>
+          <Feather name="camera" size={13} color={ACCENT} />
+          <Text style={styles.docUploadText}>Camera</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -550,6 +717,7 @@ export default function CandidateRegisterScreen() {
   const [signature, setSignature] = useState<ImageData | null>(null);
 
   // ─ UI state
+  const [showAadhaarModal, setShowAadhaarModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState<SubmittedDto | null>(null);
   const [isOffline, setIsOffline] = useState(false);
@@ -1100,9 +1268,59 @@ export default function CandidateRegisterScreen() {
           <SectionBand title="F.  DOCUMENTS  /  दस्तावेज अपलोड करें" onToggle={() => setSecF(!secF)} expanded={secF} />
           {secF && (
             <View style={styles.sectionBody}>
-              <Text style={styles.docInstructions}>Upload photos/scans of the following documents:</Text>
-              <DocUploadCard label="Aadhaar Card Front / आधार कार्ड (आगे)" value={aadhaarFront} onPick={() => pickImage(setAadhaarFront)} onClear={() => setAadhaarFront(null)} />
-              <DocUploadCard label="Aadhaar Card Back / आधार कार्ड (पीछे)" value={aadhaarBack} onPick={() => pickImage(setAadhaarBack)} onClear={() => setAadhaarBack(null)} />
+              <Text style={styles.docInstructions}>
+                Capture all documents using camera only. Gallery upload is disabled.
+              </Text>
+
+              {/* ── Aadhaar: special two-step modal card ──────────────── */}
+              <TouchableOpacity
+                style={[styles.docCard, (aadhaarFront && aadhaarBack) && styles.docCardDone]}
+                onPress={() => setShowAadhaarModal(true)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.docCheck}>
+                  {(aadhaarFront && aadhaarBack)
+                    ? <Feather name="check-square" size={16} color={SUCCESS_GREEN} />
+                    : <Feather name="square" size={16} color={MUTED} />}
+                </View>
+                <View style={{ flex: 2 }}>
+                  <Text style={[styles.docLabelEng, (aadhaarFront && aadhaarBack) && styles.docLabelDone]}>
+                    Aadhaar Card
+                  </Text>
+                  <Text style={styles.docLabelHin}>आधार कार्ड (आगे + पीछे)</Text>
+                  {aadhaarFront && !aadhaarBack && (
+                    <Text style={{ color: "#F59E0B", fontSize: 11, marginTop: 2 }}>
+                      Front captured — tap to add back side
+                    </Text>
+                  )}
+                </View>
+                <View style={{ flex: 1 }} />
+                {(aadhaarFront || aadhaarBack) ? (
+                  <View style={styles.docRight}>
+                    {aadhaarFront && <Image source={{ uri: aadhaarFront.uri }} style={styles.aadhaarThumb} />}
+                    {aadhaarBack  && <Image source={{ uri: aadhaarBack.uri  }} style={styles.aadhaarThumb} />}
+                    <TouchableOpacity
+                      onPress={() => { setAadhaarFront(null); setAadhaarBack(null); }}
+                      style={styles.docClearBtn}
+                    >
+                      <Feather name="x-circle" size={16} color={ERROR_RED} />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.docUploadBtn}>
+                    <Feather name="camera" size={13} color={ACCENT} />
+                    <Text style={styles.docUploadText}>Capture</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              {/* Aadhaar modal */}
+              <AadhaarCaptureModal
+                visible={showAadhaarModal}
+                onClose={() => setShowAadhaarModal(false)}
+                onSave={(front, back) => { setAadhaarFront(front); setAadhaarBack(back); setShowAadhaarModal(false); }}
+              />
+
               <DocUploadCard label="Education Certificate / शैक्षणिक प्रमाण पत्र" value={educationCert} onPick={() => pickImage(setEducationCert)} onClear={() => setEducationCert(null)} />
               <DocUploadCard label="Bank Passbook / बैंक पासबुक" value={bankPassbook} onPick={() => pickImage(setBankPassbook)} onClear={() => setBankPassbook(null)} />
               <DocUploadCard label="Caste Certificate / जाति प्रमाण पत्र" value={casteCert} onPick={() => pickImage(setCasteCert)} onClear={() => setCasteCert(null)} />
@@ -1802,6 +2020,168 @@ const styles = StyleSheet.create({
     color: ACCENT,
     fontSize: 13,
     fontFamily: "Inter_500Medium",
+  },
+
+  // ── Retake button on DocUploadCard ───────────────────────────
+  docRetakeBtn: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: ACCENT,
+    borderRadius: 4,
+  },
+  docRetakeText: {
+    fontSize: 11,
+    color: ACCENT,
+    fontFamily: "Inter_500Medium",
+  },
+  // Aadhaar dual thumbnails
+  aadhaarThumb: {
+    width: 36,
+    height: 24,
+    borderRadius: 2,
+    borderWidth: 1,
+    borderColor: "#CCC",
+  },
+
+  // ── AadhaarCaptureModal ───────────────────────────────────────
+  camModalHeader: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    paddingHorizontal: 20,
+    paddingTop: 52,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EEE",
+  },
+  camModalTitle: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+    color: "#111",
+    flex: 1,
+    marginRight: 10,
+  },
+  camStepBar: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    gap: 8,
+    backgroundColor: "#F9FAFB",
+    borderBottomWidth: 1,
+    borderBottomColor: "#EEE",
+  },
+  camStepDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: ACCENT,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    backgroundColor: "#fff",
+  },
+  camStepDotDone: {
+    backgroundColor: ACCENT,
+  },
+  camStepNum: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+    color: ACCENT,
+  },
+  camStepLbl: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    color: "#555",
+    marginRight: 8,
+  },
+  camStepLine: {
+    flex: 1,
+    height: 2,
+    backgroundColor: "#DDD",
+    marginHorizontal: 4,
+  },
+  camModalBody: {
+    flex: 1,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    paddingHorizontal: 28,
+    paddingBottom: 40,
+    gap: 14,
+  },
+  camSideLabel: {
+    fontSize: 17,
+    fontFamily: "Inter_700Bold",
+    color: "#111",
+    textAlign: "center" as const,
+  },
+  camHint: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: MUTED,
+    textAlign: "center" as const,
+    lineHeight: 19,
+  },
+  camCaptureBtn: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 10,
+    backgroundColor: ACCENT,
+    borderRadius: 8,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    marginTop: 8,
+  },
+  camCaptureBtnText: {
+    color: "#fff",
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+  },
+  camPreviewImg: {
+    width: "100%",
+    height: 220,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#DDD",
+    backgroundColor: "#F3F4F6",
+  },
+  camPreviewActions: {
+    flexDirection: "row" as const,
+    gap: 12,
+    marginTop: 4,
+  },
+  camRetakeBtn: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 6,
+    borderWidth: 1.5,
+    borderColor: ACCENT,
+    borderRadius: 6,
+    paddingHorizontal: 20,
+    paddingVertical: 11,
+  },
+  camRetakeBtnText: {
+    color: ACCENT,
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+  },
+  camConfirmBtn: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 6,
+    backgroundColor: SUCCESS_GREEN,
+    borderRadius: 6,
+    paddingHorizontal: 20,
+    paddingVertical: 11,
+  },
+  camConfirmBtnText: {
+    color: "#fff",
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
   },
 
   // ── Centered screens ──────────────────────────────────────────
