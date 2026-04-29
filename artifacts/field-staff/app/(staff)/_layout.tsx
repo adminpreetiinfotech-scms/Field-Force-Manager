@@ -48,7 +48,7 @@ export default function StaffTabsLayout() {
       }}
     >
       <Tabs.Screen
-        name="index"
+        name="shift"
         options={{
           title: "Shift",
           tabBarIcon: ({ color, size }) => (

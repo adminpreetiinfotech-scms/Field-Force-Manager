@@ -66,7 +66,7 @@ export default function OtpScreen() {
         );
       }
       if (u.role === "admin") router.replace("/(admin)/dashboard");
-      else router.replace("/(staff)");
+      else router.replace("/(staff)/shift");
     } catch (e: any) {
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(
