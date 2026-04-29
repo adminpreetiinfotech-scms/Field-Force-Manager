@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
-import { rm } from "node:fs/promises";
+import { rm, cp, mkdir } from "node:fs/promises";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
@@ -13,6 +13,11 @@ const artifactDir = path.dirname(fileURLToPath(import.meta.url));
 async function buildAll() {
   const distDir = path.resolve(artifactDir, "dist");
   await rm(distDir, { recursive: true, force: true });
+
+  // Copy font assets to dist so the server can resolve them at runtime
+  const fontsDistDir = path.resolve(distDir, "fonts");
+  await mkdir(fontsDistDir, { recursive: true });
+  await cp(path.resolve(artifactDir, "src/fonts"), fontsDistDir, { recursive: true }).catch(() => {});
 
   await esbuild({
     entryPoints: [path.resolve(artifactDir, "src/index.ts")],
