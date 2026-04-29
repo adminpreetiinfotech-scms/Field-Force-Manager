@@ -271,14 +271,22 @@ export async function generateCandidatePdf(
     const PW = 99; const PH = 120;
     const PX = ML + CW - PW; const PY = MT;
 
-    const photoOk = safeImg(doc, c.photoPath, PX, PY,
-      { width: PW, height: PH, cover: [PW, PH] });
+    // Inset the actual image by PP on every side so it never touches the border
+    const PP  = 7;                    // ~2.5 mm padding on all four sides
+    const imgX = PX + PP;
+    const imgY = PY + PP;
+    const imgW = PW - PP * 2;        // 85 pt
+    const imgH = PH - PP * 2;        // 106 pt  (≈ 3.5 × 4.5 cm ratio at 72 dpi)
+
+    const photoOk = safeImg(doc, c.photoPath, imgX, imgY,
+      { width: imgW, height: imgH, cover: [imgW, imgH] });
 
     if (!photoOk) {
-      // No photo yet — show plain text label only, no box or border
+      // No photo yet — centred text label, no box or border
+      const midY = PY + (PH - 18) / 2;
       doc.font("DVR").fontSize(7).fillColor(GRAY)
-        .text("Passport Size Photo", PX, PY + 44, { width: PW, align: "center", lineBreak: false })
-        .text("(3.5 x 4.5 cm)",      PX, PY + 55, { width: PW, align: "center", lineBreak: false });
+        .text("Passport Size Photo", PX, midY,      { width: PW, align: "center", lineBreak: false })
+        .text("(3.5 x 4.5 cm)",      PX, midY + 10, { width: PW, align: "center", lineBreak: false });
     }
 
     // ══════════════════════════════════════════════════════════════════════════
