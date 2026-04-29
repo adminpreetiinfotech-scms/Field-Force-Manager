@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { LiveActivityFeed } from "@/components/admin/LiveActivityFeed";
 import { PillarsRow } from "@/components/PillarBadge";
 import { StatCard } from "@/components/StatCard";
 import { SyncBanner } from "@/components/SyncBanner";
@@ -53,67 +54,6 @@ export default function AdminDashboard() {
       accuracy: Math.max(94, totalAccuracy),
     };
   }, [attendance, meterReadings, trips, staffLocations]);
-
-  const recentActivity = useMemo(() => {
-    const merged = [
-      ...attendance.map((a) => ({
-        id: a.id,
-        kind: "attendance" as const,
-        title: `${a.staffName} ${a.type === "in" ? "checked in" : "checked out"}`,
-        sub: a.location
-          ? `${a.location.latitude.toFixed(3)}, ${a.location.longitude.toFixed(3)}`
-          : "No GPS",
-        ts: a.timestamp,
-        synced: a.synced,
-      })),
-      ...meterReadings.map((m) => ({
-        id: m.id,
-        kind: "meter" as const,
-        title: `${m.staffName} read ${m.reading} kWh`,
-        sub: `Consumer #${m.consumerNo}`,
-        ts: m.timestamp,
-        synced: m.synced,
-      })),
-    ]
-      .sort((a, b) => b.ts - a.ts)
-      .slice(0, 6);
-    if (merged.length > 0) return merged;
-    // Mock seed activity for empty state
-    return [
-      {
-        id: "m1",
-        kind: "meter" as const,
-        title: "Ramesh Kumar read 4,287 kWh",
-        sub: "Consumer #218450",
-        ts: Date.now() - 1000 * 60 * 5,
-        synced: true,
-      },
-      {
-        id: "a1",
-        kind: "attendance" as const,
-        title: "Sita Devi checked in",
-        sub: "28.612, 77.211",
-        ts: Date.now() - 1000 * 60 * 22,
-        synced: true,
-      },
-      {
-        id: "m2",
-        kind: "meter" as const,
-        title: "Pooja Verma read 2,144 kWh",
-        sub: "Consumer #218472",
-        ts: Date.now() - 1000 * 60 * 41,
-        synced: true,
-      },
-      {
-        id: "a2",
-        kind: "attendance" as const,
-        title: "Arjun Singh checked out",
-        sub: "28.617, 77.217",
-        ts: Date.now() - 1000 * 60 * 60,
-        synced: true,
-      },
-    ];
-  }, [attendance, meterReadings]);
 
   const webBottomPad = Platform.OS === "web" ? 84 : 84;
   const webTop = Platform.OS === "web" ? 67 : 0;
@@ -294,77 +234,7 @@ export default function AdminDashboard() {
                 </Text>
               </Pressable>
             </View>
-            <View style={{ marginTop: 4 }}>
-              {recentActivity.map((a, i) => (
-                <View
-                  key={a.id}
-                  style={[
-                    styles.activityRow,
-                    {
-                      borderBottomColor: colors.border,
-                      borderBottomWidth:
-                        i === recentActivity.length - 1
-                          ? 0
-                          : StyleSheet.hairlineWidth,
-                    },
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.activityIcon,
-                      {
-                        backgroundColor:
-                          (a.kind === "meter"
-                            ? colors.pillarTransparency
-                            : colors.pillarDiscipline) + "1A",
-                        borderRadius: 10,
-                      },
-                    ]}
-                  >
-                    <Feather
-                      name={a.kind === "meter" ? "zap" : "user-check"}
-                      size={14}
-                      color={
-                        a.kind === "meter"
-                          ? colors.pillarTransparency
-                          : colors.pillarDiscipline
-                      }
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={{
-                        color: colors.foreground,
-                        fontFamily: "Inter_600SemiBold",
-                        fontSize: 13,
-                      }}
-                    >
-                      {a.title}
-                    </Text>
-                    <Text
-                      style={{
-                        color: colors.mutedForeground,
-                        fontFamily: "Inter_400Regular",
-                        fontSize: 11,
-                        marginTop: 2,
-                      }}
-                    >
-                      {a.sub}  ·  {timeAgo(a.ts)}
-                    </Text>
-                  </View>
-                  {!a.synced && (
-                    <View
-                      style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: 999,
-                        backgroundColor: colors.warning,
-                      }}
-                    />
-                  )}
-                </View>
-              ))}
-            </View>
+            <LiveActivityFeed limit={8} />
           </View>
         </View>
       </ScrollView>
@@ -428,14 +298,6 @@ function PrincipleRow({
       </View>
     </View>
   );
-}
-
-function timeAgo(ts: number) {
-  const diff = Math.floor((Date.now() - ts) / 1000);
-  if (diff < 60) return `${diff}s ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return new Date(ts).toLocaleDateString("en-IN");
 }
 
 const styles = StyleSheet.create({
@@ -551,17 +413,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: 1,
-  },
-  activityRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 12,
-  },
-  activityIcon: {
-    width: 32,
-    height: 32,
-    alignItems: "center",
-    justifyContent: "center",
   },
 });

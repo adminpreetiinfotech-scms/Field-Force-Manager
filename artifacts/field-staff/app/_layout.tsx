@@ -45,6 +45,10 @@ function RootLayoutNav() {
         name="route/[staffId]"
         options={{ headerShown: false }}
       />
+      <Stack.Screen
+        name="activity/[id]"
+        options={{ headerShown: false }}
+      />
     </Stack>
   );
 }
