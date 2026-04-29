@@ -8,3 +8,111 @@
 export interface HealthStatus {
   status: string;
 }
+
+export type StaffRole = (typeof StaffRole)[keyof typeof StaffRole];
+
+export const StaffRole = {
+  staff: "staff",
+  admin: "admin",
+} as const;
+
+export interface Staff {
+  id: string;
+  empCode: string;
+  name: string;
+  phone: string;
+  role: StaffRole;
+}
+
+export interface GeoPoint {
+  latitude: number;
+  longitude: number;
+  accuracy?: number;
+}
+
+export type ActivityKind = (typeof ActivityKind)[keyof typeof ActivityKind];
+
+export const ActivityKind = {
+  checkin: "checkin",
+  checkout: "checkout",
+  meter: "meter",
+  "trip-start": "trip-start",
+  "trip-end": "trip-end",
+} as const;
+
+export interface ActivityEvent {
+  id: string;
+  kind: ActivityKind;
+  staffId: string;
+  staffName: string;
+  occurredAt: string;
+  receivedAt: string;
+  synced: boolean;
+  tripRef?: string | null;
+  /** Pre-formatted human-readable summary for list views */
+  summary: string;
+}
+
+export type ActivityDetail = ActivityEvent & {
+  location?: GeoPoint | null;
+  consumerNo?: string | null;
+  reading?: number | null;
+  photoUri?: string | null;
+  selfieUri?: string | null;
+  notes?: string | null;
+  distanceKm?: number | null;
+  durationSec?: number | null;
+  origin?: GeoPoint | null;
+  destination?: GeoPoint | null;
+};
+
+export interface ActivityPage {
+  items: ActivityEvent[];
+  nextCursor: string | null;
+  /** Server clock at response — clients should send this back as `since` on the next poll. */
+  serverTime: string;
+}
+
+export interface CreateActivityInput {
+  kind: ActivityKind;
+  staffId: string;
+  staffName: string;
+  occurredAt?: string;
+  tripRef?: string | null;
+  location?: GeoPoint | null;
+  consumerNo?: string | null;
+  reading?: number | null;
+  photoUri?: string | null;
+  selfieUri?: string | null;
+  notes?: string | null;
+  distanceKm?: number | null;
+  durationSec?: number | null;
+  origin?: GeoPoint | null;
+  destination?: GeoPoint | null;
+}
+
+export interface ProblemDetails {
+  title: string;
+  detail?: string;
+  status?: number;
+}
+
+export type ListActivityParams = {
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  limit?: number;
+  /**
+   * Opaque cursor returned by a previous page response.
+   */
+  cursor?: string;
+  /**
+   * Return events strictly newer than this ISO timestamp.
+   */
+  since?: string;
+  /**
+   * Comma-separated kinds to include (default all).
+   */
+  kinds?: string;
+};

@@ -1,26 +1,28 @@
 import { Feather } from "@expo/vector-icons";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import {
+  ApiError,
+  type ActivityEvent,
+  type ActivityKind,
+  type ActivityPage,
+  listActivity,
+} from "@workspace/api-client-react";
 import { router } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
-import { useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
 
-type FeedKind = "checkin" | "checkout" | "meter" | "trip-start" | "trip-end";
+const PAGE_LIMIT = 20;
+const POLL_INTERVAL_MS = 5_000;
 
-type FeedItem = {
-  uid: string;
-  kind: FeedKind;
-  recordId: string;
-  recordKind: "attendance" | "meter" | "trip";
-  staffName: string;
-  title: string;
-  sub: string;
-  ts: number;
-  synced: boolean;
-};
-
-const ICON: Record<FeedKind, keyof typeof Feather.glyphMap> = {
+const ICON: Record<ActivityKind, keyof typeof Feather.glyphMap> = {
   checkin: "log-in",
   checkout: "log-out",
   meter: "zap",
@@ -28,7 +30,7 @@ const ICON: Record<FeedKind, keyof typeof Feather.glyphMap> = {
   "trip-end": "flag",
 };
 
-const LABEL: Record<FeedKind, string> = {
+const LABEL: Record<ActivityKind, string> = {
   checkin: "Check-in",
   checkout: "Check-out",
   meter: "Meter read",
@@ -36,94 +38,44 @@ const LABEL: Record<FeedKind, string> = {
   "trip-end": "Trip ended",
 };
 
-export function LiveActivityFeed({ limit = 8 }: { limit?: number }) {
+export function LiveActivityFeed() {
   const colors = useColors();
-  const { attendance, meterReadings, trips } = useApp();
-  const [, setTick] = useState(0);
+  const [, forceTick] = useState(0);
 
-  // Re-render every 20s so the "Xm ago" labels stay fresh — gives the
-  // feed a real "live" feel even when there are no new events.
+  // Re-render every 30s so "Xm ago" labels stay accurate.
   useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 20000);
+    const id = setInterval(() => forceTick((t) => t + 1), 30_000);
     return () => clearInterval(id);
   }, []);
 
-  const items: FeedItem[] = useMemo(() => {
-    const tones: FeedItem[] = [];
+  const query = useInfiniteQuery<ActivityPage, ApiError>({
+    queryKey: ["activity", "feed"],
+    queryFn: async ({ pageParam }) =>
+      listActivity({
+        limit: PAGE_LIMIT,
+        ...(pageParam ? { cursor: pageParam as string } : {}),
+      }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+    refetchInterval: POLL_INTERVAL_MS,
+    refetchIntervalInBackground: false,
+  });
 
-    for (const a of attendance) {
-      tones.push({
-        uid: `att-${a.id}`,
-        kind: a.type === "in" ? "checkin" : "checkout",
-        recordId: a.id,
-        recordKind: "attendance",
-        staffName: a.staffName,
-        title: `${a.staffName} ${a.type === "in" ? "checked in" : "checked out"}`,
-        sub: a.location
-          ? `${a.location.latitude.toFixed(3)}, ${a.location.longitude.toFixed(3)}`
-          : "No GPS lock",
-        ts: a.timestamp,
-        synced: a.synced,
-      });
-    }
-
-    for (const m of meterReadings) {
-      tones.push({
-        uid: `met-${m.id}`,
-        kind: "meter",
-        recordId: m.id,
-        recordKind: "meter",
-        staffName: m.staffName,
-        title: `${m.staffName} read ${m.reading.toLocaleString("en-IN")} kWh`,
-        sub: `Consumer #${m.consumerNo}`,
-        ts: m.timestamp,
-        synced: m.synced,
-      });
-    }
-
-    for (const t of trips) {
-      const name = t.staffName || "Field staff";
-      tones.push({
-        uid: `trp-s-${t.id}`,
-        kind: "trip-start",
-        recordId: t.id,
-        recordKind: "trip",
-        staffName: name,
-        title: `${name} started a trip`,
-        sub: t.start
-          ? `From ${t.start.latitude.toFixed(3)}, ${t.start.longitude.toFixed(3)}`
-          : "Origin pending",
-        ts: t.startedAt,
-        synced: t.synced,
-      });
-      if (t.endedAt) {
-        tones.push({
-          uid: `trp-e-${t.id}`,
-          kind: "trip-end",
-          recordId: t.id,
-          recordKind: "trip",
-          staffName: name,
-          title: `${name} ended a trip`,
-          sub: `${t.km.toFixed(1)} km · ${formatDuration(t.endedAt - t.startedAt)}`,
-          ts: t.endedAt,
-          synced: t.synced,
-        });
+  const items = useMemo(() => {
+    if (!query.data) return [] as ActivityEvent[];
+    const seen = new Set<string>();
+    const all: ActivityEvent[] = [];
+    for (const page of query.data.pages) {
+      for (const it of page.items) {
+        if (seen.has(it.id)) continue;
+        seen.add(it.id);
+        all.push(it);
       }
     }
+    return all;
+  }, [query.data]);
 
-    return tones.sort((a, b) => b.ts - a.ts).slice(0, limit);
-  }, [attendance, meterReadings, trips, limit]);
-
-  const display = items.length > 0 ? items : MOCK_ITEMS;
-
-  const onTap = (it: FeedItem) => {
-    router.push({
-      pathname: "/activity/[id]",
-      params: { id: it.recordId, kind: it.recordKind },
-    });
-  };
-
-  const tintFor = (k: FeedKind) =>
+  const tintFor = (k: ActivityKind) =>
     k === "meter"
       ? colors.pillarTransparency
       : k === "trip-start" || k === "trip-end"
@@ -132,19 +84,169 @@ export function LiveActivityFeed({ limit = 8 }: { limit?: number }) {
           ? colors.success
           : colors.destructive;
 
+  // ---- Loading skeleton ------------------------------------------------
+  if (query.isLoading) {
+    return (
+      <View style={{ paddingVertical: 24, alignItems: "center" }}>
+        <ActivityIndicator color={colors.primary} />
+        <Text
+          style={{
+            color: colors.mutedForeground,
+            fontSize: 12,
+            fontFamily: "Inter_500Medium",
+            marginTop: 10,
+          }}
+        >
+          Loading live feed…
+        </Text>
+      </View>
+    );
+  }
+
+  // ---- Error state -----------------------------------------------------
+  if (query.isError && items.length === 0) {
+    return (
+      <View
+        style={{
+          padding: 16,
+          backgroundColor: colors.destructive + "0F",
+          borderRadius: 12,
+          marginTop: 8,
+        }}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Feather name="wifi-off" size={14} color={colors.destructive} />
+          <Text
+            style={{
+              color: colors.destructive,
+              fontFamily: "Inter_700Bold",
+              fontSize: 13,
+            }}
+          >
+            Couldn't reach the activity feed
+          </Text>
+        </View>
+        <Text
+          style={{
+            color: colors.mutedForeground,
+            fontFamily: "Inter_400Regular",
+            fontSize: 12,
+            marginTop: 6,
+          }}
+        >
+          {query.error?.message ?? "Network error"}
+        </Text>
+        <Pressable
+          onPress={() => query.refetch()}
+          style={({ pressed }) => ({
+            marginTop: 10,
+            alignSelf: "flex-start",
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            backgroundColor: colors.destructive,
+            borderRadius: 8,
+            opacity: pressed ? 0.85 : 1,
+          })}
+        >
+          <Text
+            style={{
+              color: "#fff",
+              fontFamily: "Inter_700Bold",
+              fontSize: 12,
+            }}
+          >
+            Retry
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  // ---- Empty state -----------------------------------------------------
+  if (items.length === 0) {
+    return (
+      <View style={{ paddingVertical: 24, alignItems: "center" }}>
+        <Feather name="inbox" size={20} color={colors.mutedForeground} />
+        <Text
+          style={{
+            color: colors.foreground,
+            fontFamily: "Inter_600SemiBold",
+            fontSize: 13,
+            marginTop: 8,
+          }}
+        >
+          No activity yet
+        </Text>
+        <Text
+          style={{
+            color: colors.mutedForeground,
+            fontFamily: "Inter_400Regular",
+            fontSize: 11,
+            marginTop: 4,
+          }}
+        >
+          Field events will appear here in real time.
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View style={{ marginTop: 4 }}>
-      {display.map((it, i) => (
+      {/* Live status pill */}
+      <View style={styles.statusRow}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <View
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: 999,
+              backgroundColor: query.isError ? colors.warning : colors.success,
+            }}
+          />
+          <Text
+            style={{
+              color: colors.mutedForeground,
+              fontSize: 10,
+              fontFamily: "Inter_700Bold",
+              letterSpacing: 0.5,
+              textTransform: "uppercase",
+            }}
+          >
+            {query.isError
+              ? "Reconnecting…"
+              : query.isFetching
+                ? "Live · syncing"
+                : `Live · ${items.length} event${items.length === 1 ? "" : "s"}`}
+          </Text>
+        </View>
+        {query.isFetching && !query.isFetchingNextPage ? (
+          <ActivityIndicator size="small" color={colors.mutedForeground} />
+        ) : null}
+      </View>
+
+      {items.map((it, i) => (
         <Pressable
-          key={it.uid}
-          onPress={() => onTap(it)}
+          key={it.id}
+          onPress={() =>
+            router.push({
+              pathname: "/activity/[id]",
+              params: { id: it.id },
+            })
+          }
           android_ripple={{ color: colors.muted }}
           style={({ pressed }) => [
             styles.row,
             {
               borderBottomColor: colors.border,
               borderBottomWidth:
-                i === display.length - 1 ? 0 : StyleSheet.hairlineWidth,
+                i === items.length - 1 ? 0 : StyleSheet.hairlineWidth,
               opacity: pressed ? 0.7 : 1,
             },
           ]}
@@ -169,7 +271,7 @@ export function LiveActivityFeed({ limit = 8 }: { limit?: number }) {
                   flex: 1,
                 }}
               >
-                {it.title}
+                {it.summary}
               </Text>
               <View
                 style={[
@@ -202,7 +304,7 @@ export function LiveActivityFeed({ limit = 8 }: { limit?: number }) {
                 marginTop: 3,
               }}
             >
-              {it.sub} · {timeAgo(it.ts)}
+              {it.staffName} · {timeAgo(it.occurredAt)}
             </Text>
           </View>
 
@@ -225,75 +327,74 @@ export function LiveActivityFeed({ limit = 8 }: { limit?: number }) {
           </View>
         </Pressable>
       ))}
+
+      {query.hasNextPage ? (
+        <Pressable
+          onPress={() => query.fetchNextPage()}
+          disabled={query.isFetchingNextPage}
+          style={({ pressed }) => ({
+            marginTop: 12,
+            paddingVertical: 12,
+            borderRadius: 10,
+            backgroundColor: colors.muted,
+            alignItems: "center",
+            flexDirection: "row",
+            justifyContent: "center",
+            gap: 8,
+            opacity: pressed ? 0.85 : 1,
+          })}
+        >
+          {query.isFetchingNextPage ? (
+            <ActivityIndicator size="small" color={colors.foreground} />
+          ) : (
+            <Feather name="more-horizontal" size={14} color={colors.foreground} />
+          )}
+          <Text
+            style={{
+              color: colors.foreground,
+              fontFamily: "Inter_700Bold",
+              fontSize: 12,
+            }}
+          >
+            {query.isFetchingNextPage ? "Loading…" : "Load older events"}
+          </Text>
+        </Pressable>
+      ) : (
+        <View style={{ paddingTop: 14, alignItems: "center" }}>
+          <Text
+            style={{
+              color: colors.mutedForeground,
+              fontFamily: "Inter_400Regular",
+              fontSize: 10,
+              letterSpacing: 0.4,
+            }}
+          >
+            That's the start of the feed.
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
 
-const MOCK_ITEMS: FeedItem[] = [
-  {
-    uid: "mock-1",
-    kind: "meter",
-    recordId: "mock-meter-1",
-    recordKind: "meter",
-    staffName: "Ramesh Kumar",
-    title: "Ramesh Kumar read 4,287 kWh",
-    sub: "Consumer #218450",
-    ts: Date.now() - 1000 * 60 * 5,
-    synced: true,
-  },
-  {
-    uid: "mock-2",
-    kind: "checkin",
-    recordId: "mock-att-1",
-    recordKind: "attendance",
-    staffName: "Sita Devi",
-    title: "Sita Devi checked in",
-    sub: "28.612, 77.211",
-    ts: Date.now() - 1000 * 60 * 22,
-    synced: true,
-  },
-  {
-    uid: "mock-3",
-    kind: "trip-end",
-    recordId: "mock-trip-1",
-    recordKind: "trip",
-    staffName: "Arjun Singh",
-    title: "Arjun Singh ended a trip",
-    sub: "12.4 km · 1h 8m",
-    ts: Date.now() - 1000 * 60 * 41,
-    synced: true,
-  },
-  {
-    uid: "mock-4",
-    kind: "checkout",
-    recordId: "mock-att-2",
-    recordKind: "attendance",
-    staffName: "Pooja Verma",
-    title: "Pooja Verma checked out",
-    sub: "28.617, 77.217",
-    ts: Date.now() - 1000 * 60 * 60,
-    synced: true,
-  },
-];
-
-function timeAgo(ts: number) {
-  const diff = Math.floor((Date.now() - ts) / 1000);
+function timeAgo(ts: Date | string | number) {
+  const t = typeof ts === "object" ? ts.getTime() : new Date(ts).getTime();
+  const diff = Math.floor((Date.now() - t) / 1000);
   if (diff < 5) return "just now";
   if (diff < 60) return `${diff}s ago`;
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return new Date(ts).toLocaleDateString("en-IN");
-}
-
-function formatDuration(ms: number) {
-  const total = Math.max(0, Math.floor(ms / 1000));
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m`;
+  return new Date(t).toLocaleDateString("en-IN");
 }
 
 const styles = StyleSheet.create({
+  statusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 6,
+    paddingBottom: 8,
+  },
   row: {
     flexDirection: "row",
     alignItems: "center",

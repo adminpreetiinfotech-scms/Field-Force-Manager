@@ -1,7 +1,13 @@
 import { Feather } from "@expo/vector-icons";
-import { router, useLocalSearchParams } from "expo-router";
-import React, { useMemo } from "react";
 import {
+  type ActivityDetail,
+  type ActivityKind,
+  useGetActivity,
+} from "@workspace/api-client-react";
+import { router, useLocalSearchParams } from "expo-router";
+import React from "react";
+import {
+  ActivityIndicator,
   Image,
   Platform,
   Pressable,
@@ -12,48 +18,36 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
 
-type Kind = "attendance" | "meter" | "trip";
+const TITLE: Record<ActivityKind, string> = {
+  checkin: "Check-in",
+  checkout: "Check-out",
+  meter: "Meter reading",
+  "trip-start": "Trip started",
+  "trip-end": "Trip ended",
+};
 
-export default function ActivityDetail() {
+export default function ActivityDetailScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { id, kind } = useLocalSearchParams<{ id: string; kind?: Kind }>();
-  const { attendance, meterReadings, trips } = useApp();
+  const { id } = useLocalSearchParams<{ id: string }>();
 
-  const resolved = useMemo(() => {
-    if (kind === "attendance") {
-      const a = attendance.find((x) => x.id === id);
-      return a ? { kind: "attendance" as const, data: a } : null;
-    }
-    if (kind === "meter") {
-      const m = meterReadings.find((x) => x.id === id);
-      return m ? { kind: "meter" as const, data: m } : null;
-    }
-    if (kind === "trip") {
-      const t = trips.find((x) => x.id === id);
-      return t ? { kind: "trip" as const, data: t } : null;
-    }
-    // Fallback: search across all collections (handles direct URLs)
-    const a = attendance.find((x) => x.id === id);
-    if (a) return { kind: "attendance" as const, data: a };
-    const m = meterReadings.find((x) => x.id === id);
-    if (m) return { kind: "meter" as const, data: m };
-    const t = trips.find((x) => x.id === id);
-    if (t) return { kind: "trip" as const, data: t };
-    return null;
-  }, [id, kind, attendance, meterReadings, trips]);
+  const query = useGetActivity(id ?? "", {
+    query: {
+      queryKey: ["activity", id ?? ""],
+      enabled: Boolean(id),
+      staleTime: 30_000,
+    },
+  });
 
+  const detail = query.data;
   const webTop = Platform.OS === "web" ? 67 : 0;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
-        contentContainerStyle={{
-          paddingBottom: insets.bottom + 24,
-        }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
       >
         {/* Header */}
         <View
@@ -66,15 +60,13 @@ export default function ActivityDetail() {
             borderBottomWidth: StyleSheet.hairlineWidth,
           }}
         >
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 10,
-            }}
-          >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
             <Pressable
-              onPress={() => (router.canGoBack() ? router.back() : router.replace("/(admin)/dashboard"))}
+              onPress={() =>
+                router.canGoBack()
+                  ? router.back()
+                  : router.replace("/(admin)/dashboard")
+              }
               hitSlop={10}
               style={({ pressed }) => ({
                 opacity: pressed ? 0.6 : 1,
@@ -109,31 +101,49 @@ export default function ActivityDetail() {
                   letterSpacing: -0.3,
                 }}
               >
-                {resolved
-                  ? titleFor(resolved)
-                  : "Record not found"}
+                {detail
+                  ? TITLE[detail.kind]
+                  : query.isLoading
+                    ? "Loading…"
+                    : query.isError
+                      ? "Couldn't load"
+                      : "Not found"}
               </Text>
             </View>
           </View>
         </View>
 
-        {!resolved && (
+        {/* Loading */}
+        {query.isLoading && (
+          <View style={{ paddingVertical: 60, alignItems: "center" }}>
+            <ActivityIndicator color={colors.primary} />
+            <Text
+              style={{
+                color: colors.mutedForeground,
+                fontFamily: "Inter_500Medium",
+                fontSize: 12,
+                marginTop: 10,
+              }}
+            >
+              Fetching record…
+            </Text>
+          </View>
+        )}
+
+        {/* Error */}
+        {query.isError && !query.isLoading && (
           <View style={{ padding: 24, alignItems: "center" }}>
-            <Feather
-              name="alert-circle"
-              size={28}
-              color={colors.mutedForeground}
-            />
+            <Feather name="alert-triangle" size={28} color={colors.destructive} />
             <Text
               style={{
                 color: colors.foreground,
-                fontFamily: "Inter_600SemiBold",
+                fontFamily: "Inter_700Bold",
                 fontSize: 14,
                 marginTop: 12,
                 textAlign: "center",
               }}
             >
-              We couldn't find that record.
+              Couldn't load this event
             </Text>
             <Text
               style={{
@@ -144,219 +154,145 @@ export default function ActivityDetail() {
                 textAlign: "center",
               }}
             >
-              It may have been removed or this link is from a different
-              session.
+              {query.error?.message ?? "Network error"}
             </Text>
+            <Pressable
+              onPress={() => query.refetch()}
+              style={({ pressed }) => ({
+                marginTop: 14,
+                paddingVertical: 10,
+                paddingHorizontal: 14,
+                borderRadius: 10,
+                backgroundColor: colors.primary,
+                opacity: pressed ? 0.85 : 1,
+              })}
+            >
+              <Text
+                style={{
+                  color: "#fff",
+                  fontFamily: "Inter_700Bold",
+                  fontSize: 12,
+                }}
+              >
+                Try again
+              </Text>
+            </Pressable>
           </View>
         )}
 
-        {resolved?.kind === "attendance" && (
-          <AttendanceDetail data={resolved.data} />
-        )}
-        {resolved?.kind === "meter" && (
-          <MeterDetail data={resolved.data} />
-        )}
-        {resolved?.kind === "trip" && <TripDetail data={resolved.data} />}
+        {/* Detail */}
+        {detail && <DetailBody detail={detail} />}
       </ScrollView>
     </View>
   );
 }
 
-type Resolved =
-  | { kind: "attendance"; data: ReturnType<typeof useApp>["attendance"][number] }
-  | { kind: "meter"; data: ReturnType<typeof useApp>["meterReadings"][number] }
-  | { kind: "trip"; data: ReturnType<typeof useApp>["trips"][number] };
-
-function titleFor(r: Resolved) {
-  if (r.kind === "attendance")
-    return r.data.type === "in" ? "Check-in" : "Check-out";
-  if (r.kind === "meter") return "Meter reading";
-  return "Trip log";
-}
-
-function AttendanceDetail({
-  data,
-}: {
-  data: ReturnType<typeof useApp>["attendance"][number];
-}) {
+function DetailBody({ detail }: { detail: ActivityDetail }) {
   const colors = useColors();
+  const isAttendance = detail.kind === "checkin" || detail.kind === "checkout";
+  const isMeter = detail.kind === "meter";
+  const isTrip = detail.kind === "trip-start" || detail.kind === "trip-end";
+
   return (
     <View style={{ padding: 18, gap: 14 }}>
       <Card>
-        <Row label="Staff" value={data.staffName} />
-        <Row label="Employee ID" value={data.staffId} />
-        <Row label="Event" value={data.type === "in" ? "Check in" : "Check out"} />
+        <Row label="Staff" value={detail.staffName} />
+        <Row label="Employee ID" value={detail.staffId} />
+        <Row label="Event" value={TITLE[detail.kind]} />
+        <Row label="Time" value={fmtDateTime(detail.occurredAt)} />
+        <Row label="Recorded" value={fmtDateTime(detail.receivedAt)} />
+        {detail.location ? (
+          <Row label="GPS" value={fmtGeo(detail.location)} />
+        ) : null}
+        {isMeter && detail.consumerNo ? (
+          <Row label="Consumer #" value={detail.consumerNo} />
+        ) : null}
+        {isMeter && typeof detail.reading === "number" ? (
+          <Row
+            label="Reading"
+            value={`${detail.reading.toLocaleString("en-IN")} kWh`}
+          />
+        ) : null}
+        {isTrip && typeof detail.distanceKm === "number" ? (
+          <Row label="Distance" value={`${detail.distanceKm.toFixed(2)} km`} />
+        ) : null}
+        {isTrip && typeof detail.durationSec === "number" ? (
+          <Row label="Duration" value={fmtDuration(detail.durationSec)} />
+        ) : null}
+        {isTrip && detail.origin ? (
+          <Row label="Origin" value={fmtGeo(detail.origin)} />
+        ) : null}
+        {isTrip && detail.destination ? (
+          <Row label="Destination" value={fmtGeo(detail.destination)} />
+        ) : null}
+        {detail.tripRef ? (
+          <Row label="Trip reference" value={shortId(detail.tripRef)} />
+        ) : null}
+        {detail.notes ? <Row label="Notes" value={detail.notes} /> : null}
         <Row
-          label="Time"
-          value={new Date(data.timestamp).toLocaleString("en-IN", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
+          label="Sync status"
+          value={detail.synced ? "Synced" : "Pending sync"}
+          last
         />
-        <Row
-          label="GPS"
-          value={
-            data.location
-              ? `${data.location.latitude.toFixed(5)}, ${data.location.longitude.toFixed(5)}`
-              : "Not captured"
-          }
-        />
-        <Row label="Sync status" value={data.synced ? "Synced" : "Pending sync"} last />
       </Card>
 
-      {data.selfieUri ? (
+      {isAttendance && detail.selfieUri ? (
         <Card title="Selfie evidence">
           <Image
-            source={{ uri: data.selfieUri }}
+            source={{ uri: detail.selfieUri }}
             style={{
               width: "100%",
               aspectRatio: 1,
-              borderRadius: colors.radius,
-              backgroundColor: colors.muted,
+              borderRadius: 14,
+              backgroundColor: "#0001",
             }}
             resizeMode="cover"
           />
         </Card>
       ) : null}
-    </View>
-  );
-}
 
-function MeterDetail({
-  data,
-}: {
-  data: ReturnType<typeof useApp>["meterReadings"][number];
-}) {
-  const colors = useColors();
-  return (
-    <View style={{ padding: 18, gap: 14 }}>
-      <Card>
-        <Row label="Staff" value={data.staffName} />
-        <Row label="Consumer #" value={data.consumerNo} />
-        <Row label="Reading" value={`${data.reading.toLocaleString("en-IN")} kWh`} />
-        <Row
-          label="Time"
-          value={new Date(data.timestamp).toLocaleString("en-IN", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        />
-        <Row
-          label="GPS"
-          value={
-            data.location
-              ? `${data.location.latitude.toFixed(5)}, ${data.location.longitude.toFixed(5)}`
-              : "Not captured"
-          }
-        />
-        {data.notes ? <Row label="Notes" value={data.notes} /> : null}
-        <Row label="Sync status" value={data.synced ? "Synced" : "Pending sync"} last />
-      </Card>
-
-      {data.photoUri ? (
+      {isMeter && detail.photoUri ? (
         <Card title="Meter photo">
           <Image
-            source={{ uri: data.photoUri }}
+            source={{ uri: detail.photoUri }}
             style={{
               width: "100%",
               aspectRatio: 4 / 3,
-              borderRadius: colors.radius,
-              backgroundColor: colors.muted,
+              borderRadius: 14,
+              backgroundColor: "#0001",
             }}
             resizeMode="cover"
           />
         </Card>
       ) : null}
-    </View>
-  );
-}
 
-function TripDetail({
-  data,
-}: {
-  data: ReturnType<typeof useApp>["trips"][number];
-}) {
-  const colors = useColors();
-  const duration = data.endedAt
-    ? formatDuration(data.endedAt - data.startedAt)
-    : "In progress";
-  return (
-    <View style={{ padding: 18, gap: 14 }}>
-      <Card>
-        <Row label="Staff" value={data.staffName || data.staffId} />
-        <Row label="Date" value={data.date} />
-        <Row label="Distance" value={`${data.km.toFixed(2)} km`} />
-        <Row label="Duration" value={duration} />
-        <Row
-          label="Started at"
-          value={new Date(data.startedAt).toLocaleTimeString("en-IN", {
-            hour: "2-digit",
-            minute: "2-digit",
+      {isTrip ? (
+        <Pressable
+          onPress={() => router.push(`/route/${detail.staffId}`)}
+          style={({ pressed }) => ({
+            backgroundColor: colors.primary,
+            borderRadius: 14,
+            paddingVertical: 14,
+            alignItems: "center",
+            flexDirection: "row",
+            justifyContent: "center",
+            gap: 8,
+            opacity: pressed ? 0.85 : 1,
           })}
-        />
-        <Row
-          label="Ended at"
-          value={
-            data.endedAt
-              ? new Date(data.endedAt).toLocaleTimeString("en-IN", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              : "Active"
-          }
-        />
-        <Row
-          label="Origin"
-          value={
-            data.start
-              ? `${data.start.latitude.toFixed(5)}, ${data.start.longitude.toFixed(5)}`
-              : "—"
-          }
-        />
-        <Row
-          label="Destination"
-          value={
-            data.end
-              ? `${data.end.latitude.toFixed(5)}, ${data.end.longitude.toFixed(5)}`
-              : data.endedAt
-                ? "Not captured"
-                : "Pending"
-          }
-        />
-        <Row label="GPS points" value={`${data.path.length}`} last />
-      </Card>
-
-      <Pressable
-        onPress={() => router.push(`/route/${data.staffId}`)}
-        style={({ pressed }) => ({
-          backgroundColor: colors.primary,
-          borderRadius: colors.radius,
-          paddingVertical: 14,
-          alignItems: "center",
-          flexDirection: "row",
-          justifyContent: "center",
-          gap: 8,
-          opacity: pressed ? 0.85 : 1,
-        })}
-      >
-        <Feather name="map" size={15} color="#fff" />
-        <Text
-          style={{
-            color: "#fff",
-            fontFamily: "Inter_700Bold",
-            fontSize: 14,
-            letterSpacing: -0.2,
-          }}
         >
-          Replay route on map
-        </Text>
-      </Pressable>
+          <Feather name="map" size={15} color="#fff" />
+          <Text
+            style={{
+              color: "#fff",
+              fontFamily: "Inter_700Bold",
+              fontSize: 14,
+              letterSpacing: -0.2,
+            }}
+          >
+            View staff on live map
+          </Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -375,7 +311,7 @@ function Card({
         backgroundColor: colors.card,
         borderColor: colors.border,
         borderWidth: StyleSheet.hairlineWidth,
-        borderRadius: colors.radius + 4,
+        borderRadius: 18,
         padding: 16,
       }}
     >
@@ -445,10 +381,29 @@ function Row({
   );
 }
 
-function formatDuration(ms: number) {
-  const total = Math.max(0, Math.floor(ms / 1000));
+function fmtDateTime(ts: Date | string | number) {
+  const d = typeof ts === "object" ? ts : new Date(ts);
+  return d.toLocaleString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function fmtGeo(g: { latitude: number; longitude: number }) {
+  return `${g.latitude.toFixed(5)}, ${g.longitude.toFixed(5)}`;
+}
+
+function fmtDuration(sec: number) {
+  const total = Math.max(0, Math.floor(sec));
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);
   if (h > 0) return `${h}h ${m}m`;
   return `${m}m`;
+}
+
+function shortId(id: string) {
+  return id.length > 12 ? `${id.slice(0, 8)}…${id.slice(-4)}` : id;
 }

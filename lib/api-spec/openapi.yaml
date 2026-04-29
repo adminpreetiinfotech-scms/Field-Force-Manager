@@ -10,6 +10,10 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: activity
+    description: Field activity feed
+  - name: staff
+    description: Staff directory
 paths:
   /healthz:
     get:
@@ -24,6 +28,117 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /staff:
+    get:
+      operationId: listStaff
+      tags: [staff]
+      summary: List all staff
+      responses:
+        "200":
+          description: Staff directory
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Staff"
+
+  /activity:
+    get:
+      operationId: listActivity
+      tags: [activity]
+      summary: List recent activity events
+      description: |
+        Returns the activity feed in reverse-chronological order. Use `cursor`
+        for paginating older events and `since` for incremental polling.
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - in: query
+          name: cursor
+          description: Opaque cursor returned by a previous page response.
+          schema:
+            type: string
+        - in: query
+          name: since
+          description: Return events strictly newer than this ISO timestamp.
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: kinds
+          description: Comma-separated kinds to include (default all).
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Activity feed page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityPage"
+        "400":
+          description: Invalid query
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+    post:
+      operationId: createActivity
+      tags: [activity]
+      summary: Ingest a new activity event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateActivityInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityEvent"
+        "400":
+          description: Invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /activity/{id}:
+    get:
+      operationId: getActivity
+      tags: [activity]
+      summary: Get a single activity event with full details
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Event detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +146,187 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    Staff:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        empCode:
+          type: string
+        name:
+          type: string
+        phone:
+          type: string
+        role:
+          type: string
+          enum: [staff, admin]
+      required: [id, empCode, name, phone, role]
+
+    GeoPoint:
+      type: object
+      properties:
+        latitude:
+          type: number
+        longitude:
+          type: number
+        accuracy:
+          type: number
+      required: [latitude, longitude]
+
+    ActivityKind:
+      type: string
+      enum: [checkin, checkout, meter, trip-start, trip-end]
+
+    ActivityEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          $ref: "#/components/schemas/ActivityKind"
+        staffId:
+          type: string
+          format: uuid
+        staffName:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        receivedAt:
+          type: string
+          format: date-time
+        synced:
+          type: boolean
+        tripRef:
+          type: string
+          format: uuid
+          nullable: true
+        # Summary fields surfaced to the feed list (kind-dependent)
+        summary:
+          type: string
+          description: Pre-formatted human-readable summary for list views
+      required:
+        - id
+        - kind
+        - staffId
+        - staffName
+        - occurredAt
+        - receivedAt
+        - synced
+        - summary
+
+    ActivityDetail:
+      allOf:
+        - $ref: "#/components/schemas/ActivityEvent"
+        - type: object
+          properties:
+            location:
+              $ref: "#/components/schemas/GeoPoint"
+              nullable: true
+            consumerNo:
+              type: string
+              nullable: true
+            reading:
+              type: number
+              nullable: true
+            photoUri:
+              type: string
+              nullable: true
+            selfieUri:
+              type: string
+              nullable: true
+            notes:
+              type: string
+              nullable: true
+            distanceKm:
+              type: number
+              nullable: true
+            durationSec:
+              type: integer
+              nullable: true
+            origin:
+              $ref: "#/components/schemas/GeoPoint"
+              nullable: true
+            destination:
+              $ref: "#/components/schemas/GeoPoint"
+              nullable: true
+
+    ActivityPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityEvent"
+        nextCursor:
+          type: string
+          nullable: true
+        serverTime:
+          type: string
+          format: date-time
+          description: Server clock at response — clients should send this back as `since` on the next poll.
+      required: [items, nextCursor, serverTime]
+
+    CreateActivityInput:
+      type: object
+      properties:
+        kind:
+          $ref: "#/components/schemas/ActivityKind"
+        staffId:
+          type: string
+          format: uuid
+        staffName:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        tripRef:
+          type: string
+          format: uuid
+          nullable: true
+        location:
+          $ref: "#/components/schemas/GeoPoint"
+          nullable: true
+        consumerNo:
+          type: string
+          nullable: true
+        reading:
+          type: number
+          nullable: true
+        photoUri:
+          type: string
+          nullable: true
+        selfieUri:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        distanceKm:
+          type: number
+          nullable: true
+        durationSec:
+          type: integer
+          nullable: true
+        origin:
+          $ref: "#/components/schemas/GeoPoint"
+          nullable: true
+        destination:
+          $ref: "#/components/schemas/GeoPoint"
+          nullable: true
+      required: [kind, staffId, staffName]
+
+    ProblemDetails:
+      type: object
+      properties:
+        title:
+          type: string
+        detail:
+          type: string
+        status:
+          type: integer
+      required: [title]

@@ -5,18 +5,30 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  ActivityDetail,
+  ActivityEvent,
+  ActivityPage,
+  CreateActivityInput,
+  HealthStatus,
+  ListActivityParams,
+  ProblemDetails,
+  Staff,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -92,6 +104,341 @@ export function useHealthCheck<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getHealthCheckQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List all staff
+ */
+export const getListStaffUrl = () => {
+  return `/api/staff`;
+};
+
+export const listStaff = async (options?: RequestInit): Promise<Staff[]> => {
+  return customFetch<Staff[]>(getListStaffUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListStaffQueryKey = () => {
+  return [`/api/staff`] as const;
+};
+
+export const getListStaffQueryOptions = <
+  TData = Awaited<ReturnType<typeof listStaff>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listStaff>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListStaffQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listStaff>>> = ({
+    signal,
+  }) => listStaff({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listStaff>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListStaffQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listStaff>>
+>;
+export type ListStaffQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all staff
+ */
+
+export function useListStaff<
+  TData = Awaited<ReturnType<typeof listStaff>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listStaff>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListStaffQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns the activity feed in reverse-chronological order. Use `cursor`
+for paginating older events and `since` for incremental polling.
+
+ * @summary List recent activity events
+ */
+export const getListActivityUrl = (params?: ListActivityParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/activity?${stringifiedParams}`
+    : `/api/activity`;
+};
+
+export const listActivity = async (
+  params?: ListActivityParams,
+  options?: RequestInit,
+): Promise<ActivityPage> => {
+  return customFetch<ActivityPage>(getListActivityUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListActivityQueryKey = (params?: ListActivityParams) => {
+  return [`/api/activity`, ...(params ? [params] : [])] as const;
+};
+
+export const getListActivityQueryOptions = <
+  TData = Awaited<ReturnType<typeof listActivity>>,
+  TError = ErrorType<ProblemDetails>,
+>(
+  params?: ListActivityParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listActivity>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListActivityQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listActivity>>> = ({
+    signal,
+  }) => listActivity(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listActivity>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListActivityQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listActivity>>
+>;
+export type ListActivityQueryError = ErrorType<ProblemDetails>;
+
+/**
+ * @summary List recent activity events
+ */
+
+export function useListActivity<
+  TData = Awaited<ReturnType<typeof listActivity>>,
+  TError = ErrorType<ProblemDetails>,
+>(
+  params?: ListActivityParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listActivity>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListActivityQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Ingest a new activity event
+ */
+export const getCreateActivityUrl = () => {
+  return `/api/activity`;
+};
+
+export const createActivity = async (
+  createActivityInput: CreateActivityInput,
+  options?: RequestInit,
+): Promise<ActivityEvent> => {
+  return customFetch<ActivityEvent>(getCreateActivityUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createActivityInput),
+  });
+};
+
+export const getCreateActivityMutationOptions = <
+  TError = ErrorType<ProblemDetails>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createActivity>>,
+    TError,
+    { data: BodyType<CreateActivityInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createActivity>>,
+  TError,
+  { data: BodyType<CreateActivityInput> },
+  TContext
+> => {
+  const mutationKey = ["createActivity"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createActivity>>,
+    { data: BodyType<CreateActivityInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createActivity(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateActivityMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createActivity>>
+>;
+export type CreateActivityMutationBody = BodyType<CreateActivityInput>;
+export type CreateActivityMutationError = ErrorType<ProblemDetails>;
+
+/**
+ * @summary Ingest a new activity event
+ */
+export const useCreateActivity = <
+  TError = ErrorType<ProblemDetails>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createActivity>>,
+    TError,
+    { data: BodyType<CreateActivityInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createActivity>>,
+  TError,
+  { data: BodyType<CreateActivityInput> },
+  TContext
+> => {
+  return useMutation(getCreateActivityMutationOptions(options));
+};
+
+/**
+ * @summary Get a single activity event with full details
+ */
+export const getGetActivityUrl = (id: string) => {
+  return `/api/activity/${id}`;
+};
+
+export const getActivity = async (
+  id: string,
+  options?: RequestInit,
+): Promise<ActivityDetail> => {
+  return customFetch<ActivityDetail>(getGetActivityUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetActivityQueryKey = (id: string) => {
+  return [`/api/activity/${id}`] as const;
+};
+
+export const getGetActivityQueryOptions = <
+  TData = Awaited<ReturnType<typeof getActivity>>,
+  TError = ErrorType<ProblemDetails>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getActivity>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetActivityQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getActivity>>> = ({
+    signal,
+  }) => getActivity(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getActivity>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetActivityQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getActivity>>
+>;
+export type GetActivityQueryError = ErrorType<ProblemDetails>;
+
+/**
+ * @summary Get a single activity event with full details
+ */
+
+export function useGetActivity<
+  TData = Awaited<ReturnType<typeof getActivity>>,
+  TError = ErrorType<ProblemDetails>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getActivity>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetActivityQueryOptions(id, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

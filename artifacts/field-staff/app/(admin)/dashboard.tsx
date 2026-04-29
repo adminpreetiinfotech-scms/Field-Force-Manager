@@ -234,7 +234,7 @@ export default function AdminDashboard() {
                 </Text>
               </Pressable>
             </View>
-            <LiveActivityFeed limit={8} />
+            <LiveActivityFeed />
           </View>
         </View>
       </ScrollView>

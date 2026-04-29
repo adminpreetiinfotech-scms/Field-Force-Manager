@@ -14,3 +14,167 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * @summary List all staff
+ */
+export const ListStaffResponseItem = zod.object({
+  id: zod.string().uuid(),
+  empCode: zod.string(),
+  name: zod.string(),
+  phone: zod.string(),
+  role: zod.enum(["staff", "admin"]),
+});
+export const ListStaffResponse = zod.array(ListStaffResponseItem);
+
+/**
+ * Returns the activity feed in reverse-chronological order. Use `cursor`
+for paginating older events and `since` for incremental polling.
+
+ * @summary List recent activity events
+ */
+export const listActivityQueryLimitDefault = 20;
+export const listActivityQueryLimitMax = 100;
+
+export const ListActivityQueryParams = zod.object({
+  limit: zod.coerce
+    .number()
+    .min(1)
+    .max(listActivityQueryLimitMax)
+    .default(listActivityQueryLimitDefault),
+  cursor: zod.coerce
+    .string()
+    .optional()
+    .describe("Opaque cursor returned by a previous page response."),
+  since: zod
+    .date()
+    .optional()
+    .describe("Return events strictly newer than this ISO timestamp."),
+  kinds: zod.coerce
+    .string()
+    .optional()
+    .describe("Comma-separated kinds to include (default all)."),
+});
+
+export const ListActivityResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      kind: zod.enum([
+        "checkin",
+        "checkout",
+        "meter",
+        "trip-start",
+        "trip-end",
+      ]),
+      staffId: zod.string().uuid(),
+      staffName: zod.string(),
+      occurredAt: zod.coerce.date(),
+      receivedAt: zod.coerce.date(),
+      synced: zod.boolean(),
+      tripRef: zod.string().uuid().nullish(),
+      summary: zod
+        .string()
+        .describe("Pre-formatted human-readable summary for list views"),
+    }),
+  ),
+  nextCursor: zod.string().nullable(),
+  serverTime: zod.coerce
+    .date()
+    .describe(
+      "Server clock at response — clients should send this back as `since` on the next poll.",
+    ),
+});
+
+/**
+ * @summary Ingest a new activity event
+ */
+export const CreateActivityBody = zod.object({
+  kind: zod.enum(["checkin", "checkout", "meter", "trip-start", "trip-end"]),
+  staffId: zod.string().uuid(),
+  staffName: zod.string(),
+  occurredAt: zod.coerce.date().optional(),
+  tripRef: zod.string().uuid().nullish(),
+  location: zod
+    .object({
+      latitude: zod.number(),
+      longitude: zod.number(),
+      accuracy: zod.number().optional(),
+    })
+    .nullish(),
+  consumerNo: zod.string().nullish(),
+  reading: zod.number().nullish(),
+  photoUri: zod.string().nullish(),
+  selfieUri: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  distanceKm: zod.number().nullish(),
+  durationSec: zod.number().nullish(),
+  origin: zod
+    .object({
+      latitude: zod.number(),
+      longitude: zod.number(),
+      accuracy: zod.number().optional(),
+    })
+    .nullish(),
+  destination: zod
+    .object({
+      latitude: zod.number(),
+      longitude: zod.number(),
+      accuracy: zod.number().optional(),
+    })
+    .nullish(),
+});
+
+/**
+ * @summary Get a single activity event with full details
+ */
+export const GetActivityParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const GetActivityResponse = zod
+  .object({
+    id: zod.string().uuid(),
+    kind: zod.enum(["checkin", "checkout", "meter", "trip-start", "trip-end"]),
+    staffId: zod.string().uuid(),
+    staffName: zod.string(),
+    occurredAt: zod.coerce.date(),
+    receivedAt: zod.coerce.date(),
+    synced: zod.boolean(),
+    tripRef: zod.string().uuid().nullish(),
+    summary: zod
+      .string()
+      .describe("Pre-formatted human-readable summary for list views"),
+  })
+  .and(
+    zod.object({
+      location: zod
+        .object({
+          latitude: zod.number(),
+          longitude: zod.number(),
+          accuracy: zod.number().optional(),
+        })
+        .nullish(),
+      consumerNo: zod.string().nullish(),
+      reading: zod.number().nullish(),
+      photoUri: zod.string().nullish(),
+      selfieUri: zod.string().nullish(),
+      notes: zod.string().nullish(),
+      distanceKm: zod.number().nullish(),
+      durationSec: zod.number().nullish(),
+      origin: zod
+        .object({
+          latitude: zod.number(),
+          longitude: zod.number(),
+          accuracy: zod.number().optional(),
+        })
+        .nullish(),
+      destination: zod
+        .object({
+          latitude: zod.number(),
+          longitude: zod.number(),
+          accuracy: zod.number().optional(),
+        })
+        .nullish(),
+    }),
+  );

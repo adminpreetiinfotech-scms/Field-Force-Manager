@@ -6,4 +6,14 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./activityDetail";
+export * from "./activityEvent";
+export * from "./activityKind";
+export * from "./activityPage";
+export * from "./createActivityInput";
+export * from "./geoPoint";
 export * from "./healthStatus";
+export * from "./listActivityParams";
+export * from "./problemDetails";
+export * from "./staff";
+export * from "./staffRole";

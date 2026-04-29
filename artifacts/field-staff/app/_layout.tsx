@@ -6,10 +6,12 @@ import {
   useFonts,
 } from "@expo-google-fonts/inter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { setBaseUrl } from "@workspace/api-client-react";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect } from "react";
+import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -19,7 +21,27 @@ import { AppProvider } from "@/contexts/AppContext";
 
 SplashScreen.preventAutoHideAsync();
 
-const queryClient = new QueryClient();
+// On web (and Expo web preview) the iframe is served from the same origin as
+// the API proxy, so `/api/...` resolves correctly with no base URL. For native
+// builds we point the generated client at the published Expo domain so the
+// device hits the correct API host.
+if (Platform.OS !== "web") {
+  const domain = process.env.EXPO_PUBLIC_DOMAIN;
+  if (domain) {
+    const normalized = domain.startsWith("http") ? domain : `https://${domain}`;
+    setBaseUrl(normalized);
+  }
+}
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      staleTime: 2_000,
+      refetchOnWindowFocus: true,
+    },
+  },
+});
 
 function RootLayoutNav() {
   return (
