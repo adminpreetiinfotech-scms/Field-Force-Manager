@@ -332,21 +332,32 @@ export async function generateCandidatePdf(
          .text("JSDMS", cx2 - 14, cy2 - 4, { width: 28, align: "center", lineBreak: false });
     }
 
-    // ── Hindi right column — pure Devanagari, each line a single font call ─
+    // ── Hindi right column ──────────────────────────────────────────────────
+    // Measure "(JSDMS)" width in DVB so we can reserve space, avoiding overlap
+    doc.font("DVB").fontSize(8.5);
+    const jsdmsW = doc.widthOfString(" (JSDMS)") + 2;
+
+    // Line 1: pure Devanagari, right-aligned
     doc.font("NSB").fontSize(8.5).fillColor(DARK)
        .text("झारखण्ड कौशल विकास",
              rX, hY, { width: colW, align: "right", lineBreak: false });
+    // Line 2: Hindi part right-aligned in the left portion; Latin "(JSDMS)"
+    //         right-aligned in the right portion — no overlap
     doc.font("NSB").fontSize(8.5).fillColor(DARK)
-       .text("मिशन सोसाइटी (JSDMS)",
-             rX, hY + 11, { width: colW, align: "right", lineBreak: false });
+       .text("मिशन सोसाइटी",
+             rX, hY + 11, { width: colW - jsdmsW, align: "right", lineBreak: false });
+    // "(JSDMS)" in DVB — clear Latin text, placed immediately after Hindi text
+    doc.font("DVB").fontSize(8.5).fillColor(DARK)
+       .text("(JSDMS)",
+             rX + colW - jsdmsW, hY + 11, { width: jsdmsW, lineBreak: false });
     doc.font("NSR").fontSize(7).fillColor(DARK)
        .text("श्रम, नियोजन एवं कौशल विकास विभाग",
              rX, hY + 23, { width: colW, align: "right", lineBreak: false })
        .text("झारखण्ड सरकार",
              rX, hY + 33, { width: colW, align: "right", lineBreak: false });
-    // Hindi Training Centre ID label — Devanagari + aligned underline
+    // Training Centre ID — Devanagari label + underline
     doc.font("NSR").fontSize(7).fillColor(GRAY)
-       .text("प्रशिक्षण केंद्र ID :",
+       .text("प्रशिक्षण केंद्र क्रमांक :",
              rX, hY + 46, { width: colW, align: "right", lineBreak: false });
     hl(doc, rX + 2, hY + 56, rX + colW - 2, 0.45, LGRAY);
 
@@ -627,57 +638,12 @@ export async function generateCandidatePdf(
     }
     y += 20;
 
-    // Inline document checklist (footer row)
-    doc.font("NSB").fontSize(7.5).fillColor(INK)
-       .text("दस्तावेज :–", FX, y + 2, { width: 60, lineBreak: false });
-    const fchk = [
-      { lbl: "जन्म प्रमाण पत्र",    x: FX + 64,  chk: false },
-      { lbl: "जाति प्रमाण पत्र",    x: FX + 157, chk: !!(c.casteCertPath && fs.existsSync(c.casteCertPath!)) },
-      { lbl: "आधार कार्ड",           x: FX + 252, chk: !!(c.aadhaarFrontPath && fs.existsSync(c.aadhaarFrontPath!)) },
-      { lbl: "शैक्षिक प्र. प.",      x: FX + 315, chk: !!(c.educationCertPath && fs.existsSync(c.educationCertPath!)) },
-      { lbl: "बैंक पास बुक",         x: FX + 400, chk: !!(c.bankPassbookPath && fs.existsSync(c.bankPassbookPath!)) },
-    ];
-    for (const item of fchk) {
-      if (item.x + 8 > FE) continue;
-      const SZ = 8;
-      box(doc, item.x, y + 3, SZ, SZ, 0.6);
-      if (item.chk) {
-        doc.font("DVB").fontSize(7).fillColor("#059669")
-           .text("\u2713", item.x, y + 3.5, { width: SZ, align: "center", lineBreak: false });
-      }
-      doc.font("NSR").fontSize(7).fillColor(INK)
-         .text(item.lbl, item.x + SZ + 2, y + 3, { width: 80, lineBreak: false });
-    }
-    y += 20;
-
-    // Note box
-    const noteH = 32;
-    box(doc, ML, y, CW, noteH, 0.7, INK);
-    // Note label (English)
-    doc.font("DVB").fontSize(7.5).fillColor(INK)
-       .text("Note :", ML + 4, y + 4, { width: 35, lineBreak: false });
-    // Note content — split into Hindi and English parts for correct rendering
-    doc.font("NSR").fontSize(7).fillColor("#374151")
+    // ── Centered footer strip ────────────────────────────────────────────────
+    hl(doc, ML, y, ML + CW, 0.5, LGRAY);
+    y += 6;
+    doc.font("DVR").fontSize(6).fillColor(GRAY)
        .text(
-         "इस पंजीयन पत्र को JSDM पोर्टल पर ऑनलाइन पंजीकृत करना अनिवार्य है।",
-         ML + 42, y + 4, { width: CW - 50, lineBreak: false },
-       );
-    doc.font("DVR").fontSize(7).fillColor("#374151")
-       .text(
-         "Website : http://jsdm.jharkhand.gov.in",
-         ML + 42, y + 14, { width: CW - 50, lineBreak: false },
-       );
-    doc.font("NSR").fontSize(7).fillColor("#374151")
-       .text(
-         "ऑनलाइन पंजीकरण के बिना यह पंजीयन पत्र अमान्य माना जायेगा।",
-         ML + 4, y + 24, { width: CW - 10, lineBreak: false },
-       );
-    y += noteH + 4;
-
-    // Metadata strip
-    doc.font("DVR").fontSize(5.5).fillColor("#AAAAAA")
-       .text(
-         `ID: ${c.id}  |  Registered: ${dateStr || "—"}  |  Status: ${(c.status ?? "").toUpperCase()}  |  JSDMS / DDU-GKY Jharkhand`,
+         `Registration ID: ${c.id}   |   Status: ${(c.status ?? "Pending").toUpperCase()}   |   JSDMS / DDU-GKY Jharkhand`,
          ML, y, { width: CW, align: "center", lineBreak: false },
        );
 
