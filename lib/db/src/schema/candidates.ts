@@ -8,28 +8,56 @@ import {
 
 export const candidatesTable = pgTable("candidates", {
   id: uuid("id").defaultRandom().primaryKey(),
+  // Identity
+  candidateIdCode: text("candidate_id_code"),
   name: text("name").notNull(),
   phone: text("phone").notNull(),
+  email: text("email"),
   fatherName: text("father_name"),
+  motherName: text("mother_name"),
   dob: text("dob"),
   gender: text("gender"),
+  maritalStatus: text("marital_status"),
+  religion: text("religion"),
+  // Category
+  caste: text("caste"),
+  pwd: text("pwd"),
+  disabilityType: text("disability_type"),
+  bpl: text("bpl"),
+  bplNumber: text("bpl_number"),
+  // Address
   address: text("address"),
-  area: text("area"),
   village: text("village"),
+  policeStation: text("police_station"),
+  postOffice: text("post_office"),
+  district: text("district"),
+  state: text("state"),
+  pin: text("pin"),
+  area: text("area"),
+  // Course
   course: text("course"),
+  skillCentreName: text("skill_centre_name"),
+  // Identity docs
   aadhaarNumber: text("aadhaar_number"),
+  // Education
   education: text("education"),
+  yearOfPassing: text("year_of_passing"),
+  // Bank
   bankAccount: text("bank_account"),
   bankName: text("bank_name"),
+  bankBranch: text("bank_branch"),
   ifsc: text("ifsc"),
-  caste: text("caste"),
+  // Files
   photoPath: text("photo_path"),
   aadhaarFrontPath: text("aadhaar_front_path"),
   aadhaarBackPath: text("aadhaar_back_path"),
   educationCertPath: text("education_cert_path"),
   bankPassbookPath: text("bank_passbook_path"),
   casteCertPath: text("caste_cert_path"),
+  signaturePath: text("signature_path"),
   pdfPath: text("pdf_path"),
+  // Submission
+  mobilizer: text("mobilizer"),
   submittedBy: text("submitted_by"),
   submittedByPhone: text("submitted_by_phone"),
   // Status workflow

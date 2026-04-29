@@ -64,7 +64,10 @@ Mobile-first field operations app for distribution/utility staff and ops admins.
   - `PATCH /api/notifications/:id/read` / `PATCH /api/notifications/read-all`: mark read
   - Mobile screens: `app/candidate/register.tsx` (offline draft save, duplicate check, village+course), `app/candidate/list.tsx` (admin verify/reject modal, document preview, status badges), `app/candidate/my-candidates.tsx` (staff own list), `app/notifications.tsx` (notification centre)
   - Shift screen (`app/(staff)/shift.tsx`): notification bell with unread badge in header; "My Candidates" + "Notifications" quick action buttons
-  - DB: `candidates` table extended with `status`, `village`, `course`, `verified_by`, `verified_at`, `verification_remarks`, `submitted_by_phone`; new `candidate_notifications` table
+  - DB: `candidates` table has 40+ columns: all personal/address/identity/education/bank/document/status fields; new `candidate_notifications` table
+  - New fields added: `email`, `mother_name`, `marital_status`, `religion`, `pwd`, `disability_type`, `bpl`, `bpl_number`, `police_station`, `post_office`, `district`, `state`, `pin`, `year_of_passing`, `bank_branch`, `skill_centre_name`, `mobilizer`, `candidate_id_code`, `signature_path`
+  - PDF style: paper-form layout mimicking Jharkhand JSDMS/DDU-GKY printed form — org header, photo box, section bands, Aadhaar digit boxes, radio options, document checklist, signature area
+  - Mobile form (`register.tsx`): JSDMS/DDUKK paper-form header, 7 collapsible sections (Personal/Address/Aadhaar/Education/Bank/Documents/Declaration), 12-box Aadhaar digit input, dual Hindi+English field labels, passport photo box, signature upload, all 30+ fields
 - Offline-first sync via AsyncStorage; auto-syncs after ~4s, manual `Sync` button via `SyncBanner`
 
 **State**: `contexts/AppContext.tsx` — `register()` + `requestOtp()` + `verifyOtp()` actions; persisted to AsyncStorage at key `@field-staff/state-v1`.

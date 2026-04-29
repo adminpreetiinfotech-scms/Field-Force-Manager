@@ -21,20 +21,32 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/contexts/AppContext";
-import { useColors } from "@/hooks/useColors";
+
+// ─── Constants ──────────────────────────────────────────────────────────────
 
 type ImageData = { uri: string; base64: string; mimeType: string };
-type CandidateDto = {
-  id: string;
-  name: string;
-  phone: string;
-  status: string;
-  pdfUrl?: string | null;
-};
+type SubmittedDto = { id: string; name: string; phone: string; status: string; pdfUrl?: string | null };
+
+const DRAFT_KEY = "@candidate-draft-v3";
+
+const FORM_BG = "#FFFDF6";
+const BORDER = "#1a1a1a";
+const HEADER_BG = "#1E3A5F";
+const SECTION_BG = "#1E3A5F";
+const LABEL_COLOR = "#444";
+const VALUE_COLOR = "#111";
+const MUTED = "#888";
+const ERROR_RED = "#D32F2F";
+const SUCCESS_GREEN = "#1B5E20";
+const ACCENT = "#1E3A5F";
 
 const GENDERS = ["Male", "Female", "Other"] as const;
+const MARITAL = ["Single", "Married", "Divorced", "Widowed"] as const;
 const CASTES = ["General", "OBC", "SC", "ST"] as const;
-const DRAFT_KEY = "@candidate-draft-v2";
+const RELIGIONS = ["Hindu", "Muslim", "Christian", "Sikh", "Buddhist", "Jain", "Other"] as const;
+const EDUCATIONS = ["Class 5", "Class 8", "Class 10", "Class 12", "Diploma", "Graduate", "Post-Graduate"] as const;
+const PWD_OPTIONS = ["No", "Yes"] as const;
+const BPL_OPTIONS = ["No", "Yes"] as const;
 
 function getApiBase(): string {
   if (Platform.OS === "web") return "";
@@ -47,7 +59,7 @@ async function pickImage(setter: (img: ImageData | null) => void): Promise<void>
   if (Platform.OS !== "web") {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission Needed", "Please allow camera roll access to upload documents.");
+      Alert.alert("Permission Needed", "Please allow photo library access.");
       return;
     }
   }
@@ -58,254 +70,416 @@ async function pickImage(setter: (img: ImageData | null) => void): Promise<void>
     allowsEditing: false,
   });
   if (!result.canceled && result.assets[0]) {
-    const asset = result.assets[0];
-    setter({ uri: asset.uri, base64: asset.base64 ?? "", mimeType: asset.mimeType ?? "image/jpeg" });
+    const a = result.assets[0];
+    setter({ uri: a.uri, base64: a.base64 ?? "", mimeType: a.mimeType ?? "image/jpeg" });
   }
 }
 
-function SectionHeader({ title, color }: { title: string; color: string }) {
+// ─── Sub-components ─────────────────────────────────────────────────────────
+
+function FormHeader() {
   return (
-    <View style={[ss.sectionHeader, { backgroundColor: color + "14", borderColor: color + "44" }]}>
-      <Text style={[ss.sectionHeaderText, { color }]}>{title}</Text>
+    <View style={styles.formHeader}>
+      <View style={styles.formHeaderInner}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.orgTitle}>JHARKHAND SKILL DEVELOPMENT MISSION SOCIETY</Text>
+          <Text style={styles.orgSub}>Deen Dayal Upadhyay Grameen Kaushalya Yojana (DDU-GKY)</Text>
+          <Text style={styles.orgSub}>Deen Dayal Upadhyay Kaushal Kendra (DDUKK)</Text>
+          <View style={styles.hRule} />
+          <Text style={styles.formTitle}>STUDENT / CANDIDATE REGISTRATION FORM</Text>
+          <Text style={styles.formTitleHindi}>छात्र / अभ्यर्थी पंजीकरण फॉर्म</Text>
+        </View>
+      </View>
     </View>
   );
 }
 
-function FieldInput({
-  label, value, onChangeText, placeholder, keyboardType = "default", required, colors,
+function SectionBand({ title, onToggle, expanded }: { title: string; onToggle: () => void; expanded: boolean }) {
+  return (
+    <Pressable onPress={onToggle} style={styles.sectionBand}>
+      <Text style={styles.sectionBandText}>{title}</Text>
+      <Feather name={expanded ? "chevron-up" : "chevron-down"} size={14} color="#fff" />
+    </Pressable>
+  );
+}
+
+function FieldLabel({ label, required }: { label: string; required?: boolean }) {
+  return (
+    <Text style={styles.fieldLabel}>
+      {label}
+      {required ? <Text style={{ color: ERROR_RED }}> *</Text> : null}
+    </Text>
+  );
+}
+
+function TextBox({
+  label, value, onChangeText, placeholder, keyboardType = "default", required, multiline,
 }: {
   label: string; value: string; onChangeText: (v: string) => void;
-  placeholder?: string; keyboardType?: "default" | "numeric" | "phone-pad";
-  required?: boolean; colors: ReturnType<typeof useColors>;
+  placeholder?: string; keyboardType?: "default" | "numeric" | "phone-pad" | "email-address";
+  required?: boolean; multiline?: boolean;
 }) {
   return (
-    <View style={ss.fieldWrap}>
-      <Text style={[ss.fieldLabel, { color: colors.mutedForeground }]}>
-        {label}{required ? <Text style={{ color: "#EF4444" }}> *</Text> : null}
-      </Text>
+    <View style={styles.fieldCell}>
+      <FieldLabel label={label} required={required} />
       <TextInput
         value={value}
         onChangeText={onChangeText}
-        placeholder={placeholder ?? label}
-        placeholderTextColor={colors.mutedForeground + "88"}
+        placeholder={placeholder ?? ""}
+        placeholderTextColor={MUTED}
         keyboardType={keyboardType}
-        style={[ss.input, {
-          color: colors.foreground,
-          backgroundColor: colors.muted,
-          borderColor: colors.border,
-          borderRadius: colors.radius,
-        }]}
+        multiline={multiline}
+        style={[styles.textBox, multiline && { height: 54, textAlignVertical: "top" }]}
       />
     </View>
   );
 }
 
-function ChipSelect({
-  options, value, onSelect, colors,
+function HalfRow({ children }: { children: React.ReactNode }) {
+  return <View style={styles.halfRow}>{children}</View>;
+}
+
+function HalfField({
+  label, value, onChangeText, placeholder, keyboardType = "default", required,
 }: {
-  options: readonly string[]; value: string | null;
-  onSelect: (v: string) => void; colors: ReturnType<typeof useColors>;
+  label: string; value: string; onChangeText: (v: string) => void;
+  placeholder?: string; keyboardType?: "default" | "numeric" | "phone-pad" | "email-address";
+  required?: boolean;
 }) {
   return (
-    <View style={ss.chipRow}>
-      {options.map((opt) => {
-        const active = value === opt;
-        return (
-          <Pressable
-            key={opt}
-            onPress={() => onSelect(opt)}
-            style={[ss.chip, {
-              backgroundColor: active ? colors.primary : colors.muted,
-              borderColor: active ? colors.primary : colors.border,
-              borderRadius: colors.radius,
-            }]}
-          >
-            <Text style={[ss.chipText, { color: active ? "#fff" : colors.mutedForeground }]}>
-              {opt}
-            </Text>
-          </Pressable>
-        );
-      })}
+    <View style={styles.halfCell}>
+      <FieldLabel label={label} required={required} />
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder ?? ""}
+        placeholderTextColor={MUTED}
+        keyboardType={keyboardType}
+        style={styles.textBox}
+      />
     </View>
   );
 }
 
-function DocPickerCard({
-  label, value, onPick, onClear, colors,
+function RadioRow({
+  label, options, value, onSelect, required,
 }: {
-  label: string; value: ImageData | null;
-  onPick: () => void; onClear: () => void;
-  colors: ReturnType<typeof useColors>;
+  label: string; options: readonly string[]; value: string | null;
+  onSelect: (v: string) => void; required?: boolean;
 }) {
   return (
-    <View style={[ss.docCard, {
-      backgroundColor: colors.card,
-      borderColor: value ? colors.primary + "44" : colors.border,
-      borderRadius: colors.radius,
-    }]}>
-      <View style={ss.docCardLeft}>
-        <Feather name="file-text" size={16} color={value ? colors.primary : colors.mutedForeground} />
-        <Text style={[ss.docCardLabel, { color: value ? colors.foreground : colors.mutedForeground }]}
-          numberOfLines={2}>
-          {label}
-        </Text>
+    <View style={styles.fieldCell}>
+      <FieldLabel label={label} required={required} />
+      <View style={styles.radioRow}>
+        {options.map((opt) => {
+          const active = value === opt;
+          return (
+            <Pressable key={opt} onPress={() => onSelect(opt)} style={styles.radioItem}>
+              <View style={[styles.radioCircle, active && styles.radioCircleActive]}>
+                {active ? <View style={styles.radioDot} /> : null}
+              </View>
+              <Text style={[styles.radioLabel, active && styles.radioLabelActive]}>{opt}</Text>
+            </Pressable>
+          );
+        })}
       </View>
+    </View>
+  );
+}
+
+function HalfRadio({
+  label, options, value, onSelect,
+}: {
+  label: string; options: readonly string[]; value: string | null; onSelect: (v: string) => void;
+}) {
+  return (
+    <View style={styles.halfCell}>
+      <FieldLabel label={label} />
+      <View style={styles.radioRow}>
+        {options.map((opt) => {
+          const active = value === opt;
+          return (
+            <Pressable key={opt} onPress={() => onSelect(opt)} style={styles.radioItem}>
+              <View style={[styles.radioCircle, active && styles.radioCircleActive]}>
+                {active ? <View style={styles.radioDot} /> : null}
+              </View>
+              <Text style={[styles.radioLabel, active && styles.radioLabelActive]}>{opt}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+function AadhaarInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const digits = value.replace(/\D/g, "").padEnd(12, "").split("").slice(0, 12);
+  const refs = useRef<Array<TextInput | null>>([]);
+
+  function handleDigit(idx: number, char: string) {
+    const clean = char.replace(/\D/g, "");
+    if (clean.length === 0) {
+      const arr = digits.map((d) => d || "");
+      arr[idx] = "";
+      onChange(arr.join("").trim());
+      refs.current[idx - 1]?.focus();
+    } else {
+      const ch = clean[clean.length - 1] ?? "";
+      const arr = digits.map((d) => d || "");
+      arr[idx] = ch;
+      onChange(arr.join("").trim());
+      if (idx < 11) refs.current[idx + 1]?.focus();
+    }
+  }
+
+  return (
+    <View style={styles.fieldCell}>
+      <FieldLabel label="Aadhaar Number / आधार नं." />
+      <View style={styles.aadhaarRow}>
+        {Array.from({ length: 12 }, (_, i) => (
+          <React.Fragment key={i}>
+            <TextInput
+              ref={(r) => { refs.current[i] = r; }}
+              value={digits[i] !== "" ? digits[i] : ""}
+              onChangeText={(t) => handleDigit(i, t)}
+              keyboardType="numeric"
+              maxLength={1}
+              style={styles.aadhaarBox}
+              textAlign="center"
+              selectTextOnFocus
+            />
+            {(i === 3 || i === 7) ? <View style={styles.aadhaarSep} /> : null}
+          </React.Fragment>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function PhotoBox({ label, value, onPick, onClear }: {
+  label: string; value: ImageData | null;
+  onPick: () => void; onClear: () => void;
+}) {
+  if (value) {
+    return (
+      <View style={styles.photoBoxFilled}>
+        <Image source={{ uri: value.uri }} style={styles.photoImg} resizeMode="cover" />
+        <TouchableOpacity onPress={onClear} style={styles.photoClearBtn}>
+          <Feather name="x" size={14} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.photoLabel}>{label}</Text>
+      </View>
+    );
+  }
+  return (
+    <TouchableOpacity onPress={onPick} style={styles.photoBoxEmpty}>
+      <View style={styles.photoIcon}>
+        <Feather name="camera" size={24} color={MUTED} />
+      </View>
+      <Text style={styles.photoBoxLabel}>{label}</Text>
+      <Text style={styles.photoBoxSub}>3.5 × 4.5 cm</Text>
+      <Text style={styles.photoBoxTap}>Tap to upload</Text>
+    </TouchableOpacity>
+  );
+}
+
+function DocUploadCard({ label, value, onPick, onClear, checked }: {
+  label: string; value: ImageData | null; onPick: () => void; onClear: () => void; checked?: boolean;
+}) {
+  return (
+    <View style={[styles.docCard, value && styles.docCardDone]}>
+      <View style={styles.docCheck}>
+        {value || checked
+          ? <Feather name="check-square" size={16} color={SUCCESS_GREEN} />
+          : <Feather name="square" size={16} color={MUTED} />}
+      </View>
+      <Text style={[styles.docLabel, value && styles.docLabelDone]} numberOfLines={2}>{label}</Text>
+      <View style={{ flex: 1 }} />
       {value ? (
-        <View style={ss.docCardRight}>
-          <Image source={{ uri: value.uri }} style={ss.docThumb} />
-          <TouchableOpacity onPress={onClear} style={ss.docClearBtn}>
-            <Feather name="x" size={12} color="#EF4444" />
+        <View style={styles.docRight}>
+          <Image source={{ uri: value.uri }} style={styles.docThumb} />
+          <TouchableOpacity onPress={onClear} style={styles.docClearBtn}>
+            <Feather name="x-circle" size={16} color={ERROR_RED} />
           </TouchableOpacity>
         </View>
       ) : (
-        <TouchableOpacity
-          onPress={onPick}
-          style={[ss.docPickBtn, {
-            backgroundColor: colors.primary + "14",
-            borderColor: colors.primary + "44",
-            borderRadius: colors.radius,
-          }]}
-        >
-          <Feather name="upload" size={14} color={colors.primary} />
-          <Text style={[ss.docPickText, { color: colors.primary }]}>Upload</Text>
+        <TouchableOpacity onPress={onPick} style={styles.docUploadBtn}>
+          <Feather name="upload" size={13} color={ACCENT} />
+          <Text style={styles.docUploadText}>Upload</Text>
         </TouchableOpacity>
       )}
     </View>
   );
 }
 
+// ─── Main Screen ─────────────────────────────────────────────────────────────
+
 export default function CandidateRegisterScreen() {
-  const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useApp();
   const webTop = Platform.OS === "web" ? 67 : 0;
 
+  // Collapsible section states
+  const [secA, setSecA] = useState(true);
+  const [secB, setSecB] = useState(true);
+  const [secC, setSecC] = useState(true);
+  const [secD, setSecD] = useState(true);
+  const [secE, setSecE] = useState(true);
+  const [secF, setSecF] = useState(true);
+  const [secG, setSecG] = useState(true);
+
+  // ─ Personal
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [fatherName, setFatherName] = useState("");
+  const [motherName, setMotherName] = useState("");
   const [dob, setDob] = useState("");
-  const [selectedGender, setSelectedGender] = useState<string | null>(null);
+  const [gender, setGender] = useState<string | null>(null);
+  const [maritalStatus, setMaritalStatus] = useState<string | null>(null);
+  const [religion, setReligion] = useState<string | null>(null);
+  const [caste, setCaste] = useState<string | null>(null);
+  const [pwd, setPwd] = useState<string | null>("No");
+  const [disabilityType, setDisabilityType] = useState("");
+
+  // ─ Address
   const [address, setAddress] = useState("");
-  const [area, setArea] = useState("");
   const [village, setVillage] = useState("");
+  const [policeStation, setPoliceStation] = useState("");
+  const [postOffice, setPostOffice] = useState("");
+  const [district, setDistrict] = useState("");
+  const [state, setState] = useState("Jharkhand");
+  const [pin, setPin] = useState("");
+  const [area, setArea] = useState("");
+
+  // ─ Course
   const [course, setCourse] = useState("");
+  const [skillCentreName, setSkillCentreName] = useState("");
+
+  // ─ Identity
   const [aadhaarNumber, setAadhaarNumber] = useState("");
-  const [education, setEducation] = useState("");
-  const [selectedCaste, setSelectedCaste] = useState<string | null>(null);
+  const [bpl, setBpl] = useState<string | null>("No");
+  const [bplNumber, setBplNumber] = useState("");
+
+  // ─ Education
+  const [education, setEducation] = useState<string | null>(null);
+  const [yearOfPassing, setYearOfPassing] = useState("");
+
+  // ─ Bank
   const [bankAccount, setBankAccount] = useState("");
   const [bankName, setBankName] = useState("");
+  const [bankBranch, setBankBranch] = useState("");
   const [ifsc, setIfsc] = useState("");
 
+  // ─ Mobilizer
+  const [mobilizer, setMobilizer] = useState(user?.name ?? "");
+
+  // ─ Documents
   const [photo, setPhoto] = useState<ImageData | null>(null);
   const [aadhaarFront, setAadhaarFront] = useState<ImageData | null>(null);
   const [aadhaarBack, setAadhaarBack] = useState<ImageData | null>(null);
   const [educationCert, setEducationCert] = useState<ImageData | null>(null);
   const [bankPassbook, setBankPassbook] = useState<ImageData | null>(null);
   const [casteCert, setCasteCert] = useState<ImageData | null>(null);
+  const [signature, setSignature] = useState<ImageData | null>(null);
 
+  // ─ UI state
   const [loading, setLoading] = useState(false);
-  const [submitted, setSubmitted] = useState<CandidateDto | null>(null);
+  const [submitted, setSubmitted] = useState<SubmittedDto | null>(null);
   const [hasDraft, setHasDraft] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [approvalBlocked, setApprovalBlocked] = useState(false);
   const networkPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // ─── Draft helpers ──────────────────────────────────────────────────────────
+  // ── Draft helpers ───────────────────────────────────────────────────────────
 
-  const buildTextDraft = useCallback(() => ({
-    name, phone, fatherName, dob, gender: selectedGender,
-    address, area, village, course, aadhaarNumber, education,
-    caste: selectedCaste, bankAccount, bankName, ifsc,
-  }), [name, phone, fatherName, dob, selectedGender, address, area, village,
-    course, aadhaarNumber, education, selectedCaste, bankAccount, bankName, ifsc]);
+  const buildDraft = useCallback(() => ({
+    name, phone, email, fatherName, motherName, dob,
+    gender, maritalStatus, religion, caste, pwd, disabilityType,
+    address, village, policeStation, postOffice, district, state, pin, area,
+    course, skillCentreName, aadhaarNumber, bpl, bplNumber,
+    education, yearOfPassing, bankAccount, bankName, bankBranch, ifsc, mobilizer,
+  }), [name, phone, email, fatherName, motherName, dob, gender, maritalStatus,
+    religion, caste, pwd, disabilityType, address, village, policeStation,
+    postOffice, district, state, pin, area, course, skillCentreName,
+    aadhaarNumber, bpl, bplNumber, education, yearOfPassing, bankAccount,
+    bankName, bankBranch, ifsc, mobilizer]);
 
-  const restoreDraft = useCallback((draft: Record<string, string | null>) => {
-    setName(draft.name ?? "");
-    setPhone(draft.phone ?? "");
-    setFatherName(draft.fatherName ?? "");
-    setDob(draft.dob ?? "");
-    setSelectedGender(draft.gender ?? null);
-    setAddress(draft.address ?? "");
-    setArea(draft.area ?? "");
-    setVillage(draft.village ?? "");
-    setCourse(draft.course ?? "");
-    setAadhaarNumber(draft.aadhaarNumber ?? "");
-    setEducation(draft.education ?? "");
-    setSelectedCaste(draft.caste ?? null);
-    setBankAccount(draft.bankAccount ?? "");
-    setBankName(draft.bankName ?? "");
-    setIfsc(draft.ifsc ?? "");
-  }, []);
+  const restoreDraft = useCallback((d: Record<string, string | null>) => {
+    setName(d.name ?? ""); setPhone(d.phone ?? ""); setEmail(d.email ?? "");
+    setFatherName(d.fatherName ?? ""); setMotherName(d.motherName ?? "");
+    setDob(d.dob ?? ""); setGender(d.gender ?? null);
+    setMaritalStatus(d.maritalStatus ?? null); setReligion(d.religion ?? null);
+    setCaste(d.caste ?? null); setPwd(d.pwd ?? "No");
+    setDisabilityType(d.disabilityType ?? "");
+    setAddress(d.address ?? ""); setVillage(d.village ?? "");
+    setPoliceStation(d.policeStation ?? ""); setPostOffice(d.postOffice ?? "");
+    setDistrict(d.district ?? ""); setState(d.state ?? "Jharkhand");
+    setPin(d.pin ?? ""); setArea(d.area ?? "");
+    setCourse(d.course ?? ""); setSkillCentreName(d.skillCentreName ?? "");
+    setAadhaarNumber(d.aadhaarNumber ?? ""); setBpl(d.bpl ?? "No");
+    setBplNumber(d.bplNumber ?? "");
+    setEducation(d.education ?? null); setYearOfPassing(d.yearOfPassing ?? "");
+    setBankAccount(d.bankAccount ?? ""); setBankName(d.bankName ?? "");
+    setBankBranch(d.bankBranch ?? ""); setIfsc(d.ifsc ?? "");
+    setMobilizer(d.mobilizer ?? user?.name ?? "");
+  }, [user?.name]);
 
-  const clearFormAndDraft = useCallback(async () => {
-    setName(""); setPhone(""); setFatherName(""); setDob("");
-    setSelectedGender(null); setAddress(""); setArea(""); setVillage(""); setCourse("");
-    setAadhaarNumber(""); setEducation(""); setSelectedCaste(null);
-    setBankAccount(""); setBankName(""); setIfsc("");
+  const clearForm = useCallback(async () => {
+    setName(""); setPhone(""); setEmail(""); setFatherName(""); setMotherName("");
+    setDob(""); setGender(null); setMaritalStatus(null); setReligion(null);
+    setCaste(null); setPwd("No"); setDisabilityType("");
+    setAddress(""); setVillage(""); setPoliceStation(""); setPostOffice("");
+    setDistrict(""); setState("Jharkhand"); setPin(""); setArea("");
+    setCourse(""); setSkillCentreName(""); setAadhaarNumber("");
+    setBpl("No"); setBplNumber(""); setEducation(null); setYearOfPassing("");
+    setBankAccount(""); setBankName(""); setBankBranch(""); setIfsc("");
+    setMobilizer(user?.name ?? "");
     setPhoto(null); setAadhaarFront(null); setAadhaarBack(null);
     setEducationCert(null); setBankPassbook(null); setCasteCert(null);
+    setSignature(null);
     setHasDraft(false);
     await AsyncStorage.removeItem(DRAFT_KEY);
-  }, []);
+  }, [user?.name]);
 
-  // Check online status + pending drafts when screen becomes focused
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
-      void (async () => {
-        const state = await Network.getNetworkStateAsync();
-        if (!cancelled) setIsOffline(!state.isConnected);
+  useFocusEffect(useCallback(() => {
+    let cancelled = false;
+    void (async () => {
+      const s = await Network.getNetworkStateAsync();
+      if (!cancelled) setIsOffline(!s.isConnected);
+      const saved = await AsyncStorage.getItem(DRAFT_KEY);
+      if (!cancelled && saved) setHasDraft(true);
+    })();
+    return () => { cancelled = true; };
+  }, []));
 
-        const saved = await AsyncStorage.getItem(DRAFT_KEY);
-        if (!cancelled && saved) {
-          setHasDraft(true);
-        }
-      })();
-      return () => { cancelled = true; };
-    }, []),
-  );
-
-  // Poll network every 15 s while offline to detect restoration
   useEffect(() => {
     if (!isOffline) {
       if (networkPollRef.current) clearInterval(networkPollRef.current);
       return;
     }
     networkPollRef.current = setInterval(() => {
-      void Network.getNetworkStateAsync().then((s) => {
-        if (s.isConnected) setIsOffline(false);
-      });
+      void Network.getNetworkStateAsync().then((s) => { if (s.isConnected) setIsOffline(false); });
     }, 15_000);
-    return () => {
-      if (networkPollRef.current) clearInterval(networkPollRef.current);
-    };
+    return () => { if (networkPollRef.current) clearInterval(networkPollRef.current); };
   }, [isOffline]);
 
-  // When back online + draft exists, offer to submit
   useEffect(() => {
     if (!isOffline && hasDraft) {
-      Alert.alert(
-        "You're back online!",
-        "You have a saved draft. Submit it now or restore the form to review.",
-        [
-          {
-            text: "Restore & Review",
-            onPress: async () => {
-              const saved = await AsyncStorage.getItem(DRAFT_KEY);
-              if (saved) {
-                const draft = JSON.parse(saved) as Record<string, string | null>;
-                restoreDraft(draft);
-                setHasDraft(false);
-              }
-            },
+      Alert.alert("Draft found", "Restore your saved draft?", [
+        {
+          text: "Restore",
+          onPress: async () => {
+            const saved = await AsyncStorage.getItem(DRAFT_KEY);
+            if (saved) { restoreDraft(JSON.parse(saved) as Record<string, string | null>); setHasDraft(false); }
           },
-          { text: "Later", style: "cancel" },
-        ],
-      );
+        },
+        { text: "Dismiss", style: "cancel" },
+      ]);
     }
   }, [isOffline, hasDraft, restoreDraft]);
 
-  // ─── Submit ─────────────────────────────────────────────────────────────────
+  // ── Submit ──────────────────────────────────────────────────────────────────
 
   const handleSubmit = async () => {
     if (!name.trim() || name.trim().length < 2) {
@@ -317,23 +491,17 @@ export default function CandidateRegisterScreen() {
       return;
     }
 
-    // Check network connectivity
     const networkState = await Network.getNetworkStateAsync();
     if (!networkState.isConnected) {
       setIsOffline(true);
-      const textDraft = buildTextDraft();
-      await AsyncStorage.setItem(DRAFT_KEY, JSON.stringify(textDraft));
+      await AsyncStorage.setItem(DRAFT_KEY, JSON.stringify(buildDraft()));
       setHasDraft(true);
-      Alert.alert(
-        "No Internet Connection",
-        "Your form has been saved as a draft and will be ready to submit when you are online again.",
-        [{ text: "OK" }],
-      );
+      Alert.alert("No Internet", "Form saved as draft. Submit when you're back online.");
       return;
     }
 
-    // Duplicate check
     const apiBase = getApiBase();
+    // Duplicate check
     try {
       const dupRes = await fetch(`${apiBase}/api/candidates/check-duplicate`, {
         method: "POST",
@@ -341,13 +509,12 @@ export default function CandidateRegisterScreen() {
         body: JSON.stringify({ phone: phone.trim(), aadhaarNumber: aadhaarNumber.trim() || undefined }),
       });
       if (dupRes.ok) {
-        const dupData = await dupRes.json() as { isDuplicate: boolean; field?: string; existingName?: string };
-        if (dupData.isDuplicate) {
-          const fieldLabel = dupData.field === "aadhaar" ? "Aadhaar number" : "phone number";
+        const dup = await dupRes.json() as { isDuplicate: boolean; field?: string; existingName?: string };
+        if (dup.isDuplicate) {
           await new Promise<void>((resolve, reject) => {
             Alert.alert(
               "Duplicate Found",
-              `A candidate with this ${fieldLabel} already exists (${dupData.existingName ?? "unknown"}). Continue submitting?`,
+              `A candidate with this ${dup.field === "aadhaar" ? "Aadhaar" : "phone"} already exists (${dup.existingName ?? ""}). Continue?`,
               [
                 { text: "Cancel", style: "cancel", onPress: () => reject(new Error("cancel")) },
                 { text: "Continue", onPress: () => resolve() },
@@ -359,7 +526,6 @@ export default function CandidateRegisterScreen() {
     } catch (e) {
       const err = e as Error;
       if (err.message === "cancel") return;
-      // network error on dup check – proceed anyway
     }
 
     setLoading(true);
@@ -367,19 +533,36 @@ export default function CandidateRegisterScreen() {
       const body = {
         name: name.trim(),
         phone: phone.trim(),
+        email: email.trim() || null,
         fatherName: fatherName.trim() || null,
+        motherName: motherName.trim() || null,
         dob: dob.trim() || null,
-        gender: selectedGender || null,
+        gender: gender || null,
+        maritalStatus: maritalStatus || null,
+        religion: religion || null,
         address: address.trim() || null,
-        area: area.trim() || null,
         village: village.trim() || null,
+        policeStation: policeStation.trim() || null,
+        postOffice: postOffice.trim() || null,
+        district: district.trim() || null,
+        state: state.trim() || null,
+        pin: pin.trim() || null,
+        area: area.trim() || null,
         course: course.trim() || null,
+        skillCentreName: skillCentreName.trim() || null,
         aadhaarNumber: aadhaarNumber.trim() || null,
-        education: education.trim() || null,
+        education: education || null,
+        yearOfPassing: yearOfPassing.trim() || null,
+        caste: caste || null,
+        pwd: pwd || null,
+        disabilityType: pwd === "Yes" ? disabilityType.trim() || null : null,
+        bpl: bpl || null,
+        bplNumber: bpl === "Yes" ? bplNumber.trim() || null : null,
         bankAccount: bankAccount.trim() || null,
         bankName: bankName.trim() || null,
+        bankBranch: bankBranch.trim() || null,
         ifsc: ifsc.trim() || null,
-        caste: selectedCaste || null,
+        mobilizer: mobilizer.trim() || null,
         submittedBy: user?.name ?? null,
         submittedByPhone: user?.phone ?? null,
         photoBase64: photo?.base64 ?? null,
@@ -394,6 +577,8 @@ export default function CandidateRegisterScreen() {
         bankPassbookMime: bankPassbook?.mimeType ?? null,
         casteCertBase64: casteCert?.base64 ?? null,
         casteCertMime: casteCert?.mimeType ?? null,
+        signatureBase64: signature?.base64 ?? null,
+        signatureMime: signature?.mimeType ?? null,
       };
 
       const res = await fetch(`${apiBase}/api/candidates`, {
@@ -401,282 +586,901 @@ export default function CandidateRegisterScreen() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const data = await res.json() as CandidateDto & { title?: string };
-      if (res.status === 403) {
-        setApprovalBlocked(true);
-        return;
-      }
-      if (!res.ok) {
-        throw new Error(data.title ?? "Submission failed");
-      }
+      const data = await res.json() as SubmittedDto & { title?: string };
+      if (res.status === 403) { setApprovalBlocked(true); return; }
+      if (!res.ok) throw new Error(data.title ?? "Submission failed");
       await AsyncStorage.removeItem(DRAFT_KEY);
       setHasDraft(false);
       setSubmitted(data);
     } catch (e) {
-      const err = e as Error;
-      Alert.alert("Error", err.message);
+      Alert.alert("Error", (e as Error).message);
     } finally {
       setLoading(false);
     }
   };
 
-  // ─── Approval blocked screen ────────────────────────────────────────────────
+  // ── Approval blocked screen ─────────────────────────────────────────────────
 
   if (approvalBlocked) {
     return (
-      <View style={[ss.centeredScreen, { backgroundColor: colors.background, paddingTop: insets.top + webTop }]}>
-        <View style={[ss.blockedCard, { backgroundColor: colors.card, borderColor: "#D97706" + "44", borderRadius: colors.radius + 4 }]}>
-          <View style={[ss.blockedIconWrap, { backgroundColor: "#D97706" + "14" }]}>
-            <Feather name="clock" size={36} color="#D97706" />
-          </View>
-          <Text style={[ss.blockedTitle, { color: colors.foreground }]}>Account Pending Approval</Text>
-          <Text style={[ss.blockedSub, { color: colors.mutedForeground }]}>
-            Your account is pending admin approval. You cannot submit candidate data until your account is approved.
-          </Text>
-          <Pressable onPress={() => router.back()} style={({ pressed }) => [ss.blockedBtn, {
-            backgroundColor: colors.muted, borderColor: colors.border,
-            borderRadius: colors.radius, opacity: pressed ? 0.85 : 1,
-          }]}>
-            <Text style={[ss.blockedBtnText, { color: colors.foreground }]}>← Go Back</Text>
+      <View style={[styles.centeredScreen, { paddingTop: insets.top + webTop }]}>
+        <View style={styles.blockedCard}>
+          <Feather name="clock" size={40} color="#D97706" />
+          <Text style={styles.blockedTitle}>Account Pending Approval</Text>
+          <Text style={styles.blockedSub}>Your account needs admin approval before you can submit candidates.</Text>
+          <Pressable onPress={() => router.back()} style={styles.blockedBtn}>
+            <Text style={styles.blockedBtnText}>← Go Back</Text>
           </Pressable>
         </View>
       </View>
     );
   }
 
-  // ─── Success screen ─────────────────────────────────────────────────────────
+  // ── Success screen ──────────────────────────────────────────────────────────
 
   if (submitted) {
     return (
-      <View style={[ss.centeredScreen, { backgroundColor: colors.background, paddingTop: insets.top + webTop + 16 }]}>
-        <View style={[ss.successCard, { backgroundColor: colors.card, borderColor: "#059669" + "44", borderRadius: colors.radius + 4 }]}>
-          <View style={[ss.successIconWrap, { backgroundColor: "#059669" + "14" }]}>
-            <Feather name="check-circle" size={40} color="#059669" />
+      <View style={[styles.centeredScreen, { paddingTop: insets.top + webTop }]}>
+        <View style={styles.successCard}>
+          <View style={styles.successIconWrap}>
+            <Feather name="check-circle" size={44} color={SUCCESS_GREEN} />
           </View>
-          <Text style={[ss.successTitle, { color: colors.foreground }]}>Registration Successful!</Text>
-          <Text style={[ss.successName, { color: colors.primary }]}>{submitted.name}</Text>
-          <Text style={[ss.successSub, { color: colors.mutedForeground }]}>{submitted.phone}</Text>
-          <Text style={[ss.successId, { color: colors.mutedForeground }]}>ID: {submitted.id}</Text>
-          <View style={[ss.statusBadgeWrap, { backgroundColor: "#D97706" + "18" }]}>
-            <Text style={[ss.statusBadgeText, { color: "#D97706" }]}>Pending Admin Verification</Text>
+          <Text style={styles.successTitle}>Registration Successful!</Text>
+          <Text style={styles.successName}>{submitted.name}</Text>
+          <Text style={styles.successPhone}>{submitted.phone}</Text>
+          <Text style={styles.successId}>ID: {submitted.id.slice(0, 8).toUpperCase()}</Text>
+          <View style={styles.statusBadge}>
+            <Text style={styles.statusBadgeText}>Pending Admin Verification</Text>
           </View>
-
           {submitted.pdfUrl ? (
             <Pressable
-              onPress={() => { const b = getApiBase(); void Linking.openURL(`${b}${submitted.pdfUrl}`); }}
-              style={({ pressed }) => [ss.pdfBtn, { backgroundColor: "#1E3A5F", borderRadius: colors.radius, opacity: pressed ? 0.85 : 1 }]}
+              onPress={() => void Linking.openURL(`${getApiBase()}${submitted.pdfUrl!}`)}
+              style={({ pressed }) => [styles.pdfBtn, { opacity: pressed ? 0.85 : 1 }]}
             >
               <Feather name="download" size={18} color="#fff" />
-              <Text style={ss.pdfBtnText}>Download Profile PDF</Text>
+              <Text style={styles.pdfBtnText}>Download Registration Form PDF</Text>
             </Pressable>
           ) : null}
-
           <Pressable
-            onPress={() => void clearFormAndDraft().then(() => setSubmitted(null))}
-            style={({ pressed }) => [ss.anotherBtn, {
-              backgroundColor: colors.muted, borderColor: colors.border,
-              borderRadius: colors.radius, opacity: pressed ? 0.85 : 1,
-            }]}
+            onPress={() => void clearForm().then(() => setSubmitted(null))}
+            style={({ pressed }) => [styles.anotherBtn, { opacity: pressed ? 0.85 : 1 }]}
           >
-            <Feather name="user-plus" size={16} color={colors.foreground} />
-            <Text style={[ss.anotherBtnText, { color: colors.foreground }]}>Register Another Candidate</Text>
+            <Feather name="user-plus" size={16} color={ACCENT} />
+            <Text style={styles.anotherBtnText}>Register Another Candidate</Text>
           </Pressable>
-          <Pressable onPress={() => router.back()} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1, marginTop: 4 }]}>
-            <Text style={[ss.backLink, { color: colors.mutedForeground }]}>← Back to Dashboard</Text>
+          <Pressable onPress={() => router.back()} style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1, marginTop: 8 }]}>
+            <Text style={styles.backLink}>← Back to Dashboard</Text>
           </Pressable>
         </View>
       </View>
     );
   }
 
-  // ─── Form ───────────────────────────────────────────────────────────────────
+  // ── Form ────────────────────────────────────────────────────────────────────
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={[ss.header, { backgroundColor: colors.card, borderBottomColor: colors.border, paddingTop: insets.top + webTop }]}>
-        <Pressable onPress={() => router.back()} style={ss.backBtn} hitSlop={12}>
-          <Feather name="arrow-left" size={20} color={colors.foreground} />
+    <View style={styles.root}>
+      {/* Nav header */}
+      <View style={[styles.navHeader, { paddingTop: insets.top + webTop }]}>
+        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
+          <Feather name="arrow-left" size={20} color="#fff" />
         </Pressable>
-        <Text style={[ss.headerTitle, { color: colors.foreground }]}>Candidate Registration</Text>
+        <Text style={styles.navTitle}>Candidate Registration</Text>
         <View style={{ width: 36 }} />
       </View>
 
-      {/* Offline + Draft banners */}
+      {/* Banners */}
       {isOffline && (
-        <View style={[ss.banner, { backgroundColor: "#D97706" + "18", borderColor: "#D97706" + "44" }]}>
-          <Feather name="wifi-off" size={14} color="#D97706" />
-          <Text style={[ss.bannerText, { color: "#D97706" }]}>Offline — form will be saved as draft on submit</Text>
+        <View style={styles.offlineBanner}>
+          <Feather name="wifi-off" size={14} color="#fff" />
+          <Text style={styles.bannerText}>Offline — form will save as draft on submit</Text>
         </View>
       )}
       {hasDraft && !isOffline && (
         <Pressable
-          style={[ss.banner, { backgroundColor: "#1E3A5F" + "14", borderColor: "#1E3A5F" + "44" }]}
+          style={styles.draftBanner}
           onPress={async () => {
             const saved = await AsyncStorage.getItem(DRAFT_KEY);
-            if (saved) {
-              restoreDraft(JSON.parse(saved) as Record<string, string | null>);
-              setHasDraft(false);
-              Alert.alert("Draft Restored", "Please re-select any document photos.");
-            }
+            if (saved) { restoreDraft(JSON.parse(saved) as Record<string, string | null>); setHasDraft(false); Alert.alert("Draft Restored", "Re-upload any document photos."); }
           }}
         >
-          <Feather name="save" size={14} color="#1E3A5F" />
-          <Text style={[ss.bannerText, { color: "#1E3A5F" }]}>Saved draft found — tap to restore</Text>
+          <Feather name="save" size={14} color={ACCENT} />
+          <Text style={styles.draftBannerText}>Saved draft found — tap to restore</Text>
         </Pressable>
       )}
 
       <ScrollView
-        contentContainerStyle={[ss.scrollContent, { paddingBottom: insets.bottom + 32 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Personal Information */}
-        <SectionHeader title="Personal Information" color={colors.primary} />
-        <FieldInput label="Full Name" value={name} onChangeText={setName} placeholder="Candidate's full name" required colors={colors} />
-        <FieldInput label="Mobile Number" value={phone} onChangeText={setPhone} placeholder="10-digit mobile number" keyboardType="phone-pad" required colors={colors} />
-        <FieldInput label="Father's Name" value={fatherName} onChangeText={setFatherName} placeholder="Father's full name" colors={colors} />
-        <FieldInput label="Date of Birth" value={dob} onChangeText={setDob} placeholder="DD/MM/YYYY" colors={colors} />
-        <View style={ss.fieldWrap}>
-          <Text style={[ss.fieldLabel, { color: colors.mutedForeground }]}>Gender</Text>
-          <ChipSelect options={GENDERS} value={selectedGender} onSelect={setSelectedGender} colors={colors} />
-        </View>
+        {/* ── FORM PAPER ─────────────────────────────────────────────── */}
+        <View style={styles.paper}>
 
-        {/* Address & Area */}
-        <SectionHeader title="Address & Area" color="#0891B2" />
-        <FieldInput label="Full Address" value={address} onChangeText={setAddress} placeholder="Street, City, State" colors={colors} />
-        <FieldInput label="Village" value={village} onChangeText={setVillage} placeholder="Village name" colors={colors} />
-        <FieldInput label="Area / Pincode" value={area} onChangeText={setArea} placeholder="Area name or PIN code" colors={colors} />
+          {/* Form Header */}
+          <FormHeader />
 
-        {/* Course */}
-        <SectionHeader title="Course / Training" color="#7C3AED" />
-        <FieldInput label="Course Name" value={course} onChangeText={setCourse} placeholder="e.g. Basic Computer, Tailoring" colors={colors} />
-
-        {/* Identity */}
-        <SectionHeader title="Identity" color="#DC2626" />
-        <FieldInput label="Aadhaar Number" value={aadhaarNumber} onChangeText={setAadhaarNumber} placeholder="12-digit Aadhaar number" keyboardType="numeric" colors={colors} />
-
-        {/* Education & Category */}
-        <SectionHeader title="Education & Category" color="#D97706" />
-        <FieldInput label="Education Qualification" value={education} onChangeText={setEducation} placeholder="e.g. 10th Pass, Graduate" colors={colors} />
-        <View style={ss.fieldWrap}>
-          <Text style={[ss.fieldLabel, { color: colors.mutedForeground }]}>Caste Category</Text>
-          <ChipSelect options={CASTES} value={selectedCaste} onSelect={setSelectedCaste} colors={colors} />
-        </View>
-
-        {/* Bank Details */}
-        <SectionHeader title="Bank Details" color="#059669" />
-        <FieldInput label="Bank Name" value={bankName} onChangeText={setBankName} placeholder="e.g. State Bank of India" colors={colors} />
-        <FieldInput label="Account Number" value={bankAccount} onChangeText={setBankAccount} placeholder="Bank account number" keyboardType="numeric" colors={colors} />
-        <FieldInput label="IFSC Code" value={ifsc} onChangeText={setIfsc} placeholder="e.g. SBIN0001234" colors={colors} />
-
-        {/* Candidate Photo */}
-        <SectionHeader title="Candidate Photo" color="#BE185D" />
-        <View style={ss.photoSection}>
-          {photo ? (
-            <View style={ss.photoPreviewWrap}>
-              <Image source={{ uri: photo.uri }} style={ss.photoPreview} />
-              <Pressable onPress={() => setPhoto(null)} style={[ss.photoRemoveBtn, { borderRadius: 12 }]}>
-                <Feather name="x" size={14} color="#fff" />
-              </Pressable>
+          {/* Course + Photo row */}
+          <View style={[styles.borderRow, { alignItems: "flex-start" }]}>
+            <View style={{ flex: 1, paddingRight: 8 }}>
+              <TextBox label="Course Name / कोर्स का नाम" value={course} onChangeText={setCourse} placeholder="e.g. Tailoring, Computer" />
+              <TextBox label="Skill Centre Name / कौशल केंद्र नाम" value={skillCentreName} onChangeText={setSkillCentreName} />
             </View>
-          ) : (
+            <PhotoBox
+              label="Passport Photo"
+              value={photo}
+              onPick={() => pickImage(setPhoto)}
+              onClear={() => setPhoto(null)}
+            />
+          </View>
+
+          {/* ── A. Personal ──────────────────────────────────────────── */}
+          <SectionBand title="A.  PERSONAL DETAILS  /  व्यक्तिगत विवरण" onToggle={() => setSecA(!secA)} expanded={secA} />
+          {secA && (
+            <View style={styles.sectionBody}>
+              <TextBox label="Candidate Name (English) / नाम (अंग्रेजी)*" value={name} onChangeText={setName} required />
+              <HalfRow>
+                <HalfField label="Father/Husband Name / पिता का नाम" value={fatherName} onChangeText={setFatherName} />
+                <HalfField label="Mother's Name / माता का नाम" value={motherName} onChangeText={setMotherName} />
+              </HalfRow>
+              <HalfRow>
+                <HalfField label="Date of Birth / जन्म तिथि (DD/MM/YYYY)" value={dob} onChangeText={setDob} placeholder="DD/MM/YYYY" />
+                <HalfField label="Mobile No. / मोबाइल नं.*" value={phone} onChangeText={setPhone} keyboardType="phone-pad" required />
+              </HalfRow>
+              <HalfRow>
+                <HalfRadio label="Marital Status / वैवाहिक स्थिति" options={MARITAL} value={maritalStatus} onSelect={setMaritalStatus} />
+                <HalfRadio label="Sex / लिंग" options={GENDERS} value={gender} onSelect={setGender} />
+              </HalfRow>
+              <HalfRow>
+                <HalfField label="Email / ईमेल" value={email} onChangeText={setEmail} keyboardType="email-address" />
+                <HalfField label="Religion / धर्म" value={religion ?? ""} onChangeText={(v) => setReligion(v || null)} />
+              </HalfRow>
+              <RadioRow label="Category / वर्ग" options={CASTES} value={caste} onSelect={setCaste} />
+              <HalfRow>
+                <HalfRadio label="PwD / दिव्यांग" options={PWD_OPTIONS} value={pwd} onSelect={setPwd} />
+                {pwd === "Yes"
+                  ? <HalfField label="Disability Type / प्रकार" value={disabilityType} onChangeText={setDisabilityType} />
+                  : <View style={styles.halfCell} />}
+              </HalfRow>
+            </View>
+          )}
+
+          {/* ── B. Address ───────────────────────────────────────────── */}
+          <SectionBand title="B.  ADDRESS  /  पता" onToggle={() => setSecB(!secB)} expanded={secB} />
+          {secB && (
+            <View style={styles.sectionBody}>
+              <TextBox label="Address / पता (House No., Street, Locality)" value={address} onChangeText={setAddress} multiline />
+              <HalfRow>
+                <HalfField label="Village / Town / ग्राम / नगर" value={village} onChangeText={setVillage} />
+                <HalfField label="Police Station / थाना" value={policeStation} onChangeText={setPoliceStation} />
+              </HalfRow>
+              <HalfRow>
+                <HalfField label="Post Office / डाकघर" value={postOffice} onChangeText={setPostOffice} />
+                <HalfField label="District / जिला" value={district} onChangeText={setDistrict} />
+              </HalfRow>
+              <HalfRow>
+                <HalfField label="State / राज्य" value={state} onChangeText={setState} />
+                <HalfField label="PIN Code / पिन कोड" value={pin} onChangeText={setPin} keyboardType="numeric" />
+              </HalfRow>
+            </View>
+          )}
+
+          {/* ── C. Aadhaar ───────────────────────────────────────────── */}
+          <SectionBand title="C.  AADHAAR & IDENTITY  /  आधार और पहचान" onToggle={() => setSecC(!secC)} expanded={secC} />
+          {secC && (
+            <View style={styles.sectionBody}>
+              <AadhaarInput value={aadhaarNumber} onChange={setAadhaarNumber} />
+              <HalfRow>
+                <HalfRadio label="BPL / गरीबी रेखा से नीचे" options={BPL_OPTIONS} value={bpl} onSelect={setBpl} />
+                {bpl === "Yes"
+                  ? <HalfField label="BPL Card No. / बीपीएल कार्ड नं." value={bplNumber} onChangeText={setBplNumber} />
+                  : <View style={styles.halfCell} />}
+              </HalfRow>
+            </View>
+          )}
+
+          {/* ── D. Education ─────────────────────────────────────────── */}
+          <SectionBand title="D.  EDUCATIONAL DETAILS  /  शैक्षणिक विवरण" onToggle={() => setSecD(!secD)} expanded={secD} />
+          {secD && (
+            <View style={styles.sectionBody}>
+              <RadioRow label="Highest Qualification / उच्चतम योग्यता" options={EDUCATIONS} value={education} onSelect={setEducation} />
+              <HalfField label="Year of Passing / उत्तीर्ण वर्ष" value={yearOfPassing} onChangeText={setYearOfPassing} keyboardType="numeric" placeholder="e.g. 2018" />
+            </View>
+          )}
+
+          {/* ── E. Bank ──────────────────────────────────────────────── */}
+          <SectionBand title="E.  BANK DETAILS  /  बैंक विवरण" onToggle={() => setSecE(!secE)} expanded={secE} />
+          {secE && (
+            <View style={styles.sectionBody}>
+              <HalfRow>
+                <HalfField label="Bank Account No. / बैंक खाता नं." value={bankAccount} onChangeText={setBankAccount} keyboardType="numeric" />
+                <HalfField label="Bank Name / बैंक का नाम" value={bankName} onChangeText={setBankName} />
+              </HalfRow>
+              <HalfRow>
+                <HalfField label="IFSC Code" value={ifsc} onChangeText={setIfsc} />
+                <HalfField label="Branch Name / शाखा नाम" value={bankBranch} onChangeText={setBankBranch} />
+              </HalfRow>
+            </View>
+          )}
+
+          {/* ── F. Documents ─────────────────────────────────────────── */}
+          <SectionBand title="F.  DOCUMENTS  /  दस्तावेज अपलोड करें" onToggle={() => setSecF(!secF)} expanded={secF} />
+          {secF && (
+            <View style={styles.sectionBody}>
+              <Text style={styles.docInstructions}>Upload photos/scans of the following documents:</Text>
+              <DocUploadCard label="Aadhaar Card Front / आधार कार्ड (आगे)" value={aadhaarFront} onPick={() => pickImage(setAadhaarFront)} onClear={() => setAadhaarFront(null)} />
+              <DocUploadCard label="Aadhaar Card Back / आधार कार्ड (पीछे)" value={aadhaarBack} onPick={() => pickImage(setAadhaarBack)} onClear={() => setAadhaarBack(null)} />
+              <DocUploadCard label="Education Certificate / शैक्षणिक प्रमाण पत्र" value={educationCert} onPick={() => pickImage(setEducationCert)} onClear={() => setEducationCert(null)} />
+              <DocUploadCard label="Bank Passbook / बैंक पासबुक" value={bankPassbook} onPick={() => pickImage(setBankPassbook)} onClear={() => setBankPassbook(null)} />
+              <DocUploadCard label="Caste Certificate / जाति प्रमाण पत्र" value={casteCert} onPick={() => pickImage(setCasteCert)} onClear={() => setCasteCert(null)} />
+            </View>
+          )}
+
+          {/* ── G. Declaration & Signature ───────────────────────────── */}
+          <SectionBand title="G.  DECLARATION & SIGNATURE  /  घोषणा" onToggle={() => setSecG(!secG)} expanded={secG} />
+          {secG && (
+            <View style={styles.sectionBody}>
+              <View style={styles.declarationBox}>
+                <Text style={styles.declarationText}>
+                  I hereby declare that the information given above is true and correct to the best of my knowledge and belief.
+                </Text>
+                <Text style={styles.declarationHindi}>
+                  मैं घोषणा करता/करती हूँ कि उपरोक्त जानकारी मेरी जानकारी एवं विश्वास के अनुसार सत्य और सही है।
+                </Text>
+              </View>
+
+              <HalfRow>
+                <HalfField label="Place / स्थान" value={area} onChangeText={setArea} />
+                <View style={styles.halfCell}>
+                  <Text style={styles.fieldLabel}>Date / दिनांक</Text>
+                  <View style={[styles.textBox, styles.dateDisplay]}>
+                    <Text style={{ color: MUTED, fontSize: 13 }}>
+                      {new Date().toLocaleDateString("en-IN")}
+                    </Text>
+                  </View>
+                </View>
+              </HalfRow>
+
+              <View style={styles.fieldCell}>
+                <Text style={styles.fieldLabel}>Signature of Applicant / अभ्यर्थी के हस्ताक्षर</Text>
+                {signature ? (
+                  <View style={styles.sigPreview}>
+                    <Image source={{ uri: signature.uri }} style={styles.sigImg} resizeMode="contain" />
+                    <TouchableOpacity onPress={() => setSignature(null)} style={styles.sigClear}>
+                      <Feather name="x" size={14} color={ERROR_RED} />
+                      <Text style={{ color: ERROR_RED, fontSize: 12, marginLeft: 4 }}>Remove</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity onPress={() => pickImage(setSignature)} style={styles.sigUploadBtn}>
+                    <Feather name="edit-2" size={18} color={MUTED} />
+                    <Text style={styles.sigUploadText}>Upload Signature Photo</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <TextBox label="Mobilizer Name / मोबिलाइज़र का नाम" value={mobilizer} onChangeText={setMobilizer} placeholder="Mobilizer / Field Staff name" />
+            </View>
+          )}
+
+          {/* Submit button */}
+          <View style={styles.submitRow}>
             <Pressable
-              onPress={() => void pickImage(setPhoto)}
-              style={[ss.photoPickBtn, { backgroundColor: "#BE185D" + "14", borderColor: "#BE185D" + "44", borderRadius: colors.radius }]}
+              onPress={handleSubmit}
+              disabled={loading}
+              style={({ pressed }) => [styles.submitBtn, loading && styles.submitBtnDisabled, { opacity: pressed ? 0.88 : 1 }]}
             >
-              <Feather name="camera" size={28} color="#BE185D" />
-              <Text style={[ss.photoPickText, { color: "#BE185D" }]}>Pick Passport Photo</Text>
-              <Text style={[ss.photoPickSub, { color: colors.mutedForeground }]}>Tap to select from gallery</Text>
+              {loading
+                ? <ActivityIndicator color="#fff" size="small" />
+                : (
+                  <>
+                    <Feather name="send" size={18} color="#fff" />
+                    <Text style={styles.submitBtnText}>Submit Registration Form</Text>
+                  </>
+                )}
             </Pressable>
-          )}
+          </View>
         </View>
-
-        {/* Documents */}
-        <SectionHeader title="Documents" color="#1E3A5F" />
-        <Text style={[ss.docHint, { color: colors.mutedForeground }]}>
-          Upload clear photos of each document. All fields are optional but help speed up verification.
-        </Text>
-        <DocPickerCard label="Aadhaar Card – Front" value={aadhaarFront} onPick={() => void pickImage(setAadhaarFront)} onClear={() => setAadhaarFront(null)} colors={colors} />
-        <DocPickerCard label="Aadhaar Card – Back" value={aadhaarBack} onPick={() => void pickImage(setAadhaarBack)} onClear={() => setAadhaarBack(null)} colors={colors} />
-        <DocPickerCard label="Education Certificate" value={educationCert} onPick={() => void pickImage(setEducationCert)} onClear={() => setEducationCert(null)} colors={colors} />
-        <DocPickerCard label="Bank Passbook / Statement" value={bankPassbook} onPick={() => void pickImage(setBankPassbook)} onClear={() => setBankPassbook(null)} colors={colors} />
-        <DocPickerCard label="Caste Certificate" value={casteCert} onPick={() => void pickImage(setCasteCert)} onClear={() => setCasteCert(null)} colors={colors} />
-
-        {/* Submit */}
-        <Pressable
-          onPress={() => void handleSubmit()}
-          disabled={loading}
-          style={({ pressed }) => [ss.submitBtn, {
-            backgroundColor: loading ? colors.mutedForeground : (isOffline ? "#D97706" : "#1E3A5F"),
-            borderRadius: colors.radius,
-            opacity: pressed ? 0.85 : 1,
-          }]}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <>
-              <Feather name={isOffline ? "save" : "user-check"} size={18} color="#fff" />
-              <Text style={ss.submitBtnText}>{isOffline ? "Save as Draft" : "Submit Registration"}</Text>
-            </>
-          )}
-        </Pressable>
       </ScrollView>
     </View>
   );
 }
 
-const ss = StyleSheet.create({
-  header: { flexDirection: "row", alignItems: "flex-end", paddingBottom: 14, paddingHorizontal: 16, borderBottomWidth: StyleSheet.hairlineWidth, gap: 8 },
-  headerTitle: { flex: 1, fontSize: 17, fontFamily: "Inter_700Bold", letterSpacing: -0.3, textAlign: "center" },
-  backBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
-  banner: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
-  bannerText: { fontSize: 12, fontFamily: "Inter_500Medium", flex: 1 },
-  scrollContent: { padding: 16, gap: 10 },
-  sectionHeader: { paddingHorizontal: 12, paddingVertical: 7, borderWidth: StyleSheet.hairlineWidth, borderRadius: 8, marginTop: 8 },
-  sectionHeaderText: { fontSize: 12, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 0.5 },
-  fieldWrap: { gap: 6 },
-  fieldLabel: { fontSize: 12, fontFamily: "Inter_500Medium" },
-  input: { height: 44, paddingHorizontal: 12, fontSize: 15, fontFamily: "Inter_400Regular", borderWidth: StyleSheet.hairlineWidth },
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: { paddingHorizontal: 14, paddingVertical: 8, borderWidth: StyleSheet.hairlineWidth },
-  chipText: { fontSize: 13, fontFamily: "Inter_500Medium" },
-  docCard: { flexDirection: "row", alignItems: "center", padding: 12, borderWidth: StyleSheet.hairlineWidth, gap: 10 },
-  docCardLeft: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8 },
-  docCardLabel: { fontSize: 13, fontFamily: "Inter_500Medium", flex: 1 },
-  docCardRight: { flexDirection: "row", alignItems: "center", gap: 6 },
-  docThumb: { width: 40, height: 40, borderRadius: 4 },
-  docClearBtn: { padding: 4 },
-  docPickBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 7, borderWidth: StyleSheet.hairlineWidth },
-  docPickText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
-  photoSection: { alignItems: "center", paddingVertical: 8 },
-  photoPreviewWrap: { position: "relative" },
-  photoPreview: { width: 120, height: 120, borderRadius: 8 },
-  photoRemoveBtn: { position: "absolute", top: -8, right: -8, width: 24, height: 24, backgroundColor: "#EF4444", alignItems: "center", justifyContent: "center" },
-  photoPickBtn: { width: "100%", alignItems: "center", padding: 24, gap: 8, borderWidth: StyleSheet.hairlineWidth },
-  photoPickText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  photoPickSub: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  docHint: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18 },
-  submitBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, height: 52, marginTop: 8 },
-  submitBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_700Bold" },
-  centeredScreen: { flex: 1, alignItems: "center", justifyContent: "center", padding: 20 },
-  blockedCard: { width: "100%", maxWidth: 360, padding: 24, borderWidth: 1, alignItems: "center", gap: 12 },
-  blockedIconWrap: { width: 72, height: 72, borderRadius: 36, alignItems: "center", justifyContent: "center" },
-  blockedTitle: { fontSize: 18, fontFamily: "Inter_700Bold", textAlign: "center" },
-  blockedSub: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20, maxWidth: 280 },
-  blockedBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingHorizontal: 20, paddingVertical: 12, borderWidth: StyleSheet.hairlineWidth, marginTop: 4 },
-  blockedBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  successCard: { width: "100%", maxWidth: 360, padding: 24, borderWidth: 1, alignItems: "center", gap: 12 },
-  successIconWrap: { width: 80, height: 80, borderRadius: 40, alignItems: "center", justifyContent: "center" },
-  successTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  successName: { fontSize: 16, fontFamily: "Inter_700Bold" },
-  successSub: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  successId: { fontSize: 11, fontFamily: "Inter_400Regular" },
-  statusBadgeWrap: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20 },
-  statusBadgeText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
-  pdfBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20, paddingVertical: 12, width: "100%", justifyContent: "center" },
-  pdfBtnText: { color: "#fff", fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  anotherBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20, paddingVertical: 12, borderWidth: StyleSheet.hairlineWidth, width: "100%", justifyContent: "center" },
-  anotherBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  backLink: { fontSize: 13, fontFamily: "Inter_400Regular", textDecorationLine: "underline" },
+// ─── Styles ──────────────────────────────────────────────────────────────────
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: "#F3F4F6",
+  },
+  navHeader: {
+    backgroundColor: HEADER_BG,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    paddingTop: 10,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  navTitle: {
+    flex: 1,
+    textAlign: "center",
+    color: "#fff",
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+  },
+  offlineBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#B91C1C",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  draftBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#EFF6FF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#BFDBFE",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  draftBannerText: {
+    color: ACCENT,
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+  },
+  bannerText: {
+    color: "#fff",
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+  },
+  scrollContent: {
+    padding: 12,
+  },
+  paper: {
+    backgroundColor: FORM_BG,
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+
+  // ── Form Header ───────────────────────────────────────────────
+  formHeader: {
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+    backgroundColor: "#FFF8E7",
+  },
+  formHeaderInner: {
+    flexDirection: "row",
+    padding: 10,
+  },
+  orgTitle: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    color: ACCENT,
+    marginBottom: 2,
+  },
+  orgSub: {
+    fontSize: 9,
+    fontFamily: "Inter_500Medium",
+    color: ACCENT,
+    marginBottom: 1,
+  },
+  hRule: {
+    height: 1,
+    backgroundColor: BORDER,
+    marginVertical: 6,
+  },
+  formTitle: {
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+    color: BORDER,
+    textAlign: "center",
+    letterSpacing: 0.3,
+  },
+  formTitleHindi: {
+    fontSize: 10,
+    fontFamily: "Inter_400Regular",
+    color: "#555",
+    textAlign: "center",
+    marginTop: 2,
+  },
+
+  // ── Borders / rows ────────────────────────────────────────────
+  borderRow: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+    padding: 10,
+    gap: 8,
+  },
+
+  // ── Section band ──────────────────────────────────────────────
+  sectionBand: {
+    backgroundColor: SECTION_BG,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  sectionBandText: {
+    color: "#fff",
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.3,
+  },
+  sectionBody: {
+    padding: 12,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#CCC",
+    gap: 10,
+  },
+
+  // ── Fields ────────────────────────────────────────────────────
+  fieldCell: {
+    gap: 4,
+  },
+  halfRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  halfCell: {
+    flex: 1,
+    gap: 4,
+  },
+  fieldLabel: {
+    fontSize: 9.5,
+    fontFamily: "Inter_500Medium",
+    color: LABEL_COLOR,
+  },
+  textBox: {
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: VALUE_COLOR,
+    backgroundColor: "#fff",
+    minHeight: 34,
+  },
+  dateDisplay: {
+    justifyContent: "center",
+  },
+
+  // ── Radio ─────────────────────────────────────────────────────
+  radioRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    paddingTop: 2,
+  },
+  radioItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  radioCircle: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+  },
+  radioCircleActive: {
+    borderColor: ACCENT,
+  },
+  radioDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: ACCENT,
+  },
+  radioLabel: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: VALUE_COLOR,
+  },
+  radioLabelActive: {
+    fontFamily: "Inter_600SemiBold",
+    color: ACCENT,
+  },
+
+  // ── Aadhaar boxes ─────────────────────────────────────────────
+  aadhaarRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  aadhaarBox: {
+    width: 26,
+    height: 32,
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 2,
+    textAlign: "center",
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+    color: VALUE_COLOR,
+    backgroundColor: "#fff",
+    padding: 0,
+  },
+  aadhaarSep: {
+    width: 8,
+    height: 2,
+    backgroundColor: BORDER,
+    borderRadius: 1,
+  },
+
+  // ── Photo box ─────────────────────────────────────────────────
+  photoBoxEmpty: {
+    width: 90,
+    height: 112,
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F9FAFB",
+    padding: 4,
+  },
+  photoIcon: {
+    marginBottom: 4,
+  },
+  photoBoxLabel: {
+    fontSize: 9,
+    fontFamily: "Inter_600SemiBold",
+    color: BORDER,
+    textAlign: "center",
+  },
+  photoBoxSub: {
+    fontSize: 8,
+    color: MUTED,
+    marginTop: 2,
+    textAlign: "center",
+  },
+  photoBoxTap: {
+    fontSize: 8,
+    color: ACCENT,
+    marginTop: 3,
+    textAlign: "center",
+  },
+  photoBoxFilled: {
+    width: 90,
+    height: 112,
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 2,
+    overflow: "hidden",
+    position: "relative",
+  },
+  photoImg: {
+    width: 90,
+    height: 100,
+  },
+  photoLabel: {
+    fontSize: 7.5,
+    color: MUTED,
+    textAlign: "center",
+    paddingVertical: 2,
+    backgroundColor: "#F9FAFB",
+  },
+  photoClearBtn: {
+    position: "absolute",
+    top: 2,
+    right: 2,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  // ── Document cards ────────────────────────────────────────────
+  docInstructions: {
+    fontSize: 11,
+    color: MUTED,
+    fontFamily: "Inter_400Regular",
+  },
+  docCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#CCC",
+    borderRadius: 4,
+    padding: 10,
+    gap: 10,
+    backgroundColor: "#fff",
+  },
+  docCardDone: {
+    borderColor: SUCCESS_GREEN,
+    backgroundColor: "#F0FFF4",
+  },
+  docCheck: {
+    width: 20,
+    alignItems: "center",
+  },
+  docLabel: {
+    flex: 2,
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: "#555",
+  },
+  docLabelDone: {
+    color: SUCCESS_GREEN,
+    fontFamily: "Inter_500Medium",
+  },
+  docRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  docThumb: {
+    width: 40,
+    height: 40,
+    borderRadius: 3,
+    borderWidth: 1,
+    borderColor: "#CCC",
+  },
+  docClearBtn: {
+    padding: 2,
+  },
+  docUploadBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: ACCENT,
+    borderRadius: 4,
+  },
+  docUploadText: {
+    fontSize: 12,
+    color: ACCENT,
+    fontFamily: "Inter_500Medium",
+  },
+
+  // ── Declaration ───────────────────────────────────────────────
+  declarationBox: {
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 2,
+    padding: 10,
+    backgroundColor: "#FFFDE7",
+    gap: 4,
+  },
+  declarationText: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: VALUE_COLOR,
+    lineHeight: 16,
+  },
+  declarationHindi: {
+    fontSize: 10.5,
+    fontFamily: "Inter_400Regular",
+    color: "#555",
+    lineHeight: 15,
+  },
+
+  // ── Signature ─────────────────────────────────────────────────
+  sigUploadBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderStyle: "dashed",
+    borderRadius: 4,
+    padding: 16,
+    justifyContent: "center",
+    backgroundColor: "#fafafa",
+  },
+  sigUploadText: {
+    color: MUTED,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+  },
+  sigPreview: {
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 4,
+    overflow: "hidden",
+    backgroundColor: "#fff",
+  },
+  sigImg: {
+    width: "100%",
+    height: 80,
+  },
+  sigClear: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 6,
+    borderTopWidth: 1,
+    borderTopColor: "#EEE",
+  },
+
+  // ── Submit ────────────────────────────────────────────────────
+  submitRow: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: BORDER,
+  },
+  submitBtn: {
+    backgroundColor: ACCENT,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 14,
+    borderRadius: 4,
+  },
+  submitBtnDisabled: {
+    opacity: 0.6,
+  },
+  submitBtnText: {
+    color: "#fff",
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.3,
+  },
+
+  // ── Centered screens ──────────────────────────────────────────
+  centeredScreen: {
+    flex: 1,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  blockedCard: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 28,
+    alignItems: "center",
+    gap: 12,
+    borderWidth: 1,
+    borderColor: "#FBBF24",
+    maxWidth: 360,
+    width: "100%",
+  },
+  blockedTitle: {
+    fontSize: 17,
+    fontFamily: "Inter_700Bold",
+    color: VALUE_COLOR,
+    textAlign: "center",
+  },
+  blockedSub: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: MUTED,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  blockedBtn: {
+    backgroundColor: "#F3F4F6",
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    marginTop: 4,
+  },
+  blockedBtnText: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    color: VALUE_COLOR,
+  },
+  successCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 28,
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
+    maxWidth: 380,
+    width: "100%",
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  successIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#F0FFF4",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  successTitle: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    color: SUCCESS_GREEN,
+  },
+  successName: {
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+    color: VALUE_COLOR,
+  },
+  successPhone: {
+    fontSize: 13,
+    color: MUTED,
+    fontFamily: "Inter_400Regular",
+  },
+  successId: {
+    fontSize: 12,
+    color: MUTED,
+    fontFamily: "Inter_400Regular",
+  },
+  statusBadge: {
+    backgroundColor: "#FEF3C7",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 20,
+    marginVertical: 4,
+  },
+  statusBadgeText: {
+    color: "#92400E",
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+  },
+  pdfBtn: {
+    backgroundColor: ACCENT,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 4,
+    width: "100%",
+    justifyContent: "center",
+  },
+  pdfBtnText: {
+    color: "#fff",
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  anotherBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: ACCENT,
+    paddingHorizontal: 20,
+    paddingVertical: 11,
+    borderRadius: 8,
+    width: "100%",
+    justifyContent: "center",
+  },
+  anotherBtnText: {
+    color: ACCENT,
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+  },
+  backLink: {
+    color: MUTED,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+  },
 });

@@ -48,21 +48,39 @@ function toUrl(filePath: string | null | undefined): string | null {
 function toDto(c: typeof candidatesTable.$inferSelect) {
   return {
     id: c.id,
+    candidateIdCode: c.candidateIdCode ?? null,
     name: c.name,
     phone: c.phone,
+    email: c.email ?? null,
     fatherName: c.fatherName ?? null,
+    motherName: c.motherName ?? null,
     dob: c.dob ?? null,
     gender: c.gender ?? null,
+    maritalStatus: c.maritalStatus ?? null,
+    religion: c.religion ?? null,
     address: c.address ?? null,
-    area: c.area ?? null,
     village: c.village ?? null,
+    policeStation: c.policeStation ?? null,
+    postOffice: c.postOffice ?? null,
+    district: c.district ?? null,
+    state: c.state ?? null,
+    pin: c.pin ?? null,
+    area: c.area ?? null,
     course: c.course ?? null,
+    skillCentreName: c.skillCentreName ?? null,
     aadhaarNumber: c.aadhaarNumber ?? null,
     education: c.education ?? null,
+    yearOfPassing: c.yearOfPassing ?? null,
+    caste: c.caste ?? null,
+    pwd: c.pwd ?? null,
+    disabilityType: c.disabilityType ?? null,
+    bpl: c.bpl ?? null,
+    bplNumber: c.bplNumber ?? null,
     bankAccount: c.bankAccount ?? null,
     bankName: c.bankName ?? null,
+    bankBranch: c.bankBranch ?? null,
     ifsc: c.ifsc ?? null,
-    caste: c.caste ?? null,
+    mobilizer: c.mobilizer ?? null,
     status: c.status ?? "pending",
     verifiedBy: c.verifiedBy ?? null,
     verifiedAt: c.verifiedAt?.toISOString() ?? null,
@@ -138,19 +156,36 @@ router.post("/candidates", async (req, res, next) => {
     const body = req.body as {
       name?: string;
       phone?: string;
+      email?: string | null;
       fatherName?: string | null;
+      motherName?: string | null;
       dob?: string | null;
       gender?: string | null;
+      maritalStatus?: string | null;
+      religion?: string | null;
       address?: string | null;
-      area?: string | null;
       village?: string | null;
+      policeStation?: string | null;
+      postOffice?: string | null;
+      district?: string | null;
+      state?: string | null;
+      pin?: string | null;
+      area?: string | null;
       course?: string | null;
+      skillCentreName?: string | null;
       aadhaarNumber?: string | null;
       education?: string | null;
+      yearOfPassing?: string | null;
+      caste?: string | null;
+      pwd?: string | null;
+      disabilityType?: string | null;
+      bpl?: string | null;
+      bplNumber?: string | null;
       bankAccount?: string | null;
       bankName?: string | null;
+      bankBranch?: string | null;
       ifsc?: string | null;
-      caste?: string | null;
+      mobilizer?: string | null;
       submittedBy?: string | null;
       submittedByPhone?: string | null;
       photoBase64?: string | null;
@@ -165,6 +200,8 @@ router.post("/candidates", async (req, res, next) => {
       bankPassbookMime?: string | null;
       casteCertBase64?: string | null;
       casteCertMime?: string | null;
+      signatureBase64?: string | null;
+      signatureMime?: string | null;
     };
 
     if (!body.name?.trim() || body.name.trim().length < 2) {
@@ -198,19 +235,36 @@ router.post("/candidates", async (req, res, next) => {
       .values({
         name: body.name.trim(),
         phone: body.phone.trim(),
+        email: body.email?.trim() || null,
         fatherName: body.fatherName?.trim() || null,
+        motherName: body.motherName?.trim() || null,
         dob: body.dob?.trim() || null,
         gender: body.gender?.trim() || null,
+        maritalStatus: body.maritalStatus?.trim() || null,
+        religion: body.religion?.trim() || null,
         address: body.address?.trim() || null,
-        area: body.area?.trim() || null,
         village: body.village?.trim() || null,
+        policeStation: body.policeStation?.trim() || null,
+        postOffice: body.postOffice?.trim() || null,
+        district: body.district?.trim() || null,
+        state: body.state?.trim() || null,
+        pin: body.pin?.trim() || null,
+        area: body.area?.trim() || null,
         course: body.course?.trim() || null,
+        skillCentreName: body.skillCentreName?.trim() || null,
         aadhaarNumber: body.aadhaarNumber?.trim() || null,
         education: body.education?.trim() || null,
+        yearOfPassing: body.yearOfPassing?.trim() || null,
+        caste: body.caste?.trim() || null,
+        pwd: body.pwd?.trim() || null,
+        disabilityType: body.disabilityType?.trim() || null,
+        bpl: body.bpl?.trim() || null,
+        bplNumber: body.bplNumber?.trim() || null,
         bankAccount: body.bankAccount?.trim() || null,
         bankName: body.bankName?.trim() || null,
+        bankBranch: body.bankBranch?.trim() || null,
         ifsc: body.ifsc?.trim() || null,
-        caste: body.caste?.trim() || null,
+        mobilizer: body.mobilizer?.trim() || null,
         submittedBy: body.submittedBy?.trim() || null,
         submittedByPhone: body.submittedByPhone?.trim() || null,
         status: "pending",
@@ -226,6 +280,7 @@ router.post("/candidates", async (req, res, next) => {
     const educationCertPath = saveBase64(body.educationCertBase64, body.educationCertMime, candidateDir, "education-cert");
     const bankPassbookPath = saveBase64(body.bankPassbookBase64, body.bankPassbookMime, candidateDir, "bank-passbook");
     const casteCertPath = saveBase64(body.casteCertBase64, body.casteCertMime, candidateDir, "caste-cert");
+    const signaturePath = saveBase64(body.signatureBase64, body.signatureMime ?? "image/png", candidateDir, "signature");
 
     const candidateWithFiles = {
       ...candidate,
@@ -235,6 +290,7 @@ router.post("/candidates", async (req, res, next) => {
       educationCertPath,
       bankPassbookPath,
       casteCertPath,
+      signaturePath,
     };
     const pdfFilePath = path.join(candidateDir, "profile.pdf");
     try {
@@ -253,6 +309,7 @@ router.post("/candidates", async (req, res, next) => {
         educationCertPath: educationCertPath ?? undefined,
         bankPassbookPath: bankPassbookPath ?? undefined,
         casteCertPath: casteCertPath ?? undefined,
+        signaturePath: signaturePath ?? undefined,
         pdfPath: pdfExists ? pdfFilePath : undefined,
       })
       .where(eq(candidatesTable.id, candidate.id))
@@ -346,10 +403,12 @@ router.get("/admin/candidates/csv", async (req, res, next) => {
       .orderBy(desc(candidatesTable.createdAt));
 
     const headers = [
-      "Name", "Phone", "Father's Name", "DOB", "Gender",
-      "Village", "Area", "Address", "Aadhaar No.", "Education",
-      "Course", "Caste", "Bank Name", "Account No.", "IFSC",
-      "Status", "Verified By", "Verified At", "Remarks",
+      "Candidate ID", "Name", "Phone", "Email", "Father's Name", "Mother's Name",
+      "DOB", "Gender", "Marital Status", "Religion", "Category", "PwD",
+      "Address", "Village", "Police Station", "Post Office", "District", "State", "PIN",
+      "Course", "Skill Centre", "Aadhaar No.", "BPL", "BPL No.",
+      "Education", "Year of Passing", "Bank Name", "Account No.", "IFSC", "Branch",
+      "Mobilizer", "Status", "Verified By", "Verified At", "Remarks",
       "Submitted By", "Registered On", "PDF Link",
     ];
 
@@ -366,10 +425,12 @@ router.get("/admin/candidates/csv", async (req, res, next) => {
     for (const r of rows) {
       const pdfLink = r.pdfPath ? `${baseUrl}/api/candidates/${r.id}/pdf` : "";
       lines.push([
-        r.name, r.phone, r.fatherName, r.dob, r.gender,
-        r.village, r.area, r.address, r.aadhaarNumber, r.education,
-        r.course, r.caste, r.bankName, r.bankAccount, r.ifsc,
-        r.status, r.verifiedBy, r.verifiedAt?.toISOString().slice(0, 10) ?? "", r.verificationRemarks,
+        r.candidateIdCode, r.name, r.phone, r.email, r.fatherName, r.motherName,
+        r.dob, r.gender, r.maritalStatus, r.religion, r.caste, r.pwd,
+        r.address, r.village, r.policeStation, r.postOffice, r.district, r.state, r.pin,
+        r.course, r.skillCentreName, r.aadhaarNumber, r.bpl, r.bplNumber,
+        r.education, r.yearOfPassing, r.bankName, r.bankAccount, r.ifsc, r.bankBranch,
+        r.mobilizer, r.status, r.verifiedBy, r.verifiedAt?.toISOString().slice(0, 10) ?? "", r.verificationRemarks,
         r.submittedBy, r.createdAt?.toISOString().slice(0, 10) ?? "",
         pdfLink,
       ].map(esc).join(","));
