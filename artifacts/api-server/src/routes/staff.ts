@@ -139,6 +139,47 @@ router.post("/staff/register", async (req, res, next) => {
   }
 });
 
+// ─── Staff notes ──────────────────────────────────────────────────────────────
+
+router.patch("/staff/:staffId/notes", async (req, res, next) => {
+  try {
+    const { staffId } = req.params;
+
+    if (!/^[0-9a-fA-F-]{36}$/.test(staffId)) {
+      res.status(400).json({ title: "Invalid staffId", status: 400 });
+      return;
+    }
+
+    const { notes } = req.body as { notes?: string | null };
+
+    // Ensure the staff member exists.
+    const [existing] = await db
+      .select({ id: staffTable.id })
+      .from(staffTable)
+      .where(eq(staffTable.id, staffId))
+      .limit(1);
+
+    if (!existing) {
+      res.status(404).json({ title: "Staff not found", status: 404 });
+      return;
+    }
+
+    const cleanNotes =
+      typeof notes === "string" && notes.trim().length > 0
+        ? notes.trim()
+        : null;
+
+    await db
+      .update(staffTable)
+      .set({ notes: cleanNotes })
+      .where(eq(staffTable.id, staffId));
+
+    res.json({ staffId, notes: cleanNotes });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ─── Staff profile stats ──────────────────────────────────────────────────────
 
 router.get("/staff/:staffId/profile-stats", async (req, res, next) => {
@@ -334,6 +375,7 @@ router.get("/staff/:staffId/profile-stats", async (req, res, next) => {
       role: staffRow.role,
       organization: staffRow.organization ?? null,
       area: staffRow.area ?? null,
+      notes: staffRow.notes ?? null,
       lifetimeTotalRides,
       lifetimeTotalKm,
       lifetimeAvgKmPerRide,

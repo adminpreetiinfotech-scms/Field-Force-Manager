@@ -12,6 +12,8 @@ export const staffTable = pgTable("staff", {
   area: text("area"),
   /** Short invite code generated for admin orgs so staff can link to them. */
   adminCode: text("admin_code").unique(),
+  /** Admin performance notes / area assignment text for this staff member. */
+  notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

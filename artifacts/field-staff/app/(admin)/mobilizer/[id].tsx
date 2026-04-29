@@ -1,20 +1,25 @@
 import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useQueryClient } from "@tanstack/react-query";
 
 import {
   getGetStaffProfileStatsQueryKey,
   useGetStaffProfileStats,
+  useUpdateStaffNotes,
   type MonthStat,
   type RecentTrip,
 } from "@workspace/api-client-react";
@@ -55,6 +60,8 @@ export default function MobilizerProfile() {
   const insets = useSafeAreaInsets();
   const webTop = Platform.OS === "web" ? 0 : 0;
 
+  const queryClient = useQueryClient();
+
   const { data, isLoading, isError, refetch } = useGetStaffProfileStats(
     id ?? "",
     {
@@ -65,6 +72,35 @@ export default function MobilizerProfile() {
       },
     },
   );
+
+  // ── Notes state ────────────────────────────────────────────────────────────
+  const [notesEditing, setNotesEditing] = useState(false);
+  const [notesDraft, setNotesDraft] = useState("");
+  const [notesSaved, setNotesSaved] = useState(false);
+
+  // Sync notes from loaded data into local draft
+  useEffect(() => {
+    if (data?.notes != null) setNotesDraft(data.notes);
+  }, [data?.notes]);
+
+  const { mutate: saveNotes, isPending: notesSaving } = useUpdateStaffNotes({
+    mutation: {
+      onSuccess: (res) => {
+        // Update the cached profile with the new notes value
+        queryClient.setQueryData(
+          getGetStaffProfileStatsQueryKey(id ?? ""),
+          (old: typeof data) =>
+            old ? { ...old, notes: res.notes ?? null } : old,
+        );
+        setNotesEditing(false);
+        setNotesSaved(true);
+        setTimeout(() => setNotesSaved(false), 2000);
+      },
+      onError: () => {
+        Alert.alert("Save failed", "Could not save notes. Please try again.");
+      },
+    },
+  });
 
   if (isLoading) {
     return (
@@ -383,6 +419,145 @@ export default function MobilizerProfile() {
                 colors={colors}
               />
             ))
+          )}
+        </View>
+
+        {/* ── Admin Notes ─────────────────────────────────────────────── */}
+        <View style={[styles.section, { paddingBottom: 32 }]}>
+          <View style={styles.sectionHeaderRow}>
+            <Feather name="edit-3" size={15} color={colors.primary} />
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              Admin Notes
+            </Text>
+            {!notesEditing && (
+              <Pressable
+                style={[
+                  styles.notesEditBtn,
+                  {
+                    backgroundColor: colors.primary + "18",
+                    borderRadius: 8,
+                  },
+                ]}
+                onPress={() => setNotesEditing(true)}
+              >
+                <Feather name="edit-2" size={12} color={colors.primary} />
+                <Text style={[styles.notesEditBtnText, { color: colors.primary }]}>
+                  Edit
+                </Text>
+              </Pressable>
+            )}
+          </View>
+
+          {notesEditing ? (
+            /* ── Edit mode ──────────────────────────────────────── */
+            <View style={{ gap: 10 }}>
+              <TextInput
+                value={notesDraft}
+                onChangeText={setNotesDraft}
+                multiline
+                numberOfLines={6}
+                textAlignVertical="top"
+                placeholder="Performance feedback, area assignments, follow-up reminders..."
+                placeholderTextColor={colors.mutedForeground}
+                style={[
+                  styles.notesInput,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.primary,
+                    color: colors.foreground,
+                    borderRadius: colors.radius + 2,
+                  },
+                ]}
+                autoFocus
+              />
+              <View style={styles.notesButtonRow}>
+                <Pressable
+                  style={[
+                    styles.notesCancelBtn,
+                    {
+                      backgroundColor: colors.muted,
+                      borderRadius: colors.radius,
+                    },
+                  ]}
+                  onPress={() => {
+                    setNotesDraft(data?.notes ?? "");
+                    setNotesEditing(false);
+                  }}
+                  disabled={notesSaving}
+                >
+                  <Text
+                    style={[
+                      styles.notesBtnText,
+                      { color: colors.mutedForeground },
+                    ]}
+                  >
+                    Cancel
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[
+                    styles.notesSaveBtn,
+                    {
+                      backgroundColor: notesSaving
+                        ? colors.primary + "80"
+                        : colors.primary,
+                      borderRadius: colors.radius,
+                    },
+                  ]}
+                  onPress={() => {
+                    if (!id) return;
+                    saveNotes({ staffId: id, data: { notes: notesDraft || null } });
+                  }}
+                  disabled={notesSaving}
+                >
+                  {notesSaving ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={[styles.notesBtnText, { color: "#fff" }]}>
+                      Save
+                    </Text>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          ) : (
+            /* ── Display mode ───────────────────────────────────── */
+            <View
+              style={[
+                styles.notesDisplay,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: notesSaved ? "#16a34a" : colors.border,
+                  borderRadius: colors.radius + 2,
+                },
+              ]}
+            >
+              {notesSaved && (
+                <View style={styles.notesSavedBadge}>
+                  <Feather name="check-circle" size={13} color="#16a34a" />
+                  <Text style={[styles.notesSavedText, { color: "#16a34a" }]}>
+                    Saved
+                  </Text>
+                </View>
+              )}
+              {data?.notes ? (
+                <Text
+                  style={[styles.notesText, { color: colors.foreground }]}
+                >
+                  {data.notes}
+                </Text>
+              ) : (
+                <Text
+                  style={[
+                    styles.notesPlaceholder,
+                    { color: colors.mutedForeground },
+                  ]}
+                >
+                  No notes yet. Tap Edit to add performance feedback or area
+                  assignment for this staff member.
+                </Text>
+              )}
+            </View>
           )}
         </View>
       </ScrollView>
@@ -898,5 +1073,72 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Inter_700Bold",
     letterSpacing: -0.3,
+  },
+  // Admin notes
+  notesEditBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  notesEditBtnText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+  },
+  notesInput: {
+    borderWidth: 1.5,
+    padding: 12,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 22,
+    minHeight: 140,
+  },
+  notesButtonRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  notesCancelBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 11,
+  },
+  notesSaveBtn: {
+    flex: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 11,
+    minHeight: 44,
+  },
+  notesBtnText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  notesDisplay: {
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 14,
+    minHeight: 80,
+  },
+  notesSavedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginBottom: 8,
+  },
+  notesSavedText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+  },
+  notesText: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 22,
+  },
+  notesPlaceholder: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 20,
+    fontStyle: "italic",
   },
 });

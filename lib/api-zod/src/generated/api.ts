@@ -74,6 +74,29 @@ export const RegisterStaffBody = zod
   );
 
 /**
+ * @summary Save admin notes / feedback for a staff member
+ */
+export const UpdateStaffNotesParams = zod.object({
+  staffId: zod.coerce.string().uuid(),
+});
+
+export const UpdateStaffNotesBody = zod
+  .object({
+    notes: zod
+      .string()
+      .nullable()
+      .describe(
+        "Free-form performance notes \/ area assignment. Pass null to clear.",
+      ),
+  })
+  .describe("Request body for saving admin notes on a staff member.");
+
+export const UpdateStaffNotesResponse = zod.object({
+  staffId: zod.string().uuid(),
+  notes: zod.string().nullable(),
+});
+
+/**
  * @summary Detailed stats for a single mobilizer (rides, km, periods, monthly, recent trips)
  */
 export const GetStaffProfileStatsParams = zod.object({
@@ -89,6 +112,12 @@ export const GetStaffProfileStatsResponse = zod
     role: zod.string(),
     organization: zod.string().nullish(),
     area: zod.string().nullish(),
+    notes: zod
+      .string()
+      .nullish()
+      .describe(
+        "Admin-written performance notes \/ area assignment for this staff member.",
+      ),
     lifetimeTotalRides: zod.number(),
     lifetimeTotalKm: zod.number(),
     lifetimeAvgKmPerRide: zod.number(),

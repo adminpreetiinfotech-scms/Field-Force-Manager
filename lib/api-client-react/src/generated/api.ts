@@ -35,6 +35,8 @@ import type {
   Staff,
   StaffProfileStats,
   TripReportRow,
+  UpdateNotesInput,
+  UpdateStaffNotes200,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -271,6 +273,93 @@ export const useRegisterStaff = <
   TContext
 > => {
   return useMutation(getRegisterStaffMutationOptions(options));
+};
+
+/**
+ * @summary Save admin notes / feedback for a staff member
+ */
+export const getUpdateStaffNotesUrl = (staffId: string) => {
+  return `/api/staff/${staffId}/notes`;
+};
+
+export const updateStaffNotes = async (
+  staffId: string,
+  updateNotesInput: UpdateNotesInput,
+  options?: RequestInit,
+): Promise<UpdateStaffNotes200> => {
+  return customFetch<UpdateStaffNotes200>(getUpdateStaffNotesUrl(staffId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateNotesInput),
+  });
+};
+
+export const getUpdateStaffNotesMutationOptions = <
+  TError = ErrorType<ProblemDetails>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateStaffNotes>>,
+    TError,
+    { staffId: string; data: BodyType<UpdateNotesInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateStaffNotes>>,
+  TError,
+  { staffId: string; data: BodyType<UpdateNotesInput> },
+  TContext
+> => {
+  const mutationKey = ["updateStaffNotes"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateStaffNotes>>,
+    { staffId: string; data: BodyType<UpdateNotesInput> }
+  > = (props) => {
+    const { staffId, data } = props ?? {};
+
+    return updateStaffNotes(staffId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateStaffNotesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateStaffNotes>>
+>;
+export type UpdateStaffNotesMutationBody = BodyType<UpdateNotesInput>;
+export type UpdateStaffNotesMutationError = ErrorType<ProblemDetails>;
+
+/**
+ * @summary Save admin notes / feedback for a staff member
+ */
+export const useUpdateStaffNotes = <
+  TError = ErrorType<ProblemDetails>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateStaffNotes>>,
+    TError,
+    { staffId: string; data: BodyType<UpdateNotesInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateStaffNotes>>,
+  TError,
+  { staffId: string; data: BodyType<UpdateNotesInput> },
+  TContext
+> => {
+  return useMutation(getUpdateStaffNotesMutationOptions(options));
 };
 
 /**

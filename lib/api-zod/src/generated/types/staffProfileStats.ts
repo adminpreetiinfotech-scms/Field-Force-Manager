@@ -21,6 +21,8 @@ export interface StaffProfileStats {
   role: string;
   organization?: string | null;
   area?: string | null;
+  /** Admin-written performance notes / area assignment for this staff member. */
+  notes?: string | null;
   lifetimeTotalRides: number;
   lifetimeTotalKm: number;
   lifetimeAvgKmPerRide: number;

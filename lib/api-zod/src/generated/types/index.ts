@@ -35,3 +35,5 @@ export * from "./staffDistance";
 export * from "./staffProfileStats";
 export * from "./staffRole";
 export * from "./tripReportRow";
+export * from "./updateNotesInput";
+export * from "./updateStaffNotes200";

@@ -75,6 +75,46 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
 
+  /staff/{staffId}/notes:
+    patch:
+      operationId: updateStaffNotes
+      tags: [staff]
+      summary: Save admin notes / feedback for a staff member
+      parameters:
+        - in: path
+          name: staffId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateNotesInput"
+      responses:
+        "200":
+          description: Notes saved.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  staffId:
+                    type: string
+                    format: uuid
+                  notes:
+                    type: string
+                    nullable: true
+                required: [staffId, notes]
+        "404":
+          description: Staff not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
   /staff/{staffId}/profile-stats:
     get:
       operationId: getStaffProfileStats
@@ -599,6 +639,16 @@ components:
             $ref: "#/components/schemas/StaffDistance"
       required: [date, totalKm, tripCount, perStaff]
 
+    UpdateNotesInput:
+      type: object
+      description: Request body for saving admin notes on a staff member.
+      properties:
+        notes:
+          type: string
+          nullable: true
+          description: Free-form performance notes / area assignment. Pass null to clear.
+      required: [notes]
+
     PeriodStats:
       type: object
       description: Ride stats for a specific time window.
@@ -686,6 +736,10 @@ components:
         area:
           type: string
           nullable: true
+        notes:
+          type: string
+          nullable: true
+          description: Admin-written performance notes / area assignment for this staff member.
         lifetimeTotalRides:
           type: integer
         lifetimeTotalKm:

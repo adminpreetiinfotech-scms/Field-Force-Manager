@@ -148,6 +148,14 @@ export interface DistanceStats {
 }
 
 /**
+ * Request body for saving admin notes on a staff member.
+ */
+export interface UpdateNotesInput {
+  /** Free-form performance notes / area assignment. Pass null to clear. */
+  notes: string | null;
+}
+
+/**
  * Ride stats for a specific time window.
  */
 export interface PeriodStats {
@@ -202,6 +210,8 @@ export interface StaffProfileStats {
   role: string;
   organization?: string | null;
   area?: string | null;
+  /** Admin-written performance notes / area assignment for this staff member. */
+  notes?: string | null;
   lifetimeTotalRides: number;
   lifetimeTotalKm: number;
   lifetimeAvgKmPerRide: number;
@@ -294,6 +304,11 @@ export interface ProblemDetails {
   detail?: string;
   status?: number;
 }
+
+export type UpdateStaffNotes200 = {
+  staffId: string;
+  notes: string | null;
+};
 
 export type GetRideCalendarParams = {
   /**
