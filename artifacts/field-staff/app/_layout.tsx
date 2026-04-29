@@ -71,6 +71,10 @@ function RootLayoutNav() {
         name="activity/[id]"
         options={{ headerShown: false }}
       />
+      <Stack.Screen
+        name="candidate"
+        options={{ headerShown: false }}
+      />
     </Stack>
   );
 }

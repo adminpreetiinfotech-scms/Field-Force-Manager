@@ -52,6 +52,7 @@ Mobile-first field operations app for distribution/utility staff and ops admins.
 - Trip ledger (`app/(staff)/trips.tsx`)
 - Admin dashboard, live map, tamper-resistant records, and ride report CSV export (`app/(admin)/`)
 - Ride report: date-range + staff filter; `GET /api/activity/trip-report`; CSV download via Blob (web) or expo-sharing (native)
+- **Candidate Registration**: staff/mobilizers submit candidate details + document images; `POST /api/candidates` accepts JSON with base64 images; server saves files to `uploads/candidates/<id>/` and generates a PDF via pdfkit; PDF served at `GET /api/candidates/:id/pdf`; admin views all via `GET /api/admin/candidates` + CSV at `GET /api/admin/candidates/csv`; mobile screens at `app/candidate/register.tsx` and `app/candidate/list.tsx`
 - Offline-first sync via AsyncStorage; auto-syncs after ~4s, manual `Sync` button via `SyncBanner`
 
 **State**: `contexts/AppContext.tsx` — `register()` + `requestOtp()` + `verifyOtp()` actions; persisted to AsyncStorage at key `@field-staff/state-v1`.

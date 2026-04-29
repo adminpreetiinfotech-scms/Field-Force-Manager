@@ -403,6 +403,20 @@ export default function StaffHome() {
                   />
                 }
               />
+              <Button
+                label="Register a candidate"
+                onPress={() => router.push("/candidate/register")}
+                variant="ghost"
+                size="lg"
+                fullWidth
+                icon={
+                  <Feather
+                    name="user-plus"
+                    size={18}
+                    color={colors.foreground}
+                  />
+                }
+              />
             </View>
           </View>
 

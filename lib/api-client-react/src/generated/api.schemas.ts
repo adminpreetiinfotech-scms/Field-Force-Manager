@@ -317,6 +317,36 @@ export interface TripReportRow {
   distanceKm?: number | null;
 }
 
+/**
+ * A candidate registration record.
+ */
+export interface CandidateDto {
+  id: string;
+  name: string;
+  phone: string;
+  fatherName?: string | null;
+  dob?: string | null;
+  gender?: string | null;
+  address?: string | null;
+  area?: string | null;
+  aadhaarNumber?: string | null;
+  education?: string | null;
+  bankAccount?: string | null;
+  bankName?: string | null;
+  ifsc?: string | null;
+  caste?: string | null;
+  photoUrl?: string | null;
+  aadhaarFrontUrl?: string | null;
+  aadhaarBackUrl?: string | null;
+  educationCertUrl?: string | null;
+  bankPassbookUrl?: string | null;
+  casteCertUrl?: string | null;
+  /** URL to download the generated profile PDF. */
+  pdfUrl?: string | null;
+  submittedBy?: string | null;
+  createdAt: string;
+}
+
 export interface ProblemDetails {
   title: string;
   detail?: string;

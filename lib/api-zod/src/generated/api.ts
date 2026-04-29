@@ -627,3 +627,77 @@ export const GetActivityResponse = zod
         .nullish(),
     }),
   );
+
+/**
+ * Admin endpoint — returns all candidate registrations ordered by newest first.
+ * @summary List all candidates
+ */
+export const ListCandidatesResponseItem = zod
+  .object({
+    id: zod.string().uuid(),
+    name: zod.string(),
+    phone: zod.string(),
+    fatherName: zod.string().nullish(),
+    dob: zod.string().nullish(),
+    gender: zod.string().nullish(),
+    address: zod.string().nullish(),
+    area: zod.string().nullish(),
+    aadhaarNumber: zod.string().nullish(),
+    education: zod.string().nullish(),
+    bankAccount: zod.string().nullish(),
+    bankName: zod.string().nullish(),
+    ifsc: zod.string().nullish(),
+    caste: zod.string().nullish(),
+    photoUrl: zod.string().nullish(),
+    aadhaarFrontUrl: zod.string().nullish(),
+    aadhaarBackUrl: zod.string().nullish(),
+    educationCertUrl: zod.string().nullish(),
+    bankPassbookUrl: zod.string().nullish(),
+    casteCertUrl: zod.string().nullish(),
+    pdfUrl: zod
+      .string()
+      .nullish()
+      .describe("URL to download the generated profile PDF."),
+    submittedBy: zod.string().nullish(),
+    createdAt: zod.coerce.date(),
+  })
+  .describe("A candidate registration record.");
+export const ListCandidatesResponse = zod.array(ListCandidatesResponseItem);
+
+/**
+ * @summary Get a single candidate
+ */
+export const GetCandidateParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const GetCandidateResponse = zod
+  .object({
+    id: zod.string().uuid(),
+    name: zod.string(),
+    phone: zod.string(),
+    fatherName: zod.string().nullish(),
+    dob: zod.string().nullish(),
+    gender: zod.string().nullish(),
+    address: zod.string().nullish(),
+    area: zod.string().nullish(),
+    aadhaarNumber: zod.string().nullish(),
+    education: zod.string().nullish(),
+    bankAccount: zod.string().nullish(),
+    bankName: zod.string().nullish(),
+    ifsc: zod.string().nullish(),
+    caste: zod.string().nullish(),
+    photoUrl: zod.string().nullish(),
+    aadhaarFrontUrl: zod.string().nullish(),
+    aadhaarBackUrl: zod.string().nullish(),
+    educationCertUrl: zod.string().nullish(),
+    bankPassbookUrl: zod.string().nullish(),
+    casteCertUrl: zod.string().nullish(),
+    pdfUrl: zod
+      .string()
+      .nullish()
+      .describe("URL to download the generated profile PDF."),
+    submittedBy: zod.string().nullish(),
+    createdAt: zod.coerce.date(),
+  })
+  .describe("A candidate registration record.");

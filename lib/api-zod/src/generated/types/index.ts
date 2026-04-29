@@ -11,6 +11,7 @@ export * from "./activityEvent";
 export * from "./activityKind";
 export * from "./activityPage";
 export * from "./bestDay";
+export * from "./candidateDto";
 export * from "./createActivityInput";
 export * from "./distanceStats";
 export * from "./geoPoint";

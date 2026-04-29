@@ -148,6 +148,75 @@ export default function AdminDashboard() {
 
           <PendingApprovalsSection />
 
+          {/* Candidates quick-access */}
+          <View
+            style={[
+              styles.section,
+              {
+                backgroundColor: colors.card,
+                borderColor: "#1E3A5F" + "33",
+                borderRadius: colors.radius + 4,
+              },
+            ]}
+          >
+            <View style={styles.sectionHeader}>
+              <View>
+                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                  Candidate Registrations
+                </Text>
+                <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
+                  Submit, review and download candidate profiles
+                </Text>
+              </View>
+            </View>
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 4 }}>
+              <Pressable
+                onPress={() => router.push("/candidate/list")}
+                style={({ pressed }) => [
+                  {
+                    flex: 1,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    height: 44,
+                    backgroundColor: "#1E3A5F",
+                    borderRadius: colors.radius,
+                    opacity: pressed ? 0.85 : 1,
+                  },
+                ]}
+              >
+                <Feather name="users" size={15} color="#fff" />
+                <Text style={{ color: "#fff", fontSize: 13, fontFamily: "Inter_600SemiBold" }}>
+                  View All
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => router.push("/candidate/register")}
+                style={({ pressed }) => [
+                  {
+                    flex: 1,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    height: 44,
+                    backgroundColor: colors.muted,
+                    borderColor: "#1E3A5F" + "44",
+                    borderWidth: StyleSheet.hairlineWidth,
+                    borderRadius: colors.radius,
+                    opacity: pressed ? 0.85 : 1,
+                  },
+                ]}
+              >
+                <Feather name="user-plus" size={15} color="#1E3A5F" />
+                <Text style={{ color: "#1E3A5F", fontSize: 13, fontFamily: "Inter_600SemiBold" }}>
+                  Register
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+
           <View style={styles.row}>
             <StatCard
               label="Meter reads"

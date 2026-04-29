@@ -20,6 +20,7 @@ import type {
   ActivityDetail,
   ActivityEvent,
   ActivityPage,
+  CandidateDto,
   CreateActivityInput,
   DistanceStats,
   GetDistanceStatsParams,
@@ -1338,6 +1339,169 @@ export function useGetActivity<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetActivityQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Admin endpoint — returns all candidate registrations ordered by newest first.
+ * @summary List all candidates
+ */
+export const getListCandidatesUrl = () => {
+  return `/api/admin/candidates`;
+};
+
+export const listCandidates = async (
+  options?: RequestInit,
+): Promise<CandidateDto[]> => {
+  return customFetch<CandidateDto[]>(getListCandidatesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListCandidatesQueryKey = () => {
+  return [`/api/admin/candidates`] as const;
+};
+
+export const getListCandidatesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCandidates>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listCandidates>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListCandidatesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listCandidates>>> = ({
+    signal,
+  }) => listCandidates({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCandidates>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCandidatesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCandidates>>
+>;
+export type ListCandidatesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all candidates
+ */
+
+export function useListCandidates<
+  TData = Awaited<ReturnType<typeof listCandidates>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listCandidates>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCandidatesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get a single candidate
+ */
+export const getGetCandidateUrl = (id: string) => {
+  return `/api/candidates/${id}`;
+};
+
+export const getCandidate = async (
+  id: string,
+  options?: RequestInit,
+): Promise<CandidateDto> => {
+  return customFetch<CandidateDto>(getGetCandidateUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCandidateQueryKey = (id: string) => {
+  return [`/api/candidates/${id}`] as const;
+};
+
+export const getGetCandidateQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCandidate>>,
+  TError = ErrorType<ProblemDetails>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCandidate>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetCandidateQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getCandidate>>> = ({
+    signal,
+  }) => getCandidate(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCandidate>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCandidateQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCandidate>>
+>;
+export type GetCandidateQueryError = ErrorType<ProblemDetails>;
+
+/**
+ * @summary Get a single candidate
+ */
+
+export function useGetCandidate<
+  TData = Awaited<ReturnType<typeof getCandidate>>,
+  TError = ErrorType<ProblemDetails>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCandidate>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCandidateQueryOptions(id, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

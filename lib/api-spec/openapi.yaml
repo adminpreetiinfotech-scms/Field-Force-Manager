@@ -14,6 +14,8 @@ tags:
     description: Field activity feed
   - name: staff
     description: Staff directory
+  - name: candidates
+    description: Candidate registrations
 paths:
   /healthz:
     get:
@@ -440,6 +442,48 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ActivityDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /admin/candidates:
+    get:
+      operationId: listCandidates
+      tags: [candidates]
+      summary: List all candidates
+      description: Admin endpoint — returns all candidate registrations ordered by newest first.
+      responses:
+        "200":
+          description: List of candidates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CandidateDto"
+
+  /candidates/{id}:
+    get:
+      operationId: getCandidate
+      tags: [candidates]
+      summary: Get a single candidate
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Candidate details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CandidateDto"
         "404":
           description: Not found
           content:
@@ -977,6 +1021,80 @@ components:
           description: Total distance travelled in kilometres.
       required: [tripRef, staffId, staffName, staffPhone, rideDate, startTime, endTime]
 
+    CandidateDto:
+      type: object
+      description: A candidate registration record.
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        phone:
+          type: string
+        fatherName:
+          type: string
+          nullable: true
+        dob:
+          type: string
+          nullable: true
+        gender:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        area:
+          type: string
+          nullable: true
+        aadhaarNumber:
+          type: string
+          nullable: true
+        education:
+          type: string
+          nullable: true
+        bankAccount:
+          type: string
+          nullable: true
+        bankName:
+          type: string
+          nullable: true
+        ifsc:
+          type: string
+          nullable: true
+        caste:
+          type: string
+          nullable: true
+        photoUrl:
+          type: string
+          nullable: true
+        aadhaarFrontUrl:
+          type: string
+          nullable: true
+        aadhaarBackUrl:
+          type: string
+          nullable: true
+        educationCertUrl:
+          type: string
+          nullable: true
+        bankPassbookUrl:
+          type: string
+          nullable: true
+        casteCertUrl:
+          type: string
+          nullable: true
+        pdfUrl:
+          type: string
+          nullable: true
+          description: URL to download the generated profile PDF.
+        submittedBy:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, name, phone, createdAt]
+
     ProblemDetails:
       type: object
       properties:
@@ -987,3 +1105,4 @@ components:
         status:
           type: integer
       required: [title]
+
