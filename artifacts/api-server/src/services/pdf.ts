@@ -182,11 +182,11 @@ function seg(
   x: number, y: number,
   lbW: number, totW: number,
 ) {
-  t(doc, label, x, y + 2, { size: 7.5, color: GRAY, width: lbW - 1 });
+  t(doc, label, x, y + 2, { size: 7, color: GRAY, width: lbW - 1 });
   hl(doc, x + lbW, y + UL, x + totW, 0.45, LGRAY);
   if (value?.trim()) {
     t(doc, value.trim(), x + lbW + 2, y + 2,
-      { size: 8.5, bold: true, color: DARK, width: totW - lbW - 4 });
+      { size: 7.5, bold: false, color: DARK, width: totW - lbW - 4 });
   }
 }
 
@@ -198,7 +198,7 @@ function aadhaarBoxes(doc: PDFDoc, num: string | null | undefined, x: number, y:
     const bx = x + i * (BW + GAP) + Math.floor(i / 4) * GRPGAP;
     box(doc, bx, y, BW, BH2, 0.5);
     if (digits[i] && digits[i] !== " ") {
-      doc.font("DVB").fontSize(9).fillColor(DARK)
+      doc.font("DVR").fontSize(8.5).fillColor(DARK)
         .text(digits[i]!, bx, y + 2.5, { width: BW, align: "center", lineBreak: false });
     }
   }
@@ -390,7 +390,7 @@ export async function generateCandidatePdf(
        .text("Training Centre Name :", FX, y + 2, { width: tcnLblW, lineBreak: false });
     if (c.skillCentreName?.trim()) {
       t(doc, c.skillCentreName.trim(), FX + tcnLblW + 2, y + 2,
-        { size: 8, color: DARK, width: halfW - tcnLblW - 2 });
+        { size: 7.5, color: DARK, width: halfW - tcnLblW - 2 });
     } else {
       hl(doc, FX + tcnLblW + 2, y + UL, FX + halfW, 0.4, LGRAY);
     }
@@ -425,7 +425,7 @@ export async function generateCandidatePdf(
       box(doc, bx, y + 1, 16, 13, 0.5);
       const ch2 = cidCode[i];
       if (ch2 && ch2 !== " ") {
-        doc.font("DVB").fontSize(8).fillColor(DARK)
+        doc.font("DVR").fontSize(7.5).fillColor(DARK)
            .text(ch2, bx, y + 3.5, { width: 16, align: "center", lineBreak: false });
       }
       bx += 18;
@@ -611,7 +611,7 @@ export async function generateCandidatePdf(
        .text("Place :", FX + 116, y + 2, { width: 32, lineBreak: false });
     hl(doc, FX + 150, y + UL, FX + 310, 0.4, LGRAY);
     if (c.area) {
-      t(doc, c.area, FX + 152, y + 2, { size: 8, color: DARK, width: 155 });
+      t(doc, c.area, FX + 152, y + 2, { size: 7.5, color: DARK, width: 155 });
     }
 
     // Signature area (right side)
@@ -631,7 +631,7 @@ export async function generateCandidatePdf(
        .text("Mobilizer Name :", FX, y + 2, { width: 88, lineBreak: false });
     const mobVal = (c.mobilizer ?? c.submittedBy ?? "").toString();
     if (mobVal) {
-      t(doc, mobVal, FX + 90, y + 2, { size: 8.5, bold: true, color: DARK, width: FW - 93 });
+      t(doc, mobVal, FX + 90, y + 2, { size: 7.5, bold: false, color: DARK, width: FW - 93 });
     }
     // Dotted underline across the mobilizer field
     for (let dx = FX + 90; dx < FE; dx += 5) {
