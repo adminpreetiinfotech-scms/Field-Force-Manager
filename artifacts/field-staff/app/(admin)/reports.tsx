@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
+import { useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -190,6 +191,7 @@ function csvPresetDates(p: CsvPreset): { from: string; to: string } {
 export default function ReportsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const webTop = Platform.OS === "web" ? 67 : 0;
 
   // ── Calendar state ─────────────────────────────────────────────────────────
@@ -297,9 +299,14 @@ export default function ReportsScreen() {
 
   const renderTrip = useCallback(
     ({ item, index }: { item: TripReportRow; index: number }) => (
-      <TripRow item={item} index={index} colors={colors} />
+      <TripRow
+        item={item}
+        index={index}
+        colors={colors}
+        onPress={() => router.push(`/(admin)/mobilizer/${item.staffId}`)}
+      />
     ),
-    [colors],
+    [colors, router],
   );
 
   const maxKm = board?.[0]?.totalKm ?? 1;
@@ -679,6 +686,9 @@ export default function ReportsScreen() {
                 entry={entry}
                 maxKm={maxKm}
                 colors={colors}
+                onPress={() =>
+                  router.push(`/(admin)/mobilizer/${entry.staffId}`)
+                }
               />
             ))}
         </View>
@@ -1027,10 +1037,12 @@ function LeaderboardRow({
   entry,
   maxKm,
   colors,
+  onPress,
 }: {
   entry: LeaderboardEntry;
   maxKm: number;
   colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
+  onPress?: () => void;
 }) {
   const barPct = maxKm > 0 ? entry.totalKm / maxKm : 0;
   const isTop3 = entry.rank <= 3;
@@ -1039,13 +1051,15 @@ function LeaderboardRow({
     : colors.mutedForeground;
 
   return (
-    <View
-      style={[
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
         styles.boardRow,
         {
           backgroundColor: colors.card,
           borderColor: entry.rank === 1 ? "#F59E0B33" : colors.border,
           borderRadius: colors.radius + 2,
+          opacity: pressed ? 0.82 : 1,
         },
       ]}
     >
@@ -1109,7 +1123,9 @@ function LeaderboardRow({
           {entry.tripCount} {entry.tripCount === 1 ? "trip" : "trips"}
         </Text>
       </View>
-    </View>
+      {/* Chevron hint */}
+      <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
+    </Pressable>
   );
 }
 
@@ -1119,19 +1135,23 @@ function TripRow({
   item,
   index,
   colors,
+  onPress,
 }: {
   item: TripReportRow;
   index: number;
   colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
+  onPress?: () => void;
 }) {
   return (
-    <View
-      style={[
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
         styles.tableRow,
         {
           backgroundColor:
             index % 2 === 0 ? colors.background : colors.muted + "66",
           borderBottomColor: colors.border,
+          opacity: pressed ? 0.75 : 1,
         },
       ]}
     >
@@ -1170,7 +1190,8 @@ function TripRow({
       >
         {item.distanceKm != null ? `${item.distanceKm}` : "—"}
       </Text>
-    </View>
+      <Feather name="chevron-right" size={12} color={colors.mutedForeground} style={{ marginLeft: 2 }} />
+    </Pressable>
   );
 }
 

@@ -86,6 +86,10 @@ export default function AdminTabsLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="mobilizer/[id]"
+        options={{ href: null, headerShown: false }}
+      />
     </Tabs>
   );
 }

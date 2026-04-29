@@ -33,6 +33,7 @@ import type {
   RegisterInput,
   RideCalendarMonth,
   Staff,
+  StaffProfileStats,
   TripReportRow,
 } from "./api.schemas";
 
@@ -271,6 +272,95 @@ export const useRegisterStaff = <
 > => {
   return useMutation(getRegisterStaffMutationOptions(options));
 };
+
+/**
+ * @summary Detailed stats for a single mobilizer (rides, km, periods, monthly, recent trips)
+ */
+export const getGetStaffProfileStatsUrl = (staffId: string) => {
+  return `/api/staff/${staffId}/profile-stats`;
+};
+
+export const getStaffProfileStats = async (
+  staffId: string,
+  options?: RequestInit,
+): Promise<StaffProfileStats> => {
+  return customFetch<StaffProfileStats>(getGetStaffProfileStatsUrl(staffId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetStaffProfileStatsQueryKey = (staffId: string) => {
+  return [`/api/staff/${staffId}/profile-stats`] as const;
+};
+
+export const getGetStaffProfileStatsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStaffProfileStats>>,
+  TError = ErrorType<ProblemDetails>,
+>(
+  staffId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStaffProfileStats>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetStaffProfileStatsQueryKey(staffId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getStaffProfileStats>>
+  > = ({ signal }) =>
+    getStaffProfileStats(staffId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!staffId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getStaffProfileStats>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetStaffProfileStatsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStaffProfileStats>>
+>;
+export type GetStaffProfileStatsQueryError = ErrorType<ProblemDetails>;
+
+/**
+ * @summary Detailed stats for a single mobilizer (rides, km, periods, monthly, recent trips)
+ */
+
+export function useGetStaffProfileStats<
+  TData = Awaited<ReturnType<typeof getStaffProfileStats>>,
+  TError = ErrorType<ProblemDetails>,
+>(
+  staffId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStaffProfileStats>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetStaffProfileStatsQueryOptions(staffId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Per-day ride counts for a calendar month (heat-map data)

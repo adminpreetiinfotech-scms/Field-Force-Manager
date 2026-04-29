@@ -75,6 +75,32 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
 
+  /staff/{staffId}/profile-stats:
+    get:
+      operationId: getStaffProfileStats
+      tags: [staff]
+      summary: Detailed stats for a single mobilizer (rides, km, periods, monthly, recent trips)
+      parameters:
+        - in: path
+          name: staffId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Full profile stats for the staff member.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffProfileStats"
+        "404":
+          description: Staff member not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
   /activity/ride-calendar:
     get:
       operationId: getRideCalendar
@@ -572,6 +598,145 @@ components:
           items:
             $ref: "#/components/schemas/StaffDistance"
       required: [date, totalKm, tripCount, perStaff]
+
+    PeriodStats:
+      type: object
+      description: Ride stats for a specific time window.
+      properties:
+        rides:
+          type: integer
+        km:
+          type: number
+      required: [rides, km]
+
+    MonthStat:
+      type: object
+      description: Aggregated stats for a single calendar month.
+      properties:
+        year:
+          type: integer
+        month:
+          type: integer
+          description: 1–12
+        label:
+          type: string
+          description: Human-readable label, e.g. "Apr 2026".
+        rides:
+          type: integer
+        km:
+          type: number
+      required: [year, month, label, rides, km]
+
+    BestDay:
+      type: object
+      description: The single day with the most rides.
+      properties:
+        date:
+          type: string
+          description: YYYY-MM-DD in IST.
+        rideCount:
+          type: integer
+        totalKm:
+          type: number
+      required: [date, rideCount, totalKm]
+
+    RecentTrip:
+      type: object
+      description: A single completed trip for the profile recent-trips list.
+      properties:
+        tripRef:
+          type: string
+        rideDate:
+          type: string
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        distanceKm:
+          type: number
+          nullable: true
+        startLocation:
+          type: string
+          nullable: true
+        endLocation:
+          type: string
+          nullable: true
+      required: [tripRef, rideDate, startTime, endTime]
+
+    StaffProfileStats:
+      type: object
+      description: Full profile and ride stats for a single staff member.
+      properties:
+        staffId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        empCode:
+          type: string
+        phone:
+          type: string
+        role:
+          type: string
+        organization:
+          type: string
+          nullable: true
+        area:
+          type: string
+          nullable: true
+        lifetimeTotalRides:
+          type: integer
+        lifetimeTotalKm:
+          type: number
+        lifetimeAvgKmPerRide:
+          type: number
+        lifetimeActiveDays:
+          type: integer
+        firstRideDate:
+          type: string
+          nullable: true
+          description: YYYY-MM-DD (IST) of first recorded trip, or null.
+        periodToday:
+          $ref: "#/components/schemas/PeriodStats"
+        periodLast7Days:
+          $ref: "#/components/schemas/PeriodStats"
+        periodLast30Days:
+          $ref: "#/components/schemas/PeriodStats"
+        periodThisMonth:
+          $ref: "#/components/schemas/PeriodStats"
+        bestDay:
+          nullable: true
+          oneOf:
+            - $ref: "#/components/schemas/BestDay"
+            - type: "null"
+        monthly:
+          type: array
+          items:
+            $ref: "#/components/schemas/MonthStat"
+          description: Last 6 full calendar months (oldest first).
+        recentTrips:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecentTrip"
+          description: Most recent 10 completed trips, newest first.
+      required:
+        - staffId
+        - name
+        - empCode
+        - phone
+        - role
+        - lifetimeTotalRides
+        - lifetimeTotalKm
+        - lifetimeAvgKmPerRide
+        - lifetimeActiveDays
+        - periodToday
+        - periodLast7Days
+        - periodLast30Days
+        - periodThisMonth
+        - monthly
+        - recentTrips
 
     RideCalendarDay:
       type: object

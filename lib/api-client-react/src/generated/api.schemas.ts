@@ -148,6 +148,78 @@ export interface DistanceStats {
 }
 
 /**
+ * Ride stats for a specific time window.
+ */
+export interface PeriodStats {
+  rides: number;
+  km: number;
+}
+
+/**
+ * Aggregated stats for a single calendar month.
+ */
+export interface MonthStat {
+  year: number;
+  /** 1–12 */
+  month: number;
+  /** Human-readable label, e.g. "Apr 2026". */
+  label: string;
+  rides: number;
+  km: number;
+}
+
+/**
+ * The single day with the most rides.
+ */
+export interface BestDay {
+  /** YYYY-MM-DD in IST. */
+  date: string;
+  rideCount: number;
+  totalKm: number;
+}
+
+/**
+ * A single completed trip for the profile recent-trips list.
+ */
+export interface RecentTrip {
+  tripRef: string;
+  rideDate: string;
+  startTime: string;
+  endTime: string;
+  distanceKm?: number | null;
+  startLocation?: string | null;
+  endLocation?: string | null;
+}
+
+/**
+ * Full profile and ride stats for a single staff member.
+ */
+export interface StaffProfileStats {
+  staffId: string;
+  name: string;
+  empCode: string;
+  phone: string;
+  role: string;
+  organization?: string | null;
+  area?: string | null;
+  lifetimeTotalRides: number;
+  lifetimeTotalKm: number;
+  lifetimeAvgKmPerRide: number;
+  lifetimeActiveDays: number;
+  /** YYYY-MM-DD (IST) of first recorded trip, or null. */
+  firstRideDate?: string | null;
+  periodToday: PeriodStats;
+  periodLast7Days: PeriodStats;
+  periodLast30Days: PeriodStats;
+  periodThisMonth: PeriodStats;
+  bestDay?: BestDay | null;
+  /** Last 6 full calendar months (oldest first). */
+  monthly: MonthStat[];
+  /** Most recent 10 completed trips, newest first. */
+  recentTrips: RecentTrip[];
+}
+
+/**
  * Aggregated ride stats for a single calendar day.
  */
 export interface RideCalendarDay {

@@ -74,6 +74,101 @@ export const RegisterStaffBody = zod
   );
 
 /**
+ * @summary Detailed stats for a single mobilizer (rides, km, periods, monthly, recent trips)
+ */
+export const GetStaffProfileStatsParams = zod.object({
+  staffId: zod.coerce.string().uuid(),
+});
+
+export const GetStaffProfileStatsResponse = zod
+  .object({
+    staffId: zod.string().uuid(),
+    name: zod.string(),
+    empCode: zod.string(),
+    phone: zod.string(),
+    role: zod.string(),
+    organization: zod.string().nullish(),
+    area: zod.string().nullish(),
+    lifetimeTotalRides: zod.number(),
+    lifetimeTotalKm: zod.number(),
+    lifetimeAvgKmPerRide: zod.number(),
+    lifetimeActiveDays: zod.number(),
+    firstRideDate: zod
+      .string()
+      .nullish()
+      .describe("YYYY-MM-DD (IST) of first recorded trip, or null."),
+    periodToday: zod
+      .object({
+        rides: zod.number(),
+        km: zod.number(),
+      })
+      .describe("Ride stats for a specific time window."),
+    periodLast7Days: zod
+      .object({
+        rides: zod.number(),
+        km: zod.number(),
+      })
+      .describe("Ride stats for a specific time window."),
+    periodLast30Days: zod
+      .object({
+        rides: zod.number(),
+        km: zod.number(),
+      })
+      .describe("Ride stats for a specific time window."),
+    periodThisMonth: zod
+      .object({
+        rides: zod.number(),
+        km: zod.number(),
+      })
+      .describe("Ride stats for a specific time window."),
+    bestDay: zod
+      .union([
+        zod
+          .object({
+            date: zod.string().describe("YYYY-MM-DD in IST."),
+            rideCount: zod.number(),
+            totalKm: zod.number(),
+          })
+          .describe("The single day with the most rides."),
+        zod.null(),
+      ])
+      .nullish(),
+    monthly: zod
+      .array(
+        zod
+          .object({
+            year: zod.number(),
+            month: zod.number().describe("1–12"),
+            label: zod
+              .string()
+              .describe('Human-readable label, e.g. \"Apr 2026\".'),
+            rides: zod.number(),
+            km: zod.number(),
+          })
+          .describe("Aggregated stats for a single calendar month."),
+      )
+      .describe("Last 6 full calendar months (oldest first)."),
+    recentTrips: zod
+      .array(
+        zod
+          .object({
+            tripRef: zod.string(),
+            rideDate: zod.string(),
+            startTime: zod.coerce.date(),
+            endTime: zod.coerce.date(),
+            distanceKm: zod.number().nullish(),
+            startLocation: zod.string().nullish(),
+            endLocation: zod.string().nullish(),
+          })
+          .describe(
+            "A single completed trip for the profile recent-trips list.",
+          ),
+      )
+      .describe("Most recent 10 completed trips, newest first."),
+  })
+  .describe("Full profile and ride stats for a single staff member.");
+
+/**
  * @summary Per-day ride counts for a calendar month (heat-map data)
  */
 export const GetRideCalendarQueryParams = zod.object({
