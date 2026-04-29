@@ -23,11 +23,13 @@ import type {
   CreateActivityInput,
   DistanceStats,
   GetDistanceStatsParams,
+  GetTripReportParams,
   HealthStatus,
   ListActivityParams,
   ProblemDetails,
   RegisterInput,
   Staff,
+  TripReportRow,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -265,6 +267,100 @@ export const useRegisterStaff = <
 > => {
   return useMutation(getRegisterStaffMutationOptions(options));
 };
+
+/**
+ * @summary Ride report — completed trips with staff details for CSV export
+ */
+export const getGetTripReportUrl = (params: GetTripReportParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/activity/trip-report?${stringifiedParams}`
+    : `/api/activity/trip-report`;
+};
+
+export const getTripReport = async (
+  params: GetTripReportParams,
+  options?: RequestInit,
+): Promise<TripReportRow[]> => {
+  return customFetch<TripReportRow[]>(getGetTripReportUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetTripReportQueryKey = (params?: GetTripReportParams) => {
+  return [`/api/activity/trip-report`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetTripReportQueryOptions = <
+  TData = Awaited<ReturnType<typeof getTripReport>>,
+  TError = ErrorType<ProblemDetails>,
+>(
+  params: GetTripReportParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getTripReport>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetTripReportQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getTripReport>>> = ({
+    signal,
+  }) => getTripReport(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getTripReport>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetTripReportQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getTripReport>>
+>;
+export type GetTripReportQueryError = ErrorType<ProblemDetails>;
+
+/**
+ * @summary Ride report — completed trips with staff details for CSV export
+ */
+
+export function useGetTripReport<
+  TData = Awaited<ReturnType<typeof getTripReport>>,
+  TError = ErrorType<ProblemDetails>,
+>(
+  params: GetTripReportParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getTripReport>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetTripReportQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * Returns the activity feed in reverse-chronological order. Use `cursor`

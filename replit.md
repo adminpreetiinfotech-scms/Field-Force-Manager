@@ -34,23 +34,27 @@ Mobile-first field operations app for distribution/utility staff and ops admins.
 
 **Roles & demo login**
 
-- Phone `9999999999` → Admin (Anita Sharma, ADM-001)
-- Any other 10-digit number → Field staff (auto-assigned name & FS code)
+- Registration flow: welcome screen → "Register as Admin" or "Register as Staff" → OTP verify
+- Phone `9999999999` → Demo Admin (Anita Sharma, ADM-001, bypasses registration)
+- Phone `9876543210` → Demo Field Staff (bypasses registration)
 - OTP is mocked: always `1234`
+- `adminCode`: admins get a 6-char invite code on registration; staff can supply it to link to an org
 
 **Pillars**: Discipline, Transparency, Accuracy, Control — surfaced in UI as colored pillar badges.
 
 **Key features**
 
+- Registration: welcome → register-admin / register-staff → OTP verify; `POST /api/staff/register`
 - OTP login (`app/(auth)/phone.tsx`, `otp.tsx`)
 - Selfie + GPS check-in / check-out (`app/attendance/check-in.tsx`)
 - Live shift timer with auto-kilometer GPS tracking (`app/(staff)/index.tsx`)
 - Meter reading capture with photo + consumer no. + GPS (`app/meter/add.tsx`)
 - Trip ledger (`app/(staff)/trips.tsx`)
-- Admin dashboard, live map, and tamper-resistant records (`app/(admin)/`)
+- Admin dashboard, live map, tamper-resistant records, and ride report CSV export (`app/(admin)/`)
+- Ride report: date-range + staff filter; `GET /api/activity/trip-report`; CSV download via Blob (web) or expo-sharing (native)
 - Offline-first sync via AsyncStorage; auto-syncs after ~4s, manual `Sync` button via `SyncBanner`
 
-**State**: `contexts/AppContext.tsx` (no backend; persisted to AsyncStorage at key `@field-staff/state-v1`).
+**State**: `contexts/AppContext.tsx` — `register()` + `requestOtp()` + `verifyOtp()` actions; persisted to AsyncStorage at key `@field-staff/state-v1`.
 
 **Maps**: `react-native-maps` is used on native only. The web build uses a schematic SVG-grid placeholder. To keep the import platform-safe, the native map lives in `components/admin/MapView.tsx` with a web stub at `components/admin/MapView.web.tsx` (Metro picks the right one). Do not put `.web.tsx` files inside `app/`, since expo-router's `require.context` would still load the native variant.
 

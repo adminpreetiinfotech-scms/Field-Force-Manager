@@ -147,11 +147,50 @@ export interface DistanceStats {
   perStaff: StaffDistance[];
 }
 
+/**
+ * A single completed trip for the ride report / CSV export.
+ */
+export interface TripReportRow {
+  /** Shared tripRef that links the start and end events. */
+  tripRef: string;
+  staffId: string;
+  staffName: string;
+  /** 10-digit mobile number from the staff table. */
+  staffPhone: string;
+  /** Calendar date of the trip (YYYY-MM-DD, in IST). */
+  rideDate: string;
+  /** When the trip started (ISO-8601 UTC). */
+  startTime: string;
+  /** When the trip ended (ISO-8601 UTC). */
+  endTime: string;
+  /** Human-readable start coords, e.g. '28.6139, 77.2090'. */
+  startLocation?: string | null;
+  /** Human-readable end coords, e.g. '28.5355, 77.3910'. */
+  endLocation?: string | null;
+  /** Total distance travelled in kilometres. */
+  distanceKm?: number | null;
+}
+
 export interface ProblemDetails {
   title: string;
   detail?: string;
   status?: number;
 }
+
+export type GetTripReportParams = {
+  /**
+   * Start date, inclusive (YYYY-MM-DD).
+   */
+  from: string;
+  /**
+   * End date, inclusive (YYYY-MM-DD).
+   */
+  to: string;
+  /**
+   * Filter to a single staff member. Omit for all staff.
+   */
+  staffId?: string;
+};
 
 export type ListActivityParams = {
   /**

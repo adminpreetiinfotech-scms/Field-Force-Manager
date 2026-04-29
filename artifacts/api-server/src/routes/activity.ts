@@ -224,6 +224,142 @@ router.get("/activity", async (req, res, next) => {
   }
 });
 
+router.get("/activity/trip-report", async (req, res, next) => {
+  try {
+    const rawFrom = req.query.from as string | undefined;
+    const rawTo = req.query.to as string | undefined;
+    const rawStaffId = req.query.staffId as string | undefined;
+
+    const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+    if (!rawFrom || !DATE_RE.test(rawFrom) || !rawTo || !DATE_RE.test(rawTo)) {
+      res.status(400).json({
+        title: "Invalid query parameters",
+        detail: "`from` and `to` are required and must be YYYY-MM-DD",
+        status: 400,
+      });
+      return;
+    }
+    if (rawStaffId && !/^[0-9a-fA-F-]{36}$/.test(rawStaffId)) {
+      res.status(400).json({
+        title: "Invalid staffId",
+        detail: "staffId must be a UUID",
+        status: 400,
+      });
+      return;
+    }
+
+    const startOfFrom = new Date(`${rawFrom}T00:00:00.000Z`);
+    const endOfTo = new Date(`${rawTo}T23:59:59.999Z`);
+
+    // Pull all trip-start and trip-end events within the date window.
+    const tripConds = [
+      inArray(activityEventsTable.kind, ["trip-start", "trip-end"]),
+      gte(activityEventsTable.occurredAt, startOfFrom),
+      lt(activityEventsTable.occurredAt, new Date(endOfTo.getTime() + 1)),
+    ] as ReturnType<typeof eq>[];
+    if (rawStaffId) {
+      tripConds.push(eq(activityEventsTable.staffId, rawStaffId));
+    }
+
+    const tripRows = await db
+      .select()
+      .from(activityEventsTable)
+      .where(and(...tripConds))
+      .orderBy(activityEventsTable.occurredAt);
+
+    // Group by tripRef: build a map of tripRef → { start, end } rows.
+    type TripAccum = {
+      start: (typeof tripRows)[0] | null;
+      end: (typeof tripRows)[0] | null;
+    };
+    const byRef = new Map<string, TripAccum>();
+    for (const row of tripRows) {
+      if (!row.tripRef) continue;
+      const ref = row.tripRef;
+      let acc = byRef.get(ref);
+      if (!acc) {
+        acc = { start: null, end: null };
+        byRef.set(ref, acc);
+      }
+      if (row.kind === "trip-start") acc.start = row;
+      if (row.kind === "trip-end") acc.end = row;
+    }
+
+    // Keep only completed trips (have both start and end).
+    const completed = Array.from(byRef.entries())
+      .filter(([, v]) => v.start && v.end)
+      .map(([ref, v]) => ({ tripRef: ref, start: v.start!, end: v.end! }));
+
+    if (completed.length === 0) {
+      res.json([]);
+      return;
+    }
+
+    // Fetch phone numbers for each unique staffId in the results.
+    const uniqueStaffIds = [
+      ...new Set(completed.map((t) => t.start.staffId)),
+    ];
+    const staffRows = await db
+      .select({ id: staffTable.id, phone: staffTable.phone })
+      .from(staffTable)
+      .where(inArray(staffTable.id, uniqueStaffIds));
+    const phoneMap = new Map(staffRows.map((s) => [s.id, s.phone]));
+
+    const formatCoords = (
+      p: ActivityPayload | null,
+      field: "origin" | "destination" | "location",
+    ): string | null => {
+      const geo = p?.[field];
+      if (!geo) return null;
+      return `${geo.latitude.toFixed(4)}, ${geo.longitude.toFixed(4)}`;
+    };
+
+    const toIST = (d: Date): string => {
+      // Return YYYY-MM-DD for a date shifted to IST (+05:30).
+      const offset = 5.5 * 60 * 60 * 1000;
+      const local = new Date(d.getTime() + offset);
+      return local.toISOString().slice(0, 10);
+    };
+
+    const report = completed.map(({ tripRef, start, end }) => {
+      const startPayload = (start.payload || {}) as ActivityPayload;
+      const endPayload = (end.payload || {}) as ActivityPayload;
+      return {
+        tripRef,
+        staffId: start.staffId,
+        staffName: start.staffName,
+        staffPhone: phoneMap.get(start.staffId) ?? "",
+        rideDate: toIST(start.occurredAt as Date),
+        startTime: start.occurredAt,
+        endTime: end.occurredAt,
+        startLocation:
+          formatCoords(startPayload, "origin") ??
+          formatCoords(startPayload, "location"),
+        endLocation:
+          formatCoords(endPayload, "destination") ??
+          formatCoords(endPayload, "location"),
+        distanceKm:
+          typeof endPayload.distanceKm === "number"
+            ? Math.round(endPayload.distanceKm * 10) / 10
+            : null,
+      };
+    });
+
+    // Sort by rideDate desc, then startTime desc.
+    report.sort((a, b) => {
+      const d = b.rideDate.localeCompare(a.rideDate);
+      if (d !== 0) return d;
+      return (
+        new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
+      );
+    });
+
+    res.json(report);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get("/activity/distance-stats", async (req, res, next) => {
   try {
     const rawDate = req.query.date as string | undefined;

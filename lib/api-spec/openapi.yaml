@@ -75,6 +75,47 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
 
+  /activity/trip-report:
+    get:
+      operationId: getTripReport
+      tags: [activity]
+      summary: Ride report — completed trips with staff details for CSV export
+      parameters:
+        - in: query
+          name: from
+          required: true
+          schema:
+            type: string
+            description: Start date, inclusive (YYYY-MM-DD).
+        - in: query
+          name: to
+          required: true
+          schema:
+            type: string
+            description: End date, inclusive (YYYY-MM-DD).
+        - in: query
+          name: staffId
+          required: false
+          schema:
+            type: string
+            format: uuid
+            description: Filter to a single staff member. Omit for all staff.
+      responses:
+        "200":
+          description: List of completed trips within the date range.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TripReportRow"
+        "400":
+          description: Invalid query parameters.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
   /activity:
     get:
       operationId: listActivity
@@ -463,6 +504,47 @@ components:
           items:
             $ref: "#/components/schemas/StaffDistance"
       required: [date, totalKm, tripCount, perStaff]
+
+    TripReportRow:
+      type: object
+      description: A single completed trip for the ride report / CSV export.
+      properties:
+        tripRef:
+          type: string
+          format: uuid
+          description: Shared tripRef that links the start and end events.
+        staffId:
+          type: string
+          format: uuid
+        staffName:
+          type: string
+        staffPhone:
+          type: string
+          description: 10-digit mobile number from the staff table.
+        rideDate:
+          type: string
+          description: Calendar date of the trip (YYYY-MM-DD, in IST).
+        startTime:
+          type: string
+          format: date-time
+          description: When the trip started (ISO-8601 UTC).
+        endTime:
+          type: string
+          format: date-time
+          description: When the trip ended (ISO-8601 UTC).
+        startLocation:
+          type: string
+          nullable: true
+          description: "Human-readable start coords, e.g. '28.6139, 77.2090'."
+        endLocation:
+          type: string
+          nullable: true
+          description: "Human-readable end coords, e.g. '28.5355, 77.3910'."
+        distanceKm:
+          type: number
+          nullable: true
+          description: Total distance travelled in kilometres.
+      required: [tripRef, staffId, staffName, staffPhone, rideDate, startTime, endTime]
 
     ProblemDetails:
       type: object

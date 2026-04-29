@@ -74,6 +74,49 @@ export const RegisterStaffBody = zod
   );
 
 /**
+ * @summary Ride report — completed trips with staff details for CSV export
+ */
+export const GetTripReportQueryParams = zod.object({
+  from: zod.coerce.string(),
+  to: zod.coerce.string(),
+  staffId: zod.coerce.string().uuid().optional(),
+});
+
+export const GetTripReportResponseItem = zod
+  .object({
+    tripRef: zod
+      .string()
+      .uuid()
+      .describe("Shared tripRef that links the start and end events."),
+    staffId: zod.string().uuid(),
+    staffName: zod.string(),
+    staffPhone: zod
+      .string()
+      .describe("10-digit mobile number from the staff table."),
+    rideDate: zod
+      .string()
+      .describe("Calendar date of the trip (YYYY-MM-DD, in IST)."),
+    startTime: zod.coerce
+      .date()
+      .describe("When the trip started (ISO-8601 UTC)."),
+    endTime: zod.coerce.date().describe("When the trip ended (ISO-8601 UTC)."),
+    startLocation: zod
+      .string()
+      .nullish()
+      .describe("Human-readable start coords, e.g. '28.6139, 77.2090'."),
+    endLocation: zod
+      .string()
+      .nullish()
+      .describe("Human-readable end coords, e.g. '28.5355, 77.3910'."),
+    distanceKm: zod
+      .number()
+      .nullish()
+      .describe("Total distance travelled in kilometres."),
+  })
+  .describe("A single completed trip for the ride report \/ CSV export.");
+export const GetTripReportResponse = zod.array(GetTripReportResponseItem);
+
+/**
  * Returns the activity feed in reverse-chronological order. Use `cursor`
 for paginating older events and `since` for incremental polling.
 
