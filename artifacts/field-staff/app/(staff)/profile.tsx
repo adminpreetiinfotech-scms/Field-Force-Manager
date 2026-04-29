@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button } from "@/components/Button";
 import { PillarsRow } from "@/components/PillarBadge";
+import { RoleSwitcher } from "@/components/RoleSwitcher";
 import { useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -158,6 +159,8 @@ export default function StaffProfile() {
           <PillarsRow />
         </View>
       </View>
+
+      <RoleSwitcher />
 
       <View
         style={[

@@ -103,6 +103,7 @@ type AppActions = {
   endTrip: (km: number, end: GeoPoint | null) => Promise<void>;
   updateActiveTripKm: (km: number) => void;
   appendTripPoint: (point: GeoPoint) => void;
+  switchRole: (target: "admin" | "staff") => Promise<User>;
   syncNow: () => Promise<void>;
   updateStaffLocation: (loc: GeoPoint) => void;
 };
@@ -432,6 +433,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setState((s) => ({ ...s, user: null, pendingPhone: null, activeTripId: null }));
   }, []);
 
+  const switchRole = useCallback(async (target: "admin" | "staff") => {
+    const cur = stateRef.current.user;
+    let next: User;
+    if (target === "admin") {
+      next = {
+        id: "A-001",
+        name: "Anita Sharma",
+        phone: seedAdminPhone,
+        role: "admin",
+        empCode: "ADM-001",
+      };
+    } else if (cur && cur.role === "staff") {
+      // Already staff — no-op identity, just normalize.
+      next = cur;
+    } else {
+      // Switching from admin to staff → use a fixed demo staff identity so the
+      // toggle is reproducible across sessions.
+      next = {
+        id: "S-3210",
+        name: "Demo Field Staff",
+        phone: "9876543210",
+        role: "staff",
+        empCode: "FS-3210",
+      };
+    }
+    setState((s) => ({ ...s, user: next, activeTripId: null }));
+    return next;
+  }, []);
+
   const addAttendance = useCallback(
     async (record: Omit<AttendanceRecord, "id" | "synced">) => {
       const full: AttendanceRecord = { ...record, id: genId(), synced: false };
@@ -563,6 +593,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       endTrip,
       updateActiveTripKm,
       appendTripPoint,
+      switchRole,
       syncNow,
       updateStaffLocation,
     }),
@@ -577,6 +608,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       endTrip,
       updateActiveTripKm,
       appendTripPoint,
+      switchRole,
       syncNow,
       updateStaffLocation,
     ],
