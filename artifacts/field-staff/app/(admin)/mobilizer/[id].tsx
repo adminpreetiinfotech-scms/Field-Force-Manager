@@ -18,6 +18,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import {
   getGetStaffProfileStatsQueryKey,
+  getTripReport,
   useGetStaffProfileStats,
   useUpdateStaffNotes,
   type MonthStat,
@@ -25,6 +26,7 @@ import {
 } from "@workspace/api-client-react";
 
 import { useColors } from "@/hooks/useColors";
+import { buildCsv, exportCsvFile } from "@/utils/csvExport";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -89,6 +91,29 @@ export default function MobilizerProfile() {
       setNotesEditing(true);
     }
   }, [editNotes, data, isLoading]);
+
+  // ── CSV export ──────────────────────────────────────────────────────────────
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    if (!id || !data) return;
+    setExporting(true);
+    try {
+      const from = "2020-01-01";
+      const to = new Date().toISOString().slice(0, 10);
+      const rows = await getTripReport({ staffId: id, from, to });
+      if (!rows.length) {
+        Alert.alert("No trips", "This mobilizer has no recorded trips to export.");
+        return;
+      }
+      const safeName = data.name.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase();
+      await exportCsvFile(buildCsv(rows), `rides_${safeName}_${to}.csv`);
+    } catch (e: any) {
+      Alert.alert("Export failed", e?.message || "Could not generate CSV.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const { mutate: saveNotes, isPending: notesSaving } = useUpdateStaffNotes({
     mutation: {
@@ -192,7 +217,28 @@ export default function MobilizerProfile() {
         >
           Mobilizer Profile
         </Text>
-        <View style={{ width: 38 }} />
+        <Pressable
+          onPress={handleExport}
+          disabled={exporting}
+          style={({ pressed }) => [
+            styles.exportBtn,
+            {
+              backgroundColor: colors.muted,
+              borderRadius: colors.radius,
+              opacity: pressed || exporting ? 0.6 : 1,
+            },
+          ]}
+          hitSlop={8}
+        >
+          {exporting ? (
+            <ActivityIndicator size={13} color={colors.primary} />
+          ) : (
+            <Feather name="download" size={14} color={colors.foreground} />
+          )}
+          <Text style={[styles.exportBtnText, { color: colors.foreground }]}>
+            CSV
+          </Text>
+        </Pressable>
       </View>
 
       <ScrollView
@@ -841,6 +887,18 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     letterSpacing: -0.2,
     textAlign: "center",
+  },
+  exportBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    minWidth: 38,
+  },
+  exportBtnText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
   },
   // Identity card
   identityCard: {
