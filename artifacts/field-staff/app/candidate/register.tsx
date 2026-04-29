@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import * as Linking from "expo-linking";
 import * as Network from "expo-network";
@@ -166,6 +167,53 @@ async function captureWithCamera(setter: (img: ImageData | null) => void): Promi
 
 // Keep legacy alias so all existing () => pickImage(setState) call-sites work unchanged
 const pickImage = captureWithCamera;
+
+// ─── Passport-photo capture: camera-only, 7:9 crop, 350×450 resize ──────────
+// Returns the processed ImageData or null on cancel / failure.
+async function capturePassportPhoto(): Promise<ImageData | null> {
+  const { status } = await ImagePicker.requestCameraPermissionsAsync();
+  if (status !== "granted") {
+    Alert.alert(
+      "Camera Permission Required",
+      "Camera access is needed to capture the passport photo. Gallery upload is disabled.",
+    );
+    return null;
+  }
+
+  const result = await ImagePicker.launchCameraAsync({
+    mediaTypes: ["images"] as ImagePicker.MediaType[],
+    base64: false,           // raw uri first; we'll re-encode after manipulation
+    quality: 1.0,            // capture at full quality; we'll compress below
+    allowsEditing: true,
+    aspect: [7, 9],          // passport ratio 3.5 × 4.5 cm = 7:9
+  });
+
+  if (result.canceled || !result.assets[0]) return null;
+
+  const rawUri = result.assets[0].uri;
+
+  // Resize to 350 × 450 px  (≈ 3.5 × 4.5 cm at 100 dpi — sharp but compact)
+  // and re-encode as JPEG at 85% quality for a clean, non-heavy file.
+  const manipulated = await ImageManipulator.manipulateAsync(
+    rawUri,
+    [{ resize: { width: 350, height: 450 } }],
+    { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG, base64: true },
+  );
+
+  if (!manipulated.base64 || manipulated.base64.length < 2000) {
+    Alert.alert(
+      "Photo Appears Blank",
+      "The captured photo looks blank or very dark. Try again in good lighting with your face clearly visible.",
+    );
+    return null;
+  }
+
+  return {
+    uri: manipulated.uri,
+    base64: manipulated.base64,
+    mimeType: "image/jpeg",
+  };
+}
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
 
@@ -399,6 +447,50 @@ function AadhaarInput({ value, onChange }: { value: string; onChange: (v: string
   );
 }
 
+// ─── Passport photo preview & confirm modal ──────────────────────────────────
+function PassportPhotoModal({
+  pending, onRetake, onConfirm, onCancel,
+}: {
+  pending: ImageData | null;
+  onRetake: () => void;
+  onConfirm: (img: ImageData) => void;
+  onCancel: () => void;
+}) {
+  return (
+    <Modal visible={!!pending} animationType="fade" transparent onRequestClose={onCancel}>
+      <View style={styles.ppOverlay}>
+        <View style={styles.ppCard}>
+          <Text style={styles.ppTitle}>Passport Photo Preview</Text>
+          <Text style={styles.ppHint}>Check: face centered, clearly visible, no shadows</Text>
+          {pending && (
+            <Image
+              source={{ uri: pending.uri }}
+              style={styles.ppPreview}
+              resizeMode="contain"
+            />
+          )}
+          <View style={styles.ppActions}>
+            <TouchableOpacity style={styles.ppRetakeBtn} onPress={onRetake}>
+              <Feather name="refresh-cw" size={16} color={ACCENT} />
+              <Text style={styles.ppRetakeText}>Retake</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.ppConfirmBtn}
+              onPress={() => pending && onConfirm(pending)}
+            >
+              <Feather name="check" size={16} color="#fff" />
+              <Text style={styles.ppConfirmText}>Use This Photo</Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity onPress={onCancel} style={styles.ppCancelBtn}>
+            <Text style={styles.ppCancelText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 function PhotoBox({ label, value, onPick, onClear }: {
   label: string; value: ImageData | null;
   onPick: () => void; onClear: () => void;
@@ -407,9 +499,15 @@ function PhotoBox({ label, value, onPick, onClear }: {
     return (
       <View style={styles.photoBoxFilled}>
         <Image source={{ uri: value.uri }} style={styles.photoImg} resizeMode="cover" />
-        <TouchableOpacity onPress={onClear} style={styles.photoClearBtn}>
-          <Feather name="x" size={14} color="#fff" />
-        </TouchableOpacity>
+        <View style={styles.photoFilledActions}>
+          <TouchableOpacity onPress={onPick} style={styles.photoRetakeBtn}>
+            <Feather name="refresh-cw" size={11} color="#fff" />
+            <Text style={styles.photoRetakeText}>Retake</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={onClear} style={styles.photoClearBtn}>
+            <Feather name="x" size={14} color="#fff" />
+          </TouchableOpacity>
+        </View>
         <Text style={styles.photoLabel}>{label}</Text>
       </View>
     );
@@ -417,11 +515,11 @@ function PhotoBox({ label, value, onPick, onClear }: {
   return (
     <TouchableOpacity onPress={onPick} style={styles.photoBoxEmpty}>
       <View style={styles.photoIcon}>
-        <Feather name="camera" size={24} color={MUTED} />
+        <Feather name="camera" size={24} color={ACCENT} />
       </View>
       <Text style={styles.photoBoxLabel}>{label}</Text>
       <Text style={styles.photoBoxSub}>3.5 × 4.5 cm</Text>
-      <Text style={styles.photoBoxTap}>Tap to upload</Text>
+      <Text style={styles.photoBoxTap}>Tap to capture</Text>
     </TouchableOpacity>
   );
 }
@@ -709,6 +807,13 @@ export default function CandidateRegisterScreen() {
 
   // ─ Documents
   const [photo, setPhoto] = useState<ImageData | null>(null);
+  const [pendingPhoto, setPendingPhoto] = useState<ImageData | null>(null);
+
+  async function handleCapturePhoto() {
+    const img = await capturePassportPhoto();
+    if (img) setPendingPhoto(img);
+  }
+
   const [aadhaarFront, setAadhaarFront] = useState<ImageData | null>(null);
   const [aadhaarBack, setAadhaarBack] = useState<ImageData | null>(null);
   const [educationCert, setEducationCert] = useState<ImageData | null>(null);
@@ -1095,6 +1200,18 @@ export default function CandidateRegisterScreen() {
 
   return (
     <View style={styles.root}>
+      {/* Passport photo preview modal — always mounted, shown via pendingPhoto */}
+      <PassportPhotoModal
+        pending={pendingPhoto}
+        onRetake={async () => {
+          setPendingPhoto(null);
+          const img = await capturePassportPhoto();
+          if (img) setPendingPhoto(img);
+        }}
+        onConfirm={(img) => { setPhoto(img); setPendingPhoto(null); }}
+        onCancel={() => setPendingPhoto(null)}
+      />
+
       {/* Nav header */}
       <View style={[styles.navHeader, { paddingTop: insets.top + webTop }]}>
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
@@ -1169,7 +1286,7 @@ export default function CandidateRegisterScreen() {
             <PhotoBox
               label="Passport Photo"
               value={photo}
-              onPick={() => pickImage(setPhoto)}
+              onPick={handleCapturePhoto}
               onClear={() => setPhoto(null)}
             />
           </View>
@@ -1834,15 +1951,115 @@ const styles = StyleSheet.create({
     backgroundColor: "#F9FAFB",
   },
   photoClearBtn: {
-    position: "absolute",
-    top: 2,
-    right: 2,
     backgroundColor: "rgba(0,0,0,0.6)",
     borderRadius: 10,
     width: 20,
     height: 20,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  photoFilledActions: {
+    position: "absolute" as const,
+    top: 2,
+    right: 2,
+    flexDirection: "row" as const,
+    gap: 3,
+    alignItems: "center" as const,
+  },
+  photoRetakeBtn: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 2,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    borderRadius: 10,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+  },
+  photoRetakeText: {
+    fontSize: 8,
+    color: "#fff",
+    fontFamily: "Inter_500Medium",
+  },
+
+  // ── Passport photo preview modal ──────────────────────────────
+  ppOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.75)",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    paddingHorizontal: 24,
+  },
+  ppCard: {
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 24,
+    width: "100%",
+    alignItems: "center" as const,
+    gap: 12,
+  },
+  ppTitle: {
+    fontSize: 17,
+    fontFamily: "Inter_700Bold",
+    color: "#111",
+    textAlign: "center" as const,
+  },
+  ppHint: {
+    fontSize: 12,
+    color: MUTED,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center" as const,
+    lineHeight: 18,
+  },
+  ppPreview: {
+    width: 210,
+    height: 270,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#DDD",
+    backgroundColor: "#F3F4F6",
+  },
+  ppActions: {
+    flexDirection: "row" as const,
+    gap: 12,
+    marginTop: 4,
+  },
+  ppRetakeBtn: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 6,
+    borderWidth: 1.5,
+    borderColor: ACCENT,
+    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 11,
+  },
+  ppRetakeText: {
+    color: ACCENT,
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+  },
+  ppConfirmBtn: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 6,
+    backgroundColor: SUCCESS_GREEN,
+    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 11,
+  },
+  ppConfirmText: {
+    color: "#fff",
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+  },
+  ppCancelBtn: {
+    paddingVertical: 6,
+  },
+  ppCancelText: {
+    fontSize: 13,
+    color: MUTED,
+    fontFamily: "Inter_400Regular",
+    textDecorationLine: "underline" as const,
   },
 
   // ── Document cards ────────────────────────────────────────────
