@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
 
@@ -10,9 +10,19 @@ type Props = {
   icon?: keyof typeof Feather.glyphMap;
   trend?: string;
   tint?: string;
+  loading?: boolean;
+  error?: boolean;
 };
 
-export function StatCard({ label, value, icon, trend, tint }: Props) {
+export function StatCard({
+  label,
+  value,
+  icon,
+  trend,
+  tint,
+  loading,
+  error,
+}: Props) {
   const colors = useColors();
   const accent = tint || colors.primary;
   return (
@@ -27,21 +37,55 @@ export function StatCard({ label, value, icon, trend, tint }: Props) {
       ]}
     >
       <View style={styles.headerRow}>
-        <Text style={[styles.label, { color: colors.mutedForeground }]}>{label}</Text>
+        <Text style={[styles.label, { color: colors.mutedForeground }]}>
+          {label}
+        </Text>
         {icon ? (
           <View
             style={[
               styles.iconWrap,
-              { backgroundColor: accent + "1A", borderRadius: colors.radius - 4 },
+              {
+                backgroundColor: accent + "1A",
+                borderRadius: colors.radius - 4,
+              },
             ]}
           >
-            <Feather name={icon} size={14} color={accent} />
+            {loading ? (
+              <ActivityIndicator size="small" color={accent} />
+            ) : (
+              <Feather name={icon} size={14} color={error ? colors.destructive : accent} />
+            )}
           </View>
         ) : null}
       </View>
-      <Text style={[styles.value, { color: colors.foreground }]}>{value}</Text>
-      {trend ? (
-        <Text style={[styles.trend, { color: accent }]}>{trend}</Text>
+
+      {loading ? (
+        <View
+          style={[
+            styles.skeleton,
+            { backgroundColor: colors.mutedForeground + "22" },
+          ]}
+        />
+      ) : (
+        <Text
+          style={[
+            styles.value,
+            { color: error ? colors.mutedForeground : colors.foreground },
+          ]}
+        >
+          {value}
+        </Text>
+      )}
+
+      {!loading && trend ? (
+        <Text
+          style={[
+            styles.trend,
+            { color: error ? colors.destructive : accent },
+          ]}
+        >
+          {trend}
+        </Text>
       ) : null}
     </View>
   );
@@ -76,6 +120,11 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontFamily: "Inter_700Bold",
     letterSpacing: -0.5,
+  },
+  skeleton: {
+    height: 28,
+    borderRadius: 6,
+    marginTop: 2,
   },
   trend: {
     fontSize: 12,

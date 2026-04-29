@@ -15,6 +15,11 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import {
+  getGetDistanceStatsQueryKey,
+  useGetDistanceStats,
+} from "@workspace/api-client-react";
+
 import { Button } from "@/components/Button";
 import { PillarsRow } from "@/components/PillarBadge";
 import { StatCard } from "@/components/StatCard";
@@ -198,11 +203,24 @@ export default function StaffHome() {
       m.staffId === user?.id &&
       new Date(m.timestamp).toISOString().slice(0, 10) === today,
   ).length;
-  const todayKm = activeTrip
-    ? activeTrip.km
-    : trips
-        .filter((t) => t.staffId === user?.id && t.date === today)
-        .reduce((s, t) => s + t.km, 0);
+
+  const distanceParams = { date: today, staffId: user?.id ?? undefined };
+  const {
+    data: distanceData,
+    isLoading: distanceLoading,
+    isError: distanceError,
+  } = useGetDistanceStats(distanceParams, {
+    query: {
+      queryKey: getGetDistanceStatsQueryKey(distanceParams),
+      enabled: !!user?.id,
+      refetchInterval: 30_000,
+      staleTime: 15_000,
+    },
+  });
+
+  // Use live GPS km while a trip is in progress; fall back to server total.
+  const serverKm = distanceData?.totalKm ?? 0;
+  const todayKm = activeTrip ? activeTrip.km : serverKm;
 
   const elapsed = isCheckedIn && lastEntry ? now - lastEntry.timestamp : 0;
   const hours = Math.floor(elapsed / 3600000);
@@ -307,9 +325,30 @@ export default function StaffHome() {
           <View style={styles.row}>
             <StatCard
               label="Distance today"
-              value={`${todayKm.toFixed(1)} km`}
+              value={
+                distanceError
+                  ? "—"
+                  : activeTrip
+                    ? `${todayKm.toFixed(1)} km`
+                    : distanceLoading && !distanceData
+                      ? "..."
+                      : todayKm === 0
+                        ? "0 km"
+                        : `${todayKm.toFixed(1)} km`
+              }
               icon="navigation"
               tint={colors.pillarAccuracy}
+              loading={!activeTrip && distanceLoading && !distanceData}
+              error={distanceError}
+              trend={
+                distanceError
+                  ? "Could not load"
+                  : activeTrip
+                    ? "Live GPS tracking"
+                    : distanceData && distanceData.tripCount > 0
+                      ? `${distanceData.tripCount} trip${distanceData.tripCount !== 1 ? "s" : ""} completed`
+                      : undefined
+              }
             />
             <StatCard
               label="Meter reads"

@@ -21,6 +21,8 @@ import type {
   ActivityEvent,
   ActivityPage,
   CreateActivityInput,
+  DistanceStats,
+  GetDistanceStatsParams,
   HealthStatus,
   ListActivityParams,
   ProblemDetails,
@@ -359,6 +361,106 @@ export const useCreateActivity = <
 > => {
   return useMutation(getCreateActivityMutationOptions(options));
 };
+
+/**
+ * Sums `distanceKm` from all `trip-end` events on the given date.
+Optionally filter to a single staff member.
+
+ * @summary Aggregated riding distance for a given date
+ */
+export const getGetDistanceStatsUrl = (params?: GetDistanceStatsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/activity/distance-stats?${stringifiedParams}`
+    : `/api/activity/distance-stats`;
+};
+
+export const getDistanceStats = async (
+  params?: GetDistanceStatsParams,
+  options?: RequestInit,
+): Promise<DistanceStats> => {
+  return customFetch<DistanceStats>(getGetDistanceStatsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetDistanceStatsQueryKey = (
+  params?: GetDistanceStatsParams,
+) => {
+  return [`/api/activity/distance-stats`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetDistanceStatsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getDistanceStats>>,
+  TError = ErrorType<ProblemDetails>,
+>(
+  params?: GetDistanceStatsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getDistanceStats>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetDistanceStatsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getDistanceStats>>
+  > = ({ signal }) => getDistanceStats(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getDistanceStats>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetDistanceStatsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getDistanceStats>>
+>;
+export type GetDistanceStatsQueryError = ErrorType<ProblemDetails>;
+
+/**
+ * @summary Aggregated riding distance for a given date
+ */
+
+export function useGetDistanceStats<
+  TData = Awaited<ReturnType<typeof getDistanceStats>>,
+  TError = ErrorType<ProblemDetails>,
+>(
+  params?: GetDistanceStatsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getDistanceStats>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetDistanceStatsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Get a single activity event with full details

@@ -1,5 +1,5 @@
 import { activityEventsTable, db, staffTable } from "@workspace/db";
-import { and, desc, eq, gt, inArray, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, lt, or, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
   CreateActivityBody,
@@ -219,6 +219,101 @@ router.get("/activity", async (req, res, next) => {
     // Short-cache hint for proxies; deliberately tiny because the feed is hot.
     res.setHeader("Cache-Control", "no-store, max-age=0");
     res.json(page);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/activity/distance-stats", async (req, res, next) => {
+  try {
+    const rawDate = req.query.date as string | undefined;
+    const rawStaffId = req.query.staffId as string | undefined;
+
+    const targetDate =
+      rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate)
+        ? rawDate
+        : new Date().toISOString().slice(0, 10);
+
+    if (rawDate && !/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+      res.status(400).json({
+        title: "Invalid date",
+        detail: "date must be YYYY-MM-DD",
+        status: 400,
+      });
+      return;
+    }
+
+    if (
+      rawStaffId !== undefined &&
+      !/^[0-9a-fA-F-]{36}$/.test(rawStaffId)
+    ) {
+      res.status(400).json({
+        title: "Invalid staffId",
+        detail: "staffId must be a UUID",
+        status: 400,
+      });
+      return;
+    }
+
+    const startOfDay = new Date(`${targetDate}T00:00:00.000Z`);
+    const startOfNextDay = new Date(startOfDay.getTime() + 86_400_000);
+
+    const conds = [
+      eq(activityEventsTable.kind, "trip-end"),
+      gte(activityEventsTable.occurredAt, startOfDay),
+      lt(activityEventsTable.occurredAt, startOfNextDay),
+    ] as ReturnType<typeof eq>[];
+
+    if (rawStaffId) {
+      conds.push(eq(activityEventsTable.staffId, rawStaffId));
+    }
+
+    const rows = await db
+      .select({
+        staffId: activityEventsTable.staffId,
+        staffName: activityEventsTable.staffName,
+        distanceKm: sql<number>`COALESCE((${activityEventsTable.payload}->>'distanceKm')::numeric, 0)`,
+      })
+      .from(activityEventsTable)
+      .where(and(...conds));
+
+    // Aggregate per staff in JS (simple, avoids complex GROUP BY in Drizzle).
+    const perStaffMap = new Map<
+      string,
+      { staffId: string; staffName: string; totalKm: number; tripCount: number }
+    >();
+    let totalKm = 0;
+    let tripCount = 0;
+
+    for (const row of rows) {
+      const km = Number(row.distanceKm) || 0;
+      totalKm += km;
+      tripCount++;
+      const entry = perStaffMap.get(row.staffId);
+      if (entry) {
+        entry.totalKm += km;
+        entry.tripCount++;
+      } else {
+        perStaffMap.set(row.staffId, {
+          staffId: row.staffId,
+          staffName: row.staffName,
+          totalKm: km,
+          tripCount: 1,
+        });
+      }
+    }
+
+    const round1 = (n: number) => Math.round(n * 10) / 10;
+
+    res.json({
+      date: targetDate,
+      totalKm: round1(totalKm),
+      tripCount,
+      perStaff: Array.from(perStaffMap.values()).map((s) => ({
+        ...s,
+        totalKm: round1(s.totalKm),
+      })),
+    });
   } catch (err) {
     next(err);
   }

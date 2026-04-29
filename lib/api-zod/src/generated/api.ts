@@ -126,6 +126,45 @@ export const CreateActivityBody = zod.object({
 });
 
 /**
+ * Sums `distanceKm` from all `trip-end` events on the given date.
+Optionally filter to a single staff member.
+
+ * @summary Aggregated riding distance for a given date
+ */
+export const getDistanceStatsQueryDateRegExp = new RegExp(
+  "^\\d{4}-\\d{2}-\\d{2}$",
+);
+
+export const GetDistanceStatsQueryParams = zod.object({
+  date: zod.coerce
+    .string()
+    .regex(getDistanceStatsQueryDateRegExp)
+    .optional()
+    .describe("Date in YYYY-MM-DD format (defaults to today in UTC)."),
+  staffId: zod.coerce
+    .string()
+    .uuid()
+    .optional()
+    .describe("Filter to a single staff member (UUID)."),
+});
+
+export const GetDistanceStatsResponse = zod.object({
+  date: zod.string().describe("The date these stats cover (YYYY-MM-DD)."),
+  totalKm: zod.number().describe("Total km ridden across all staff."),
+  tripCount: zod
+    .number()
+    .describe("Number of completed trips contributing to the total."),
+  perStaff: zod.array(
+    zod.object({
+      staffId: zod.string().uuid(),
+      staffName: zod.string(),
+      totalKm: zod.number(),
+      tripCount: zod.number(),
+    }),
+  ),
+});
+
+/**
  * @summary Get a single activity event with full details
  */
 export const GetActivityParams = zod.object({

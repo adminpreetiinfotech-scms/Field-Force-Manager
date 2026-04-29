@@ -91,6 +91,23 @@ export interface CreateActivityInput {
   destination?: GeoPoint | null;
 }
 
+export interface StaffDistance {
+  staffId: string;
+  staffName: string;
+  totalKm: number;
+  tripCount: number;
+}
+
+export interface DistanceStats {
+  /** The date these stats cover (YYYY-MM-DD). */
+  date: string;
+  /** Total km ridden across all staff. */
+  totalKm: number;
+  /** Number of completed trips contributing to the total. */
+  tripCount: number;
+  perStaff: StaffDistance[];
+}
+
 export interface ProblemDetails {
   title: string;
   detail?: string;
@@ -115,4 +132,16 @@ export type ListActivityParams = {
    * Comma-separated kinds to include (default all).
    */
   kinds?: string;
+};
+
+export type GetDistanceStatsParams = {
+  /**
+   * Date in YYYY-MM-DD format (defaults to today in UTC).
+   * @pattern ^\d{4}-\d{2}-\d{2}$
+   */
+  date?: string;
+  /**
+   * Filter to a single staff member (UUID).
+   */
+  staffId?: string;
 };

@@ -12,6 +12,11 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import {
+  getGetDistanceStatsQueryKey,
+  useGetDistanceStats,
+} from "@workspace/api-client-react";
+
 import { LiveActivityFeed } from "@/components/admin/LiveActivityFeed";
 import { PillarsRow } from "@/components/PillarBadge";
 import { StatCard } from "@/components/StatCard";
@@ -22,9 +27,23 @@ import { useColors } from "@/hooks/useColors";
 export default function AdminDashboard() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user, attendance, meterReadings, trips, staffLocations } = useApp();
+  const { user, attendance, meterReadings, staffLocations } = useApp();
 
   const today = new Date().toISOString().slice(0, 10);
+
+  const distanceParams = { date: today };
+  const {
+    data: distanceData,
+    isLoading: distanceLoading,
+    isError: distanceError,
+  } = useGetDistanceStats(distanceParams, {
+    query: {
+      queryKey: getGetDistanceStatsQueryKey(distanceParams),
+      refetchInterval: 30_000,
+      staleTime: 15_000,
+    },
+  });
+
   const stats = useMemo(() => {
     const todayAttendance = attendance.filter(
       (a) => new Date(a.timestamp).toISOString().slice(0, 10) === today,
@@ -34,9 +53,6 @@ export default function AdminDashboard() {
     const todayMeters = meterReadings.filter(
       (m) => new Date(m.timestamp).toISOString().slice(0, 10) === today,
     ).length;
-    const todayKm = trips
-      .filter((t) => t.date === today)
-      .reduce((s, t) => s + t.km, 0);
     const synced =
       attendance.filter((a) => a.synced).length +
       meterReadings.filter((m) => m.synced).length;
@@ -50,10 +66,15 @@ export default function AdminDashboard() {
       checkInsToday: checkInsToday + 14,
       onShiftNow,
       todayMeters: todayMeters + 27,
-      todayKm: todayKm + 218.4,
       accuracy: Math.max(94, totalAccuracy),
     };
-  }, [attendance, meterReadings, trips, staffLocations]);
+  }, [attendance, meterReadings, staffLocations]);
+
+  const totalKm = distanceData?.totalKm ?? 0;
+  const tripCount = distanceData?.tripCount ?? 0;
+  const staffCount = distanceData?.perStaff.length ?? 0;
+  const avgKm =
+    staffCount > 0 ? (totalKm / staffCount).toFixed(1) : null;
 
   const webBottomPad = Platform.OS === "web" ? 84 : 84;
   const webTop = Platform.OS === "web" ? 67 : 0;
@@ -128,10 +149,28 @@ export default function AdminDashboard() {
             />
             <StatCard
               label="Distance"
-              value={`${stats.todayKm.toFixed(0)} km`}
+              value={
+                distanceError
+                  ? "—"
+                  : distanceLoading && !distanceData
+                    ? "..."
+                    : tripCount === 0
+                      ? "0 km"
+                      : `${totalKm.toFixed(1)} km`
+              }
               icon="navigation"
               tint={colors.pillarAccuracy}
-              trend="Avg 12.3 km / staff"
+              loading={distanceLoading && !distanceData}
+              error={distanceError}
+              trend={
+                distanceError
+                  ? "Could not load"
+                  : tripCount === 0
+                    ? "No trips today"
+                    : avgKm
+                      ? `Avg ${avgKm} km / staff`
+                      : `${tripCount} trip${tripCount !== 1 ? "s" : ""} today`
+              }
             />
           </View>
           <View style={styles.row}>
