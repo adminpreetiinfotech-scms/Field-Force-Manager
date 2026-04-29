@@ -311,10 +311,7 @@ export async function generateCandidatePdf(
              hX, hY + 23, { width: colW, lineBreak: false })
        .text("Government of Jharkhand",
              hX, hY + 33, { width: colW, lineBreak: false });
-    // Training Centre ID field
-    doc.font("DVR").fontSize(7).fillColor(GRAY)
-       .text("Training Centre ID :", hX, hY + 46, { width: colW, lineBreak: false });
-    hl(doc, hX + 2, hY + 56, hX + colW - 2, 0.45, LGRAY);
+    // (Training Centre ID moved to the Skill Centre Name row below the header)
 
     // ── Centre logo ────────────────────────────────────────────────────────
     const logoY = MT + (HEADER_H - LGSZ) / 2;          // vertically centred
@@ -352,11 +349,7 @@ export async function generateCandidatePdf(
              rX, hY + 23, { width: colW, align: "right", lineBreak: false })
        .text("झारखण्ड सरकार",
              rX, hY + 33, { width: colW, align: "right", lineBreak: false });
-    // Training Centre ID — Devanagari label + underline
-    doc.font("NSR").fontSize(7).fillColor(GRAY)
-       .text("प्रशिक्षण केंद्र क्रमांक :",
-             rX, hY + 46, { width: colW, align: "right", lineBreak: false });
-    hl(doc, rX + 2, hY + 56, rX + colW - 2, 0.45, LGRAY);
+    // (Training Centre ID row removed from header — now shown below header)
 
     // Header bottom (no divider line — keep title area clean)
     const sepY = MT + HEADER_H;
@@ -386,16 +379,29 @@ export async function generateCandidatePdf(
              formTitleX, y + 2.5, { width: formTitleW, align: "center", lineBreak: false });
     y += 18;
 
-    // ── Skill Centre Name row ──────────────────────────────────────────────
+    // ── Training Centre Name + Training Centre ID (same row) ──────────────
     hl(doc, ML, y, ML + CW, 0.7);
     y += 4;
+
+    // Left half: Training Centre Name
+    const tcnLblW = 122;                          // label width
+    const halfW   = Math.floor(FW * 0.56);        // name value takes 56 % of row
     doc.font("DVB").fontSize(8).fillColor(INK)
-       .text("Skill Centre Name :", FX, y + 2, { width: 104, lineBreak: false });
+       .text("Training Centre Name :", FX, y + 2, { width: tcnLblW, lineBreak: false });
     if (c.skillCentreName?.trim()) {
-      t(doc, c.skillCentreName.trim(), FX + 106, y + 2, { size: 8, color: DARK, width: FW - 108 });
+      t(doc, c.skillCentreName.trim(), FX + tcnLblW + 2, y + 2,
+        { size: 8, color: DARK, width: halfW - tcnLblW - 2 });
     } else {
-      hl(doc, FX + 106, y + UL, FE, 0.4, LGRAY);
+      hl(doc, FX + tcnLblW + 2, y + UL, FX + halfW, 0.4, LGRAY);
     }
+
+    // Right half: Training Centre ID
+    const tciX    = FX + halfW + 8;              // ID label starts here
+    const tciLblW = 104;                          // "Training Centre ID :" label
+    doc.font("DVB").fontSize(8).fillColor(INK)
+       .text("Training Centre ID :", tciX, y + 2, { width: tciLblW, lineBreak: false });
+    hl(doc, tciX + tciLblW + 2, y + UL, FE, 0.4, LGRAY);
+
     y += ROW - 2;
     hl(doc, ML, y, ML + CW, 0.9);
     y += 2;
