@@ -72,13 +72,14 @@ export default function WelcomeScreen() {
               // eslint-disable-next-line @typescript-eslint/no-require-imports
               source={require("../../assets/admin-photo.png")}
               style={styles.avatar}
-              resizeMode="cover"
+              resizeMode="contain"
             />
           </View>
         </View>
 
-        {/* ── Portal name ──────────────────────────────────────────── */}
-        <Text style={styles.portalName}>JSDMS / DDU-GKY</Text>
+        {/* ── Credit line ───────────────────────────────────────────── */}
+        <Text style={styles.creditLine}>{t("developedBy")}</Text>
+
         <View style={styles.goldBar} />
         <Text style={styles.heroTitle}>{t("welcomeTitle")}</Text>
         <Text style={styles.heroSub}>{t("welcomeSub")}</Text>
@@ -196,30 +197,37 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
     elevation: 10,
-    borderRadius: 60,
-    marginBottom: 20,
+    borderRadius: 66,
+    marginBottom: 14,
   },
   avatarRing: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 132,
+    height: 132,
+    borderRadius: 66,
     borderWidth: 4,
     borderColor: GOLD,
     overflow: "hidden",
-    backgroundColor: "#ccc",
+    backgroundColor: "#EDF2F7",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 6,
   },
   avatar: {
-    width: 120,
-    height: 120,
+    width: 112,
+    height: 112,
+    borderRadius: 56,
   },
 
-  // Titles
-  portalName: {
-    color: "rgba(255,255,255,0.9)",
-    fontSize: 12,
+  // Credit line
+  creditLine: {
+    color: "rgba(255,255,255,0.92)",
+    fontSize: 13,
     fontFamily: "Inter_600SemiBold",
-    letterSpacing: 2,
+    letterSpacing: 0.4,
+    textAlign: "center",
+    marginBottom: 2,
   },
+
   goldBar: {
     width: 40,
     height: 3,

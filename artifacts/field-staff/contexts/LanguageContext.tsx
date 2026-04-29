@@ -13,6 +13,7 @@ export type Lang = "en" | "hi";
 const strings = {
   en: {
     // Welcome
+    developedBy: "Developed by Anil Yadav",
     welcomeTitle: "Welcome to the Skill Development Registration Portal",
     welcomeSub: "Please log in or register your account.",
     login: "Login",
@@ -88,6 +89,7 @@ const strings = {
   },
   hi: {
     // Welcome
+    developedBy: "Developed by Anil Yadav",
     welcomeTitle: "कौशल विकास पंजीकरण पोर्टल में आपका स्वागत है",
     welcomeSub: "कृपया लॉगिन करें या अपना खाता पंजीकृत करें।",
     login: "लॉगिन",
