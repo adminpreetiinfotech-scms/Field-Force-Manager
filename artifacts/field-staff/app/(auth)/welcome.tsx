@@ -18,7 +18,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useColors } from "@/hooks/useColors";
 
 const ACCENT = "#1E3A5F";
-const GOLD   = "#B8860B";
+const GOLD   = "#D4AF37";
 
 export default function WelcomeScreen() {
   const colors = useColors();
@@ -72,7 +72,7 @@ export default function WelcomeScreen() {
               // eslint-disable-next-line @typescript-eslint/no-require-imports
               source={require("../../assets/admin-photo.png")}
               style={styles.avatar}
-              resizeMode="contain"
+              resizeMode="cover"
             />
           </View>
         </View>
@@ -193,29 +193,24 @@ const styles = StyleSheet.create({
   // Avatar
   avatarShadow: {
     shadowColor: "#000",
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
+    shadowOpacity: 0.3,
+    shadowRadius: 14,
     shadowOffset: { width: 0, height: 6 },
-    elevation: 10,
+    elevation: 12,
     borderRadius: 66,
-    marginBottom: 14,
+    marginBottom: 10,
   },
   avatarRing: {
     width: 132,
     height: 132,
     borderRadius: 66,
-    borderWidth: 4,
+    borderWidth: 3,
     borderColor: GOLD,
     overflow: "hidden",
-    backgroundColor: "#EDF2F7",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 6,
   },
   avatar: {
-    width: 112,
-    height: 112,
-    borderRadius: 56,
+    width: 132,
+    height: 132,
   },
 
   // Credit line
@@ -225,7 +220,8 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     letterSpacing: 0.4,
     textAlign: "center",
-    marginBottom: 2,
+    marginTop: 4,
+    marginBottom: 4,
   },
 
   goldBar: {
