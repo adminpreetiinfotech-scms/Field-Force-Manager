@@ -18,11 +18,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
   getGetLeaderboardQueryKey,
+  getGetRideCalendarQueryKey,
   getGetTripReportQueryKey,
   useGetLeaderboard,
+  useGetRideCalendar,
   useGetTripReport,
   useListStaff,
   type LeaderboardEntry,
+  type RideCalendarDay,
   type TripReportRow,
 } from "@workspace/api-client-react";
 
@@ -109,6 +112,52 @@ async function exportCsv(csv: string, filename: string) {
   }
 }
 
+// ─── Calendar helpers ─────────────────────────────────────────────────────────
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+] as const;
+
+const DAY_INITIALS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"] as const;
+
+function daysInMonthCount(year: number, month: number) {
+  return new Date(year, month, 0).getDate(); // month is 1-based
+}
+
+function firstDayOfWeek(year: number, month: number) {
+  return new Date(year, month - 1, 1).getDay(); // 0 = Sun
+}
+
+type CalCell = { day: number; date: string } | null;
+
+function buildCalendarGrid(year: number, month: number): CalCell[][] {
+  const total = daysInMonthCount(year, month);
+  const start = firstDayOfWeek(year, month);
+  const cells: CalCell[] = [];
+  for (let i = 0; i < start; i++) cells.push(null);
+  for (let d = 1; d <= total; d++) {
+    const mm = String(month).padStart(2, "0");
+    const dd = String(d).padStart(2, "0");
+    cells.push({ day: d, date: `${year}-${mm}-${dd}` });
+  }
+  // Pad to full rows of 7
+  while (cells.length % 7 !== 0) cells.push(null);
+  const rows: CalCell[][] = [];
+  for (let i = 0; i < cells.length; i += 7) rows.push(cells.slice(i, i + 7));
+  return rows;
+}
+
+// Heat-map: returns an opacity [0..1] for number of rides.
+// We use 5 tiers: 0 / 1 / 2-3 / 4-6 / 7+
+function heatOpacity(count: number, maxCount: number): number {
+  if (count === 0) return 0;
+  if (maxCount === 0) return 0;
+  // Scale so 1 ride = 0.22 and maxCount = 1.0, with a floor
+  const ratio = count / maxCount;
+  return Math.max(0.18, Math.min(1.0, 0.18 + ratio * 0.82));
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 type Period = "daily" | "weekly" | "monthly";
@@ -142,6 +191,41 @@ export default function ReportsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const webTop = Platform.OS === "web" ? 67 : 0;
+
+  // ── Calendar state ─────────────────────────────────────────────────────────
+  const now = new Date();
+  const [calYear, setCalYear] = useState(now.getFullYear());
+  const [calMonth, setCalMonth] = useState(now.getMonth() + 1); // 1-based
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  const calParams = { year: calYear, month: calMonth };
+  const { data: calData, isLoading: calLoading } = useGetRideCalendar(calParams, {
+    query: {
+      queryKey: getGetRideCalendarQueryKey(calParams),
+      staleTime: 60_000,
+    },
+  });
+
+  const calDayMap = React.useMemo(() => {
+    const m = new Map<string, RideCalendarDay>();
+    calData?.days.forEach((d) => m.set(d.date, d));
+    return m;
+  }, [calData]);
+
+  function navigateMonth(delta: number) {
+    let m = calMonth + delta;
+    let y = calYear;
+    if (m < 1) { m = 12; y--; }
+    if (m > 12) { m = 1; y++; }
+    setCalMonth(m);
+    setCalYear(y);
+    setSelectedDate(null);
+  }
+
+  const calGrid = React.useMemo(
+    () => buildCalendarGrid(calYear, calMonth),
+    [calYear, calMonth],
+  );
 
   // ── Leaderboard state ──────────────────────────────────────────────────────
   const [period, setPeriod] = useState<Period>("weekly");
@@ -237,7 +321,7 @@ export default function ReportsScreen() {
           Reports
         </Text>
         <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>
-          Leaderboard &amp; CSV export
+          Calendar · Leaderboard · CSV export
         </Text>
       </View>
 
@@ -245,6 +329,251 @@ export default function ReportsScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         showsVerticalScrollIndicator={false}
       >
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {/* SECTION 0 — RIDE HISTORY CALENDAR                                 */}
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        <View style={[styles.sectionGroup, { paddingTop: 20 }]}>
+          {/* Section title row */}
+          <View style={styles.sectionTitleRow}>
+            <View
+              style={[
+                styles.sectionTitleIcon,
+                { backgroundColor: "#22c55e22", borderRadius: 8 },
+              ]}
+            >
+              <Feather name="calendar" size={15} color="#16a34a" />
+            </View>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              Ride History
+            </Text>
+          </View>
+
+          {/* Month navigator */}
+          <View style={styles.calNavRow}>
+            <Pressable
+              onPress={() => navigateMonth(-1)}
+              style={({ pressed }) => [
+                styles.calNavBtn,
+                { backgroundColor: colors.muted, borderRadius: colors.radius, opacity: pressed ? 0.7 : 1 },
+              ]}
+              hitSlop={8}
+            >
+              <Feather name="chevron-left" size={18} color={colors.foreground} />
+            </Pressable>
+
+            <Text style={[styles.calMonthLabel, { color: colors.foreground }]}>
+              {MONTH_NAMES[calMonth - 1]} {calYear}
+            </Text>
+
+            <Pressable
+              onPress={() => navigateMonth(1)}
+              style={({ pressed }) => [
+                styles.calNavBtn,
+                { backgroundColor: colors.muted, borderRadius: colors.radius, opacity: pressed ? 0.7 : 1 },
+              ]}
+              hitSlop={8}
+            >
+              <Feather name="chevron-right" size={18} color={colors.foreground} />
+            </Pressable>
+          </View>
+
+          {/* Month summary */}
+          {!calLoading && calData && (
+            <View style={[styles.calSummaryRow, { backgroundColor: colors.muted, borderRadius: colors.radius }]}>
+              <View style={styles.calSummaryItem}>
+                <Text style={[styles.calSummaryNum, { color: "#16a34a" }]}>
+                  {calData.totalRides}
+                </Text>
+                <Text style={[styles.calSummaryLabel, { color: colors.mutedForeground }]}>
+                  rides
+                </Text>
+              </View>
+              <View style={[styles.calSummaryDivider, { backgroundColor: colors.border }]} />
+              <View style={styles.calSummaryItem}>
+                <Text style={[styles.calSummaryNum, { color: colors.foreground }]}>
+                  {calData.totalKm}
+                </Text>
+                <Text style={[styles.calSummaryLabel, { color: colors.mutedForeground }]}>
+                  km
+                </Text>
+              </View>
+              <View style={[styles.calSummaryDivider, { backgroundColor: colors.border }]} />
+              <View style={styles.calSummaryItem}>
+                <Text style={[styles.calSummaryNum, { color: colors.foreground }]}>
+                  {calData.days.length}
+                </Text>
+                <Text style={[styles.calSummaryLabel, { color: colors.mutedForeground }]}>
+                  active days
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Day-of-week headers */}
+          <View style={styles.calDayHeaders}>
+            {DAY_INITIALS.map((d) => (
+              <Text
+                key={d}
+                style={[styles.calDayHeader, { color: colors.mutedForeground }]}
+              >
+                {d}
+              </Text>
+            ))}
+          </View>
+
+          {/* Calendar grid */}
+          {calLoading ? (
+            <View style={styles.centeredLoader}>
+              <ActivityIndicator color="#16a34a" />
+            </View>
+          ) : (
+            <View style={styles.calGrid}>
+              {calGrid.map((row, ri) => (
+                <View key={ri} style={styles.calRow}>
+                  {row.map((cell, ci) => {
+                    if (!cell) {
+                      return <View key={ci} style={styles.calCell} />;
+                    }
+                    const dayData = calDayMap.get(cell.date);
+                    const count = dayData?.rideCount ?? 0;
+                    const maxCount = calData?.maxRideCount ?? 1;
+                    const opacity = heatOpacity(count, maxCount);
+                    const isSelected = selectedDate === cell.date;
+                    const isToday = cell.date === todayISO();
+                    return (
+                      <Pressable
+                        key={ci}
+                        onPress={() =>
+                          setSelectedDate(
+                            isSelected ? null : cell.date,
+                          )
+                        }
+                        style={({ pressed }) => [
+                          styles.calCell,
+                          styles.calCellActive,
+                          {
+                            backgroundColor:
+                              opacity > 0
+                                ? `rgba(34,197,94,${opacity})`
+                                : colors.muted,
+                            borderRadius: colors.radius - 2,
+                            borderWidth: isSelected ? 2 : isToday ? 1.5 : 0,
+                            borderColor: isSelected
+                              ? "#16a34a"
+                              : isToday
+                                ? colors.primary
+                                : "transparent",
+                            opacity: pressed ? 0.75 : 1,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.calDayNum,
+                            {
+                              color:
+                                opacity > 0.55
+                                  ? "#fff"
+                                  : isToday
+                                    ? colors.primary
+                                    : colors.foreground,
+                              fontFamily:
+                                isToday
+                                  ? "Inter_700Bold"
+                                  : "Inter_400Regular",
+                            },
+                          ]}
+                        >
+                          {cell.day}
+                        </Text>
+                        {count > 0 && (
+                          <Text
+                            style={[
+                              styles.calRideDot,
+                              {
+                                color:
+                                  opacity > 0.55
+                                    ? "rgba(255,255,255,0.8)"
+                                    : "#16a34a",
+                              },
+                            ]}
+                          >
+                            {count}
+                          </Text>
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Selected day detail card */}
+          {selectedDate && (() => {
+            const d = calDayMap.get(selectedDate);
+            return (
+              <View
+                style={[
+                  styles.calDetailCard,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: "#22c55e55",
+                    borderRadius: colors.radius + 2,
+                  },
+                ]}
+              >
+                <Feather name="calendar" size={14} color="#16a34a" />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.calDetailDate, { color: colors.foreground }]}>
+                    {selectedDate}
+                  </Text>
+                  {d ? (
+                    <Text style={[styles.calDetailStats, { color: colors.mutedForeground }]}>
+                      {d.rideCount} {d.rideCount === 1 ? "ride" : "rides"} · {d.totalKm} km
+                    </Text>
+                  ) : (
+                    <Text style={[styles.calDetailStats, { color: colors.mutedForeground }]}>
+                      No rides recorded
+                    </Text>
+                  )}
+                </View>
+                <Pressable onPress={() => setSelectedDate(null)} hitSlop={8}>
+                  <Feather name="x" size={16} color={colors.mutedForeground} />
+                </Pressable>
+              </View>
+            );
+          })()}
+
+          {/* Heat-map legend */}
+          <View style={styles.calLegend}>
+            <Text style={[styles.calLegendLabel, { color: colors.mutedForeground }]}>
+              Less
+            </Text>
+            {[0, 0.18, 0.38, 0.62, 0.88, 1.0].map((op, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.calLegendBox,
+                  {
+                    backgroundColor:
+                      op === 0
+                        ? colors.muted
+                        : `rgba(34,197,94,${op})`,
+                    borderRadius: 3,
+                  },
+                ]}
+              />
+            ))}
+            <Text style={[styles.calLegendLabel, { color: colors.mutedForeground }]}>
+              More
+            </Text>
+          </View>
+        </View>
+
+        {/* ── Divider ───────────────────────────────────────────────────────── */}
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
         {/* ══════════════════════════════════════════════════════════════════ */}
         {/* SECTION 1 — LEADERBOARD                                           */}
         {/* ══════════════════════════════════════════════════════════════════ */}
@@ -1225,4 +1554,116 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   retryText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  // ── Calendar ────────────────────────────────────────────────────────────────
+  calNavRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+  calNavBtn: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  calMonthLabel: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.2,
+  },
+  calSummaryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    marginBottom: 16,
+  },
+  calSummaryItem: {
+    flex: 1,
+    alignItems: "center",
+    gap: 2,
+  },
+  calSummaryNum: {
+    fontSize: 20,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.4,
+  },
+  calSummaryLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+  },
+  calSummaryDivider: {
+    width: StyleSheet.hairlineWidth,
+    height: 28,
+    marginHorizontal: 4,
+  },
+  calDayHeaders: {
+    flexDirection: "row",
+    marginBottom: 6,
+  },
+  calDayHeader: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.3,
+  },
+  calGrid: {
+    gap: 4,
+  },
+  calRow: {
+    flexDirection: "row",
+    gap: 4,
+  },
+  calCell: {
+    flex: 1,
+    aspectRatio: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  calCellActive: {
+    gap: 1,
+  },
+  calDayNum: {
+    fontSize: 13,
+    lineHeight: 16,
+  },
+  calRideDot: {
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    lineHeight: 11,
+  },
+  calDetailCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+    marginTop: 12,
+    borderWidth: 1,
+  },
+  calDetailDate: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
+  calDetailStats: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
+  },
+  calLegend: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 4,
+    marginTop: 12,
+  },
+  calLegendLabel: {
+    fontSize: 10,
+    fontFamily: "Inter_400Regular",
+  },
+  calLegendBox: {
+    width: 14,
+    height: 14,
+  },
 });

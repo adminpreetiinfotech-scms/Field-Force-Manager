@@ -24,12 +24,14 @@ import type {
   DistanceStats,
   GetDistanceStatsParams,
   GetLeaderboardParams,
+  GetRideCalendarParams,
   GetTripReportParams,
   HealthStatus,
   LeaderboardEntry,
   ListActivityParams,
   ProblemDetails,
   RegisterInput,
+  RideCalendarMonth,
   Staff,
   TripReportRow,
 } from "./api.schemas";
@@ -269,6 +271,100 @@ export const useRegisterStaff = <
 > => {
   return useMutation(getRegisterStaffMutationOptions(options));
 };
+
+/**
+ * @summary Per-day ride counts for a calendar month (heat-map data)
+ */
+export const getGetRideCalendarUrl = (params: GetRideCalendarParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/activity/ride-calendar?${stringifiedParams}`
+    : `/api/activity/ride-calendar`;
+};
+
+export const getRideCalendar = async (
+  params: GetRideCalendarParams,
+  options?: RequestInit,
+): Promise<RideCalendarMonth> => {
+  return customFetch<RideCalendarMonth>(getGetRideCalendarUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetRideCalendarQueryKey = (params?: GetRideCalendarParams) => {
+  return [`/api/activity/ride-calendar`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetRideCalendarQueryOptions = <
+  TData = Awaited<ReturnType<typeof getRideCalendar>>,
+  TError = ErrorType<ProblemDetails>,
+>(
+  params: GetRideCalendarParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRideCalendar>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetRideCalendarQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getRideCalendar>>> = ({
+    signal,
+  }) => getRideCalendar(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getRideCalendar>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetRideCalendarQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getRideCalendar>>
+>;
+export type GetRideCalendarQueryError = ErrorType<ProblemDetails>;
+
+/**
+ * @summary Per-day ride counts for a calendar month (heat-map data)
+ */
+
+export function useGetRideCalendar<
+  TData = Awaited<ReturnType<typeof getRideCalendar>>,
+  TError = ErrorType<ProblemDetails>,
+>(
+  params: GetRideCalendarParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRideCalendar>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRideCalendarQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Top staff ranked by total distance for a given period

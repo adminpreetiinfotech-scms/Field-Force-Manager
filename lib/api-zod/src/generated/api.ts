@@ -74,6 +74,44 @@ export const RegisterStaffBody = zod
   );
 
 /**
+ * @summary Per-day ride counts for a calendar month (heat-map data)
+ */
+export const GetRideCalendarQueryParams = zod.object({
+  year: zod.coerce.number(),
+  month: zod.coerce.number(),
+  staffId: zod.coerce.string().uuid().optional(),
+});
+
+export const GetRideCalendarResponse = zod
+  .object({
+    year: zod.number(),
+    month: zod.number().describe("Month 1–12."),
+    days: zod
+      .array(
+        zod
+          .object({
+            date: zod.string().describe("Calendar date (YYYY-MM-DD, IST)."),
+            rideCount: zod
+              .number()
+              .describe("Number of completed trips on this day."),
+            totalKm: zod
+              .number()
+              .describe("Total kilometres ridden on this day."),
+          })
+          .describe("Aggregated ride stats for a single calendar day."),
+      )
+      .describe("Only days with rideCount > 0 are included."),
+    maxRideCount: zod
+      .number()
+      .describe(
+        "Highest rideCount in the month (used to scale heat-map intensity).",
+      ),
+    totalKm: zod.number().describe("Total km for the entire month."),
+    totalRides: zod.number().describe("Total ride count for the entire month."),
+  })
+  .describe("Full month of calendar heat-map data.");
+
+/**
  * @summary Top staff ranked by total distance for a given period
  */
 export const GetLeaderboardQueryParams = zod.object({

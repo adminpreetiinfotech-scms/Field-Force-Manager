@@ -224,6 +224,101 @@ router.get("/activity", async (req, res, next) => {
   }
 });
 
+router.get("/activity/ride-calendar", async (req, res, next) => {
+  try {
+    const rawYear = req.query.year as string | undefined;
+    const rawMonth = req.query.month as string | undefined;
+    const rawStaffId = req.query.staffId as string | undefined;
+
+    const year = parseInt(rawYear ?? "", 10);
+    const month = parseInt(rawMonth ?? "", 10); // 1-based
+
+    if (!rawYear || isNaN(year) || year < 2000 || year > 2100) {
+      res.status(400).json({
+        title: "Invalid year",
+        detail: "year must be a four-digit integer between 2000 and 2100",
+        status: 400,
+      });
+      return;
+    }
+    if (!rawMonth || isNaN(month) || month < 1 || month > 12) {
+      res.status(400).json({
+        title: "Invalid month",
+        detail: "month must be 1–12",
+        status: 400,
+      });
+      return;
+    }
+    if (rawStaffId && !/^[0-9a-fA-F-]{36}$/.test(rawStaffId)) {
+      res.status(400).json({
+        title: "Invalid staffId",
+        detail: "staffId must be a UUID",
+        status: 400,
+      });
+      return;
+    }
+
+    // UTC window for the entire calendar month.
+    const periodStart = new Date(Date.UTC(year, month - 1, 1));
+    const periodEnd = new Date(Date.UTC(year, month, 1)); // exclusive
+
+    const conds = [
+      eq(activityEventsTable.kind, "trip-end"),
+      gte(activityEventsTable.occurredAt, periodStart),
+      lt(activityEventsTable.occurredAt, periodEnd),
+    ] as ReturnType<typeof eq>[];
+    if (rawStaffId) {
+      conds.push(eq(activityEventsTable.staffId, rawStaffId));
+    }
+
+    const rows = await db
+      .select({
+        occurredAt: activityEventsTable.occurredAt,
+        payload: activityEventsTable.payload,
+      })
+      .from(activityEventsTable)
+      .where(and(...conds));
+
+    // Aggregate by IST calendar date (UTC+5:30).
+    const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+    const dayMap = new Map<string, { rideCount: number; totalKm: number }>();
+
+    for (const row of rows) {
+      const local = new Date(
+        (row.occurredAt as Date).getTime() + IST_OFFSET_MS,
+      );
+      const date = local.toISOString().slice(0, 10);
+      const p = (row.payload || {}) as ActivityPayload;
+      const km = typeof p.distanceKm === "number" ? p.distanceKm : 0;
+      const acc = dayMap.get(date);
+      if (acc) {
+        acc.rideCount++;
+        acc.totalKm += km;
+      } else {
+        dayMap.set(date, { rideCount: 1, totalKm: km });
+      }
+    }
+
+    const round1 = (n: number) => Math.round(n * 10) / 10;
+
+    const days = Array.from(dayMap.entries())
+      .map(([date, v]) => ({
+        date,
+        rideCount: v.rideCount,
+        totalKm: round1(v.totalKm),
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    const maxRideCount = days.reduce((m, d) => Math.max(m, d.rideCount), 0);
+    const totalKm = round1(days.reduce((s, d) => s + d.totalKm, 0));
+    const totalRides = days.reduce((s, d) => s + d.rideCount, 0);
+
+    res.json({ year, month, days, maxRideCount, totalKm, totalRides });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get("/activity/leaderboard", async (req, res, next) => {
   try {
     const rawPeriod = req.query.period as string | undefined;

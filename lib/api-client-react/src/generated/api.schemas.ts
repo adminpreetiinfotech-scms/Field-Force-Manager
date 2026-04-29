@@ -148,6 +148,35 @@ export interface DistanceStats {
 }
 
 /**
+ * Aggregated ride stats for a single calendar day.
+ */
+export interface RideCalendarDay {
+  /** Calendar date (YYYY-MM-DD, IST). */
+  date: string;
+  /** Number of completed trips on this day. */
+  rideCount: number;
+  /** Total kilometres ridden on this day. */
+  totalKm: number;
+}
+
+/**
+ * Full month of calendar heat-map data.
+ */
+export interface RideCalendarMonth {
+  year: number;
+  /** Month 1–12. */
+  month: number;
+  /** Only days with rideCount > 0 are included. */
+  days: RideCalendarDay[];
+  /** Highest rideCount in the month (used to scale heat-map intensity). */
+  maxRideCount: number;
+  /** Total km for the entire month. */
+  totalKm: number;
+  /** Total ride count for the entire month. */
+  totalRides: number;
+}
+
+/**
  * A single staff member's aggregated distance stats for the leaderboard.
  */
 export interface LeaderboardEntry {
@@ -193,6 +222,21 @@ export interface ProblemDetails {
   detail?: string;
   status?: number;
 }
+
+export type GetRideCalendarParams = {
+  /**
+   * Four-digit year, e.g. 2026.
+   */
+  year: number;
+  /**
+   * Month number 1–12.
+   */
+  month: number;
+  /**
+   * Filter to a single staff member. Omit for all staff.
+   */
+  staffId?: string;
+};
 
 export type GetLeaderboardParams = {
   /**
