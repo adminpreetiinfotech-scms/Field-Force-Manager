@@ -1,214 +1,160 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import {
+  Image,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useColors } from "@/hooks/useColors";
+
+const ACCENT = "#1E3A5F";
+const GOLD   = "#B8860B";
 
 export default function WelcomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const webTop = Platform.OS === "web" ? 67 : 0;
+  const { lang, setLang, t } = useLanguage();
+  const [showRegister, setShowRegister] = useState(false);
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <View style={{ flex: 1, backgroundColor: "#F0F4FA" }}>
+      {/* Gradient header band */}
       <LinearGradient
-        colors={[colors.primary, "#13325F"]}
+        colors={[ACCENT, "#0D2240"]}
         style={[
           StyleSheet.absoluteFill,
-          { height: 400 + insets.top + webTop },
+          { height: 320 + insets.top + webTop },
         ]}
       />
+
+      {/* Language toggle — top right */}
+      <View style={[styles.langRow, { paddingTop: insets.top + webTop + 12 }]}>
+        <TouchableOpacity
+          onPress={() => setLang("en")}
+          style={[styles.langBtn, lang === "en" && styles.langBtnActive]}
+        >
+          <Text style={[styles.langBtnText, lang === "en" && styles.langBtnTextActive]}>
+            EN
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setLang("hi")}
+          style={[styles.langBtn, lang === "hi" && styles.langBtnActive]}
+        >
+          <Text style={[styles.langBtnText, lang === "hi" && styles.langBtnTextActive]}>
+            हि
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
         contentContainerStyle={{
-          paddingTop: insets.top + 28 + webTop,
+          paddingTop: insets.top + webTop + 36,
           paddingBottom: insets.bottom + 48,
+          alignItems: "center",
         }}
       >
-        {/* Brand */}
-        <View style={styles.headerWrap}>
-          <View style={styles.brand}>
-            <View
-              style={[
-                styles.logoBadge,
-                { backgroundColor: "rgba(255,255,255,0.12)", borderRadius: 16 },
-              ]}
-            >
-              <Feather name="map-pin" size={22} color="#FCD34D" />
-            </View>
-            <View>
-              <Text style={styles.brandTitle}>Field Staff Manager</Text>
-              <Text style={styles.brandSub}>
-                Operations command for the field
-              </Text>
-            </View>
+        {/* ── Circular avatar ─────────────────────────────────────── */}
+        <View style={styles.avatarShadow}>
+          <View style={styles.avatarRing}>
+            <Image
+              // eslint-disable-next-line @typescript-eslint/no-require-imports
+              source={require("../../assets/admin-photo.png")}
+              style={styles.avatar}
+              resizeMode="cover"
+            />
           </View>
-
-          <Text style={styles.heroTitle}>Welcome aboard</Text>
-          <Text style={styles.heroSub}>
-            GPS-verified attendance, auto-tracked kilometers, and tamper-proof
-            audit trails — all in one app.
-          </Text>
         </View>
 
-        {/* Registration options */}
-        <View style={styles.cardsWrap}>
-          <Text
-            style={[styles.sectionLabel, { color: colors.mutedForeground }]}
-          >
-            CREATE YOUR ACCOUNT
-          </Text>
+        {/* ── Portal name ──────────────────────────────────────────── */}
+        <Text style={styles.portalName}>JSDMS / DDU-GKY</Text>
+        <View style={styles.goldBar} />
+        <Text style={styles.heroTitle}>{t("welcomeTitle")}</Text>
+        <Text style={styles.heroSub}>{t("welcomeSub")}</Text>
 
-          <Pressable
-            onPress={() => router.push("/(auth)/register-admin")}
-            style={({ pressed }) => [
-              styles.roleCard,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.primary + "44",
-                borderRadius: colors.radius + 4,
-                opacity: pressed ? 0.9 : 1,
-              },
-            ]}
-          >
-            <View
-              style={[
-                styles.roleIcon,
-                {
-                  backgroundColor: colors.primary + "18",
-                  borderRadius: colors.radius,
-                },
-              ]}
-            >
-              <Feather name="shield" size={22} color={colors.primary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text
-                style={[styles.roleTitle, { color: colors.foreground }]}
+        {/* ── Action card ──────────────────────────────────────────── */}
+        <View style={styles.card}>
+          {!showRegister ? (
+            <>
+              {/* Login */}
+              <Pressable
+                onPress={() => router.push("/(auth)/phone")}
+                style={({ pressed }) => [styles.primaryBtn, { opacity: pressed ? 0.85 : 1 }]}
               >
-                Register as Admin
-              </Text>
-              <Text
-                style={[styles.roleSub, { color: colors.mutedForeground }]}
-              >
-                Manage your team, view live map & activity feed
-              </Text>
-            </View>
-            <Feather
-              name="arrow-right"
-              size={18}
-              color={colors.mutedForeground}
-            />
-          </Pressable>
+                <Feather name="log-in" size={18} color="#fff" />
+                <Text style={styles.primaryBtnText}>{t("login")}</Text>
+              </Pressable>
 
-          <Pressable
-            onPress={() => router.push("/(auth)/register-staff")}
-            style={({ pressed }) => [
-              styles.roleCard,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.pillarAccuracy + "44",
-                borderRadius: colors.radius + 4,
-                opacity: pressed ? 0.9 : 1,
-              },
-            ]}
-          >
-            <View
-              style={[
-                styles.roleIcon,
-                {
-                  backgroundColor: colors.pillarAccuracy + "18",
-                  borderRadius: colors.radius,
-                },
-              ]}
-            >
-              <Feather name="user" size={22} color={colors.pillarAccuracy} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text
-                style={[styles.roleTitle, { color: colors.foreground }]}
-              >
-                Register as Staff
-              </Text>
-              <Text
-                style={[styles.roleSub, { color: colors.mutedForeground }]}
-              >
-                Log attendance, capture meter reads & track trips
-              </Text>
-            </View>
-            <Feather
-              name="arrow-right"
-              size={18}
-              color={colors.mutedForeground}
-            />
-          </Pressable>
+              {/* Divider */}
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>{t("or")}</Text>
+                <View style={styles.dividerLine} />
+              </View>
 
-          {/* Divider */}
-          <View style={styles.dividerRow}>
-            <View
-              style={[styles.dividerLine, { backgroundColor: colors.border }]}
-            />
-            <Text
-              style={[styles.dividerText, { color: colors.mutedForeground }]}
-            >
-              OR
-            </Text>
-            <View
-              style={[styles.dividerLine, { backgroundColor: colors.border }]}
-            />
-          </View>
+              {/* Register toggle */}
+              <Pressable
+                onPress={() => setShowRegister(true)}
+                style={({ pressed }) => [styles.secondaryBtn, { opacity: pressed ? 0.85 : 1 }]}
+              >
+                <Feather name="user-plus" size={18} color={ACCENT} />
+                <Text style={styles.secondaryBtnText}>{t("register")}</Text>
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <TouchableOpacity style={styles.backLink} onPress={() => setShowRegister(false)}>
+                <Feather name="arrow-left" size={14} color={ACCENT} />
+                <Text style={styles.backLinkText}>{t("back")}</Text>
+              </TouchableOpacity>
 
-          {/* Login CTA */}
-          <Pressable
-            onPress={() => router.push("/(auth)/phone")}
-            style={({ pressed }) => [
-              styles.loginBtn,
-              {
-                backgroundColor: colors.muted,
-                borderColor: colors.border,
-                borderRadius: colors.radius,
-                opacity: pressed ? 0.85 : 1,
-              },
-            ]}
-          >
-            <Feather name="log-in" size={16} color={colors.foreground} />
-            <Text style={[styles.loginText, { color: colors.foreground }]}>
-              Already registered? Sign in
-            </Text>
-          </Pressable>
+              {/* Register as Admin */}
+              <Pressable
+                onPress={() => router.push("/(auth)/register-admin")}
+                style={({ pressed }) => [styles.roleCard, { opacity: pressed ? 0.9 : 1 }]}
+              >
+                <View style={styles.roleIcon}>
+                  <Feather name="shield" size={20} color={ACCENT} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.roleTitle}>{t("registerAdmin")}</Text>
+                  <Text style={styles.roleSub}>{t("registerAdminSub")}</Text>
+                </View>
+                <Feather name="chevron-right" size={16} color="#AAA" />
+              </Pressable>
+
+              {/* Register as Staff */}
+              <Pressable
+                onPress={() => router.push("/(auth)/register-staff")}
+                style={({ pressed }) => [styles.roleCard, { opacity: pressed ? 0.9 : 1 }]}
+              >
+                <View style={[styles.roleIcon, { backgroundColor: "#E8F5E9" }]}>
+                  <Feather name="user" size={20} color="#388E3C" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.roleTitle}>{t("registerStaff")}</Text>
+                  <Text style={styles.roleSub}>{t("registerStaffSub")}</Text>
+                </View>
+                <Feather name="chevron-right" size={16} color="#AAA" />
+              </Pressable>
+            </>
+          )}
 
           {/* Demo hint */}
-          <View
-            style={[
-              styles.demoHint,
-              {
-                backgroundColor: colors.muted,
-                borderColor: colors.border,
-                borderRadius: colors.radius,
-              },
-            ]}
-          >
-            <Feather name="info" size={13} color={colors.mutedForeground} />
-            <Text
-              style={[styles.demoText, { color: colors.mutedForeground }]}
-            >
-              <Text style={{ fontFamily: "Inter_600SemiBold" }}>Demo: </Text>
-              use 9999999999 (admin) or 9876543210 (staff) to sign in without
-              registering. OTP is{" "}
-              <Text style={{ fontFamily: "Inter_600SemiBold", color: colors.foreground }}>
-                1234
-              </Text>
-              .
-            </Text>
+          <View style={styles.demoHint}>
+            <Feather name="info" size={12} color="#888" />
+            <Text style={styles.demoText}>{t("demoHint")}</Text>
           </View>
         </View>
       </ScrollView>
@@ -217,120 +163,211 @@ export default function WelcomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  headerWrap: {
-    paddingHorizontal: 22,
-  },
-  brand: {
+  langRow: {
+    position: "absolute",
+    top: 0,
+    right: 16,
     flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 36,
+    gap: 6,
+    zIndex: 20,
   },
-  logoBadge: {
-    width: 46,
-    height: 46,
-    alignItems: "center",
-    justifyContent: "center",
+  langBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.18)",
   },
-  brandTitle: {
-    color: "#fff",
-    fontSize: 16,
-    fontFamily: "Inter_700Bold",
+  langBtnActive: {
+    backgroundColor: "rgba(255,255,255,0.92)",
   },
-  brandSub: {
-    color: "rgba(255,255,255,0.7)",
+  langBtnText: {
+    color: "rgba(255,255,255,0.85)",
     fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    marginTop: 2,
+    fontFamily: "Inter_600SemiBold",
+  },
+  langBtnTextActive: {
+    color: ACCENT,
+  },
+
+  // Avatar
+  avatarShadow: {
+    shadowColor: "#000",
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 10,
+    borderRadius: 60,
+    marginBottom: 20,
+  },
+  avatarRing: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 4,
+    borderColor: GOLD,
+    overflow: "hidden",
+    backgroundColor: "#ccc",
+  },
+  avatar: {
+    width: 120,
+    height: 120,
+  },
+
+  // Titles
+  portalName: {
+    color: "rgba(255,255,255,0.9)",
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 2,
+  },
+  goldBar: {
+    width: 40,
+    height: 3,
+    backgroundColor: GOLD,
+    borderRadius: 2,
+    marginVertical: 10,
   },
   heroTitle: {
     color: "#fff",
-    fontSize: 32,
+    fontSize: 19,
     fontFamily: "Inter_700Bold",
-    letterSpacing: -0.6,
-    lineHeight: 38,
+    textAlign: "center",
+    lineHeight: 27,
+    maxWidth: 300,
+    letterSpacing: -0.3,
   },
   heroSub: {
-    color: "rgba(255,255,255,0.78)",
-    fontSize: 14,
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 13,
     fontFamily: "Inter_400Regular",
-    marginTop: 10,
-    lineHeight: 21,
-    maxWidth: 320,
+    marginTop: 8,
+    textAlign: "center",
+    maxWidth: 280,
   },
-  cardsWrap: {
-    marginTop: 32,
-    paddingHorizontal: 18,
-    gap: 12,
+
+  // Card
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    marginTop: 28,
+    marginHorizontal: 20,
+    padding: 22,
+    gap: 14,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+    width: "90%",
   },
-  sectionLabel: {
-    fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
-    letterSpacing: 0.7,
-    marginBottom: 4,
+
+  primaryBtn: {
+    backgroundColor: ACCENT,
+    borderRadius: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 15,
+  },
+  primaryBtnText: {
+    color: "#fff",
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.3,
+  },
+
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  dividerLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "#DDD",
+  },
+  dividerText: {
+    fontSize: 12,
+    color: "#AAA",
+    fontFamily: "Inter_500Medium",
+  },
+
+  secondaryBtn: {
+    borderWidth: 1.5,
+    borderColor: ACCENT,
+    borderRadius: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 13,
+  },
+  secondaryBtnText: {
+    color: ACCENT,
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+  },
+
+  // Register sub-panel
+  backLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginBottom: 2,
+  },
+  backLinkText: {
+    color: ACCENT,
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
   },
   roleCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    padding: 16,
     borderWidth: 1,
+    borderColor: "#E8EEF4",
+    borderRadius: 10,
+    padding: 14,
+    backgroundColor: "#FAFBFC",
   },
   roleIcon: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: "#E8F0FA",
     alignItems: "center",
     justifyContent: "center",
   },
   roleTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: "Inter_700Bold",
-    letterSpacing: -0.2,
+    color: "#111",
   },
   roleSub: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: "Inter_400Regular",
-    marginTop: 3,
-    lineHeight: 17,
+    color: "#888",
+    marginTop: 2,
+    lineHeight: 16,
   },
-  dividerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginVertical: 4,
-  },
-  dividerLine: {
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-  },
-  dividerText: {
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
-  },
-  loginBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  loginText: {
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-  },
+
+  // Demo hint
   demoHint: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 8,
-    padding: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    marginTop: 4,
+    gap: 6,
+    backgroundColor: "#F8F8F8",
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: "#EEE",
   },
   demoText: {
     flex: 1,
-    fontSize: 12,
+    fontSize: 11,
+    color: "#888",
     fontFamily: "Inter_400Regular",
-    lineHeight: 18,
+    lineHeight: 16,
   },
 });

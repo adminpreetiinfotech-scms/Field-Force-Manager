@@ -140,6 +140,7 @@ export default function AdminProfile() {
           },
         ]}
       >
+        <Row icon="settings" label="Account Settings" colors={colors} onPress={() => router.push("/account-settings")} />
         <Row icon="users" label="Manage field staff" colors={colors} />
         <Row icon="download" label="Export records (CSV)" colors={colors} />
         <Row icon="bell" label="Alert preferences" colors={colors} />
@@ -177,14 +178,17 @@ function Row({
   label,
   colors,
   last,
+  onPress,
 }: {
   icon: keyof typeof Feather.glyphMap;
   label: string;
   colors: ReturnType<typeof useColors>;
   last?: boolean;
+  onPress?: () => void;
 }) {
   return (
     <Pressable
+      onPress={onPress}
       style={({ pressed }) => [
         styles.row,
         {

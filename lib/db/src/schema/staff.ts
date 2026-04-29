@@ -26,6 +26,11 @@ export const staffTable = pgTable("staff", {
   })
     .notNull()
     .default("approved"),
+  /**
+   * Optional bcrypt-style PIN/password hash.
+   * Null means no password is set (OTP-only login).
+   */
+  passwordHash: text("password_hash"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

@@ -172,6 +172,7 @@ export default function StaffProfile() {
           },
         ]}
       >
+        <Row icon="settings" label="Account Settings" colors={colors} onPress={() => router.push("/account-settings")} />
         <Row icon="bell" label="Notifications" colors={colors} />
         <Row icon="shield" label="Privacy & permissions" colors={colors} />
         <Row icon="help-circle" label="Help & support" colors={colors} />
@@ -208,14 +209,17 @@ function Row({
   label,
   colors,
   last,
+  onPress,
 }: {
   icon: keyof typeof Feather.glyphMap;
   label: string;
   colors: ReturnType<typeof useColors>;
   last?: boolean;
+  onPress?: () => void;
 }) {
   return (
     <Pressable
+      onPress={onPress}
       style={({ pressed }) => [
         styles.row,
         {

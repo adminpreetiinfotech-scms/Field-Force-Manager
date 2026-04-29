@@ -1,6 +1,7 @@
 import { db, staffTable, activityEventsTable } from "@workspace/db";
 import { eq, and, gte, lt } from "drizzle-orm";
 import { Router, type IRouter } from "express";
+import crypto from "node:crypto";
 
 const router: IRouter = Router();
 
@@ -452,6 +453,97 @@ router.patch("/admin/staff/:staffId/reject", async (req, res, next) => {
       return;
     }
     res.json(toStaffDTO(updated));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── Password helpers (scrypt, no extra deps) ─────────────────────────────────
+function hashPassword(plain: string): string {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const hash = crypto.scryptSync(plain, salt, 64).toString("hex");
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(plain: string, stored: string): boolean {
+  const [salt, hash] = stored.split(":");
+  if (!salt || !hash) return false;
+  const derived = crypto.scryptSync(plain, salt, 64).toString("hex");
+  return crypto.timingSafeEqual(Buffer.from(derived), Buffer.from(hash));
+}
+
+// ─── POST /api/staff/change-password ─────────────────────────────────────────
+// Body: { phone, currentPassword?, newPassword }
+// If currentPassword is omitted and no password is set yet, this sets the first password.
+// Otherwise, currentPassword must match the stored hash.
+router.post("/staff/change-password", async (req, res, next) => {
+  try {
+    const { phone, currentPassword, newPassword } = req.body as {
+      phone?: string;
+      currentPassword?: string;
+      newPassword?: string;
+    };
+
+    if (!phone?.trim() || !newPassword?.trim()) {
+      res.status(400).json({ title: "phone and newPassword are required", status: 400 });
+      return;
+    }
+    if (newPassword.trim().length < 4) {
+      res.status(400).json({ title: "Password must be at least 4 characters", status: 400 });
+      return;
+    }
+
+    const [row] = await db
+      .select({ id: staffTable.id, passwordHash: staffTable.passwordHash })
+      .from(staffTable)
+      .where(eq(staffTable.phone, phone.trim()))
+      .limit(1);
+
+    if (!row) {
+      res.status(404).json({ title: "Account not found", status: 404 });
+      return;
+    }
+
+    // If a password is already set, require the current one.
+    if (row.passwordHash) {
+      if (!currentPassword) {
+        res.status(401).json({ title: "Current password required", status: 401 });
+        return;
+      }
+      if (!verifyPassword(currentPassword, row.passwordHash)) {
+        res.status(401).json({ title: "Current password is incorrect", status: 401 });
+        return;
+      }
+    }
+
+    const newHash = hashPassword(newPassword.trim());
+    await db
+      .update(staffTable)
+      .set({ passwordHash: newHash })
+      .where(eq(staffTable.id, row.id));
+
+    res.json({ message: "Password updated successfully" });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── GET /api/staff/has-password?phone=xxx ────────────────────────────────────
+// Returns whether this phone number has a password set.
+router.get("/staff/has-password", async (req, res, next) => {
+  try {
+    const phone = (req.query["phone"] as string | undefined)?.trim();
+    if (!phone) {
+      res.status(400).json({ title: "phone query required", status: 400 });
+      return;
+    }
+    const [row] = await db
+      .select({ passwordHash: staffTable.passwordHash })
+      .from(staffTable)
+      .where(eq(staffTable.phone, phone))
+      .limit(1);
+
+    res.json({ hasPassword: !!(row?.passwordHash) });
   } catch (err) {
     next(err);
   }
