@@ -81,9 +81,23 @@ export const candidateNotificationsTable = pgTable(
   },
 );
 
+export const candidateAuditLogTable = pgTable("candidate_audit_log", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  candidateId: text("candidate_id").notNull(),
+  candidateName: text("candidate_name").notNull(),
+  actionBy: text("action_by").notNull(),
+  actionByPhone: text("action_by_phone"),
+  oldStatus: text("old_status"),
+  newStatus: text("new_status").notNull(),
+  remarks: text("remarks"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type InsertCandidate = typeof candidatesTable.$inferInsert;
 export type Candidate = typeof candidatesTable.$inferSelect;
 export type InsertCandidateNotification =
   typeof candidateNotificationsTable.$inferInsert;
 export type CandidateNotification =
   typeof candidateNotificationsTable.$inferSelect;
+export type InsertCandidateAuditLog = typeof candidateAuditLogTable.$inferInsert;
+export type CandidateAuditLog = typeof candidateAuditLogTable.$inferSelect;

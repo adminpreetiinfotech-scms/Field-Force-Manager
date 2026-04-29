@@ -102,7 +102,7 @@ export default function CandidateListScreen() {
       const res = await fetch(`${apiBase}/api/admin/candidates/${verifyModal.id}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus, remarks: remarks.trim() || null, verifiedBy: user?.name ?? null }),
+        body: JSON.stringify({ status: newStatus, remarks: remarks.trim() || null, verifiedBy: user?.name ?? null, verifiedByPhone: user?.phone ?? null }),
       });
       if (!res.ok) {
         const d = await res.json() as { title?: string };

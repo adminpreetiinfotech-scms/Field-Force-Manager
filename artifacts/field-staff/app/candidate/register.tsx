@@ -71,7 +71,18 @@ async function pickImage(setter: (img: ImageData | null) => void): Promise<void>
   });
   if (!result.canceled && result.assets[0]) {
     const a = result.assets[0];
-    setter({ uri: a.uri, base64: a.base64 ?? "", mimeType: a.mimeType ?? "image/jpeg" });
+    const MAX_BYTES = 5 * 1024 * 1024;
+    if (a.fileSize && a.fileSize > MAX_BYTES) {
+      Alert.alert("File Too Large", "Please select an image smaller than 5 MB.");
+      return;
+    }
+    const allowedMimes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    const mime = (a.mimeType ?? "image/jpeg").toLowerCase();
+    if (!allowedMimes.includes(mime)) {
+      Alert.alert("Invalid File Type", "Only JPEG, PNG, and WebP images are accepted.");
+      return;
+    }
+    setter({ uri: a.uri, base64: a.base64 ?? "", mimeType: mime });
   }
 }
 
@@ -113,11 +124,11 @@ function FieldLabel({ label, required }: { label: string; required?: boolean }) 
 }
 
 function TextBox({
-  label, value, onChangeText, placeholder, keyboardType = "default", required, multiline,
+  label, value, onChangeText, placeholder, keyboardType = "default", required, multiline, error,
 }: {
   label: string; value: string; onChangeText: (v: string) => void;
   placeholder?: string; keyboardType?: "default" | "numeric" | "phone-pad" | "email-address";
-  required?: boolean; multiline?: boolean;
+  required?: boolean; multiline?: boolean; error?: string;
 }) {
   return (
     <View style={styles.fieldCell}>
@@ -129,8 +140,9 @@ function TextBox({
         placeholderTextColor={MUTED}
         keyboardType={keyboardType}
         multiline={multiline}
-        style={[styles.textBox, multiline && { height: 54, textAlignVertical: "top" }]}
+        style={[styles.textBox, multiline && { height: 54, textAlignVertical: "top" }, error ? { borderColor: "#DC2626", borderWidth: 1.5 } : {}]}
       />
+      {error ? <Text style={{ color: "#DC2626", fontSize: 11, marginTop: 3, fontFamily: "Inter_400Regular" }}>{error}</Text> : null}
     </View>
   );
 }
@@ -140,11 +152,11 @@ function HalfRow({ children }: { children: React.ReactNode }) {
 }
 
 function HalfField({
-  label, value, onChangeText, placeholder, keyboardType = "default", required,
+  label, value, onChangeText, placeholder, keyboardType = "default", required, error,
 }: {
   label: string; value: string; onChangeText: (v: string) => void;
   placeholder?: string; keyboardType?: "default" | "numeric" | "phone-pad" | "email-address";
-  required?: boolean;
+  required?: boolean; error?: string;
 }) {
   return (
     <View style={styles.halfCell}>
@@ -155,8 +167,9 @@ function HalfField({
         placeholder={placeholder ?? ""}
         placeholderTextColor={MUTED}
         keyboardType={keyboardType}
-        style={styles.textBox}
+        style={[styles.textBox, error ? { borderColor: "#DC2626", borderWidth: 1.5 } : {}]}
       />
+      {error ? <Text style={{ color: "#DC2626", fontSize: 11, marginTop: 3, fontFamily: "Inter_400Regular" }}>{error}</Text> : null}
     </View>
   );
 }
@@ -328,6 +341,34 @@ export default function CandidateRegisterScreen() {
   const [secF, setSecF] = useState(true);
   const [secG, setSecG] = useState(true);
 
+  // Form validation errors (shown inline under fields)
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  function validate(): Record<string, string> {
+    const e: Record<string, string> = {};
+    if (!name.trim() || name.trim().length < 2) e.name = "पूरा नाम जरूरी है (न्यूनतम 2 अक्षर)";
+    if (!phone.trim() || !/^\d{10}$/.test(phone.trim())) e.phone = "10 अंकों का मोबाइल नंबर जरूरी है";
+    if (aadhaarNumber.replace(/\D/g, "").length > 0 && aadhaarNumber.replace(/\D/g, "").length !== 12) {
+      e.aadhaarNumber = "आधार नंबर 12 अंकों का होना चाहिए";
+    }
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      e.email = "Valid email address enter करें";
+    }
+    if (dob.trim() && !/^\d{2}\/\d{2}\/\d{4}$/.test(dob.trim())) {
+      e.dob = "Format: DD/MM/YYYY";
+    }
+    if (pin.trim() && !/^\d{6}$/.test(pin.trim())) {
+      e.pin = "PIN code 6 अंकों का होना चाहिए";
+    }
+    if (ifsc.trim() && !/^[A-Za-z]{4}0[A-Za-z0-9]{6}$/.test(ifsc.trim())) {
+      e.ifsc = "IFSC code सही नहीं है (जैसे: SBIN0001234)";
+    }
+    if (bankAccount.trim() && !/^\d{6,18}$/.test(bankAccount.trim())) {
+      e.bankAccount = "Valid bank account number enter करें";
+    }
+    return e;
+  }
+
   // ─ Personal
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -482,14 +523,17 @@ export default function CandidateRegisterScreen() {
   // ── Submit ──────────────────────────────────────────────────────────────────
 
   const handleSubmit = async () => {
-    if (!name.trim() || name.trim().length < 2) {
-      Alert.alert("Required", "Please enter the candidate's full name.");
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      // Expand sections that have errors
+      if (validationErrors.name || validationErrors.phone || validationErrors.email || validationErrors.dob || validationErrors.aadhaarNumber) setSecA(true);
+      if (validationErrors.pin) setSecC(true);
+      if (validationErrors.ifsc || validationErrors.bankAccount) setSecF(true);
+      Alert.alert("Form Incomplete", "Please correct the highlighted fields before submitting.");
       return;
     }
-    if (!phone.trim() || !/^\d{10}$/.test(phone.trim())) {
-      Alert.alert("Required", "Please enter a valid 10-digit mobile number.");
-      return;
-    }
+    setErrors({});
 
     const networkState = await Network.getNetworkStateAsync();
     if (!networkState.isConnected) {
@@ -718,21 +762,21 @@ export default function CandidateRegisterScreen() {
           <SectionBand title="A.  PERSONAL DETAILS  /  व्यक्तिगत विवरण" onToggle={() => setSecA(!secA)} expanded={secA} />
           {secA && (
             <View style={styles.sectionBody}>
-              <TextBox label="Candidate Name (English) / नाम (अंग्रेजी)*" value={name} onChangeText={setName} required />
+              <TextBox label="Candidate Name (English) / नाम (अंग्रेजी)*" value={name} onChangeText={(v) => { setName(v); if (errors.name) setErrors((prev) => ({ ...prev, name: "" })); }} required error={errors.name} />
               <HalfRow>
                 <HalfField label="Father/Husband Name / पिता का नाम" value={fatherName} onChangeText={setFatherName} />
                 <HalfField label="Mother's Name / माता का नाम" value={motherName} onChangeText={setMotherName} />
               </HalfRow>
               <HalfRow>
-                <HalfField label="Date of Birth / जन्म तिथि (DD/MM/YYYY)" value={dob} onChangeText={setDob} placeholder="DD/MM/YYYY" />
-                <HalfField label="Mobile No. / मोबाइल नं.*" value={phone} onChangeText={setPhone} keyboardType="phone-pad" required />
+                <HalfField label="Date of Birth / जन्म तिथि (DD/MM/YYYY)" value={dob} onChangeText={(v) => { setDob(v); if (errors.dob) setErrors((prev) => ({ ...prev, dob: "" })); }} placeholder="DD/MM/YYYY" error={errors.dob} />
+                <HalfField label="Mobile No. / मोबाइल नं.*" value={phone} onChangeText={(v) => { setPhone(v); if (errors.phone) setErrors((prev) => ({ ...prev, phone: "" })); }} keyboardType="phone-pad" required error={errors.phone} />
               </HalfRow>
               <HalfRow>
                 <HalfRadio label="Marital Status / वैवाहिक स्थिति" options={MARITAL} value={maritalStatus} onSelect={setMaritalStatus} />
                 <HalfRadio label="Sex / लिंग" options={GENDERS} value={gender} onSelect={setGender} />
               </HalfRow>
               <HalfRow>
-                <HalfField label="Email / ईमेल" value={email} onChangeText={setEmail} keyboardType="email-address" />
+                <HalfField label="Email / ईमेल" value={email} onChangeText={(v) => { setEmail(v); if (errors.email) setErrors((prev) => ({ ...prev, email: "" })); }} keyboardType="email-address" error={errors.email} />
                 <HalfField label="Religion / धर्म" value={religion ?? ""} onChangeText={(v) => setReligion(v || null)} />
               </HalfRow>
               <RadioRow label="Category / वर्ग" options={CASTES} value={caste} onSelect={setCaste} />
@@ -760,7 +804,7 @@ export default function CandidateRegisterScreen() {
               </HalfRow>
               <HalfRow>
                 <HalfField label="State / राज्य" value={state} onChangeText={setState} />
-                <HalfField label="PIN Code / पिन कोड" value={pin} onChangeText={setPin} keyboardType="numeric" />
+                <HalfField label="PIN Code / पिन कोड" value={pin} onChangeText={(v) => { setPin(v); if (errors.pin) setErrors((prev) => ({ ...prev, pin: "" })); }} keyboardType="numeric" error={errors.pin} />
               </HalfRow>
             </View>
           )}
@@ -769,7 +813,8 @@ export default function CandidateRegisterScreen() {
           <SectionBand title="C.  AADHAAR & IDENTITY  /  आधार और पहचान" onToggle={() => setSecC(!secC)} expanded={secC} />
           {secC && (
             <View style={styles.sectionBody}>
-              <AadhaarInput value={aadhaarNumber} onChange={setAadhaarNumber} />
+              <AadhaarInput value={aadhaarNumber} onChange={(v) => { setAadhaarNumber(v); if (errors.aadhaarNumber) setErrors((prev) => ({ ...prev, aadhaarNumber: "" })); }} />
+              {errors.aadhaarNumber ? <Text style={{ color: "#DC2626", fontSize: 11, marginTop: 3, marginHorizontal: 12, fontFamily: "Inter_400Regular" }}>{errors.aadhaarNumber}</Text> : null}
               <HalfRow>
                 <HalfRadio label="BPL / गरीबी रेखा से नीचे" options={BPL_OPTIONS} value={bpl} onSelect={setBpl} />
                 {bpl === "Yes"
@@ -793,11 +838,11 @@ export default function CandidateRegisterScreen() {
           {secE && (
             <View style={styles.sectionBody}>
               <HalfRow>
-                <HalfField label="Bank Account No. / बैंक खाता नं." value={bankAccount} onChangeText={setBankAccount} keyboardType="numeric" />
+                <HalfField label="Bank Account No. / बैंक खाता नं." value={bankAccount} onChangeText={(v) => { setBankAccount(v); if (errors.bankAccount) setErrors((prev) => ({ ...prev, bankAccount: "" })); }} keyboardType="numeric" error={errors.bankAccount} />
                 <HalfField label="Bank Name / बैंक का नाम" value={bankName} onChangeText={setBankName} />
               </HalfRow>
               <HalfRow>
-                <HalfField label="IFSC Code" value={ifsc} onChangeText={setIfsc} />
+                <HalfField label="IFSC Code" value={ifsc} onChangeText={(v) => { setIfsc(v.toUpperCase()); if (errors.ifsc) setErrors((prev) => ({ ...prev, ifsc: "" })); }} error={errors.ifsc} />
                 <HalfField label="Branch Name / शाखा नाम" value={bankBranch} onChangeText={setBankBranch} />
               </HalfRow>
             </View>

@@ -1,10 +1,11 @@
 import {
+  candidateAuditLogTable,
   candidateNotificationsTable,
   candidatesTable,
   db,
   staffTable,
 } from "@workspace/db";
-import { and, desc, eq, ilike, or } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, lt, or } from "drizzle-orm";
 import express, { Router } from "express";
 import fs from "fs";
 import path from "path";
@@ -36,6 +37,31 @@ function saveBase64(
     return filepath;
   } catch {
     return null;
+  }
+}
+
+const ALLOWED_MIMES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+const MAX_FILE_BYTES = 6 * 1024 * 1024; // 6 MB
+
+function validateBase64File(
+  base64: string | null | undefined,
+  mime: string | null | undefined,
+  fieldName: string,
+): void {
+  if (!base64) return;
+  if (mime && !ALLOWED_MIMES.includes(mime.toLowerCase())) {
+    throw Object.assign(
+      new Error(`${fieldName}: only JPEG, PNG and WebP images are allowed (got ${mime})`),
+      { status: 400 },
+    );
+  }
+  // Approximate decoded size: base64 length × 3/4
+  const approxBytes = Math.ceil((base64.length * 3) / 4);
+  if (approxBytes > MAX_FILE_BYTES) {
+    throw Object.assign(
+      new Error(`${fieldName}: file too large (max 5 MB)`),
+      { status: 400 },
+    );
   }
 }
 
@@ -210,6 +236,28 @@ router.post("/candidates", async (req, res, next) => {
     }
     if (!body.phone?.trim() || !/^\d{10}$/.test(body.phone.trim())) {
       res.status(400).json({ title: "Valid 10-digit phone required", status: 400 });
+      return;
+    }
+    if (body.aadhaarNumber?.trim() && !/^\d{12}$/.test(body.aadhaarNumber.trim())) {
+      res.status(400).json({ title: "Aadhaar number must be exactly 12 digits", status: 400 });
+      return;
+    }
+    if (body.pin?.trim() && !/^\d{6}$/.test(body.pin.trim())) {
+      res.status(400).json({ title: "PIN code must be 6 digits", status: 400 });
+      return;
+    }
+    // Secure file validation — type + size for each upload
+    try {
+      validateBase64File(body.photoBase64, body.photoMime, "Candidate photo");
+      validateBase64File(body.aadhaarFrontBase64, body.aadhaarFrontMime, "Aadhaar front");
+      validateBase64File(body.aadhaarBackBase64, body.aadhaarBackMime, "Aadhaar back");
+      validateBase64File(body.educationCertBase64, body.educationCertMime, "Education certificate");
+      validateBase64File(body.bankPassbookBase64, body.bankPassbookMime, "Bank passbook");
+      validateBase64File(body.casteCertBase64, body.casteCertMime, "Caste certificate");
+      validateBase64File(body.signatureBase64, body.signatureMime, "Signature");
+    } catch (validationErr) {
+      const e = validationErr as Error & { status?: number };
+      res.status(e.status ?? 400).json({ title: e.message, status: e.status ?? 400 });
       return;
     }
 
@@ -392,10 +440,26 @@ router.get("/admin/candidates", async (req, res, next) => {
 
 router.get("/admin/candidates/csv", async (req, res, next) => {
   try {
-    const { status } = req.query as { status?: string };
-    const conditions = status?.trim()
-      ? [eq(candidatesTable.status, status.trim())]
-      : [];
+    const { status, mobilizer, from, to } = req.query as {
+      status?: string;
+      mobilizer?: string;
+      from?: string; // YYYY-MM-DD
+      to?: string;   // YYYY-MM-DD
+    };
+    const conditions = [];
+    if (status?.trim()) conditions.push(eq(candidatesTable.status, status.trim()));
+    if (mobilizer?.trim()) conditions.push(ilike(candidatesTable.mobilizer, `%${mobilizer.trim()}%`));
+    if (from?.trim()) {
+      const fromDate = new Date(from.trim());
+      if (!isNaN(fromDate.getTime())) conditions.push(gte(candidatesTable.createdAt, fromDate));
+    }
+    if (to?.trim()) {
+      const toDate = new Date(to.trim());
+      if (!isNaN(toDate.getTime())) {
+        toDate.setDate(toDate.getDate() + 1); // inclusive of the to-date
+        conditions.push(lt(candidatesTable.createdAt, toDate));
+      }
+    }
     const rows = await db
       .select()
       .from(candidatesTable)
@@ -452,10 +516,11 @@ router.get("/admin/candidates/csv", async (req, res, next) => {
 router.patch("/admin/candidates/:id/status", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { status, remarks, verifiedBy } = req.body as {
+    const { status, remarks, verifiedBy, verifiedByPhone } = req.body as {
       status?: string;
       remarks?: string;
       verifiedBy?: string;
+      verifiedByPhone?: string;
     };
 
     const validStatuses = ["pending", "verified", "rejected", "enrolled"];
@@ -487,6 +552,17 @@ router.patch("/admin/candidates/:id/status", async (req, res, next) => {
       })
       .where(eq(candidatesTable.id, id))
       .returning();
+
+    // Write audit log entry
+    await db.insert(candidateAuditLogTable).values({
+      candidateId: candidate.id,
+      candidateName: candidate.name,
+      actionBy: verifiedBy?.trim() || "admin",
+      actionByPhone: verifiedByPhone?.trim() || null,
+      oldStatus: candidate.status ?? null,
+      newStatus: status,
+      remarks: remarks?.trim() || null,
+    });
 
     // Create notification for the submitter.
     if (candidate.submittedByPhone) {

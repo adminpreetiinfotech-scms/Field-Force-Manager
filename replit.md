@@ -57,17 +57,23 @@ Mobile-first field operations app for distribution/utility staff and ops admins.
   - `POST /api/candidates/check-duplicate`: pre-submit check by phone or aadhaar; returns `{isDuplicate, field, existingName}`
   - `GET /api/candidates/my?phone=`: staff view their own submitted candidates
   - `GET /api/admin/candidates`: admin list with search (name/phone) + status/village/course/mobilizer filters
-  - `PATCH /api/admin/candidates/:id/status`: approve/reject/enroll with remarks; auto-creates notification for submitting staff
-  - `GET /api/admin/candidates/csv`: full CSV export
+  - `PATCH /api/admin/candidates/:id/status`: approve/reject/enroll with remarks; auto-creates notification for submitting staff; writes audit log entry
+  - `GET /api/admin/candidates/csv`: CSV export with optional `status`, `from` (YYYY-MM-DD), `to` (YYYY-MM-DD), `mobilizer` query filters
   - `GET /api/candidates/:id/pdf`: generated PDF per candidate
   - `GET /api/notifications?phone=`: staff in-app notifications
   - `PATCH /api/notifications/:id/read` / `PATCH /api/notifications/read-all`: mark read
   - Mobile screens: `app/candidate/register.tsx` (offline draft save, duplicate check, village+course), `app/candidate/list.tsx` (admin verify/reject modal, document preview, status badges), `app/candidate/my-candidates.tsx` (staff own list), `app/notifications.tsx` (notification centre)
+  - `GET /api/admin/candidate-stats`: summary counts by status, today's submissions, unique mobilizers breakdown
+  - `GET /api/admin/permissions?phone=`: returns role + approvalStatus + canSubmitCandidates for any phone
+  - `GET /api/admin/audit-log`: paginated audit log with optional `candidateId`/`phone` filter
+  - Role-based middleware: `requireAdmin(req,res,next)` in `routes/admin.ts` + `isAdminPhone()` / `isApprovedStaff()` helpers
   - Shift screen (`app/(staff)/shift.tsx`): notification bell with unread badge in header; "My Candidates" + "Notifications" quick action buttons
-  - DB: `candidates` table has 40+ columns: all personal/address/identity/education/bank/document/status fields; new `candidate_notifications` table
+  - Admin dashboard (`app/(admin)/dashboard.tsx`): candidate stats panel (Total / Today / Pending / Verified / Enrolled / Rejected + mobilizer count badge)
+  - DB: `candidates` table has 40+ columns: all personal/address/identity/education/bank/document/status fields; `candidate_notifications` table; `candidate_audit_log` table (every status change tracked)
   - New fields added: `email`, `mother_name`, `marital_status`, `religion`, `pwd`, `disability_type`, `bpl`, `bpl_number`, `police_station`, `post_office`, `district`, `state`, `pin`, `year_of_passing`, `bank_branch`, `skill_centre_name`, `mobilizer`, `candidate_id_code`, `signature_path`
   - PDF style: paper-form layout mimicking Jharkhand JSDMS/DDU-GKY printed form — org header, photo box, section bands, Aadhaar digit boxes, radio options, document checklist, signature area
-  - Mobile form (`register.tsx`): JSDMS/DDUKK paper-form header, 7 collapsible sections (Personal/Address/Aadhaar/Education/Bank/Documents/Declaration), 12-box Aadhaar digit input, dual Hindi+English field labels, passport photo box, signature upload, all 30+ fields
+  - Mobile form (`register.tsx`): JSDMS/DDUKK paper-form header, 7 collapsible sections (Personal/Address/Aadhaar/Education/Bank/Documents/Declaration), 12-box Aadhaar digit input, dual Hindi+English field labels, passport photo box, signature upload, all 30+ fields; inline validation with Hindi error messages (red border + text under field); client-side file size (max 5 MB) + MIME type (JPEG/PNG/WebP only) check in `pickImage()`; server-side `validateBase64File()` also enforces same rules
+  - Secure file upload: server rejects non-image MIME types (returns 400) and files > 6 MB; client `pickImage` also guards before upload
 - Offline-first sync via AsyncStorage; auto-syncs after ~4s, manual `Sync` button via `SyncBanner`
 
 **State**: `contexts/AppContext.tsx` — `register()` + `requestOtp()` + `verifyOtp()` actions; persisted to AsyncStorage at key `@field-staff/state-v1`.

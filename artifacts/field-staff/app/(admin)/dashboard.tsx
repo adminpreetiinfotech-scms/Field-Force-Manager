@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -31,12 +31,44 @@ import { SyncBanner } from "@/components/SyncBanner";
 import { useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
 
+type CandidateStats = {
+  total: number;
+  pending: number;
+  verified: number;
+  rejected: number;
+  enrolled: number;
+  todaySubmissions: number;
+  uniqueMobilizers: number;
+  approvedMobilizers: number;
+  pendingMobilizers: number;
+};
+
+function useCandidateStats() {
+  const [stats, setStats] = useState<CandidateStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let mounted = true;
+    const load = () => {
+      fetch("/api/admin/candidate-stats")
+        .then((r) => r.json())
+        .then((d) => { if (mounted) setStats(d as CandidateStats); })
+        .catch(() => {})
+        .finally(() => { if (mounted) setLoading(false); });
+    };
+    load();
+    const timer = setInterval(load, 60_000);
+    return () => { mounted = false; clearInterval(timer); };
+  }, []);
+  return { stats, loading };
+}
+
 export default function AdminDashboard() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user, attendance, meterReadings, staffLocations } = useApp();
 
   const today = new Date().toISOString().slice(0, 10);
+  const { stats: candidateStats, loading: candidateStatsLoading } = useCandidateStats();
 
   const distanceParams = { date: today };
   const {
@@ -215,6 +247,92 @@ export default function AdminDashboard() {
                 </Text>
               </Pressable>
             </View>
+
+            {/* Candidate stats grid */}
+            {candidateStatsLoading && !candidateStats ? (
+              <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 14 }} />
+            ) : candidateStats ? (
+              <View style={{ marginTop: 14, gap: 8 }}>
+                <View style={{ flexDirection: "row", gap: 8 }}>
+                  {[
+                    { label: "Total", value: candidateStats.total, color: "#1E3A5F" },
+                    { label: "Today", value: candidateStats.todaySubmissions, color: "#0D6EAE" },
+                    { label: "Pending", value: candidateStats.pending, color: "#D97706" },
+                  ].map((item) => (
+                    <View
+                      key={item.label}
+                      style={{
+                        flex: 1,
+                        backgroundColor: item.color + "14",
+                        borderRadius: 10,
+                        borderWidth: 1,
+                        borderColor: item.color + "33",
+                        paddingVertical: 10,
+                        paddingHorizontal: 6,
+                        alignItems: "center",
+                      }}
+                    >
+                      <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: item.color }}>
+                        {item.value}
+                      </Text>
+                      <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 2 }}>
+                        {item.label}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+                <View style={{ flexDirection: "row", gap: 8 }}>
+                  {[
+                    { label: "Verified", value: candidateStats.verified, color: "#16A34A" },
+                    { label: "Enrolled", value: candidateStats.enrolled, color: "#7C3AED" },
+                    { label: "Rejected", value: candidateStats.rejected, color: "#DC2626" },
+                  ].map((item) => (
+                    <View
+                      key={item.label}
+                      style={{
+                        flex: 1,
+                        backgroundColor: item.color + "14",
+                        borderRadius: 10,
+                        borderWidth: 1,
+                        borderColor: item.color + "33",
+                        paddingVertical: 10,
+                        paddingHorizontal: 6,
+                        alignItems: "center",
+                      }}
+                    >
+                      <Text style={{ fontSize: 20, fontFamily: "Inter_700Bold", color: item.color }}>
+                        {item.value}
+                      </Text>
+                      <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 2 }}>
+                        {item.label}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                    marginTop: 2,
+                    padding: 8,
+                    backgroundColor: colors.muted,
+                    borderRadius: 8,
+                  }}
+                >
+                  <Feather name="users" size={13} color={colors.mutedForeground} />
+                  <Text style={{ fontSize: 12, color: colors.mutedForeground }}>
+                    <Text style={{ fontFamily: "Inter_600SemiBold", color: colors.foreground }}>
+                      {candidateStats.uniqueMobilizers}
+                    </Text>{" "}
+                    mobilizers{" "}
+                    {candidateStats.pendingMobilizers > 0
+                      ? `· ${candidateStats.pendingMobilizers} pending approval`
+                      : "· all approved"}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
           </View>
 
           <View style={styles.row}>
