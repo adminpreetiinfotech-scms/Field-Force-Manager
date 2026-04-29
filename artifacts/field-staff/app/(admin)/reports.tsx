@@ -739,6 +739,11 @@ export default function ReportsScreen() {
                   onPress={() =>
                     router.push(`/(admin)/mobilizer/${entry.staffId}`)
                   }
+                  onAddNote={() =>
+                    router.push(
+                      `/(admin)/mobilizer/${entry.staffId}?editNotes=1`,
+                    )
+                  }
                 />
               ))}
 
@@ -1114,11 +1119,13 @@ function LeaderboardRow({
   maxKm,
   colors,
   onPress,
+  onAddNote,
 }: {
   entry: LeaderboardEntry;
   maxKm: number;
   colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
   onPress?: () => void;
+  onAddNote?: () => void;
 }) {
   const barPct = maxKm > 0 ? entry.totalKm / maxKm : 0;
   const isTop3 = entry.rank <= 3;
@@ -1212,8 +1219,28 @@ function LeaderboardRow({
           {entry.tripCount} {entry.tripCount === 1 ? "trip" : "trips"}
         </Text>
       </View>
-      {/* Chevron hint */}
-      <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
+      {/* "+ Note" shortcut or chevron */}
+      {!entry.hasNotes && onAddNote ? (
+        <Pressable
+          onPress={onAddNote}
+          style={[
+            styles.addNoteBtn,
+            {
+              backgroundColor: "#f0fdf4",
+              borderColor: "#bbf7d0",
+              borderRadius: 999,
+            },
+          ]}
+          hitSlop={6}
+        >
+          <Feather name="plus" size={10} color="#16a34a" />
+          <Text style={[styles.addNoteBtnText, { color: "#16a34a" }]}>
+            Note
+          </Text>
+        </Pressable>
+      ) : (
+        <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
+      )}
     </Pressable>
   );
 }
@@ -1529,6 +1556,18 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontFamily: "Inter_600SemiBold",
     letterSpacing: 0.2,
+  },
+  addNoteBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderWidth: 1,
+  },
+  addNoteBtnText: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
   },
   barTrack: {
     height: 5,

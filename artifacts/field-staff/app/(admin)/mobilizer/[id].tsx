@@ -54,7 +54,7 @@ function fmtDate(iso: string): string {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function MobilizerProfile() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, editNotes } = useLocalSearchParams<{ id: string; editNotes?: string }>();
   const router = useRouter();
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -82,6 +82,13 @@ export default function MobilizerProfile() {
   useEffect(() => {
     if (data?.notes != null) setNotesDraft(data.notes);
   }, [data?.notes]);
+
+  // Auto-open edit mode when navigated here with ?editNotes=1
+  useEffect(() => {
+    if (editNotes === "1" && data && !isLoading) {
+      setNotesEditing(true);
+    }
+  }, [editNotes, data, isLoading]);
 
   const { mutate: saveNotes, isPending: notesSaving } = useUpdateStaffNotes({
     mutation: {
