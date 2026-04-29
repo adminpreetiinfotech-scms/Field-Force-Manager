@@ -3,30 +3,32 @@ import path from "path";
 import PDFDocument from "pdfkit";
 import type { Candidate } from "@workspace/db";
 
-// ─── Font paths ───────────────────────────────────────────────────────────────
-const FONTS_DIR = path.resolve(__dirname, "fonts");
-const FONT_NS_REG  = path.join(FONTS_DIR, "NotoSansDevanagari-Regular.ttf");
-const FONT_NS_BOLD = path.join(FONTS_DIR, "NotoSansDevanagari-Bold.ttf");
-const FONT_DV_REG  = path.join(FONTS_DIR, "DejaVuSans-Regular.ttf");
-const FONT_DV_BOLD = path.join(FONTS_DIR, "DejaVuSans-Bold.ttf");
+// ─── Asset paths ──────────────────────────────────────────────────────────────
+const FONTS_DIR   = path.resolve(__dirname, "fonts");
+const FONT_NS_REG = path.join(FONTS_DIR, "NotoSansDevanagari-Regular.ttf");
+const FONT_NS_BOL = path.join(FONTS_DIR, "NotoSansDevanagari-Bold.ttf");
+const FONT_DV_REG = path.join(FONTS_DIR, "DejaVuSans-Regular.ttf");
+const FONT_DV_BOL = path.join(FONTS_DIR, "DejaVuSans-Bold.ttf");
+const LOGO_PATH   = path.join(FONTS_DIR, "jsdms_logo.jpeg");
 
 type PDFDoc = InstanceType<typeof PDFDocument>;
 
-const A4_W = 595.28;
-const A4_H = 841.89;
-const ML   = 22;        // left/right page margin
-const MT   = 14;        // top/bottom page margin
-const INK  = "#111111"; // primary ink colour (near-black)
-const DARK = "#1a1a1a";
+// ─── Page constants ───────────────────────────────────────────────────────────
+const A4_W  = 595.28;
+const A4_H  = 841.89;
+const ML    = 22;           // left / right margin
+const MT    = 12;           // top / bottom margin
+const INK   = "#111111";    // near-black ink
+const NAVY  = "#1A3560";    // section band background
+const AMBER = "#F59E0B";    // section band left accent
+const GRAY  = "#6B7280";
+const DARK  = "#1a1a1a";
 
 // ─── Script detection ─────────────────────────────────────────────────────────
-
 function isDevanagariCp(cp: number): boolean {
   return (cp >= 0x0900 && cp <= 0x097F) || (cp >= 0xA8E0 && cp <= 0xA8FF);
 }
-
 type Seg = { text: string; dev: boolean };
-
 function splitScript(text: string): Seg[] {
   if (!text) return [];
   const out: Seg[] = [];
@@ -34,108 +36,93 @@ function splitScript(text: string): Seg[] {
   let curDev = isDevanagariCp(text.codePointAt(0) ?? 0);
   for (const ch of text) {
     const dev = isDevanagariCp(ch.codePointAt(0) ?? 0);
-    if (dev !== curDev) {
-      if (cur) out.push({ text: cur, dev: curDev });
-      cur = ch; curDev = dev;
-    } else { cur += ch; }
+    if (dev !== curDev) { if (cur) out.push({ text: cur, dev: curDev }); cur = ch; curDev = dev; }
+    else cur += ch;
   }
   if (cur) out.push({ text: cur, dev: curDev });
   return out;
 }
-
-function font4(dev: boolean, bold: boolean): string {
+function fontKey(dev: boolean, bold: boolean): string {
   return dev ? (bold ? "NSB" : "NSR") : (bold ? "DVB" : "DVR");
 }
 
 // ─── Core text renderer ───────────────────────────────────────────────────────
-
 interface TxtOpts {
-  width?:     number;
-  size?:      number;
-  bold?:      boolean;
-  align?:     "left" | "center" | "right";
-  color?:     string;
-  lineBreak?: boolean;
-  cont?:      boolean;
+  width?: number; size?: number; bold?: boolean;
+  align?: "left" | "center" | "right"; color?: string;
+  lineBreak?: boolean; cont?: boolean;
 }
-
 function t(doc: PDFDoc, text: string, x: number, y: number, o: TxtOpts = {}) {
-  const {
-    size = 8, bold = false, align = "left",
-    color = DARK, width, lineBreak = false, cont: outerCont = false,
-  } = o;
+  const { size = 8, bold = false, align = "left", color = DARK,
+    width, lineBreak = false, cont: outerCont = false } = o;
   const segs = splitScript(text);
   if (!segs.length) return;
   doc.fontSize(size).fillColor(color);
   for (let i = 0; i < segs.length; i++) {
     const s = segs[i]!;
-    const last = i === segs.length - 1;
-    const cont = last ? outerCont : true;
-    doc.font(font4(s.dev, bold));
+    const cont = i === segs.length - 1 ? outerCont : true;
+    doc.font(fontKey(s.dev, bold));
     if (i === 0) doc.text(s.text, x, y, { width, align, lineBreak, continued: cont });
     else         doc.text(s.text,       { width, align, lineBreak, continued: cont });
   }
 }
 
 // ─── Drawing helpers ──────────────────────────────────────────────────────────
-
-/** Horizontal rule */
-function hl(doc: PDFDoc, x1: number, y: number, x2: number, lw = 0.5) {
-  doc.moveTo(x1, y).lineTo(x2, y).strokeColor(INK).lineWidth(lw).stroke();
+function hl(doc: PDFDoc, x1: number, y: number, x2: number, lw = 0.5, color = INK) {
+  doc.moveTo(x1, y).lineTo(x2, y).strokeColor(color).lineWidth(lw).stroke();
 }
-
-/** Thin rectangle outline */
-function rect(doc: PDFDoc, x: number, y: number, w: number, h: number, lw = 0.6) {
-  doc.rect(x, y, w, h).strokeColor(INK).lineWidth(lw).stroke();
+function rect(doc: PDFDoc, x: number, y: number, w: number, h: number, lw = 0.7, color = INK) {
+  doc.rect(x, y, w, h).strokeColor(color).lineWidth(lw).stroke();
 }
-
-/** Safe image draw */
-function safeImg(
-  doc: PDFDoc, fp: string | null | undefined,
-  x: number, y: number, opts: Record<string, unknown>,
-): boolean {
+function fill(doc: PDFDoc, x: number, y: number, w: number, h: number, color: string) {
+  doc.rect(x, y, w, h).fill(color);
+}
+function safeImg(doc: PDFDoc, fp: string | null | undefined,
+  x: number, y: number, opts: Record<string, unknown>): boolean {
   if (!fp || !fs.existsSync(fp)) return false;
   try { doc.image(fp, x, y, opts); return true; }
   catch { return false; }
 }
 
-// ─── Field helpers ────────────────────────────────────────────────────────────
-
-const ROW = 22;   // standard row height (pt)
-const ULY = 15;   // underline y-offset within a row
+// ─── Form field helpers ───────────────────────────────────────────────────────
+const ROW  = 20;   // standard row height
+const ULY  = 14;   // underline y-offset within a row
+const BH   = 13;   // section band height
 
 /**
- * Render one field segment: label + underline + optional value
- *   x       = left edge
- *   y       = top of row
- *   labelW  = width allocated for label text (underline starts here)
- *   totalW  = total width of this field segment (underline ends here)
+ * Section band: navy background + amber left accent + white label
+ * Returns the y below the band.
  */
-function seg(
-  doc: PDFDoc,
-  label: string,
-  value: string | null | undefined,
-  x: number, y: number,
-  labelW: number,
-  totalW: number,
-) {
-  t(doc, label, x, y + 2, { size: 7.5, width: labelW - 1, color: INK });
-  hl(doc, x + labelW, y + ULY, x + totalW, 0.45);
+function band(doc: PDFDoc, label: string, x: number, y: number, w: number): number {
+  fill(doc, x, y, w, BH, NAVY);
+  fill(doc, x, y, 3, BH, AMBER);
+  t(doc, label, x + 7, y + 2.5, { size: 7.5, bold: true, color: "#FFFFFF", width: w - 10 });
+  return y + BH;
+}
+
+/**
+ * Underline-style field: label text + drawn underline + filled value
+ * x, y       = top-left of field area
+ * labelW     = pt allocated to the label before the line starts
+ * totalW     = total width of this field segment
+ */
+function seg(doc: PDFDoc, label: string, value: string | null | undefined,
+  x: number, y: number, labelW: number, totalW: number) {
+  t(doc, label, x, y + 2, { size: 7.5, color: GRAY, width: labelW - 1 });
+  hl(doc, x + labelW, y + ULY, x + totalW, 0.45, "#999999");
   if (value?.trim()) {
-    t(doc, value.trim(), x + labelW + 2, y + 2, {
-      size: 8, bold: false, color: DARK,
-      width: totalW - labelW - 4,
-    });
+    t(doc, value.trim(), x + labelW + 2, y + 2,
+      { size: 8.5, bold: true, color: DARK, width: totalW - labelW - 4 });
   }
 }
 
 /** 12 Aadhaar digit boxes in 3 groups of 4 */
 function aadhaarBoxes(doc: PDFDoc, num: string | null | undefined, x: number, y: number) {
-  const BW = 15; const BH = 14; const GAP = 2; const GRPGAP = 5;
+  const BW = 15; const BH2 = 14; const GAP = 2; const GRPGAP = 5;
   const digits = (num ?? "").replace(/\D/g, "").padEnd(12, "").split("");
   for (let i = 0; i < 12; i++) {
     const bx = x + i * (BW + GAP) + Math.floor(i / 4) * GRPGAP;
-    rect(doc, bx, y, BW, BH, 0.5);
+    rect(doc, bx, y, BW, BH2, 0.5);
     if (digits[i]) {
       doc.font("DVB").fontSize(9).fillColor(DARK)
         .text(digits[i]!, bx, y + 2.5, { width: BW, align: "center", lineBreak: false });
@@ -143,431 +130,420 @@ function aadhaarBoxes(doc: PDFDoc, num: string | null | undefined, x: number, y:
   }
 }
 
-/** Small checkbox square for document checklist */
-function chkBox(doc: PDFDoc, x: number, y: number, checked: boolean) {
+/** Small checkbox for document checklist */
+function chkBox(doc: PDFDoc, x: number, y: number, checked: boolean, label: string) {
   const SZ = 8;
   rect(doc, x, y, SZ, SZ, 0.6);
   if (checked) {
-    doc.font("DVB").fontSize(7).fillColor(DARK)
+    doc.font("DVB").fontSize(7).fillColor("#059669")
       .text("✓", x, y + 0.5, { width: SZ, align: "center", lineBreak: false });
   }
+  t(doc, label, x + SZ + 3, y + 0, { size: 7, color: DARK });
 }
 
-// ─── Main PDF generation ──────────────────────────────────────────────────────
-
+// ─── Main export ──────────────────────────────────────────────────────────────
 export async function generateCandidatePdf(
   rawCandidate: Candidate,
   pdfPath: string,
 ): Promise<void> {
   const c = rawCandidate as Candidate & {
-    maritalStatus?: string | null;
-    religion?: string | null;
-    pwd?: string | null;
-    disabilityType?: string | null;
-    email?: string | null;
-    policeStation?: string | null;
-    postOffice?: string | null;
-    district?: string | null;
-    state?: string | null;
-    pin?: string | null;
-    bpl?: string | null;
-    bplNumber?: string | null;
-    yearOfPassing?: string | null;
-    bankBranch?: string | null;
-    skillCentreName?: string | null;
-    mobilizer?: string | null;
-    candidateIdCode?: string | null;
-    signaturePath?: string | null;
+    maritalStatus?: string | null; religion?: string | null;
+    pwd?: string | null; disabilityType?: string | null;
+    email?: string | null; policeStation?: string | null;
+    postOffice?: string | null; district?: string | null;
+    state?: string | null; pin?: string | null;
+    bpl?: string | null; bplNumber?: string | null;
+    yearOfPassing?: string | null; bankBranch?: string | null;
+    skillCentreName?: string | null; mobilizer?: string | null;
+    candidateIdCode?: string | null; signaturePath?: string | null;
     motherName?: string | null;
   };
 
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: "A4", margin: 0, autoFirstPage: true });
-
     doc.registerFont("NSR", FONT_NS_REG);
-    doc.registerFont("NSB", FONT_NS_BOLD);
+    doc.registerFont("NSB", FONT_NS_BOL);
     doc.registerFont("DVR", FONT_DV_REG);
-    doc.registerFont("DVB", FONT_DV_BOLD);
+    doc.registerFont("DVB", FONT_DV_BOL);
 
     const ws = fs.createWriteStream(pdfPath);
     doc.pipe(ws);
     ws.on("error", reject);
     ws.on("finish", resolve);
 
-    const CW = A4_W - ML * 2;   // usable content width = 551
-    const FX = ML + 2;           // field content left edge
+    const CW = A4_W - ML * 2;   // 551.28 pt usable width
+    const FX = ML + 2;           // field left edge
     const FW = CW - 4;           // field content width
-    const FE = FX + FW;          // field content right edge
+    const FE = FX + FW;          // field right edge
 
-    // ── Outer border ──────────────────────────────────────────────────────────
+    // ── Outer page border ────────────────────────────────────────────────────
     rect(doc, ML, MT, CW, A4_H - MT * 2, 1.0);
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // PHOTO BOX — top right corner, inside outer border
-    // ══════════════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════════════════
+    // PHOTO BOX — top right, spans header + title area
+    // ════════════════════════════════════════════════════════════════════════
+    const PW = 110;
+    const PH = 130;
+    const PX = ML + CW - PW;
+    const PY = MT;
+    rect(doc, PX, PY, PW, PH, 0.8);
+    t(doc, "Affix recent Passport", PX, PY + 5, { size: 6.5, width: PW, align: "center" });
+    t(doc, "Size Colour Photo", PX, PY + 14, { size: 6.5, width: PW, align: "center" });
+    const photoAreaX = PX + 5; const photoAreaY = PY + 24;
+    const photoAreaW = PW - 10; const photoAreaH = PH - 46;
+    const photoOk = safeImg(doc, c.photoPath, photoAreaX, photoAreaY,
+      { width: photoAreaW, height: photoAreaH, cover: [photoAreaW, photoAreaH] });
+    if (!photoOk) rect(doc, photoAreaX, photoAreaY, photoAreaW, photoAreaH, 0.4);
+    t(doc, "Cross Sign. Over", PX, PY + PH - 24, { size: 6, width: PW, align: "center" });
+    t(doc, "photograph", PX, PY + PH - 14, { size: 6, width: PW, align: "center" });
 
-    const PW = 115;            // photo box width
-    const PH = 136;            // photo box height (spans header + title area)
-    const PX = ML + CW - PW;  // right-aligned within outer border
-    const PY = MT;             // top-aligned
+    // ════════════════════════════════════════════════════════════════════════
+    // LETTERHEAD — three columns: English | JSDMS Logo | Hindi
+    // ════════════════════════════════════════════════════════════════════════
+    const HW    = PX - ML - 4;   // header width (left of photo box)
+    const LOGO_W = 64;
+    const leftW  = (HW - LOGO_W) * 0.50;   // ~192pt
+    const rightW = HW - leftW - LOGO_W;     // ~192pt
+    const hX = ML + 3;
+    const hY = MT + 4;
+    const rX = ML + leftW + LOGO_W;
 
-    rect(doc, PX, PY, PW, PH, 0.7);
+    // Left column — English
+    t(doc, "Jharkhand Skill Development Mission Society", hX, hY,
+      { size: 8.5, bold: true, color: DARK, width: leftW });
+    t(doc, "Labour Employment and skill Development Department", hX, hY + 11,
+      { size: 7, color: DARK, width: leftW });
+    t(doc, "Govt. of Jharkhand", hX, hY + 21,
+      { size: 7, color: DARK, width: leftW });
+    t(doc, "Training Centre ID :–", hX, hY + 31,
+      { size: 7, color: DARK, width: 92 });
+    hl(doc, hX + 95, hY + 31 + 10, hX + leftW - 2, 0.4, "#AAAAAA");
 
-    t(doc, "Affix recent Passport", PX, PY + 4, {
-      size: 6.5, width: PW, align: "center",
-    });
-    t(doc, "Size Colour Photo", PX, PY + 13, {
-      size: 6.5, width: PW, align: "center",
-    });
-
-    const photoAreaX = PX + 5;
-    const photoAreaY = PY + 23;
-    const photoAreaW = PW - 10;
-    const photoAreaH = PH - 47;
-
-    const photoOk = safeImg(doc, c.photoPath, photoAreaX, photoAreaY, {
-      width: photoAreaW, height: photoAreaH, cover: [photoAreaW, photoAreaH],
-    });
-    if (!photoOk) {
-      rect(doc, photoAreaX, photoAreaY, photoAreaW, photoAreaH, 0.4);
+    // Center — JSDMS logo image (or fallback concentric circles)
+    const logoX  = ML + leftW;
+    const logoY  = hY + 2;
+    const logoSZ = LOGO_W - 4;
+    const logoLoaded = safeImg(doc, LOGO_PATH, logoX + 2, logoY,
+      { width: logoSZ, height: logoSZ, fit: [logoSZ, logoSZ] });
+    if (!logoLoaded) {
+      const cx = logoX + LOGO_W / 2;
+      const cy = logoY + 24;
+      doc.circle(cx, cy, 24).strokeColor(INK).lineWidth(0.7).stroke();
+      doc.circle(cx, cy, 18).strokeColor(INK).lineWidth(0.4).stroke();
+      doc.circle(cx, cy, 3).fill(INK);
+      t(doc, "JSDMS", cx - 13, cy - 5, { size: 5.5, bold: true, color: DARK, width: 26 });
     }
 
-    t(doc, "Cross Sign. Over", PX, PY + PH - 24, {
-      size: 6, width: PW, align: "center",
-    });
-    t(doc, "photograph", PX, PY + PH - 15, {
-      size: 6, width: PW, align: "center",
-    });
+    // Right column — Hindi
+    t(doc, "झारखण्ड कौशल विकास मिशन सांसाइटी", rX, hY,
+      { size: 8, bold: true, color: DARK, width: rightW, align: "right" });
+    t(doc, "श्रम नियोजन प्रशिक्षण एवं कौशल विकास विभाग", rX, hY + 11,
+      { size: 7, color: DARK, width: rightW, align: "right" });
+    t(doc, "झारखण्ड सरकार द्वारा वित्त प्रदत्त", rX, hY + 22,
+      { size: 7, color: DARK, width: rightW, align: "right" });
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // LETTERHEAD — three column (English | Logo | Hindi), left of photo box
-    // ══════════════════════════════════════════════════════════════════════════
-
-    const HW   = PX - ML - 3;   // header content width (left of photo box)
-    const logoW = 62;            // centre logo column width
-    const leftW = (HW - logoW) * 0.52;  // ~225pt for English col
-    const rightW = HW - leftW - logoW;  // ~175pt for Hindi col
-
-    const hX  = ML + 3;
-    const hY  = MT + 3;
-    const rX  = ML + leftW + logoW;    // right Hindi column start
-
-    // Left — English
-    t(doc, "Jharkhand Skill Development Mission Society", hX, hY, {
-      size: 8.5, bold: true, color: DARK, width: leftW,
-    });
-    t(doc, "Labour Employment and skill Development Department", hX, hY + 11, {
-      size: 7, color: DARK, width: leftW,
-    });
-    t(doc, "Govt. of Jharkhand", hX, hY + 21, {
-      size: 7, color: DARK, width: leftW,
-    });
-    t(doc, "Training Centre ID :–", hX, hY + 32, {
-      size: 7, color: DARK, width: 95,
-    });
-    hl(doc, hX + 98, hY + 32 + 10, hX + leftW - 2, 0.4);
-
-    // Centre — Logo placeholder (concentric circles with "JSDMS")
-    const logoX = ML + leftW + logoW / 2;
-    const logoY = hY + 24;
-    doc.circle(logoX, logoY, 24).strokeColor(INK).lineWidth(0.7).stroke();
-    doc.circle(logoX, logoY, 19).strokeColor(INK).lineWidth(0.4).stroke();
-    doc.circle(logoX, logoY, 3).fill(INK);
-    t(doc, "JSDMS", logoX - 14, logoY - 5, { size: 5.5, bold: true, color: DARK, width: 28 });
-
-    // Right — Hindi
-    t(doc, "झारखण्ड कौशल विकास मिशन सांसाइटी", rX, hY, {
-      size: 8, bold: true, color: DARK, width: rightW,
-    });
-    t(doc, "श्रम नियोजन प्रशिक्षण एवं कौशल विकास विभाग", rX, hY + 11, {
-      size: 7, color: DARK, width: rightW,
-    });
-    t(doc, "झारखण्ड सरकार द्वारा वित्त प्रदत्त", rX, hY + 22, {
-      size: 7, color: DARK, width: rightW,
-    });
-
-    // Header separator line
-    const sepY = MT + 58;
+    // Header separator
+    const sepY = MT + 60;
     hl(doc, ML, sepY, ML + CW, 0.7);
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // TITLE AREA — big Hindi name + DDUKK + form box
-    // ══════════════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════════════════
+    // TITLE AREA (left of photo box)
+    // ════════════════════════════════════════════════════════════════════════
+    let y = sepY + 5;
+    const titleW = PX - ML;
 
-    let y = sepY + 4;
-    const titleW = PX - ML;   // title content stops at the photo box
+    t(doc, "मेगा स्कील सेन्टर", ML, y,
+      { size: 24, bold: true, color: DARK, width: titleW, align: "center" });
+    y += 30;
 
-    // Large Hindi title
-    t(doc, "मेगा स्कील सेन्टर", ML, y, {
-      size: 26, bold: true, color: DARK, width: titleW, align: "center",
-    });
-    y += 32;
+    t(doc, "DEEN DAYAL UPADHYAY KAUSHAL KENDRA (DDUKK)", ML, y,
+      { size: 9, bold: true, color: DARK, width: titleW, align: "center" });
+    y += 12;
 
-    t(doc, "DEEN DAYAL UPADHYAY KAUSHAL KENDRA (DDUKK)", ML, y, {
-      size: 9.5, bold: true, color: DARK, width: titleW, align: "center",
-    });
-    y += 13;
+    const stfW = 225; const stfX = ML + (titleW - stfW) / 2;
+    rect(doc, stfX, y, stfW, 14, 0.8);
+    t(doc, "STUDENT / CANDIDATE REGISTRATION FORM", stfX, y + 2,
+      { size: 8.5, bold: true, color: DARK, width: stfW, align: "center" });
+    y += 18;
 
-    // "STUDENT REGISTRATION FORM" in a bordered rectangle
-    const stfW = 215;
-    const stfX = ML + (titleW - stfW) / 2;
-    rect(doc, stfX, y, stfW, 14, 0.7);
-    t(doc, "STUDENT REGISTRATION FORM", stfX, y + 2, {
-      size: 9, bold: true, color: DARK, width: stfW, align: "center",
-    });
-    y += 17;
-
-    // Separator
-    hl(doc, ML, y + 1, ML + CW, 0.7);
-    y += 5;
-
-    // Skill Centre Name row
-    t(doc, "Skill Centre Name :–", FX, y + 2, { size: 8, bold: true, width: 112, color: DARK });
-    const scName = c.skillCentreName ?? "";
-    if (scName) {
-      t(doc, scName, FX + 115, y + 2, { size: 8, color: DARK, width: FW - 118 });
-    } else {
-      hl(doc, FX + 115, y + ULY, FE, 0.4);
-    }
-    y += ROW - 4;
+    // Skill Centre Name
     hl(doc, ML, y, ML + CW, 0.7);
     y += 4;
+    t(doc, "Skill Centre Name :–", FX, y + 2,
+      { size: 8, bold: true, color: DARK, width: 112 });
+    const scv = c.skillCentreName ?? "";
+    if (scv) t(doc, scv, FX + 115, y + 2, { size: 8, color: DARK, width: FW - 118 });
+    else hl(doc, FX + 115, y + ULY, FE, 0.4, "#AAAAAA");
+    y += ROW - 2;
+    hl(doc, ML, y, ML + CW, 0.8);
+    y += 3;
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // FORM FIELDS — underline style, matching reference layout exactly
-    // ══════════════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════════════════
+    // SECTION A — PERSONAL DETAILS
+    // ════════════════════════════════════════════════════════════════════════
+    y = band(doc, "A.   PERSONAL DETAILS  /  व्यक्तिगत विवरण", ML, y, CW);
 
-    // Row 1: Course Name + Candidate ID boxes
+    // Row A1: Course Name + Candidate ID boxes
     const courseW = FW * 0.54;
     seg(doc, "कोर्स का नाम/Course Name", c.course, FX, y, 113, courseW);
-
     const cidX = FX + courseW + 4;
-    const cidRemainingW = FW - courseW - 4;
-    t(doc, "Candidate ID", cidX, y + 2, { size: 7.5, width: 60, color: INK });
-
-    // Candidate ID boxes
+    t(doc, "Candidate ID", cidX, y + 2, { size: 7.5, color: GRAY, width: 60 });
     const cidCode = (c.candidateIdCode ?? "").substring(0, 10).padEnd(10, "");
-    const cidBoxW = 16; const cidBoxH = 13;
-    let bx2 = cidX + 63;
+    let bx = cidX + 63;
     for (let i = 0; i < 10; i++) {
-      if (bx2 + cidBoxW > FE) break;
-      rect(doc, bx2, y + 1, cidBoxW, cidBoxH, 0.5);
+      if (bx + 16 > FE) break;
+      rect(doc, bx, y + 1, 16, 13, 0.5);
       if (cidCode[i] && cidCode[i] !== " ") {
         doc.font("DVB").fontSize(8).fillColor(DARK)
-          .text(cidCode[i]!, bx2, y + 3.5, { width: cidBoxW, align: "center", lineBreak: false });
+          .text(cidCode[i]!, bx, y + 3.5, { width: 16, align: "center", lineBreak: false });
       }
-      bx2 += cidBoxW + 2;
+      bx += 18;
     }
     y += ROW;
 
-    // Row 2: Name
+    // Row A2: Name
     seg(doc, "नाम / Name", c.name, FX, y, 48, FW);
     y += ROW;
 
-    // Row 3: Father/Husband Name + Mobile No.
-    const fatherW = FW * 0.63;
-    seg(doc, "पिता/पति का नाम/Father's/ Husband Name", c.fatherName, FX, y, 148, fatherW);
-    seg(doc, "Mobile No.", c.phone, FX + fatherW + 3, y, 56, FW - fatherW - 3);
+    // Row A3: Father/Husband + Mobile
+    const fW = FW * 0.63;
+    seg(doc, "पिता/पति का नाम/Father's/ Husband Name", c.fatherName, FX, y, 148, fW);
+    seg(doc, "Mobile No.", c.phone, FX + fW + 3, y, 56, FW - fW - 3);
     y += ROW;
 
-    // Row 4: Mother's Name
+    // Row A4: Mother's Name
     seg(doc, "माता का नाम/ Mother's Name", c.motherName, FX, y, 118, FW);
     y += ROW;
 
-    // Row 5: Marital Status
+    // Row A5: Marital Status
     seg(doc, "वैवाहिक स्थिति/Marital Status", c.maritalStatus, FX, y, 128, FW);
     y += ROW;
 
-    // Row 6: Sex + Date of Birth
+    // Row A6: Sex + DOB
     const sexW = FW * 0.30;
     seg(doc, "लिंग/Sex", c.gender, FX, y, 48, sexW);
     seg(doc, "जन्म तिथि/Date of Birth (Born on or before 01/01/2004)", c.dob,
       FX + sexW + 3, y, 188, FW - sexW - 3);
     y += ROW;
 
-    // Row 7: Religion + Category
+    // Row A7: Religion + Category
     const relW = FW * 0.33;
     seg(doc, "धर्म/Religion", c.religion, FX, y, 68, relW);
     seg(doc, "जाति/Category (Gen/SC/ST/OBC/BCI/BCII/Minority)", c.caste,
       FX + relW + 3, y, 175, FW - relW - 3);
     y += ROW;
 
-    // Row 8: PwD + Disability Type
+    // Row A8: PwD + Disability Type
     const pwdW = FW * 0.36;
     seg(doc, "शक्त/PwD", c.pwd, FX, y, 50, pwdW);
     seg(doc, "निशक्त प्रकृति/Disability Type", c.disabilityType,
       FX + pwdW + 3, y, 128, FW - pwdW - 3);
-    y += ROW;
+    y += ROW + 1;
 
-    // Row 9: Address + Village/Town
+    // ════════════════════════════════════════════════════════════════════════
+    // SECTION B — ADDRESS
+    // ════════════════════════════════════════════════════════════════════════
+    y = band(doc, "B.   ADDRESS  /  पता", ML, y, CW);
+
+    // Row B1: Address + Village
     const addrW = FW * 0.58;
-    seg(doc, "पता/Address/मोहल्ला/Area", c.address, FX, y, 112, addrW);
+    seg(doc, "पता/Address/मोहल्ला/Area", c.address, FX, y, 113, addrW);
     seg(doc, "गाँव/शहर/Vill/Town", c.village, FX + addrW + 3, y, 82, FW - addrW - 3);
     y += ROW;
 
-    // Row 10: Police Station + Post Office
+    // Row B2: Police Station + Post Office
     const psW = FW * 0.48;
     seg(doc, "थाना/Police Station", c.policeStation, FX, y, 88, psW);
     seg(doc, "डाकघर/Post Office", c.postOffice, FX + psW + 3, y, 80, FW - psW - 3);
     y += ROW;
 
-    // Row 11: District + State + Pin
-    const distW = FW * 0.37;
-    const stateW = FW * 0.35;
-    const pinW   = FW - distW - stateW;
+    // Row B3: District + State + Pin
+    const distW = FW * 0.37; const stateW = FW * 0.35;
     seg(doc, "जिला/District", c.district, FX, y, 62, distW);
     seg(doc, "राज्य/State", c.state ?? "Jharkhand", FX + distW + 2, y, 52, stateW);
-    seg(doc, "पिन/Pin", c.pin, FX + distW + stateW + 4, y, 36, pinW - 4);
+    seg(doc, "पिन/Pin", c.pin, FX + distW + stateW + 4, y, 36, FW - distW - stateW - 4);
     y += ROW;
 
-    // Row 12: Mobile + Email
+    // Row B4: Mobile + Email
     const mobW = FW * 0.44;
     seg(doc, "मोबाईल/Mobile No.", c.phone, FX, y, 90, mobW);
     seg(doc, "ई-मेल/E-mail", c.email, FX + mobW + 3, y, 60, FW - mobW - 3);
-    y += ROW;
+    y += ROW + 1;
 
-    // Row 13: Aadhaar Number
-    t(doc, "आधार नं/Aadhar No.", FX, y + 2, { size: 7.5, width: 100, color: INK });
+    // ════════════════════════════════════════════════════════════════════════
+    // SECTION C — AADHAAR & IDENTITY
+    // ════════════════════════════════════════════════════════════════════════
+    y = band(doc, "C.   AADHAAR & IDENTITY  /  आधार एवं पहचान", ML, y, CW);
+
+    // Row C1: Aadhaar boxes
+    t(doc, "आधार नं/Aadhar No.", FX, y + 2, { size: 7.5, color: GRAY, width: 100 });
     aadhaarBoxes(doc, c.aadhaarNumber, FX + 103, y + 2);
     y += ROW;
 
-    // Row 14: BPL + BPL Number
+    // Row C2: BPL + BPL Number
     const bplW = FW * 0.44;
     seg(doc, "बी.पी.एल./BPL :– हाँ/ना/Yes / No :", c.bpl, FX, y, 148, bplW);
     seg(doc, "अगर हाँ तो बी.पी.एल. संख्या/BPL No.", c.bplNumber,
       FX + bplW + 3, y, 153, FW - bplW - 3);
-    y += ROW;
+    y += ROW + 1;
 
-    // Row 15: Highest Qualification + Year of Passing
+    // ════════════════════════════════════════════════════════════════════════
+    // SECTION D — EDUCATION
+    // ════════════════════════════════════════════════════════════════════════
+    y = band(doc, "D.   EDUCATIONAL DETAILS  /  शैक्षणिक विवरण", ML, y, CW);
+
     const eduW = FW * 0.58;
     seg(doc, "अधिकतम शैक्षिक योग्यता/Highest Qualification", c.education,
       FX, y, 175, eduW);
     seg(doc, "पास करने का वर्ष/Year of Passing", c.yearOfPassing,
       FX + eduW + 3, y, 133, FW - eduW - 3);
-    y += ROW;
+    y += ROW + 1;
 
-    // Row 16: A/C No. + Bank Name
+    // ════════════════════════════════════════════════════════════════════════
+    // SECTION E — BANK DETAILS
+    // ════════════════════════════════════════════════════════════════════════
+    y = band(doc, "E.   BANK DETAILS  /  बैंक विवरण", ML, y, CW);
+
     const acW = FW * 0.50;
     seg(doc, "A/C No.", c.bankAccount, FX, y, 40, acW);
     seg(doc, "Bank Name", c.bankName, FX + acW + 3, y, 56, FW - acW - 3);
     y += ROW;
 
-    // Row 17: IFSC Code + Branch Name
-    seg(doc, "IFSC Code No.", c.ifsc, FX, y, 66, FW * 0.50);
-    seg(doc, "Branch Name", c.bankBranch, FX + FW * 0.50 + 3, y, 58, FW * 0.50 - 3);
-    y += ROW;
+    seg(doc, "IFSC Code No.", c.ifsc, FX, y, 66, acW);
+    seg(doc, "Branch Name", c.bankBranch, FX + acW + 3, y, 58, FW - acW - 3);
+    y += ROW + 1;
 
-    y += 8; // breathing room before footer
+    // ════════════════════════════════════════════════════════════════════════
+    // SECTION F — DOCUMENTS ATTACHED
+    // ════════════════════════════════════════════════════════════════════════
+    y = band(doc, "F.   DOCUMENTS ATTACHED  /  संलग्न दस्तावेज", ML, y, CW);
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // FOOTER
-    // ══════════════════════════════════════════════════════════════════════════
+    const docItems = [
+      { lbl: "जन्म प्रमाण पत्र / Birth Certificate",     chk: false },
+      { lbl: "जाति प्रमाण पत्र / Caste Certificate",     chk: !!(c.casteCertPath     && fs.existsSync(c.casteCertPath!)) },
+      { lbl: "आधार कार्ड / Aadhaar Card",                chk: !!(c.aadhaarFrontPath  && fs.existsSync(c.aadhaarFrontPath!)) },
+      { lbl: "शैक्षिक प्रमाण पत्र / Education Cert.",    chk: !!(c.educationCertPath && fs.existsSync(c.educationCertPath!)) },
+      { lbl: "बैंक पासबुक / Bank Passbook",              chk: !!(c.bankPassbookPath  && fs.existsSync(c.bankPassbookPath!)) },
+      { lbl: "पासपोर्ट फोटो / Passport Photo",           chk: !!(c.photoPath         && fs.existsSync(c.photoPath!)) },
+    ];
 
-    // Date / Place / Signature
+    const halfW = FW / 2;
+    for (let i = 0; i < docItems.length; i += 2) {
+      const dy = y + Math.floor(i / 2) * 15 + 3;
+      chkBox(doc, FX + 4, dy, docItems[i]!.chk, `${Math.floor(i / 2) + 1}. ${docItems[i]!.lbl}`);
+      if (docItems[i + 1]) {
+        chkBox(doc, FX + halfW + 4, dy, docItems[i + 1]!.chk,
+          `${Math.floor(i / 2) + 4}. ${docItems[i + 1]!.lbl}`);
+      }
+    }
+    y += Math.ceil(docItems.length / 2) * 15 + 5;
+
+    // ════════════════════════════════════════════════════════════════════════
+    // SECTION G — DECLARATION & SIGNATURE
+    // ════════════════════════════════════════════════════════════════════════
+    y = band(doc, "G.   DECLARATION  /  घोषणा", ML, y, CW);
+
+    // Declaration text
+    const declH = 26;
+    fill(doc, ML, y, CW, declH, "#F8FAFC");
+    rect(doc, ML, y, CW, declH, 0.5, "#CBD5E1");
+    t(doc, "I hereby declare that all information provided above is true and correct to the best of my knowledge.",
+      FX, y + 3, { size: 7, color: "#374151", width: FW });
+    t(doc, "मैं घोषणा करता/करती हूँ कि ऊपर दी गई सभी जानकारी मेरी जानकारी और विश्वास के अनुसार सत्य है।",
+      FX, y + 14, { size: 7, color: "#374151", width: FW });
+    y += declH + 4;
+
+    // Date / Place / Signature row
     const dateStr = c.createdAt?.toLocaleDateString("en-IN") ?? "";
-    t(doc, "Date :", FX, y + 2, { size: 7.5, width: 28, color: INK });
-    hl(doc, FX + 30, y + ULY, FX + 100, 0.45);
+    t(doc, "Date :", FX, y + 2, { size: 7.5, color: GRAY, width: 28 });
+    hl(doc, FX + 30, y + ULY, FX + 100, 0.45, "#999999");
     if (dateStr) t(doc, dateStr, FX + 32, y + 2, { size: 8, color: DARK, width: 65 });
 
-    t(doc, "Place", FX + 104, y + 2, { size: 7.5, width: 26, color: INK });
-    hl(doc, FX + 132, y + ULY, FX + FW * 0.58, 0.45);
+    t(doc, "Place", FX + 104, y + 2, { size: 7.5, color: GRAY, width: 26 });
+    hl(doc, FX + 132, y + ULY, FX + FW * 0.58, 0.45, "#999999");
     if (c.area) t(doc, c.area, FX + 134, y + 2, { size: 8, color: DARK, width: 140 });
 
-    const sigLblX = FX + FW * 0.60;
-    t(doc, "Signature of the Applicant", sigLblX, y + 2, {
-      size: 8, bold: true, color: INK, width: FE - sigLblX,
-    });
-    const sigDone = safeImg(doc, c.signaturePath, sigLblX, y + 14, {
-      width: FE - sigLblX, height: 22, fit: [FE - sigLblX, 22],
-    });
-    if (!sigDone) {
-      hl(doc, sigLblX, y + 34, FE, 0.45);
-    }
+    const sigLblX = FX + FW * 0.61;
+    t(doc, "Signature of the Applicant", sigLblX, y + 2,
+      { size: 8, bold: true, color: INK, width: FE - sigLblX });
+    const sigDone = safeImg(doc, c.signaturePath, sigLblX, y + 13,
+      { width: FE - sigLblX, height: 22, fit: [FE - sigLblX, 22] });
+    if (!sigDone) hl(doc, sigLblX, y + 33, FE, 0.45, "#999999");
     y += 38;
 
     // Mobilizer Name (dotted line)
-    t(doc, "oblizer Name", FX, y + 2, { size: 7.5, width: 58, color: INK });
+    t(doc, "oblizer Name", FX, y + 2, { size: 7.5, color: GRAY, width: 60 });
     const mob = c.mobilizer ?? c.submittedBy ?? "";
-    if (mob) {
-      t(doc, mob, FX + 62, y + 2, { size: 8, color: DARK, width: FW - 65 });
-    }
-    // Draw dotted line across full width
+    if (mob) t(doc, mob, FX + 62, y + 2, { size: 8, color: DARK, width: FW - 65 });
     for (let dx = FX + 62; dx < FE; dx += 5) {
       doc.moveTo(dx, y + ULY).lineTo(Math.min(dx + 3, FE), y + ULY)
-        .strokeColor(INK).lineWidth(0.5).stroke();
+        .strokeColor("#AAAAAA").lineWidth(0.5).stroke();
     }
     y += 18;
 
-    // Document checklist: "दस्तावेज :- 1. □  2. □  ..."
-    t(doc, "दस्तावेज :–", FX, y + 2, { size: 7.5, bold: true, width: 55, color: INK });
-
-    const chkItems: { n: string; lbl: string; checked: boolean; x: number }[] = [
-      { n: "1.", lbl: "जन्म प्रमाण पत्र",   checked: false, x: FX + 58 },
-      { n: "2.", lbl: "जाति प्रमाण पत्र",   checked: !!(c.casteCertPath    && fs.existsSync(c.casteCertPath!)),    x: FX + 155 },
-      { n: "3.", lbl: "आधार कार्ड",          checked: !!(c.aadhaarFrontPath && fs.existsSync(c.aadhaarFrontPath!)), x: FX + 250 },
-      { n: "4.", lbl: "शैक्षिक प्रमाण पत्र", checked: !!(c.educationCertPath && fs.existsSync(c.educationCertPath!)), x: FX + 315 },
-      { n: "5.", lbl: "बैंक पास बुक",        checked: !!(c.bankPassbookPath && fs.existsSync(c.bankPassbookPath!)), x: FX + 430 },
+    // Document checklist (inline footer style)
+    t(doc, "दस्तावेज :–", FX, y + 2, { size: 7.5, bold: true, color: INK, width: 56 });
+    const fChkItems = [
+      { n: "1.", lbl: "जन्म प्रमाण पत्र",   chk: false,                         x: FX + 59 },
+      { n: "2.", lbl: "जाति प्रमाण पत्र",   chk: !!(c.casteCertPath    && fs.existsSync(c.casteCertPath!)),    x: FX + 155 },
+      { n: "3.", lbl: "आधार कार्ड",          chk: !!(c.aadhaarFrontPath && fs.existsSync(c.aadhaarFrontPath!)), x: FX + 251 },
+      { n: "4.", lbl: "शैक्षिक प्रमाण पत्र", chk: !!(c.educationCertPath && fs.existsSync(c.educationCertPath!)), x: FX + 316 },
+      { n: "5.", lbl: "बैंक पास बुक",        chk: !!(c.bankPassbookPath && fs.existsSync(c.bankPassbookPath!)),  x: FX + 431 },
     ];
-
-    for (const item of chkItems) {
-      t(doc, item.n + " " + item.lbl, item.x, y + 2, { size: 7.5, color: INK, width: 85 });
-      // draw checkbox square after the label text (fixed offset)
-      const cbOffset = item.lbl.length > 12 ? 82 : item.lbl.length > 8 ? 68 : 54;
-      chkBox(doc, item.x + cbOffset, y + 3, item.checked);
+    for (const item of fChkItems) {
+      t(doc, `${item.n} ${item.lbl}`, item.x, y + 2, { size: 7.5, color: INK, width: 88 });
+      const cbOff = item.lbl.length > 12 ? 84 : item.lbl.length > 8 ? 70 : 55;
+      const SZ = 8;
+      rect(doc, item.x + cbOff, y + 3, SZ, SZ, 0.6);
+      if (item.chk) {
+        doc.font("DVB").fontSize(7).fillColor("#059669")
+          .text("✓", item.x + cbOff, y + 3.5, { width: SZ, align: "center", lineBreak: false });
+      }
     }
     y += 18;
 
-    // Note box (bottom of form)
-    const noteH = 32;
-    rect(doc, ML, y, CW, noteH, 0.6);
+    // Note box
+    const noteH = 30;
+    rect(doc, ML, y, CW, noteH, 0.7);
     t(doc, "नोट :– इस पंजीयन पत्र को JSDM के पोर्टल http://jsdm.jharkhand.gov.in पर ऑनलाइन पंजीकृत करना अनिवार्य है।",
       ML + 4, y + 4, { size: 7, width: CW - 8, align: "center" });
     t(doc, "ऑनलाइन पंजीकृत किए बिना यह पंजीयन पत्र अमान्य है।",
       ML + 4, y + 15, { size: 7, width: CW - 8, align: "center" });
     y += noteH + 4;
 
-    // Small metadata footer
-    doc.font("DVR").fontSize(5.5).fillColor("#555555")
+    // Metadata strip
+    doc.font("DVR").fontSize(5.5).fillColor("#888888")
       .text(
         `ID: ${c.id}   Registered: ${dateStr || "—"}   Status: ${(c.status ?? "").toUpperCase()}   JSDMS / DDU-GKY Jharkhand`,
         ML, y, { width: CW, align: "center", lineBreak: false },
       );
 
-    // Re-draw outer border on top to fix any edge bleed
+    // Re-draw outer border over any bleed
     rect(doc, ML, MT, CW, A4_H - MT * 2, 1.0);
 
-    // ══════════════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════════════════
     // PAGES 2+ — Attached document images
-    // ══════════════════════════════════════════════════════════════════════════
-
+    // ════════════════════════════════════════════════════════════════════════
     const attached = [
-      { label: "Aadhaar Card – Front  /  आधार कार्ड (आगे)",        path: c.aadhaarFrontPath },
-      { label: "Aadhaar Card – Back  /  आधार कार्ड (पीछे)",         path: c.aadhaarBackPath  },
+      { label: "Aadhaar Card – Front  /  आधार कार्ड (आगे)",        path: c.aadhaarFrontPath  },
+      { label: "Aadhaar Card – Back  /  आधार कार्ड (पीछे)",         path: c.aadhaarBackPath   },
       { label: "Education Certificate  /  शैक्षणिक प्रमाण पत्र",   path: c.educationCertPath },
       { label: "Bank Passbook  /  बैंक पासबुक",                     path: c.bankPassbookPath  },
       { label: "Caste Certificate  /  जाति प्रमाण पत्र",            path: c.casteCertPath     },
     ];
-
     for (const { label, path: fp } of attached) {
       if (!fp || !fs.existsSync(fp)) continue;
       doc.addPage({ size: "A4", margin: 0 });
-
-      // Header strip
-      doc.rect(0, 0, A4_W, 40).fill("#1A3560");
-      doc.rect(0, 0, 4, 40).fill("#F59E0B");
+      fill(doc, 0, 0, A4_W, 42, NAVY);
+      fill(doc, 0, 0, 4, 42, AMBER);
       t(doc, label, 14, 8, { size: 11, bold: true, color: "#FFFFFF" });
       if (c.name) {
-        t(doc, c.name, 0, 28, { size: 8, color: "rgba(255,255,255,0.7)", width: A4_W - 14, align: "right" });
+        t(doc, c.name, 0, 28, { size: 8, color: "rgba(255,255,255,0.7)",
+          width: A4_W - 14, align: "right" });
       }
-
-      const imgY = 48;
-      safeImg(doc, fp, 0, imgY, {
-        width: A4_W,
-        height: A4_H - imgY - 14,
-        fit:    [A4_W, A4_H - imgY - 14],
-        align: "center",
-        valign: "center",
-      });
+      const imgY = 50;
+      safeImg(doc, fp, 0, imgY, { width: A4_W, height: A4_H - imgY - 12,
+        fit: [A4_W, A4_H - imgY - 12], align: "center", valign: "center" });
     }
 
     doc.end();
