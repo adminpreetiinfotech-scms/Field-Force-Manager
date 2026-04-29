@@ -266,21 +266,21 @@ export async function generateCandidatePdf(
     // ══════════════════════════════════════════════════════════════════════════
     // PHOTO BOX  (top-right corner)
     // ══════════════════════════════════════════════════════════════════════════
-    const PW = 108; const PH = 128;
+    // Photo box — passport portrait ratio (3.5 × 4.5 cm ≈ 99 × 128 pt at 72dpi)
+    const PW = 99; const PH = 120;
     const PX = ML + CW - PW; const PY = MT;
     box(doc, PX, PY, PW, PH, 0.8);
-    doc.font("DVR").fontSize(6.5).fillColor(GRAY)
-      .text("Affix recent Passport", PX, PY + 5, { width: PW, align: "center", lineBreak: false })
-      .text("Size Colour Photo",     PX, PY + 14, { width: PW, align: "center", lineBreak: false });
 
-    const PAX = PX + 5; const PAY = PY + 25; const PAW = PW - 10; const PAH = PH - 48;
+    // Photo area fills nearly the whole box; small top/bottom labels
+    const PAX = PX + 5; const PAY = PY + 5; const PAW = PW - 10; const PAH = PH - 22;
     const photoOk = safeImg(doc, c.photoPath, PAX, PAY,
       { width: PAW, height: PAH, cover: [PAW, PAH] });
     if (!photoOk) box(doc, PAX, PAY, PAW, PAH, 0.4, LGRAY);
 
-    doc.font("DVR").fontSize(6).fillColor(GRAY)
-      .text("Cross Sign. Over",  PX, PY + PH - 24, { width: PW, align: "center", lineBreak: false })
-      .text("Photograph",        PX, PY + PH - 14, { width: PW, align: "center", lineBreak: false });
+    // Bottom label — passport size note (no "Cross Sign" text)
+    doc.font("DVR").fontSize(5.5).fillColor(GRAY)
+      .text("Passport Size Photo",  PX, PY + PH - 15, { width: PW, align: "center", lineBreak: false })
+      .text("(3.5 x 4.5 cm)",       PX, PY + PH -  7, { width: PW, align: "center", lineBreak: false });
 
     // ══════════════════════════════════════════════════════════════════════════
     // LETTERHEAD  (English left | JSDMS Logo centre | Hindi right)
@@ -298,9 +298,7 @@ export async function generateCandidatePdf(
     const rX       = logoX + LGSZ + logoGap;     // Hindi column left x
     const hY       = MT + 4;                    // top of text rows
 
-    // ── Thin vertical column dividers ──────────────────────────────────────
-    vl(doc, logoX - 2,         MT + 4, MT + HEADER_H - 4, 0.4);
-    vl(doc, rX  - 2,           MT + 4, MT + HEADER_H - 4, 0.4);
+    // (vertical column dividers removed — keep header clean)
 
     // ── English left column ────────────────────────────────────────────────
     doc.font("DVB").fontSize(8.5).fillColor(DARK)
