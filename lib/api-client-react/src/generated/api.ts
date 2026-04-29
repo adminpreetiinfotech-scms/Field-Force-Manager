@@ -23,8 +23,10 @@ import type {
   CreateActivityInput,
   DistanceStats,
   GetDistanceStatsParams,
+  GetLeaderboardParams,
   GetTripReportParams,
   HealthStatus,
+  LeaderboardEntry,
   ListActivityParams,
   ProblemDetails,
   RegisterInput,
@@ -267,6 +269,100 @@ export const useRegisterStaff = <
 > => {
   return useMutation(getRegisterStaffMutationOptions(options));
 };
+
+/**
+ * @summary Top staff ranked by total distance for a given period
+ */
+export const getGetLeaderboardUrl = (params: GetLeaderboardParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/activity/leaderboard?${stringifiedParams}`
+    : `/api/activity/leaderboard`;
+};
+
+export const getLeaderboard = async (
+  params: GetLeaderboardParams,
+  options?: RequestInit,
+): Promise<LeaderboardEntry[]> => {
+  return customFetch<LeaderboardEntry[]>(getGetLeaderboardUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetLeaderboardQueryKey = (params?: GetLeaderboardParams) => {
+  return [`/api/activity/leaderboard`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetLeaderboardQueryOptions = <
+  TData = Awaited<ReturnType<typeof getLeaderboard>>,
+  TError = ErrorType<ProblemDetails>,
+>(
+  params: GetLeaderboardParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getLeaderboard>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetLeaderboardQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getLeaderboard>>> = ({
+    signal,
+  }) => getLeaderboard(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getLeaderboard>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetLeaderboardQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getLeaderboard>>
+>;
+export type GetLeaderboardQueryError = ErrorType<ProblemDetails>;
+
+/**
+ * @summary Top staff ranked by total distance for a given period
+ */
+
+export function useGetLeaderboard<
+  TData = Awaited<ReturnType<typeof getLeaderboard>>,
+  TError = ErrorType<ProblemDetails>,
+>(
+  params: GetLeaderboardParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getLeaderboard>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetLeaderboardQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Ride report — completed trips with staff details for CSV export

@@ -148,6 +148,23 @@ export interface DistanceStats {
 }
 
 /**
+ * A single staff member's aggregated distance stats for the leaderboard.
+ */
+export interface LeaderboardEntry {
+  /** 1-based rank ordered by totalKm descending. */
+  rank: number;
+  staffId: string;
+  staffName: string;
+  empCode: string;
+  /** Total kilometres travelled in the period. */
+  totalKm: number;
+  /** Number of completed trips in the period. */
+  tripCount: number;
+  /** Human-readable label for the period (e.g. "Today" or "Apr 2026"). */
+  periodLabel: string;
+}
+
+/**
  * A single completed trip for the ride report / CSV export.
  */
 export interface TripReportRow {
@@ -176,6 +193,22 @@ export interface ProblemDetails {
   detail?: string;
   status?: number;
 }
+
+export type GetLeaderboardParams = {
+  /**
+   * Time period to aggregate over.
+   */
+  period: GetLeaderboardPeriod;
+};
+
+export type GetLeaderboardPeriod =
+  (typeof GetLeaderboardPeriod)[keyof typeof GetLeaderboardPeriod];
+
+export const GetLeaderboardPeriod = {
+  daily: "daily",
+  weekly: "weekly",
+  monthly: "monthly",
+} as const;
 
 export type GetTripReportParams = {
   /**

@@ -224,6 +224,125 @@ router.get("/activity", async (req, res, next) => {
   }
 });
 
+router.get("/activity/leaderboard", async (req, res, next) => {
+  try {
+    const rawPeriod = req.query.period as string | undefined;
+    if (!rawPeriod || !["daily", "weekly", "monthly"].includes(rawPeriod)) {
+      res.status(400).json({
+        title: "Invalid period",
+        detail: "period must be daily, weekly, or monthly",
+        status: 400,
+      });
+      return;
+    }
+    const period = rawPeriod as "daily" | "weekly" | "monthly";
+
+    // Compute UTC window + human-readable label.
+    const now = new Date();
+    let periodStart: Date;
+    let periodLabel: string;
+
+    if (period === "daily") {
+      // Start of today (UTC).
+      periodStart = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+      );
+      periodLabel = "Today";
+    } else if (period === "weekly") {
+      // Rolling 7 days ending now.
+      periodStart = new Date(now.getTime() - 6 * 86_400_000);
+      periodStart = new Date(
+        Date.UTC(
+          periodStart.getUTCFullYear(),
+          periodStart.getUTCMonth(),
+          periodStart.getUTCDate(),
+        ),
+      );
+      periodLabel = "Last 7 days";
+    } else {
+      // Calendar month so far.
+      periodStart = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
+      );
+      periodLabel = now.toLocaleString("en-IN", {
+        month: "long",
+        year: "numeric",
+        timeZone: "UTC",
+      });
+    }
+
+    // Pull all trip-end events in the window (distanceKm lives here).
+    const rows = await db
+      .select({
+        staffId: activityEventsTable.staffId,
+        staffName: activityEventsTable.staffName,
+        payload: activityEventsTable.payload,
+      })
+      .from(activityEventsTable)
+      .where(
+        and(
+          eq(activityEventsTable.kind, "trip-end"),
+          gte(activityEventsTable.occurredAt, periodStart),
+          lt(activityEventsTable.occurredAt, new Date(now.getTime() + 1)),
+        ),
+      );
+
+    // Aggregate per staff.
+    type Acc = {
+      staffId: string;
+      staffName: string;
+      totalKm: number;
+      tripCount: number;
+    };
+    const staffMap = new Map<string, Acc>();
+    for (const row of rows) {
+      const p = (row.payload || {}) as ActivityPayload;
+      const km = typeof p.distanceKm === "number" ? p.distanceKm : 0;
+      const acc = staffMap.get(row.staffId);
+      if (acc) {
+        acc.totalKm += km;
+        acc.tripCount++;
+      } else {
+        staffMap.set(row.staffId, {
+          staffId: row.staffId,
+          staffName: row.staffName,
+          totalKm: km,
+          tripCount: 1,
+        });
+      }
+    }
+
+    // Fetch empCodes for everyone in the result set.
+    const ids = Array.from(staffMap.keys());
+    const empMap = new Map<string, string>();
+    if (ids.length > 0) {
+      const staffRows = await db
+        .select({ id: staffTable.id, empCode: staffTable.empCode })
+        .from(staffTable)
+        .where(inArray(staffTable.id, ids));
+      for (const s of staffRows) empMap.set(s.id, s.empCode);
+    }
+
+    const round1 = (n: number) => Math.round(n * 10) / 10;
+
+    const sorted = Array.from(staffMap.values())
+      .sort((a, b) => b.totalKm - a.totalKm || b.tripCount - a.tripCount)
+      .map((s, i) => ({
+        rank: i + 1,
+        staffId: s.staffId,
+        staffName: s.staffName,
+        empCode: empMap.get(s.staffId) ?? "—",
+        totalKm: round1(s.totalKm),
+        tripCount: s.tripCount,
+        periodLabel,
+      }));
+
+    res.json(sorted);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get("/activity/trip-report", async (req, res, next) => {
   try {
     const rawFrom = req.query.from as string | undefined;

@@ -74,6 +74,34 @@ export const RegisterStaffBody = zod
   );
 
 /**
+ * @summary Top staff ranked by total distance for a given period
+ */
+export const GetLeaderboardQueryParams = zod.object({
+  period: zod.enum(["daily", "weekly", "monthly"]),
+});
+
+export const GetLeaderboardResponseItem = zod
+  .object({
+    rank: zod.number().describe("1-based rank ordered by totalKm descending."),
+    staffId: zod.string().uuid(),
+    staffName: zod.string(),
+    empCode: zod.string(),
+    totalKm: zod.number().describe("Total kilometres travelled in the period."),
+    tripCount: zod
+      .number()
+      .describe("Number of completed trips in the period."),
+    periodLabel: zod
+      .string()
+      .describe(
+        'Human-readable label for the period (e.g. \"Today\" or \"Apr 2026\").',
+      ),
+  })
+  .describe(
+    "A single staff member's aggregated distance stats for the leaderboard.",
+  );
+export const GetLeaderboardResponse = zod.array(GetLeaderboardResponseItem);
+
+/**
  * @summary Ride report — completed trips with staff details for CSV export
  */
 export const GetTripReportQueryParams = zod.object({

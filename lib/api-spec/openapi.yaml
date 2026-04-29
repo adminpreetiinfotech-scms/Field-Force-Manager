@@ -75,6 +75,35 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
 
+  /activity/leaderboard:
+    get:
+      operationId: getLeaderboard
+      tags: [activity]
+      summary: Top staff ranked by total distance for a given period
+      parameters:
+        - in: query
+          name: period
+          required: true
+          schema:
+            type: string
+            enum: [daily, weekly, monthly]
+            description: Time period to aggregate over.
+      responses:
+        "200":
+          description: Staff ranked by total km, highest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeaderboardEntry"
+        "400":
+          description: Invalid period value.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
   /activity/trip-report:
     get:
       operationId: getTripReport
@@ -504,6 +533,31 @@ components:
           items:
             $ref: "#/components/schemas/StaffDistance"
       required: [date, totalKm, tripCount, perStaff]
+
+    LeaderboardEntry:
+      type: object
+      description: A single staff member's aggregated distance stats for the leaderboard.
+      properties:
+        rank:
+          type: integer
+          description: 1-based rank ordered by totalKm descending.
+        staffId:
+          type: string
+          format: uuid
+        staffName:
+          type: string
+        empCode:
+          type: string
+        totalKm:
+          type: number
+          description: Total kilometres travelled in the period.
+        tripCount:
+          type: integer
+          description: Number of completed trips in the period.
+        periodLabel:
+          type: string
+          description: Human-readable label for the period (e.g. "Today" or "Apr 2026").
+      required: [rank, staffId, staffName, empCode, totalKm, tripCount, periodLabel]
 
     TripReportRow:
       type: object
