@@ -231,6 +231,16 @@ export default function ReportsScreen() {
 
   // ── Leaderboard state ──────────────────────────────────────────────────────
   const [period, setPeriod] = useState<Period>("weekly");
+  const [boardSearch, setBoardSearch] = useState("");
+
+  // Clear search when switching periods so stale filter doesn't linger.
+  const handlePeriodChange = useCallback(
+    (p: Period) => {
+      setPeriod(p);
+      setBoardSearch("");
+    },
+    [],
+  );
 
   const { data: board, isLoading: boardLoading } = useGetLeaderboard(
     { period },
@@ -616,7 +626,7 @@ export default function ReportsScreen() {
               return (
                 <Pressable
                   key={p.key}
-                  onPress={() => setPeriod(p.key)}
+                  onPress={() => handlePeriodChange(p.key)}
                   style={[
                     styles.segment,
                     active && {
@@ -650,6 +660,38 @@ export default function ReportsScreen() {
             })}
           </View>
 
+          {/* Search box */}
+          {!boardLoading && (board?.length ?? 0) > 0 && (
+            <View
+              style={[
+                styles.boardSearchWrap,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: boardSearch.length > 0 ? colors.primary : colors.border,
+                  borderRadius: colors.radius + 2,
+                },
+              ]}
+            >
+              <Feather name="search" size={14} color={boardSearch.length > 0 ? colors.primary : colors.mutedForeground} />
+              <TextInput
+                value={boardSearch}
+                onChangeText={setBoardSearch}
+                placeholder="Search mobilizer..."
+                placeholderTextColor={colors.mutedForeground}
+                style={[styles.boardSearchInput, { color: colors.foreground }]}
+                returnKeyType="search"
+                autoCorrect={false}
+                autoCapitalize="none"
+                clearButtonMode="while-editing"
+              />
+              {boardSearch.length > 0 && (
+                <Pressable onPress={() => setBoardSearch("")} hitSlop={8}>
+                  <Feather name="x" size={14} color={colors.mutedForeground} />
+                </Pressable>
+              )}
+            </View>
+          )}
+
           {/* Period label */}
           {board?.[0] && (
             <Text
@@ -666,7 +708,7 @@ export default function ReportsScreen() {
             </View>
           )}
 
-          {/* Board empty */}
+          {/* Board empty — no data for period */}
           {!boardLoading && board?.length === 0 && (
             <View style={styles.boardEmpty}>
               <Feather name="award" size={28} color={colors.mutedForeground} />
@@ -678,19 +720,53 @@ export default function ReportsScreen() {
             </View>
           )}
 
-          {/* Board rows */}
+          {/* Board rows — filtered by search */}
           {!boardLoading &&
-            board?.map((entry) => (
-              <LeaderboardRow
-                key={entry.staffId}
-                entry={entry}
-                maxKm={maxKm}
-                colors={colors}
-                onPress={() =>
-                  router.push(`/(admin)/mobilizer/${entry.staffId}`)
-                }
-              />
-            ))}
+            board
+              ?.filter((e) =>
+                boardSearch.trim().length === 0
+                  ? true
+                  : e.staffName
+                      .toLowerCase()
+                      .includes(boardSearch.trim().toLowerCase()),
+              )
+              .map((entry) => (
+                <LeaderboardRow
+                  key={entry.staffId}
+                  entry={entry}
+                  maxKm={maxKm}
+                  colors={colors}
+                  onPress={() =>
+                    router.push(`/(admin)/mobilizer/${entry.staffId}`)
+                  }
+                />
+              ))}
+
+          {/* No search results */}
+          {!boardLoading &&
+            (board?.length ?? 0) > 0 &&
+            boardSearch.trim().length > 0 &&
+            board?.filter((e) =>
+              e.staffName
+                .toLowerCase()
+                .includes(boardSearch.trim().toLowerCase()),
+            ).length === 0 && (
+              <View style={styles.boardEmpty}>
+                <Feather
+                  name="search"
+                  size={24}
+                  color={colors.mutedForeground}
+                />
+                <Text
+                  style={[
+                    styles.boardEmptyText,
+                    { color: colors.mutedForeground },
+                  ]}
+                >
+                  No mobilizer matches "{boardSearch.trim()}"
+                </Text>
+              </View>
+            )}
         </View>
 
         {/* ── Divider ───────────────────────────────────────────────────────── */}
@@ -1392,6 +1468,21 @@ const styles = StyleSheet.create({
   boardEmptyText: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
+    textAlign: "center",
+  },
+  boardSearchWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  boardSearchInput: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    paddingVertical: 0,
   },
   boardRow: {
     flexDirection: "row",
