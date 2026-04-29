@@ -6,6 +6,7 @@ export default function CandidateLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="register" />
       <Stack.Screen name="list" />
+      <Stack.Screen name="my-candidates" />
     </Stack>
   );
 }

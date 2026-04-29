@@ -21,6 +21,8 @@ import type {
   ActivityEvent,
   ActivityPage,
   CandidateDto,
+  CheckDuplicateCandidate200,
+  CheckDuplicateCandidateBody,
   CreateActivityInput,
   DistanceStats,
   GetDistanceStatsParams,
@@ -30,12 +32,18 @@ import type {
   HealthStatus,
   LeaderboardEntry,
   ListActivityParams,
+  ListCandidatesParams,
+  ListMyCandidatesParams,
+  ListNotificationsParams,
+  MarkAllNotificationsReadBody,
+  NotificationDto,
   ProblemDetails,
   RegisterInput,
   RideCalendarMonth,
   Staff,
   StaffProfileStats,
   TripReportRow,
+  UpdateCandidateStatusBody,
   UpdateNotesInput,
   UpdateStaffNotes200,
 } from "./api.schemas";
@@ -1348,44 +1356,247 @@ export function useGetActivity<
 }
 
 /**
- * Admin endpoint — returns all candidate registrations ordered by newest first.
- * @summary List all candidates
+ * @summary Check if a candidate with given phone or Aadhaar already exists
  */
-export const getListCandidatesUrl = () => {
-  return `/api/admin/candidates`;
+export const getCheckDuplicateCandidateUrl = () => {
+  return `/api/candidates/check-duplicate`;
 };
 
-export const listCandidates = async (
+export const checkDuplicateCandidate = async (
+  checkDuplicateCandidateBody: CheckDuplicateCandidateBody,
+  options?: RequestInit,
+): Promise<CheckDuplicateCandidate200> => {
+  return customFetch<CheckDuplicateCandidate200>(
+    getCheckDuplicateCandidateUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(checkDuplicateCandidateBody),
+    },
+  );
+};
+
+export const getCheckDuplicateCandidateMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof checkDuplicateCandidate>>,
+    TError,
+    { data: BodyType<CheckDuplicateCandidateBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof checkDuplicateCandidate>>,
+  TError,
+  { data: BodyType<CheckDuplicateCandidateBody> },
+  TContext
+> => {
+  const mutationKey = ["checkDuplicateCandidate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof checkDuplicateCandidate>>,
+    { data: BodyType<CheckDuplicateCandidateBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return checkDuplicateCandidate(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CheckDuplicateCandidateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof checkDuplicateCandidate>>
+>;
+export type CheckDuplicateCandidateMutationBody =
+  BodyType<CheckDuplicateCandidateBody>;
+export type CheckDuplicateCandidateMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Check if a candidate with given phone or Aadhaar already exists
+ */
+export const useCheckDuplicateCandidate = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof checkDuplicateCandidate>>,
+    TError,
+    { data: BodyType<CheckDuplicateCandidateBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof checkDuplicateCandidate>>,
+  TError,
+  { data: BodyType<CheckDuplicateCandidateBody> },
+  TContext
+> => {
+  return useMutation(getCheckDuplicateCandidateMutationOptions(options));
+};
+
+/**
+ * @summary List candidates submitted by a specific staff member
+ */
+export const getListMyCandidatesUrl = (params: ListMyCandidatesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/candidates/my?${stringifiedParams}`
+    : `/api/candidates/my`;
+};
+
+export const listMyCandidates = async (
+  params: ListMyCandidatesParams,
   options?: RequestInit,
 ): Promise<CandidateDto[]> => {
-  return customFetch<CandidateDto[]>(getListCandidatesUrl(), {
+  return customFetch<CandidateDto[]>(getListMyCandidatesUrl(params), {
     ...options,
     method: "GET",
   });
 };
 
-export const getListCandidatesQueryKey = () => {
-  return [`/api/admin/candidates`] as const;
+export const getListMyCandidatesQueryKey = (
+  params?: ListMyCandidatesParams,
+) => {
+  return [`/api/candidates/my`, ...(params ? [params] : [])] as const;
+};
+
+export const getListMyCandidatesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listMyCandidates>>,
+  TError = ErrorType<unknown>,
+>(
+  params: ListMyCandidatesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listMyCandidates>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListMyCandidatesQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listMyCandidates>>
+  > = ({ signal }) => listMyCandidates(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listMyCandidates>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListMyCandidatesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listMyCandidates>>
+>;
+export type ListMyCandidatesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List candidates submitted by a specific staff member
+ */
+
+export function useListMyCandidates<
+  TData = Awaited<ReturnType<typeof listMyCandidates>>,
+  TError = ErrorType<unknown>,
+>(
+  params: ListMyCandidatesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listMyCandidates>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListMyCandidatesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Admin endpoint — returns all candidate registrations ordered by newest first.
+ * @summary List all candidates (admin)
+ */
+export const getListCandidatesUrl = (params?: ListCandidatesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/admin/candidates?${stringifiedParams}`
+    : `/api/admin/candidates`;
+};
+
+export const listCandidates = async (
+  params?: ListCandidatesParams,
+  options?: RequestInit,
+): Promise<CandidateDto[]> => {
+  return customFetch<CandidateDto[]>(getListCandidatesUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListCandidatesQueryKey = (params?: ListCandidatesParams) => {
+  return [`/api/admin/candidates`, ...(params ? [params] : [])] as const;
 };
 
 export const getListCandidatesQueryOptions = <
   TData = Awaited<ReturnType<typeof listCandidates>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listCandidates>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
+>(
+  params?: ListCandidatesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCandidates>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getListCandidatesQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getListCandidatesQueryKey(params);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof listCandidates>>> = ({
     signal,
-  }) => listCandidates({ signal, ...requestOptions });
+  }) => listCandidates(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof listCandidates>>,
@@ -1400,21 +1611,24 @@ export type ListCandidatesQueryResult = NonNullable<
 export type ListCandidatesQueryError = ErrorType<unknown>;
 
 /**
- * @summary List all candidates
+ * @summary List all candidates (admin)
  */
 
 export function useListCandidates<
   TData = Awaited<ReturnType<typeof listCandidates>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listCandidates>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListCandidatesQueryOptions(options);
+>(
+  params?: ListCandidatesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCandidates>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCandidatesQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -1422,6 +1636,362 @@ export function useListCandidates<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Approve, reject, or enroll a candidate (admin)
+ */
+export const getUpdateCandidateStatusUrl = (id: string) => {
+  return `/api/admin/candidates/${id}/status`;
+};
+
+export const updateCandidateStatus = async (
+  id: string,
+  updateCandidateStatusBody: UpdateCandidateStatusBody,
+  options?: RequestInit,
+): Promise<CandidateDto> => {
+  return customFetch<CandidateDto>(getUpdateCandidateStatusUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateCandidateStatusBody),
+  });
+};
+
+export const getUpdateCandidateStatusMutationOptions = <
+  TError = ErrorType<ProblemDetails>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCandidateStatus>>,
+    TError,
+    { id: string; data: BodyType<UpdateCandidateStatusBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateCandidateStatus>>,
+  TError,
+  { id: string; data: BodyType<UpdateCandidateStatusBody> },
+  TContext
+> => {
+  const mutationKey = ["updateCandidateStatus"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateCandidateStatus>>,
+    { id: string; data: BodyType<UpdateCandidateStatusBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateCandidateStatus(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateCandidateStatusMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateCandidateStatus>>
+>;
+export type UpdateCandidateStatusMutationBody =
+  BodyType<UpdateCandidateStatusBody>;
+export type UpdateCandidateStatusMutationError = ErrorType<ProblemDetails>;
+
+/**
+ * @summary Approve, reject, or enroll a candidate (admin)
+ */
+export const useUpdateCandidateStatus = <
+  TError = ErrorType<ProblemDetails>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCandidateStatus>>,
+    TError,
+    { id: string; data: BodyType<UpdateCandidateStatusBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateCandidateStatus>>,
+  TError,
+  { id: string; data: BodyType<UpdateCandidateStatusBody> },
+  TContext
+> => {
+  return useMutation(getUpdateCandidateStatusMutationOptions(options));
+};
+
+/**
+ * @summary Get notifications for a staff member
+ */
+export const getListNotificationsUrl = (params: ListNotificationsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/notifications?${stringifiedParams}`
+    : `/api/notifications`;
+};
+
+export const listNotifications = async (
+  params: ListNotificationsParams,
+  options?: RequestInit,
+): Promise<NotificationDto[]> => {
+  return customFetch<NotificationDto[]>(getListNotificationsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListNotificationsQueryKey = (
+  params?: ListNotificationsParams,
+) => {
+  return [`/api/notifications`, ...(params ? [params] : [])] as const;
+};
+
+export const getListNotificationsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listNotifications>>,
+  TError = ErrorType<unknown>,
+>(
+  params: ListNotificationsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listNotifications>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListNotificationsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listNotifications>>
+  > = ({ signal }) => listNotifications(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listNotifications>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListNotificationsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listNotifications>>
+>;
+export type ListNotificationsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get notifications for a staff member
+ */
+
+export function useListNotifications<
+  TData = Awaited<ReturnType<typeof listNotifications>>,
+  TError = ErrorType<unknown>,
+>(
+  params: ListNotificationsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listNotifications>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListNotificationsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Mark all notifications as read for a staff member
+ */
+export const getMarkAllNotificationsReadUrl = () => {
+  return `/api/notifications/read-all`;
+};
+
+export const markAllNotificationsRead = async (
+  markAllNotificationsReadBody: MarkAllNotificationsReadBody,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getMarkAllNotificationsReadUrl(), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(markAllNotificationsReadBody),
+  });
+};
+
+export const getMarkAllNotificationsReadMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markAllNotificationsRead>>,
+    TError,
+    { data: BodyType<MarkAllNotificationsReadBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof markAllNotificationsRead>>,
+  TError,
+  { data: BodyType<MarkAllNotificationsReadBody> },
+  TContext
+> => {
+  const mutationKey = ["markAllNotificationsRead"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof markAllNotificationsRead>>,
+    { data: BodyType<MarkAllNotificationsReadBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return markAllNotificationsRead(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MarkAllNotificationsReadMutationResult = NonNullable<
+  Awaited<ReturnType<typeof markAllNotificationsRead>>
+>;
+export type MarkAllNotificationsReadMutationBody =
+  BodyType<MarkAllNotificationsReadBody>;
+export type MarkAllNotificationsReadMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Mark all notifications as read for a staff member
+ */
+export const useMarkAllNotificationsRead = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markAllNotificationsRead>>,
+    TError,
+    { data: BodyType<MarkAllNotificationsReadBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof markAllNotificationsRead>>,
+  TError,
+  { data: BodyType<MarkAllNotificationsReadBody> },
+  TContext
+> => {
+  return useMutation(getMarkAllNotificationsReadMutationOptions(options));
+};
+
+/**
+ * @summary Mark a notification as read
+ */
+export const getMarkNotificationReadUrl = (id: string) => {
+  return `/api/notifications/${id}/read`;
+};
+
+export const markNotificationRead = async (
+  id: string,
+  options?: RequestInit,
+): Promise<NotificationDto> => {
+  return customFetch<NotificationDto>(getMarkNotificationReadUrl(id), {
+    ...options,
+    method: "PATCH",
+  });
+};
+
+export const getMarkNotificationReadMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markNotificationRead>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof markNotificationRead>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["markNotificationRead"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof markNotificationRead>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return markNotificationRead(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MarkNotificationReadMutationResult = NonNullable<
+  Awaited<ReturnType<typeof markNotificationRead>>
+>;
+
+export type MarkNotificationReadMutationError = ErrorType<void>;
+
+/**
+ * @summary Mark a notification as read
+ */
+export const useMarkNotificationRead = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markNotificationRead>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof markNotificationRead>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getMarkNotificationReadMutationOptions(options));
+};
 
 /**
  * @summary Get a single candidate

@@ -318,6 +318,19 @@ export interface TripReportRow {
 }
 
 /**
+ * Workflow status: pending, verified, rejected, enrolled
+ */
+export type CandidateDtoStatus =
+  (typeof CandidateDtoStatus)[keyof typeof CandidateDtoStatus];
+
+export const CandidateDtoStatus = {
+  pending: "pending",
+  verified: "verified",
+  rejected: "rejected",
+  enrolled: "enrolled",
+} as const;
+
+/**
  * A candidate registration record.
  */
 export interface CandidateDto {
@@ -343,7 +356,24 @@ export interface CandidateDto {
   casteCertUrl?: string | null;
   /** URL to download the generated profile PDF. */
   pdfUrl?: string | null;
+  /** Workflow status: pending, verified, rejected, enrolled */
+  status: CandidateDtoStatus;
+  verifiedBy?: string | null;
+  verifiedAt?: string | null;
+  verificationRemarks?: string | null;
   submittedBy?: string | null;
+  submittedByPhone?: string | null;
+  village?: string | null;
+  course?: string | null;
+  createdAt: string;
+}
+
+export interface NotificationDto {
+  id: string;
+  candidateId: string;
+  candidateName: string;
+  message: string;
+  isRead: boolean;
   createdAt: string;
 }
 
@@ -434,4 +464,67 @@ export type GetDistanceStatsParams = {
    * Filter to a single staff member (UUID).
    */
   staffId?: string;
+};
+
+export type CheckDuplicateCandidateBody = {
+  phone?: string;
+  aadhaarNumber?: string;
+};
+
+export type CheckDuplicateCandidate200 = {
+  isDuplicate: boolean;
+  field?: string | null;
+  existingName?: string | null;
+};
+
+export type ListMyCandidatesParams = {
+  phone: string;
+};
+
+export type ListCandidatesParams = {
+  /**
+   * Search by name or phone number
+   */
+  search?: string;
+  status?: ListCandidatesStatus;
+  /**
+   * Filter by mobilizer/staff name
+   */
+  mobilizer?: string;
+  village?: string;
+  course?: string;
+};
+
+export type ListCandidatesStatus =
+  (typeof ListCandidatesStatus)[keyof typeof ListCandidatesStatus];
+
+export const ListCandidatesStatus = {
+  pending: "pending",
+  verified: "verified",
+  rejected: "rejected",
+  enrolled: "enrolled",
+} as const;
+
+export type UpdateCandidateStatusBodyStatus =
+  (typeof UpdateCandidateStatusBodyStatus)[keyof typeof UpdateCandidateStatusBodyStatus];
+
+export const UpdateCandidateStatusBodyStatus = {
+  pending: "pending",
+  verified: "verified",
+  rejected: "rejected",
+  enrolled: "enrolled",
+} as const;
+
+export type UpdateCandidateStatusBody = {
+  status: UpdateCandidateStatusBodyStatus;
+  remarks?: string | null;
+  verifiedBy?: string | null;
+};
+
+export type ListNotificationsParams = {
+  phone: string;
+};
+
+export type MarkAllNotificationsReadBody = {
+  phone: string;
 };

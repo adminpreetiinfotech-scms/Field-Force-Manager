@@ -629,9 +629,85 @@ export const GetActivityResponse = zod
   );
 
 /**
- * Admin endpoint — returns all candidate registrations ordered by newest first.
- * @summary List all candidates
+ * @summary Check if a candidate with given phone or Aadhaar already exists
  */
+export const CheckDuplicateCandidateBody = zod.object({
+  phone: zod.string().optional(),
+  aadhaarNumber: zod.string().optional(),
+});
+
+export const CheckDuplicateCandidateResponse = zod.object({
+  isDuplicate: zod.boolean(),
+  field: zod.string().nullish(),
+  existingName: zod.string().nullish(),
+});
+
+/**
+ * @summary List candidates submitted by a specific staff member
+ */
+export const ListMyCandidatesQueryParams = zod.object({
+  phone: zod.coerce.string(),
+});
+
+export const ListMyCandidatesResponseItem = zod
+  .object({
+    id: zod.string().uuid(),
+    name: zod.string(),
+    phone: zod.string(),
+    fatherName: zod.string().nullish(),
+    dob: zod.string().nullish(),
+    gender: zod.string().nullish(),
+    address: zod.string().nullish(),
+    area: zod.string().nullish(),
+    aadhaarNumber: zod.string().nullish(),
+    education: zod.string().nullish(),
+    bankAccount: zod.string().nullish(),
+    bankName: zod.string().nullish(),
+    ifsc: zod.string().nullish(),
+    caste: zod.string().nullish(),
+    photoUrl: zod.string().nullish(),
+    aadhaarFrontUrl: zod.string().nullish(),
+    aadhaarBackUrl: zod.string().nullish(),
+    educationCertUrl: zod.string().nullish(),
+    bankPassbookUrl: zod.string().nullish(),
+    casteCertUrl: zod.string().nullish(),
+    pdfUrl: zod
+      .string()
+      .nullish()
+      .describe("URL to download the generated profile PDF."),
+    status: zod
+      .enum(["pending", "verified", "rejected", "enrolled"])
+      .describe("Workflow status: pending, verified, rejected, enrolled"),
+    verifiedBy: zod.string().nullish(),
+    verifiedAt: zod.coerce.date().nullish(),
+    verificationRemarks: zod.string().nullish(),
+    submittedBy: zod.string().nullish(),
+    submittedByPhone: zod.string().nullish(),
+    village: zod.string().nullish(),
+    course: zod.string().nullish(),
+    createdAt: zod.coerce.date(),
+  })
+  .describe("A candidate registration record.");
+export const ListMyCandidatesResponse = zod.array(ListMyCandidatesResponseItem);
+
+/**
+ * Admin endpoint — returns all candidate registrations ordered by newest first.
+ * @summary List all candidates (admin)
+ */
+export const ListCandidatesQueryParams = zod.object({
+  search: zod.coerce
+    .string()
+    .optional()
+    .describe("Search by name or phone number"),
+  status: zod.enum(["pending", "verified", "rejected", "enrolled"]).optional(),
+  mobilizer: zod.coerce
+    .string()
+    .optional()
+    .describe("Filter by mobilizer\/staff name"),
+  village: zod.coerce.string().optional(),
+  course: zod.coerce.string().optional(),
+});
+
 export const ListCandidatesResponseItem = zod
   .object({
     id: zod.string().uuid(),
@@ -658,11 +734,115 @@ export const ListCandidatesResponseItem = zod
       .string()
       .nullish()
       .describe("URL to download the generated profile PDF."),
+    status: zod
+      .enum(["pending", "verified", "rejected", "enrolled"])
+      .describe("Workflow status: pending, verified, rejected, enrolled"),
+    verifiedBy: zod.string().nullish(),
+    verifiedAt: zod.coerce.date().nullish(),
+    verificationRemarks: zod.string().nullish(),
     submittedBy: zod.string().nullish(),
+    submittedByPhone: zod.string().nullish(),
+    village: zod.string().nullish(),
+    course: zod.string().nullish(),
     createdAt: zod.coerce.date(),
   })
   .describe("A candidate registration record.");
 export const ListCandidatesResponse = zod.array(ListCandidatesResponseItem);
+
+/**
+ * @summary Approve, reject, or enroll a candidate (admin)
+ */
+export const UpdateCandidateStatusParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const UpdateCandidateStatusBody = zod.object({
+  status: zod.enum(["pending", "verified", "rejected", "enrolled"]),
+  remarks: zod.string().nullish(),
+  verifiedBy: zod.string().nullish(),
+});
+
+export const UpdateCandidateStatusResponse = zod
+  .object({
+    id: zod.string().uuid(),
+    name: zod.string(),
+    phone: zod.string(),
+    fatherName: zod.string().nullish(),
+    dob: zod.string().nullish(),
+    gender: zod.string().nullish(),
+    address: zod.string().nullish(),
+    area: zod.string().nullish(),
+    aadhaarNumber: zod.string().nullish(),
+    education: zod.string().nullish(),
+    bankAccount: zod.string().nullish(),
+    bankName: zod.string().nullish(),
+    ifsc: zod.string().nullish(),
+    caste: zod.string().nullish(),
+    photoUrl: zod.string().nullish(),
+    aadhaarFrontUrl: zod.string().nullish(),
+    aadhaarBackUrl: zod.string().nullish(),
+    educationCertUrl: zod.string().nullish(),
+    bankPassbookUrl: zod.string().nullish(),
+    casteCertUrl: zod.string().nullish(),
+    pdfUrl: zod
+      .string()
+      .nullish()
+      .describe("URL to download the generated profile PDF."),
+    status: zod
+      .enum(["pending", "verified", "rejected", "enrolled"])
+      .describe("Workflow status: pending, verified, rejected, enrolled"),
+    verifiedBy: zod.string().nullish(),
+    verifiedAt: zod.coerce.date().nullish(),
+    verificationRemarks: zod.string().nullish(),
+    submittedBy: zod.string().nullish(),
+    submittedByPhone: zod.string().nullish(),
+    village: zod.string().nullish(),
+    course: zod.string().nullish(),
+    createdAt: zod.coerce.date(),
+  })
+  .describe("A candidate registration record.");
+
+/**
+ * @summary Get notifications for a staff member
+ */
+export const ListNotificationsQueryParams = zod.object({
+  phone: zod.coerce.string(),
+});
+
+export const ListNotificationsResponseItem = zod.object({
+  id: zod.string().uuid(),
+  candidateId: zod.string(),
+  candidateName: zod.string(),
+  message: zod.string(),
+  isRead: zod.boolean(),
+  createdAt: zod.coerce.date(),
+});
+export const ListNotificationsResponse = zod.array(
+  ListNotificationsResponseItem,
+);
+
+/**
+ * @summary Mark all notifications as read for a staff member
+ */
+export const MarkAllNotificationsReadBody = zod.object({
+  phone: zod.string(),
+});
+
+/**
+ * @summary Mark a notification as read
+ */
+export const MarkNotificationReadParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+export const MarkNotificationReadResponse = zod.object({
+  id: zod.string().uuid(),
+  candidateId: zod.string(),
+  candidateName: zod.string(),
+  message: zod.string(),
+  isRead: zod.boolean(),
+  createdAt: zod.coerce.date(),
+});
 
 /**
  * @summary Get a single candidate
@@ -697,7 +877,16 @@ export const GetCandidateResponse = zod
       .string()
       .nullish()
       .describe("URL to download the generated profile PDF."),
+    status: zod
+      .enum(["pending", "verified", "rejected", "enrolled"])
+      .describe("Workflow status: pending, verified, rejected, enrolled"),
+    verifiedBy: zod.string().nullish(),
+    verifiedAt: zod.coerce.date().nullish(),
+    verificationRemarks: zod.string().nullish(),
     submittedBy: zod.string().nullish(),
+    submittedByPhone: zod.string().nullish(),
+    village: zod.string().nullish(),
+    course: zod.string().nullish(),
     createdAt: zod.coerce.date(),
   })
   .describe("A candidate registration record.");

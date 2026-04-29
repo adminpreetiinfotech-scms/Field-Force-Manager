@@ -1,5 +1,10 @@
-import { db, candidatesTable } from "@workspace/db";
-import { desc, eq } from "drizzle-orm";
+import {
+  candidateNotificationsTable,
+  candidatesTable,
+  db,
+  staffTable,
+} from "@workspace/db";
+import { and, desc, eq, ilike, or } from "drizzle-orm";
 import express, { Router } from "express";
 import fs from "fs";
 import path from "path";
@@ -13,7 +18,6 @@ const UPLOADS_BASE = path.join(process.cwd(), "uploads");
 const CANDIDATES_DIR = path.join(UPLOADS_BASE, "candidates");
 fs.mkdirSync(CANDIDATES_DIR, { recursive: true });
 
-// Serve uploaded files under /api/uploads/*
 router.use("/uploads", express.static(UPLOADS_BASE));
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -26,8 +30,7 @@ function saveBase64(
 ): string | null {
   if (!base64) return null;
   const ext = (mimeType || "image/jpeg").includes("png") ? "png" : "jpg";
-  const filename = `${name}.${ext}`;
-  const filepath = path.join(dir, filename);
+  const filepath = path.join(dir, `${name}.${ext}`);
   try {
     fs.writeFileSync(filepath, Buffer.from(base64, "base64"));
     return filepath;
@@ -52,12 +55,18 @@ function toDto(c: typeof candidatesTable.$inferSelect) {
     gender: c.gender ?? null,
     address: c.address ?? null,
     area: c.area ?? null,
+    village: c.village ?? null,
+    course: c.course ?? null,
     aadhaarNumber: c.aadhaarNumber ?? null,
     education: c.education ?? null,
     bankAccount: c.bankAccount ?? null,
     bankName: c.bankName ?? null,
     ifsc: c.ifsc ?? null,
     caste: c.caste ?? null,
+    status: c.status ?? "pending",
+    verifiedBy: c.verifiedBy ?? null,
+    verifiedAt: c.verifiedAt?.toISOString() ?? null,
+    verificationRemarks: c.verificationRemarks ?? null,
     photoUrl: toUrl(c.photoPath),
     aadhaarFrontUrl: toUrl(c.aadhaarFrontPath),
     aadhaarBackUrl: toUrl(c.aadhaarBackPath),
@@ -66,9 +75,61 @@ function toDto(c: typeof candidatesTable.$inferSelect) {
     casteCertUrl: toUrl(c.casteCertPath),
     pdfUrl: c.pdfPath ? `/api/candidates/${c.id}/pdf` : null,
     submittedBy: c.submittedBy ?? null,
+    submittedByPhone: c.submittedByPhone ?? null,
     createdAt: c.createdAt?.toISOString() ?? null,
   };
 }
+
+function notifToDto(n: typeof candidateNotificationsTable.$inferSelect) {
+  return {
+    id: n.id,
+    candidateId: n.candidateId,
+    candidateName: n.candidateName,
+    message: n.message,
+    isRead: n.isRead,
+    createdAt: n.createdAt?.toISOString() ?? null,
+  };
+}
+
+// ─── POST /api/candidates/check-duplicate ─────────────────────────────────────
+// Must be registered BEFORE /candidates/:id
+
+router.post("/candidates/check-duplicate", async (req, res, next) => {
+  try {
+    const { phone, aadhaarNumber } = req.body as {
+      phone?: string;
+      aadhaarNumber?: string;
+    };
+
+    if (phone && phone.trim()) {
+      const [existing] = await db
+        .select({ id: candidatesTable.id, name: candidatesTable.name })
+        .from(candidatesTable)
+        .where(eq(candidatesTable.phone, phone.trim()))
+        .limit(1);
+      if (existing) {
+        res.json({ isDuplicate: true, field: "phone", existingName: existing.name });
+        return;
+      }
+    }
+
+    if (aadhaarNumber && aadhaarNumber.trim().length === 12) {
+      const [existing] = await db
+        .select({ id: candidatesTable.id, name: candidatesTable.name })
+        .from(candidatesTable)
+        .where(eq(candidatesTable.aadhaarNumber, aadhaarNumber.trim()))
+        .limit(1);
+      if (existing) {
+        res.json({ isDuplicate: true, field: "aadhaar", existingName: existing.name });
+        return;
+      }
+    }
+
+    res.json({ isDuplicate: false });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // ─── POST /api/candidates ──────────────────────────────────────────────────────
 
@@ -82,6 +143,8 @@ router.post("/candidates", async (req, res, next) => {
       gender?: string | null;
       address?: string | null;
       area?: string | null;
+      village?: string | null;
+      course?: string | null;
       aadhaarNumber?: string | null;
       education?: string | null;
       bankAccount?: string | null;
@@ -89,6 +152,7 @@ router.post("/candidates", async (req, res, next) => {
       ifsc?: string | null;
       caste?: string | null;
       submittedBy?: string | null;
+      submittedByPhone?: string | null;
       photoBase64?: string | null;
       photoMime?: string | null;
       aadhaarFrontBase64?: string | null;
@@ -103,16 +167,32 @@ router.post("/candidates", async (req, res, next) => {
       casteCertMime?: string | null;
     };
 
-    if (!body.name || body.name.trim().length < 2) {
-      res.status(400).json({ title: "Name required", status: 400 });
+    if (!body.name?.trim() || body.name.trim().length < 2) {
+      res.status(400).json({ title: "Name required (min 2 chars)", status: 400 });
       return;
     }
-    if (!body.phone || !/^\d{10}$/.test(body.phone.trim())) {
+    if (!body.phone?.trim() || !/^\d{10}$/.test(body.phone.trim())) {
       res.status(400).json({ title: "Valid 10-digit phone required", status: 400 });
       return;
     }
 
-    // Insert first to get the ID for the folder name.
+    // Security: verify submitter is an approved staff member.
+    if (body.submittedByPhone) {
+      const [staffRow] = await db
+        .select({ approvalStatus: staffTable.approvalStatus })
+        .from(staffTable)
+        .where(eq(staffTable.phone, body.submittedByPhone))
+        .limit(1);
+      if (staffRow && staffRow.approvalStatus !== "approved") {
+        res.status(403).json({
+          title:
+            "Your account is pending admin approval. You cannot submit candidate data until your account is approved.",
+          status: 403,
+        });
+        return;
+      }
+    }
+
     const [candidate] = await db
       .insert(candidatesTable)
       .values({
@@ -123,6 +203,8 @@ router.post("/candidates", async (req, res, next) => {
         gender: body.gender?.trim() || null,
         address: body.address?.trim() || null,
         area: body.area?.trim() || null,
+        village: body.village?.trim() || null,
+        course: body.course?.trim() || null,
         aadhaarNumber: body.aadhaarNumber?.trim() || null,
         education: body.education?.trim() || null,
         bankAccount: body.bankAccount?.trim() || null,
@@ -130,10 +212,11 @@ router.post("/candidates", async (req, res, next) => {
         ifsc: body.ifsc?.trim() || null,
         caste: body.caste?.trim() || null,
         submittedBy: body.submittedBy?.trim() || null,
+        submittedByPhone: body.submittedByPhone?.trim() || null,
+        status: "pending",
       })
       .returning();
 
-    // Save uploaded files.
     const candidateDir = path.join(CANDIDATES_DIR, candidate.id);
     fs.mkdirSync(candidateDir, { recursive: true });
 
@@ -144,8 +227,6 @@ router.post("/candidates", async (req, res, next) => {
     const bankPassbookPath = saveBase64(body.bankPassbookBase64, body.bankPassbookMime, candidateDir, "bank-passbook");
     const casteCertPath = saveBase64(body.casteCertBase64, body.casteCertMime, candidateDir, "caste-cert");
 
-    // Generate PDF
-    const pdfFilePath = path.join(candidateDir, "profile.pdf");
     const candidateWithFiles = {
       ...candidate,
       photoPath,
@@ -155,15 +236,14 @@ router.post("/candidates", async (req, res, next) => {
       bankPassbookPath,
       casteCertPath,
     };
+    const pdfFilePath = path.join(candidateDir, "profile.pdf");
     try {
       await generateCandidatePdf(candidateWithFiles as typeof candidate, pdfFilePath);
     } catch {
-      // PDF generation failure is non-fatal
+      /* PDF generation failure is non-fatal */
     }
-
     const pdfExists = fs.existsSync(pdfFilePath);
 
-    // Update record with file paths and PDF path.
     const [updated] = await db
       .update(candidatesTable)
       .set({
@@ -184,14 +264,67 @@ router.post("/candidates", async (req, res, next) => {
   }
 });
 
-// ─── GET /api/admin/candidates ────────────────────────────────────────────────
+// ─── GET /api/candidates/my?phone=xxx ─────────────────────────────────────────
+// Must be before /candidates/:id
 
-router.get("/admin/candidates", async (_req, res, next) => {
+router.get("/candidates/my", async (req, res, next) => {
   try {
+    const { phone } = req.query as { phone?: string };
+    if (!phone) {
+      res.status(400).json({ title: "phone query param required", status: 400 });
+      return;
+    }
     const rows = await db
       .select()
       .from(candidatesTable)
+      .where(eq(candidatesTable.submittedByPhone, phone))
       .orderBy(desc(candidatesTable.createdAt));
+    res.json(rows.map(toDto));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── GET /api/admin/candidates ────────────────────────────────────────────────
+
+router.get("/admin/candidates", async (req, res, next) => {
+  try {
+    const { search, status, mobilizer, village, course } = req.query as {
+      search?: string;
+      status?: string;
+      mobilizer?: string;
+      village?: string;
+      course?: string;
+    };
+
+    const conditions = [];
+    if (search?.trim()) {
+      conditions.push(
+        or(
+          ilike(candidatesTable.name, `%${search.trim()}%`),
+          ilike(candidatesTable.phone, `%${search.trim()}%`),
+        ),
+      );
+    }
+    if (status?.trim()) {
+      conditions.push(eq(candidatesTable.status, status.trim()));
+    }
+    if (mobilizer?.trim()) {
+      conditions.push(ilike(candidatesTable.submittedBy, `%${mobilizer.trim()}%`));
+    }
+    if (village?.trim()) {
+      conditions.push(ilike(candidatesTable.village, `%${village.trim()}%`));
+    }
+    if (course?.trim()) {
+      conditions.push(ilike(candidatesTable.course, `%${course.trim()}%`));
+    }
+
+    const rows = await db
+      .select()
+      .from(candidatesTable)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(candidatesTable.createdAt));
+
     res.json(rows.map(toDto));
   } catch (err) {
     next(err);
@@ -200,41 +333,46 @@ router.get("/admin/candidates", async (_req, res, next) => {
 
 // ─── GET /api/admin/candidates/csv ───────────────────────────────────────────
 
-router.get("/admin/candidates/csv", async (_req, res, next) => {
+router.get("/admin/candidates/csv", async (req, res, next) => {
   try {
+    const { status } = req.query as { status?: string };
+    const conditions = status?.trim()
+      ? [eq(candidatesTable.status, status.trim())]
+      : [];
     const rows = await db
       .select()
       .from(candidatesTable)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(candidatesTable.createdAt));
 
     const headers = [
       "Name", "Phone", "Father's Name", "DOB", "Gender",
-      "Area", "Address", "Aadhaar No.", "Education", "Caste",
-      "Bank Name", "Account No.", "IFSC",
+      "Village", "Area", "Address", "Aadhaar No.", "Education",
+      "Course", "Caste", "Bank Name", "Account No.", "IFSC",
+      "Status", "Verified By", "Verified At", "Remarks",
       "Submitted By", "Registered On", "PDF Link",
     ];
 
-    function escapeCsv(v: string | null | undefined): string {
+    function esc(v: string | null | undefined): string {
       if (v == null) return "";
       const s = String(v);
-      if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+      if (s.includes(",") || s.includes('"') || s.includes("\n"))
         return `"${s.replace(/"/g, '""')}"`;
-      }
       return s;
     }
 
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
     const lines = [headers.join(",")];
-    const baseUrl = `${_req.protocol}://${_req.get("host")}`;
     for (const r of rows) {
       const pdfLink = r.pdfPath ? `${baseUrl}/api/candidates/${r.id}/pdf` : "";
       lines.push([
         r.name, r.phone, r.fatherName, r.dob, r.gender,
-        r.area, r.address, r.aadhaarNumber, r.education, r.caste,
-        r.bankName, r.bankAccount, r.ifsc,
-        r.submittedBy,
-        r.createdAt?.toISOString().slice(0, 10) ?? "",
+        r.village, r.area, r.address, r.aadhaarNumber, r.education,
+        r.course, r.caste, r.bankName, r.bankAccount, r.ifsc,
+        r.status, r.verifiedBy, r.verifiedAt?.toISOString().slice(0, 10) ?? "", r.verificationRemarks,
+        r.submittedBy, r.createdAt?.toISOString().slice(0, 10) ?? "",
         pdfLink,
-      ].map(escapeCsv).join(","));
+      ].map(esc).join(","));
     }
 
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
@@ -243,6 +381,72 @@ router.get("/admin/candidates/csv", async (_req, res, next) => {
       `attachment; filename="candidates_${new Date().toISOString().slice(0, 10)}.csv"`,
     );
     res.send(lines.join("\r\n"));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── PATCH /api/admin/candidates/:id/status ──────────────────────────────────
+
+router.patch("/admin/candidates/:id/status", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status, remarks, verifiedBy } = req.body as {
+      status?: string;
+      remarks?: string;
+      verifiedBy?: string;
+    };
+
+    const validStatuses = ["pending", "verified", "rejected", "enrolled"];
+    if (!status || !validStatuses.includes(status)) {
+      res.status(400).json({
+        title: `status must be one of: ${validStatuses.join(", ")}`,
+        status: 400,
+      });
+      return;
+    }
+
+    const [candidate] = await db
+      .select()
+      .from(candidatesTable)
+      .where(eq(candidatesTable.id, id))
+      .limit(1);
+    if (!candidate) {
+      res.status(404).json({ title: "Candidate not found", status: 404 });
+      return;
+    }
+
+    const [updated] = await db
+      .update(candidatesTable)
+      .set({
+        status,
+        verifiedBy: verifiedBy?.trim() || null,
+        verifiedAt: new Date(),
+        verificationRemarks: remarks?.trim() || null,
+      })
+      .where(eq(candidatesTable.id, id))
+      .returning();
+
+    // Create notification for the submitter.
+    if (candidate.submittedByPhone) {
+      const statusLabel =
+        status === "verified"
+          ? "approved ✓"
+          : status === "rejected"
+            ? "rejected ✗"
+            : status === "enrolled"
+              ? "enrolled 🎓"
+              : status;
+      const message = `Your candidate ${candidate.name} has been ${statusLabel}.${remarks ? ` Remark: ${remarks}` : ""}`;
+      await db.insert(candidateNotificationsTable).values({
+        staffPhone: candidate.submittedByPhone,
+        candidateId: candidate.id,
+        candidateName: candidate.name,
+        message,
+      });
+    }
+
+    res.json(toDto(updated));
   } catch (err) {
     next(err);
   }
@@ -278,18 +482,14 @@ router.get("/candidates/:id/pdf", async (req, res, next) => {
       .from(candidatesTable)
       .where(eq(candidatesTable.id, id))
       .limit(1);
-
     if (!candidate) {
       res.status(404).json({ title: "Candidate not found", status: 404 });
       return;
     }
 
-    const candidateDir = path.join(CANDIDATES_DIR, candidate.id);
-    const pdfFilePath = path.join(candidateDir, "profile.pdf");
-
-    // Regenerate PDF if missing
+    const pdfFilePath = path.join(CANDIDATES_DIR, candidate.id, "profile.pdf");
     if (!fs.existsSync(pdfFilePath)) {
-      fs.mkdirSync(candidateDir, { recursive: true });
+      fs.mkdirSync(path.dirname(pdfFilePath), { recursive: true });
       try {
         await generateCandidatePdf(candidate, pdfFilePath);
       } catch (pdfErr) {
@@ -305,6 +505,65 @@ router.get("/candidates/:id/pdf", async (req, res, next) => {
       `attachment; filename="candidate_${safeName}.pdf"`,
     );
     fs.createReadStream(pdfFilePath).pipe(res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── GET /api/notifications?phone=xxx ────────────────────────────────────────
+
+router.get("/notifications", async (req, res, next) => {
+  try {
+    const { phone } = req.query as { phone?: string };
+    if (!phone) {
+      res.status(400).json({ title: "phone query param required", status: 400 });
+      return;
+    }
+    const rows = await db
+      .select()
+      .from(candidateNotificationsTable)
+      .where(eq(candidateNotificationsTable.staffPhone, phone))
+      .orderBy(desc(candidateNotificationsTable.createdAt));
+    res.json(rows.map(notifToDto));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── PATCH /api/notifications/:id/read ───────────────────────────────────────
+
+router.patch("/notifications/:id/read", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const [updated] = await db
+      .update(candidateNotificationsTable)
+      .set({ isRead: true })
+      .where(eq(candidateNotificationsTable.id, id))
+      .returning();
+    if (!updated) {
+      res.status(404).json({ title: "Notification not found", status: 404 });
+      return;
+    }
+    res.json(notifToDto(updated));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── PATCH /api/notifications/read-all ───────────────────────────────────────
+
+router.patch("/notifications/read-all", async (req, res, next) => {
+  try {
+    const { phone } = req.body as { phone?: string };
+    if (!phone) {
+      res.status(400).json({ title: "phone required", status: 400 });
+      return;
+    }
+    await db
+      .update(candidateNotificationsTable)
+      .set({ isRead: true })
+      .where(eq(candidateNotificationsTable.staffPhone, phone));
+    res.json({ ok: true });
   } catch (err) {
     next(err);
   }

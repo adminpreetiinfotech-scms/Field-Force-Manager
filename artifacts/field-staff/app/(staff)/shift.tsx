@@ -1,9 +1,9 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Location from "expo-location";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import * as Haptics from "expo-haptics";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Platform,
@@ -59,6 +59,13 @@ function formatDate(ts: number) {
   });
 }
 
+function getApiBase(): string {
+  if (Platform.OS === "web") return "";
+  const domain = process.env.EXPO_PUBLIC_DOMAIN;
+  if (!domain) return "";
+  return domain.startsWith("http") ? domain : `https://${domain}`;
+}
+
 export default function StaffHome() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -82,6 +89,18 @@ export default function StaffHome() {
   );
   const lastEntry = myAttendance[0] as AttendanceRecord | undefined;
   const isCheckedIn = lastEntry?.type === "in";
+
+  const [unreadCount, setUnreadCount] = useState(0);
+  useFocusEffect(
+    useCallback(() => {
+      if (!user?.phone) return;
+      const apiBase = getApiBase();
+      fetch(`${apiBase}/api/notifications?phone=${encodeURIComponent(user.phone)}`)
+        .then((r) => r.json() as Promise<{ isRead: boolean }[]>)
+        .then((data) => setUnreadCount(data.filter((n) => !n.isRead).length))
+        .catch(() => {/* non-fatal */});
+    }, [user?.phone]),
+  );
 
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
@@ -252,14 +271,23 @@ export default function StaffHome() {
               <Text style={styles.greet}>{getGreeting()},</Text>
               <Text style={styles.name}>{user?.name || "Field Staff"}</Text>
             </View>
-            <View
-              style={[
-                styles.empBadge,
-                { backgroundColor: "rgba(255,255,255,0.12)" },
-              ]}
-            >
-              <Feather name="hash" size={11} color="#FCD34D" />
-              <Text style={styles.empText}>{user?.empCode}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Pressable
+                onPress={() => router.push("/notifications")}
+                style={{ position: "relative", padding: 6 }}
+                hitSlop={8}
+              >
+                <Feather name="bell" size={20} color="#fff" />
+                {unreadCount > 0 && (
+                  <View style={styles.notifBadge}>
+                    <Text style={styles.notifBadgeText}>{unreadCount > 9 ? "9+" : String(unreadCount)}</Text>
+                  </View>
+                )}
+              </Pressable>
+              <View style={[styles.empBadge, { backgroundColor: "rgba(255,255,255,0.12)" }]}>
+                <Feather name="hash" size={11} color="#FCD34D" />
+                <Text style={styles.empText}>{user?.empCode}</Text>
+              </View>
             </View>
           </View>
 
@@ -414,6 +442,34 @@ export default function StaffHome() {
                     name="user-plus"
                     size={18}
                     color={colors.foreground}
+                  />
+                }
+              />
+              <Button
+                label="My candidates"
+                onPress={() => router.push("/candidate/my-candidates")}
+                variant="ghost"
+                size="lg"
+                fullWidth
+                icon={
+                  <Feather
+                    name="users"
+                    size={18}
+                    color={colors.foreground}
+                  />
+                }
+              />
+              <Button
+                label={unreadCount > 0 ? `Notifications (${unreadCount} new)` : "Notifications"}
+                onPress={() => router.push("/notifications")}
+                variant="ghost"
+                size="lg"
+                fullWidth
+                icon={
+                  <Feather
+                    name="bell"
+                    size={18}
+                    color={unreadCount > 0 ? "#D97706" : colors.foreground}
                   />
                 }
               />
@@ -667,5 +723,22 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 999,
+  },
+  notifBadge: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    backgroundColor: "#EF4444",
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 3,
+  },
+  notifBadgeText: {
+    color: "#fff",
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
   },
 });

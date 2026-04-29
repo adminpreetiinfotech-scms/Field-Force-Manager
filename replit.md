@@ -52,7 +52,19 @@ Mobile-first field operations app for distribution/utility staff and ops admins.
 - Trip ledger (`app/(staff)/trips.tsx`)
 - Admin dashboard, live map, tamper-resistant records, and ride report CSV export (`app/(admin)/`)
 - Ride report: date-range + staff filter; `GET /api/activity/trip-report`; CSV download via Blob (web) or expo-sharing (native)
-- **Candidate Registration**: staff/mobilizers submit candidate details + document images; `POST /api/candidates` accepts JSON with base64 images; server saves files to `uploads/candidates/<id>/` and generates a PDF via pdfkit; PDF served at `GET /api/candidates/:id/pdf`; admin views all via `GET /api/admin/candidates` + CSV at `GET /api/admin/candidates/csv`; mobile screens at `app/candidate/register.tsx` and `app/candidate/list.tsx`
+- **Candidate Management (10 features)**:
+  - `POST /api/candidates`: submit with staff security gate (403 if staff not yet approved), `submittedByPhone` recorded
+  - `POST /api/candidates/check-duplicate`: pre-submit check by phone or aadhaar; returns `{isDuplicate, field, existingName}`
+  - `GET /api/candidates/my?phone=`: staff view their own submitted candidates
+  - `GET /api/admin/candidates`: admin list with search (name/phone) + status/village/course/mobilizer filters
+  - `PATCH /api/admin/candidates/:id/status`: approve/reject/enroll with remarks; auto-creates notification for submitting staff
+  - `GET /api/admin/candidates/csv`: full CSV export
+  - `GET /api/candidates/:id/pdf`: generated PDF per candidate
+  - `GET /api/notifications?phone=`: staff in-app notifications
+  - `PATCH /api/notifications/:id/read` / `PATCH /api/notifications/read-all`: mark read
+  - Mobile screens: `app/candidate/register.tsx` (offline draft save, duplicate check, village+course), `app/candidate/list.tsx` (admin verify/reject modal, document preview, status badges), `app/candidate/my-candidates.tsx` (staff own list), `app/notifications.tsx` (notification centre)
+  - Shift screen (`app/(staff)/shift.tsx`): notification bell with unread badge in header; "My Candidates" + "Notifications" quick action buttons
+  - DB: `candidates` table extended with `status`, `village`, `course`, `verified_by`, `verified_at`, `verification_remarks`, `submitted_by_phone`; new `candidate_notifications` table
 - Offline-first sync via AsyncStorage; auto-syncs after ~4s, manual `Sync` button via `SyncBanner`
 
 **State**: `contexts/AppContext.tsx` — `register()` + `requestOtp()` + `verifyOtp()` actions; persisted to AsyncStorage at key `@field-staff/state-v1`.

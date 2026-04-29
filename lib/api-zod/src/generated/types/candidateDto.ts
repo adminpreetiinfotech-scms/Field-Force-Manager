@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { CandidateDtoStatus } from "./candidateDtoStatus";
 
 /**
  * A candidate registration record.
@@ -32,6 +33,14 @@ export interface CandidateDto {
   casteCertUrl?: string | null;
   /** URL to download the generated profile PDF. */
   pdfUrl?: string | null;
+  /** Workflow status: pending, verified, rejected, enrolled */
+  status: CandidateDtoStatus;
+  verifiedBy?: string | null;
+  verifiedAt?: Date | null;
+  verificationRemarks?: string | null;
   submittedBy?: string | null;
+  submittedByPhone?: string | null;
+  village?: string | null;
+  course?: string | null;
   createdAt: Date;
 }

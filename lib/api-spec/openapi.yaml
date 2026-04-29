@@ -449,12 +449,91 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
 
+  /candidates/check-duplicate:
+    post:
+      operationId: checkDuplicateCandidate
+      tags: [candidates]
+      summary: Check if a candidate with given phone or Aadhaar already exists
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone:
+                  type: string
+                aadhaarNumber:
+                  type: string
+      responses:
+        "200":
+          description: Duplicate check result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  isDuplicate:
+                    type: boolean
+                  field:
+                    type: string
+                    nullable: true
+                  existingName:
+                    type: string
+                    nullable: true
+                required: [isDuplicate]
+
+  /candidates/my:
+    get:
+      operationId: listMyCandidates
+      tags: [candidates]
+      summary: List candidates submitted by a specific staff member
+      parameters:
+        - name: phone
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of candidates submitted by this staff
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CandidateDto"
+
   /admin/candidates:
     get:
       operationId: listCandidates
       tags: [candidates]
-      summary: List all candidates
+      summary: List all candidates (admin)
       description: Admin endpoint — returns all candidate registrations ordered by newest first.
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by name or phone number
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, verified, rejected, enrolled]
+        - name: mobilizer
+          in: query
+          schema:
+            type: string
+          description: Filter by mobilizer/staff name
+        - name: village
+          in: query
+          schema:
+            type: string
+        - name: course
+          in: query
+          schema:
+            type: string
       responses:
         "200":
           description: List of candidates
@@ -464,6 +543,111 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/CandidateDto"
+
+  /admin/candidates/{id}/status:
+    patch:
+      operationId: updateCandidateStatus
+      tags: [candidates]
+      summary: Approve, reject, or enroll a candidate (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [pending, verified, rejected, enrolled]
+                remarks:
+                  type: string
+                  nullable: true
+                verifiedBy:
+                  type: string
+                  nullable: true
+              required: [status]
+      responses:
+        "200":
+          description: Updated candidate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CandidateDto"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [notifications]
+      summary: Get notifications for a staff member
+      parameters:
+        - name: phone
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NotificationDto"
+
+  /notifications/read-all:
+    patch:
+      operationId: markAllNotificationsRead
+      tags: [notifications]
+      summary: Mark all notifications as read for a staff member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone:
+                  type: string
+              required: [phone]
+      responses:
+        "200":
+          description: OK
+
+  /notifications/{id}/read:
+    patch:
+      operationId: markNotificationRead
+      tags: [notifications]
+      summary: Mark a notification as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Updated notification
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationDto"
+        "404":
+          description: Not found
 
   /candidates/{id}:
     get:
@@ -1087,13 +1271,55 @@ components:
           type: string
           nullable: true
           description: URL to download the generated profile PDF.
+        status:
+          type: string
+          enum: [pending, verified, rejected, enrolled]
+          description: "Workflow status: pending, verified, rejected, enrolled"
+        verifiedBy:
+          type: string
+          nullable: true
+        verifiedAt:
+          type: string
+          format: date-time
+          nullable: true
+        verificationRemarks:
+          type: string
+          nullable: true
         submittedBy:
+          type: string
+          nullable: true
+        submittedByPhone:
+          type: string
+          nullable: true
+        village:
+          type: string
+          nullable: true
+        course:
           type: string
           nullable: true
         createdAt:
           type: string
           format: date-time
-      required: [id, name, phone, createdAt]
+      required: [id, name, phone, status, createdAt]
+
+    NotificationDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        candidateId:
+          type: string
+        candidateName:
+          type: string
+        message:
+          type: string
+        isRead:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, candidateId, candidateName, message, isRead, createdAt]
 
     ProblemDetails:
       type: object
