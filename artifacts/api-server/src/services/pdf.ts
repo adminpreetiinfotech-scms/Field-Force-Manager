@@ -283,90 +283,111 @@ export async function generateCandidatePdf(
       .text("Photograph",        PX, PY + PH - 14, { width: PW, align: "center", lineBreak: false });
 
     // ══════════════════════════════════════════════════════════════════════════
-    // LETTERHEAD  (English | JSDMS Logo | Hindi)
+    // LETTERHEAD  (English left | JSDMS Logo centre | Hindi right)
+    //
+    // Layout (all left of photo box):
+    //   ML+4 ──── colW ──── logoGap ── LGSZ ── logoGap ──── colW ──── PX
     // ══════════════════════════════════════════════════════════════════════════
-    const HW    = PX - ML - 6;      // header area left of photo box
-    const LGSZ  = 60;               // logo square size
-    const colW  = (HW - LGSZ) / 2; // equal left and right column
-    const hX    = ML + 4;           // English column x
-    const logoX = ML + colW + 2;    // logo centre x
-    const rX    = logoX + LGSZ + 2; // Hindi column x
-    const hY    = MT + 4;
+    const HEADER_H = 72;                         // letterhead band height
+    const LGSZ     = 66;                         // logo square (px)
+    const HW       = PX - ML;                   // full width left of photo box
+    const logoGap  = 8;                          // gap on each side of logo
+    const colW     = (HW - LGSZ - logoGap * 2) / 2;  // equal column width
+    const hX       = ML + 4;                    // English column left x
+    const logoX    = ML + colW + logoGap;        // logo left x
+    const rX       = logoX + LGSZ + logoGap;     // Hindi column left x
+    const hY       = MT + 4;                    // top of text rows
 
-    // English (left)
-    doc.font("DVB").fontSize(9).fillColor(DARK)
-       .text("Jharkhand Skill Development Mission Society",
+    // ── Thin vertical column dividers ──────────────────────────────────────
+    vl(doc, logoX - 2,         MT + 4, MT + HEADER_H - 4, 0.4);
+    vl(doc, rX  - 2,           MT + 4, MT + HEADER_H - 4, 0.4);
+
+    // ── English left column ────────────────────────────────────────────────
+    doc.font("DVB").fontSize(8.5).fillColor(DARK)
+       .text("Jharkhand Skill Development",
              hX, hY, { width: colW, align: "left", lineBreak: false });
+    doc.font("DVB").fontSize(8.5).fillColor(DARK)
+       .text("Mission Society (JSDMS)",
+             hX, hY + 11, { width: colW, align: "left", lineBreak: false });
     doc.font("DVR").fontSize(7).fillColor(DARK)
-       .text("Labour, Employment & Skill Development Dept.",
-             hX, hY + 12, { width: colW, lineBreak: false })
+       .text("Labour, Employment & Skill Dev. Dept.",
+             hX, hY + 23, { width: colW, lineBreak: false })
        .text("Government of Jharkhand",
-             hX, hY + 22, { width: colW, lineBreak: false });
+             hX, hY + 33, { width: colW, lineBreak: false });
+    // Training Centre ID field
     doc.font("DVR").fontSize(7).fillColor(GRAY)
-       .text("Training Centre ID :", hX, hY + 34, { lineBreak: false });
-    hl(doc, hX + 80, hY + 44, hX + colW, 0.4, "#BBBBBB");
+       .text("Training Centre ID :", hX, hY + 46, { width: colW, lineBreak: false });
+    hl(doc, hX + 2, hY + 56, hX + colW - 2, 0.45, LGRAY);
 
-    // Logo (centre)
-    const logoY = hY + 1;
+    // ── Centre logo ────────────────────────────────────────────────────────
+    const logoY = MT + (HEADER_H - LGSZ) / 2;          // vertically centred
     const logoLoaded = safeImg(doc, LOGO_PATH, logoX, logoY,
       { width: LGSZ, height: LGSZ, fit: [LGSZ, LGSZ] });
     if (!logoLoaded) {
       const cx2 = logoX + LGSZ / 2; const cy2 = logoY + LGSZ / 2;
-      doc.circle(cx2, cy2, 25).strokeColor(INK).lineWidth(0.7).stroke();
-      doc.circle(cx2, cy2, 18).strokeColor(INK).lineWidth(0.4).stroke();
-      doc.circle(cx2, cy2,  3).fill(INK);
-      doc.font("DVB").fontSize(5.5).fillColor(DARK)
-         .text("JSDMS", cx2 - 12, cy2 - 3.5, { width: 24, align: "center", lineBreak: false });
+      doc.circle(cx2, cy2, 28).strokeColor(INK).lineWidth(0.8).stroke();
+      doc.circle(cx2, cy2, 20).strokeColor(INK).lineWidth(0.4).stroke();
+      doc.circle(cx2, cy2,  4).fill(INK);
+      doc.font("DVB").fontSize(6).fillColor(DARK)
+         .text("JSDMS", cx2 - 14, cy2 - 4, { width: 28, align: "center", lineBreak: false });
     }
 
-    // Hindi (right) — pure Devanagari, single-segment, right-aligned
+    // ── Hindi right column — pure Devanagari, each line a single font call ─
     doc.font("NSB").fontSize(8.5).fillColor(DARK)
-       .text("झारखण्ड कौशल विकास मिशन सोसाइटी",
+       .text("झारखण्ड कौशल विकास",
              rX, hY, { width: colW, align: "right", lineBreak: false });
+    doc.font("NSB").fontSize(8.5).fillColor(DARK)
+       .text("मिशन सोसाइटी (JSDMS)",
+             rX, hY + 11, { width: colW, align: "right", lineBreak: false });
     doc.font("NSR").fontSize(7).fillColor(DARK)
        .text("श्रम, नियोजन एवं कौशल विकास विभाग",
-             rX, hY + 12, { width: colW, align: "right", lineBreak: false })
+             rX, hY + 23, { width: colW, align: "right", lineBreak: false })
        .text("झारखण्ड सरकार",
-             rX, hY + 22, { width: colW, align: "right", lineBreak: false });
+             rX, hY + 33, { width: colW, align: "right", lineBreak: false });
+    // Hindi Training Centre ID label — Devanagari + aligned underline
+    doc.font("NSR").fontSize(7).fillColor(GRAY)
+       .text("प्रशिक्षण केंद्र ID :",
+             rX, hY + 46, { width: colW, align: "right", lineBreak: false });
+    hl(doc, rX + 2, hY + 56, rX + colW - 2, 0.45, LGRAY);
 
-    // Header divider
-    const sepY = MT + 66;
+    // ── Header bottom divider ──────────────────────────────────────────────
+    const sepY = MT + HEADER_H;
     hl(doc, ML, sepY, ML + CW, 0.8);
 
     // ══════════════════════════════════════════════════════════════════════════
     // TITLE AREA  (left of photo box)
     // ══════════════════════════════════════════════════════════════════════════
-    let y = sepY + 5;
+    let y = sepY + 6;
     const TW = PX - ML;   // title area width
 
-    // "मेगा स्कील सेन्टर" — pure Devanagari, single segment, centered
-    doc.font("NSB").fontSize(22).fillColor(DARK)
-       .text("मेगा स्कील सेन्टर", ML, y, { width: TW, align: "center", lineBreak: false });
-    y += 27;
+    // "मेगा स्कील सेंटर" — pure Devanagari (anusvara form), centered bold
+    doc.font("NSB").fontSize(20).fillColor(DARK)
+       .text("मेगा स्कील सेंटर", ML, y, { width: TW, align: "center", lineBreak: false });
+    y += 26;
 
-    // DDUKK English
-    doc.font("DVB").fontSize(8.5).fillColor(DARK)
-       .text("DEEN DAYAL UPADHYAY KAUSHAL KENDRA  (DDUKK)",
+    // DDU-GKY English line
+    doc.font("DVB").fontSize(8).fillColor(DARK)
+       .text("DEEN DAYAL UPADHYAY GRAMEEN KAUSHALYA YOJANA  (DDU-GKY)",
              ML, y, { width: TW, align: "center", lineBreak: false });
-    y += 12;
+    y += 11;
 
-    // Bordered form title
-    const formTitleW = 230; const formTitleX = ML + (TW - formTitleW) / 2;
+    // Bordered form title box
+    const formTitleW = 238; const formTitleX = ML + (TW - formTitleW) / 2;
     box(doc, formTitleX, y, formTitleW, 14, 0.9);
     doc.font("DVB").fontSize(8.5).fillColor(DARK)
        .text("STUDENT / CANDIDATE REGISTRATION FORM",
              formTitleX, y + 2.5, { width: formTitleW, align: "center", lineBreak: false });
     y += 18;
 
-    // Skill Centre Name row
+    // ── Skill Centre Name row ──────────────────────────────────────────────
     hl(doc, ML, y, ML + CW, 0.7);
     y += 4;
     doc.font("DVB").fontSize(8).fillColor(INK)
-       .text("Skill Centre Name :", FX, y + 2, { width: 100, lineBreak: false });
+       .text("Skill Centre Name :", FX, y + 2, { width: 104, lineBreak: false });
     if (c.skillCentreName?.trim()) {
-      t(doc, c.skillCentreName.trim(), FX + 103, y + 2, { size: 8, color: DARK, width: FW - 106 });
+      t(doc, c.skillCentreName.trim(), FX + 106, y + 2, { size: 8, color: DARK, width: FW - 108 });
     } else {
-      hl(doc, FX + 103, y + UL, FE, 0.4, LGRAY);
+      hl(doc, FX + 106, y + UL, FE, 0.4, LGRAY);
     }
     y += ROW - 2;
     hl(doc, ML, y, ML + CW, 0.9);
