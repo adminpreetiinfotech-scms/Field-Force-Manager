@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { listStaff } from "@workspace/api-client-react";
 import React, {
   createContext,
   useCallback,
@@ -8,6 +9,11 @@ import React, {
   useRef,
   useState,
 } from "react";
+import {
+  drainActivityQueue,
+  enqueueActivity,
+  initActivityQueue,
+} from "@/services/activitySync";
 
 export type UserRole = "staff" | "admin";
 
@@ -113,6 +119,18 @@ type AppContextValue = AppState & AppActions;
 const STORAGE_KEY = "@field-staff/state-v1";
 
 const seedAdminPhone = "9999999999";
+
+// Real UUIDs from the DB seed — must match lib/db/src/seed.ts.
+// These map known demo phone numbers → server-side staff IDs so that
+// POST /api/activity passes the server's UUID validation.
+const KNOWN_STAFF_UUID: Record<string, string> = {
+  "9999999999": "4d3dc022-5b1a-420e-8fab-e1e2c1a7ef32", // Anita Sharma (admin)
+  "9876543210": "6243497b-3975-4d8b-a1e9-197254bdc949", // Demo Field Staff
+  "9876500001": "0041da62-a0f0-445f-a7e2-b4275ed0bcc0", // Ramesh Kumar
+  "9876500002": "6f0d246d-6983-44e3-b7d6-dab45d502290", // Sita Devi
+  "9876500003": "d8459c20-9711-4dde-ab94-b7cb56ff411d", // Arjun Singh
+  "9876500004": "48700257-8989-4de0-850e-3ff04fa679a2", // Pooja Verma
+};
 
 type SeedPeer = {
   staffId: string;
@@ -306,7 +324,11 @@ const defaultState: AppState = {
 const AppContext = createContext<AppContextValue | null>(null);
 
 function genId() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  // RFC 4122 UUID v4 — safe on all Expo/React Native targets.
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+  });
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
@@ -335,6 +357,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     state.activeTripId,
     state.staffLocations,
   ]);
+
+  // Initialise the offline activity queue on mount.
+  useEffect(() => {
+    initActivityQueue().catch(() => {});
+  }, []);
 
   // Load on mount. Demo trips/locations are re-seeded each session so the
   // route replay always shows fresh "today" data even after midnight.
@@ -417,14 +444,38 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       throw new Error("Invalid OTP. Use 1234 for demo.");
     }
     const phone = stateRef.current.pendingPhone || "";
-    const isAdmin = phone === seedAdminPhone;
-    const user: User = {
-      id: isAdmin ? "A-001" : "S-" + phone.slice(-4),
-      name: isAdmin ? "Anita Sharma" : "Staff " + phone.slice(-4),
-      phone,
-      role: isAdmin ? "admin" : "staff",
-      empCode: isAdmin ? "ADM-001" : "FS-" + phone.slice(-4),
-    };
+
+    // Try to look up the real staff record from the server first.
+    // This resolves the real UUID so API calls pass server-side validation.
+    let user: User | null = null;
+    try {
+      const staff = await listStaff();
+      const found = staff.find((s) => s.phone === phone);
+      if (found) {
+        user = {
+          id: found.id,
+          name: found.name,
+          phone: found.phone,
+          role: found.role as UserRole,
+          empCode: found.empCode,
+        };
+      }
+    } catch {
+      /* offline — fall through to local mapping */
+    }
+
+    if (!user) {
+      const knownId = KNOWN_STAFF_UUID[phone];
+      const isAdmin = phone === seedAdminPhone;
+      user = {
+        id: knownId ?? (isAdmin ? "A-001" : "S-" + phone.slice(-4)),
+        name: isAdmin ? "Anita Sharma" : "Staff " + phone.slice(-4),
+        phone,
+        role: isAdmin ? "admin" : "staff",
+        empCode: isAdmin ? "ADM-001" : "FS-" + phone.slice(-4),
+      };
+    }
+
     setState((s) => ({ ...s, user, pendingPhone: null }));
     return user;
   }, []);
@@ -435,28 +486,41 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const switchRole = useCallback(async (target: "admin" | "staff") => {
     const cur = stateRef.current.user;
+
+    // Try to use the real staff record from the server for correct UUIDs.
+    let serverStaff: Awaited<ReturnType<typeof listStaff>> = [];
+    try {
+      serverStaff = await listStaff();
+    } catch {
+      /* offline */
+    }
+
     let next: User;
     if (target === "admin") {
-      next = {
-        id: "A-001",
-        name: "Anita Sharma",
-        phone: seedAdminPhone,
-        role: "admin",
-        empCode: "ADM-001",
-      };
+      const found = serverStaff.find((s) => s.role === "admin");
+      next = found
+        ? { id: found.id, name: found.name, phone: found.phone, role: "admin", empCode: found.empCode }
+        : {
+            id: KNOWN_STAFF_UUID[seedAdminPhone] ?? "A-001",
+            name: "Anita Sharma",
+            phone: seedAdminPhone,
+            role: "admin",
+            empCode: "ADM-001",
+          };
     } else if (cur && cur.role === "staff") {
-      // Already staff — no-op identity, just normalize.
       next = cur;
     } else {
-      // Switching from admin to staff → use a fixed demo staff identity so the
-      // toggle is reproducible across sessions.
-      next = {
-        id: "S-3210",
-        name: "Demo Field Staff",
-        phone: "9876543210",
-        role: "staff",
-        empCode: "FS-3210",
-      };
+      const demoPhone = "9876543210";
+      const found = serverStaff.find((s) => s.phone === demoPhone);
+      next = found
+        ? { id: found.id, name: found.name, phone: found.phone, role: "staff", empCode: found.empCode }
+        : {
+            id: KNOWN_STAFF_UUID[demoPhone] ?? "S-3210",
+            name: "Demo Field Staff",
+            phone: demoPhone,
+            role: "staff",
+            empCode: "FS-3210",
+          };
     }
     setState((s) => ({ ...s, user: next, activeTripId: null }));
     return next;
@@ -466,6 +530,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     async (record: Omit<AttendanceRecord, "id" | "synced">) => {
       const full: AttendanceRecord = { ...record, id: genId(), synced: false };
       setState((s) => ({ ...s, attendance: [full, ...s.attendance] }));
+
+      // Fire-and-forget sync to API — queue handles retry if offline.
+      enqueueActivity({
+        kind: record.type === "in" ? "checkin" : "checkout",
+        staffId: record.staffId,
+        staffName: record.staffName,
+        occurredAt: new Date(record.timestamp).toISOString(),
+        location: record.location,
+        selfieUri: record.type === "in" ? record.selfieUri : null,
+      }).catch(() => {});
+
       return full;
     },
     [],
@@ -475,6 +550,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     async (reading: Omit<MeterReading, "id" | "synced">) => {
       const full: MeterReading = { ...reading, id: genId(), synced: false };
       setState((s) => ({ ...s, meterReadings: [full, ...s.meterReadings] }));
+
+      enqueueActivity({
+        kind: "meter",
+        staffId: reading.staffId,
+        staffName: reading.staffName,
+        occurredAt: new Date(reading.timestamp).toISOString(),
+        location: reading.location,
+        consumerNo: reading.consumerNo,
+        reading: reading.reading,
+        photoUri: reading.photoUri,
+        notes: reading.notes,
+      }).catch(() => {});
+
       return full;
     },
     [],
@@ -499,10 +587,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       synced: false,
     };
     setState((s) => ({ ...s, trips: [trip, ...s.trips], activeTripId: trip.id }));
+
+    if (user?.id) {
+      enqueueActivity({
+        kind: "trip-start",
+        staffId: user.id,
+        staffName: user.name,
+        occurredAt: new Date(now).toISOString(),
+        tripRef: trip.id,
+        origin: start,
+      }).catch(() => {});
+    }
+
     return trip;
   }, []);
 
   const endTrip = useCallback(async (km: number, end: GeoPoint | null) => {
+    const { activeTripId, trips, user } = stateRef.current;
+    const activeTrip = trips.find((t) => t.id === activeTripId) ?? null;
+    const endedAt = Date.now();
+
     setState((s) => {
       if (!s.activeTripId) return s;
       return {
@@ -510,11 +614,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         activeTripId: null,
         trips: s.trips.map((t) =>
           t.id === s.activeTripId
-            ? { ...t, km, end, endedAt: Date.now() }
+            ? { ...t, km, end, endedAt }
             : t,
         ),
       };
     });
+
+    if (user?.id && activeTripId) {
+      const durationSec = activeTrip
+        ? Math.round((endedAt - activeTrip.startedAt) / 1000)
+        : undefined;
+      enqueueActivity({
+        kind: "trip-end",
+        staffId: user.id,
+        staffName: user.name,
+        occurredAt: new Date(endedAt).toISOString(),
+        tripRef: activeTripId,
+        destination: end,
+        distanceKm: km,
+        durationSec,
+      }).catch(() => {});
+    }
   }, []);
 
   const updateActiveTripKm = useCallback((km: number) => {
@@ -549,6 +669,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const syncNow = useCallback(async () => {
+    // Drain any queued API events first.
+    await drainActivityQueue().catch(() => {});
+    // Mark local records synced so the SyncBanner clears.
     setState((s) => ({
       ...s,
       attendance: s.attendance.map((a) => ({ ...a, synced: true })),

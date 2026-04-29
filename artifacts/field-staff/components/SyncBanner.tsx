@@ -1,24 +1,35 @@
 import { Feather } from "@expo/vector-icons";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 
+import {
+  subscribeActivityQueueLength,
+} from "@/services/activitySync";
 import { useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
 
 export function SyncBanner() {
   const colors = useColors();
   const { unsyncedCount, syncNow } = useApp();
+  const [apiPending, setApiPending] = useState(0);
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    const unsub = subscribeActivityQueueLength(setApiPending);
+    return unsub;
+  }, []);
+
+  const total = Math.max(unsyncedCount, apiPending);
+
+  useEffect(() => {
     Animated.timing(opacity, {
-      toValue: unsyncedCount > 0 ? 1 : 0,
+      toValue: total > 0 ? 1 : 0,
       duration: 200,
       useNativeDriver: true,
     }).start();
-  }, [unsyncedCount, opacity]);
+  }, [total, opacity]);
 
-  if (unsyncedCount === 0) return null;
+  if (total === 0) return null;
 
   return (
     <Animated.View
@@ -41,10 +52,12 @@ export function SyncBanner() {
         />
         <View>
           <Text style={[styles.title, { color: colors.foreground }]}>
-            {unsyncedCount} record{unsyncedCount === 1 ? "" : "s"} pending sync
+            {total} record{total === 1 ? "" : "s"} pending sync
           </Text>
           <Text style={[styles.sub, { color: colors.mutedForeground }]}>
-            Saved locally — will upload when online
+            {apiPending > 0
+              ? "Waiting to upload — tap to retry now"
+              : "Saved locally — will upload when online"}
           </Text>
         </View>
       </View>
