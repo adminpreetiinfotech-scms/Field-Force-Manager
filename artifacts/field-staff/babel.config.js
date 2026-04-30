@@ -3,6 +3,7 @@ module.exports = function (api) {
   return {
     presets: [["babel-preset-expo", { unstable_transformImportMeta: true }]],
     plugins: [
+      "react-native-worklets/plugin",
       [
         "module-resolver",
         {
