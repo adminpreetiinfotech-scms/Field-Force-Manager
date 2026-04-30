@@ -353,6 +353,9 @@ function genId() {
   });
 }
 
+const _domain = process.env.EXPO_PUBLIC_DOMAIN;
+const API_BASE = _domain ? `https://${_domain}` : "";
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>(defaultState);
   const stateRef = useRef(state);
@@ -489,7 +492,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const checkPhone = useCallback(
     async (phone: string): Promise<{ exists: boolean; hasMpin: boolean }> => {
-      const res = await fetch("/api/auth/check-phone", {
+      const res = await fetch(`${API_BASE}/api/auth/check-phone`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone }),
@@ -504,7 +507,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const loginWithMpin = useCallback(async (phone: string, mpin: string) => {
-    const res = await fetch("/api/auth/login-mpin", {
+    const res = await fetch(`${API_BASE}/api/auth/login-mpin`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phone, mpin }),
@@ -534,7 +537,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setupMpin = useCallback(async (phone: string, mpin: string) => {
-    const res = await fetch("/api/auth/set-mpin", {
+    const res = await fetch(`${API_BASE}/api/auth/set-mpin`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phone, mpin }),

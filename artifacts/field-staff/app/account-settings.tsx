@@ -19,6 +19,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/contexts/AppContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 
+const _domain = process.env.EXPO_PUBLIC_DOMAIN;
+const API_BASE = _domain ? `https://${_domain}` : "";
+
 const ACCENT       = "#1E3A5F";
 const SUCCESS_GREEN = "#16A34A";
 const ERROR_RED    = "#DC2626";
@@ -47,7 +50,7 @@ async function apiChangePassword(
   newPassword: string,
 ): Promise<{ ok: boolean; message: string }> {
   try {
-    const res = await fetch("/api/staff/change-password", {
+    const res = await fetch(`${API_BASE}/api/staff/change-password`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phone, currentPassword: currentPassword || undefined, newPassword }),

@@ -44,13 +44,16 @@ type CandidateStats = {
   pendingMobilizers: number;
 };
 
+const _domain = process.env.EXPO_PUBLIC_DOMAIN;
+const API_BASE = _domain ? `https://${_domain}` : "";
+
 function useCandidateStats() {
   const [stats, setStats] = useState<CandidateStats | null>(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     let mounted = true;
     const load = () => {
-      fetch("/api/admin/candidate-stats")
+      fetch(`${API_BASE}/api/admin/candidate-stats`)
         .then((r) => r.json())
         .then((d) => { if (mounted) setStats(d as CandidateStats); })
         .catch(() => {})
@@ -704,7 +707,7 @@ function StaffManagementSection() {
 
   const load = async () => {
     try {
-      const res = await fetch("/api/admin/staff-list");
+      const res = await fetch(`${API_BASE}/api/admin/staff-list`);
       if (res.ok) {
         const data = (await res.json()) as StaffItem[];
         setStaff(data.filter((s) => s.role !== "admin"));
