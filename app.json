@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "8050923b-890c-47d5-ab13-10bb496df1ce"
+      }
+    },
+    "android": {
+      "package": "com.nistha_skill.workspace"
+    }
+  }
+}

@@ -59,6 +59,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "c67a095d-5c1e-4ffd-86cc-e8a316adc6c2"
+      }
+    },
+    "owner": "nistha_skill"
   }
 }

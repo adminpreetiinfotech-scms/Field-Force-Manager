@@ -6,8 +6,7 @@
   "build": {
     "preview": {
       "android": {
-        "buildType": "apk",
-        "gradleCommand": ":app:assembleRelease"
+        "buildType": "apk"
       },
       "env": {
         "EXPO_PUBLIC_DOMAIN": "4746dafd-70c2-4b86-9b57-6e41822849f4-00-3evgrdhapsfbi.spock.replit.dev"
