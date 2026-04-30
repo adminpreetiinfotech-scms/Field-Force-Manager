@@ -1,14 +1,10 @@
 import { initializeApp, getApps } from "firebase/app";
 import {
-  initializeAuth,
   getAuth,
   signInWithPhoneNumber,
-  PhoneAuthProvider,
-  signInWithCredential,
   type ConfirmationResult,
   type Auth,
 } from "firebase/auth";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 
 const firebaseConfig = {
@@ -24,48 +20,45 @@ let _auth: Auth | null = null;
 
 export function getFirebaseAuth(): Auth {
   if (_auth) return _auth;
-  const existingApps = getApps();
-  const app = existingApps.length > 0 ? existingApps[0]! : initializeApp(firebaseConfig);
-  if (Platform.OS === "web") {
-    _auth = getAuth(app);
-  } else {
-    // React Native persistence via AsyncStorage
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const rnModule = require("@firebase/auth/react-native") as {
-      getReactNativePersistence: (s: unknown) => import("firebase/auth").Persistence;
-    };
-    _auth = initializeAuth(app, {
-      persistence: rnModule.getReactNativePersistence(AsyncStorage),
-    });
-  }
-  return _auth!;
+  const apps = getApps();
+  const app = apps.length > 0 ? apps[0]! : initializeApp(firebaseConfig);
+  _auth = getAuth(app);
+  return _auth;
 }
 
 let _confirmationResult: ConfirmationResult | null = null;
 
 export async function sendFirebaseOtp(phone: string): Promise<void> {
-  const auth = getFirebaseAuth();
-  const e164 = `+91${phone}`;
-
-  if (Platform.OS === "web") {
-    const { RecaptchaVerifier } = await import("firebase/auth");
-    if (!(window as any).__recaptchaVerifier) {
-      (window as any).__recaptchaVerifier = new RecaptchaVerifier(
-        auth,
-        "recaptcha-container",
-        { size: "invisible" },
-      );
-    }
-    _confirmationResult = await signInWithPhoneNumber(
-      auth,
-      e164,
-      (window as any).__recaptchaVerifier,
-    );
-  } else {
+  if (Platform.OS !== "web") {
     throw new Error(
-      "NATIVE_OTP: Use verificationId flow for native platforms.",
+      "OTP verification requires the web version of this app. Please open it in a browser.",
     );
   }
+
+  const auth = getFirebaseAuth();
+  const { RecaptchaVerifier } = await import("firebase/auth");
+
+  // Clear any stale reCAPTCHA instance before creating a new one
+  if ((window as any).__recaptchaVerifier) {
+    try {
+      (window as any).__recaptchaVerifier.clear();
+    } catch {
+      // ignore
+    }
+    (window as any).__recaptchaVerifier = null;
+  }
+
+  (window as any).__recaptchaVerifier = new RecaptchaVerifier(
+    auth,
+    "recaptcha-container",
+    { size: "invisible" },
+  );
+
+  _confirmationResult = await signInWithPhoneNumber(
+    auth,
+    `+91${phone}`,
+    (window as any).__recaptchaVerifier,
+  );
 }
 
 export async function confirmFirebaseOtp(otp: string): Promise<string> {
@@ -76,9 +69,16 @@ export async function confirmFirebaseOtp(otp: string): Promise<string> {
   return await result.user.getIdToken();
 }
 
-export function clearOtpState() {
+export function clearOtpState(): void {
   _confirmationResult = null;
   if (Platform.OS === "web" && typeof window !== "undefined") {
-    (window as any).__recaptchaVerifier = null;
+    if ((window as any).__recaptchaVerifier) {
+      try {
+        (window as any).__recaptchaVerifier.clear();
+      } catch {
+        // ignore
+      }
+      (window as any).__recaptchaVerifier = null;
+    }
   }
 }
