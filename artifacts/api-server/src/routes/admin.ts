@@ -243,6 +243,121 @@ router.get("/admin/audit-log", async (req, res, next) => {
   }
 });
 
+// ─── GET /api/admin/staff-list ───────────────────────────────────────────────
+// Returns all non-deleted staff members with their status.
+
+router.get("/admin/staff-list", async (req, res, next) => {
+  try {
+    const rows = await db
+      .select()
+      .from(staffTable)
+      .orderBy(staffTable.name);
+
+    res.json(
+      rows
+        .filter((r) => !r.deletedAt)
+        .map((r) => ({
+          id: r.id,
+          empCode: r.empCode,
+          name: r.name,
+          phone: r.phone,
+          role: r.role,
+          area: r.area ?? null,
+          organization: r.organization ?? null,
+          approvalStatus: r.approvalStatus,
+          disabledAt: r.disabledAt?.toISOString() ?? null,
+          createdAt: r.createdAt?.toISOString() ?? null,
+        })),
+    );
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── PATCH /api/admin/staff/:id/disable ──────────────────────────────────────
+// Disable a staff member (they cannot login or submit data).
+
+router.patch("/admin/staff/:id/disable", async (req, res, next) => {
+  try {
+    const { id } = req.params as { id: string };
+    const [row] = await db
+      .select({ id: staffTable.id, role: staffTable.role })
+      .from(staffTable)
+      .where(eq(staffTable.id, id))
+      .limit(1);
+
+    if (!row) {
+      res.status(404).json({ title: "Staff not found", status: 404 });
+      return;
+    }
+    if (row.role === "admin") {
+      res.status(400).json({ title: "Cannot disable admin accounts", status: 400 });
+      return;
+    }
+
+    await db
+      .update(staffTable)
+      .set({ disabledAt: new Date() })
+      .where(eq(staffTable.id, id));
+
+    req.log.info({ staffId: id }, "Staff disabled");
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── PATCH /api/admin/staff/:id/enable ───────────────────────────────────────
+// Re-enable a disabled staff member.
+
+router.patch("/admin/staff/:id/enable", async (req, res, next) => {
+  try {
+    const { id } = req.params as { id: string };
+    await db
+      .update(staffTable)
+      .set({ disabledAt: null })
+      .where(eq(staffTable.id, id));
+
+    req.log.info({ staffId: id }, "Staff enabled");
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── DELETE /api/admin/staff/:id ─────────────────────────────────────────────
+// Soft-delete a staff member. Their candidate records are preserved.
+
+router.delete("/admin/staff/:id", async (req, res, next) => {
+  try {
+    const { id } = req.params as { id: string };
+    const [row] = await db
+      .select({ id: staffTable.id, role: staffTable.role })
+      .from(staffTable)
+      .where(eq(staffTable.id, id))
+      .limit(1);
+
+    if (!row) {
+      res.status(404).json({ title: "Staff not found", status: 404 });
+      return;
+    }
+    if (row.role === "admin") {
+      res.status(400).json({ title: "Cannot delete admin accounts", status: 400 });
+      return;
+    }
+
+    await db
+      .update(staffTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(staffTable.id, id));
+
+    req.log.info({ staffId: id }, "Staff soft-deleted");
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ─── GET /api/admin/candidates/csv (with date + mobilizer filter) ─────────────
 // This is registered here so we can use enhanced params before the generic route in candidates.ts
 

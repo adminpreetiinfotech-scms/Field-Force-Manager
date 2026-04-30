@@ -83,6 +83,14 @@ router.post("/auth/login-mpin", async (req, res, next) => {
 
     const row = rows[0]!;
 
+    if (row.deletedAt) {
+      res.status(403).json({ title: "This account no longer exists. Please contact admin.", status: 403 });
+      return;
+    }
+    if (row.disabledAt) {
+      res.status(403).json({ title: "Your account has been disabled by admin. Please contact your supervisor.", status: 403 });
+      return;
+    }
     if (row.approvalStatus === "pending") {
       res.status(403).json({ title: "Your account is pending admin approval.", status: 403 });
       return;

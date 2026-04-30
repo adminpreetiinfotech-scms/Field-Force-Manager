@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -471,6 +472,8 @@ export default function AdminDashboard() {
             </View>
             <LiveActivityFeed />
           </View>
+
+          <StaffManagementSection />
         </View>
       </ScrollView>
     </View>
@@ -678,6 +681,316 @@ function PrincipleRow({
         </Text>
       </View>
     </View>
+  );
+}
+
+type StaffItem = {
+  id: string;
+  empCode: string;
+  name: string;
+  phone: string;
+  role: string;
+  area: string | null;
+  approvalStatus: string;
+  disabledAt: string | null;
+};
+
+function StaffManagementSection() {
+  const colors = useColors();
+  const [staff, setStaff] = useState<StaffItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<StaffItem | null>(null);
+
+  const load = async () => {
+    try {
+      const res = await fetch("/api/admin/staff-list");
+      if (res.ok) {
+        const data = (await res.json()) as StaffItem[];
+        setStaff(data.filter((s) => s.role !== "admin"));
+      }
+    } catch {
+      /* non-fatal */
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { void load(); }, []);
+
+  const handleDisableToggle = async (item: StaffItem) => {
+    const action = item.disabledAt ? "enable" : "disable";
+    const label = item.disabledAt ? "Enable" : "Disable";
+    Alert.alert(
+      `${label} Staff`,
+      `${label} ${item.name}? ${!item.disabledAt ? "They will not be able to login or submit data." : "They will regain access to the app."}`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: label,
+          style: item.disabledAt ? "default" : "destructive",
+          onPress: async () => {
+            setActionLoading(item.id);
+            try {
+              const res = await fetch(`/api/admin/staff/${item.id}/${action}`, { method: "PATCH" });
+              if (!res.ok) {
+                const err = await res.json().catch(() => ({})) as Record<string, unknown>;
+                Alert.alert("Error", String(err["title"] ?? "Action failed"));
+              } else {
+                await load();
+              }
+            } catch {
+              Alert.alert("Error", "Network error. Please try again.");
+            } finally {
+              setActionLoading(null);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleDelete = async (item: StaffItem) => {
+    setDeleteTarget(null);
+    setActionLoading(item.id);
+    try {
+      const res = await fetch(`/api/admin/staff/${item.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as Record<string, unknown>;
+        Alert.alert("Error", String(err["title"] ?? "Delete failed"));
+      } else {
+        await load();
+      }
+    } catch {
+      Alert.alert("Error", "Network error. Please try again.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  return (
+    <>
+      {/* Delete confirmation modal */}
+      <Modal
+        visible={!!deleteTarget}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDeleteTarget(null)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "center", alignItems: "center" }}
+          onPress={() => setDeleteTarget(null)}
+        >
+          <Pressable
+            style={{
+              backgroundColor: colors.card,
+              borderRadius: 18,
+              padding: 24,
+              width: "85%",
+              maxWidth: 360,
+              shadowColor: "#000",
+              shadowOpacity: 0.2,
+              shadowRadius: 24,
+              elevation: 12,
+            }}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 14,
+                backgroundColor: "#FEE2E2",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 14,
+              }}
+            >
+              <Feather name="trash-2" size={22} color="#DC2626" />
+            </View>
+            <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: colors.foreground, marginBottom: 8 }}>
+              Delete Staff Account
+            </Text>
+            <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: colors.mutedForeground, lineHeight: 20 }}>
+              Are you sure you want to delete{" "}
+              <Text style={{ fontFamily: "Inter_600SemiBold", color: colors.foreground }}>{deleteTarget?.name}</Text>?
+              {"\n\n"}Their login access will be removed. Old candidate records will be preserved for reports.
+            </Text>
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 20 }}>
+              <Pressable
+                onPress={() => setDeleteTarget(null)}
+                style={({ pressed }) => ({
+                  flex: 1,
+                  height: 44,
+                  borderRadius: 10,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: pressed ? 0.8 : 1,
+                })}
+              >
+                <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => deleteTarget && handleDelete(deleteTarget)}
+                style={({ pressed }) => ({
+                  flex: 1,
+                  height: 44,
+                  borderRadius: 10,
+                  backgroundColor: "#DC2626",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: pressed ? 0.85 : 1,
+                })}
+              >
+                <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 14 }}>Delete</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <View
+        style={[
+          styles.section,
+          {
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+            borderRadius: colors.radius + 4,
+            marginTop: 4,
+          },
+        ]}
+      >
+        <View style={[styles.sectionHeader, { marginBottom: 12 }]}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <View style={{ backgroundColor: "#1E3A5F14", borderRadius: 8, padding: 6 }}>
+              <Feather name="users" size={16} color={colors.primary} />
+            </View>
+            <View>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Staff Management</Text>
+              <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
+                {loading ? "Loading..." : `${staff.length} field staff`}
+              </Text>
+            </View>
+          </View>
+          <Pressable onPress={() => { setLoading(true); void load(); }} hitSlop={8}>
+            <Feather name="refresh-cw" size={16} color={colors.mutedForeground} />
+          </Pressable>
+        </View>
+
+        {loading ? (
+          <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 24 }} />
+        ) : staff.length === 0 ? (
+          <Text style={{ color: colors.mutedForeground, fontSize: 13, textAlign: "center", paddingVertical: 16 }}>
+            No field staff registered yet.
+          </Text>
+        ) : (
+          staff.map((item, idx) => {
+            const isDisabled = !!item.disabledAt;
+            const isBusy = actionLoading === item.id;
+            return (
+              <View
+                key={item.id}
+                style={{
+                  paddingVertical: 13,
+                  borderTopWidth: idx === 0 ? 0 : StyleSheet.hairlineWidth,
+                  borderTopColor: colors.border,
+                  opacity: isDisabled ? 0.7 : 1,
+                }}
+              >
+                <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
+                  <View
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      backgroundColor: isDisabled ? "#F3F4F6" : "#1E3A5F14",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Feather name="user" size={16} color={isDisabled ? "#9CA3AF" : colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: colors.foreground }}>
+                        {item.name}
+                      </Text>
+                      {isDisabled && (
+                        <View style={{ backgroundColor: "#FEE2E2", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+                          <Text style={{ fontSize: 10, fontFamily: "Inter_700Bold", color: "#DC2626" }}>DISABLED</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 2 }}>
+                      {item.empCode} · +91 {item.phone}
+                      {item.area ? ` · ${item.area}` : ""}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={{ flexDirection: "row", gap: 8, marginTop: 10, marginLeft: 46 }}>
+                  <Pressable
+                    onPress={() => handleDisableToggle(item)}
+                    disabled={isBusy}
+                    style={({ pressed }) => ({
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 4,
+                      paddingHorizontal: 10,
+                      paddingVertical: 6,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: isDisabled ? "#16A34A33" : "#F59E0B33",
+                      backgroundColor: isDisabled ? "#F0FDF4" : "#FFFBEB",
+                      opacity: pressed || isBusy ? 0.7 : 1,
+                    })}
+                  >
+                    {isBusy ? (
+                      <ActivityIndicator size="small" color={isDisabled ? "#16A34A" : "#D97706"} />
+                    ) : (
+                      <Feather
+                        name={isDisabled ? "check-circle" : "slash"}
+                        size={13}
+                        color={isDisabled ? "#16A34A" : "#D97706"}
+                      />
+                    )}
+                    <Text style={{
+                      fontSize: 12,
+                      fontFamily: "Inter_600SemiBold",
+                      color: isDisabled ? "#16A34A" : "#D97706",
+                    }}>
+                      {isDisabled ? "Enable" : "Disable"}
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={() => setDeleteTarget(item)}
+                    disabled={isBusy}
+                    style={({ pressed }) => ({
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 4,
+                      paddingHorizontal: 10,
+                      paddingVertical: 6,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: "#DC262633",
+                      backgroundColor: "#FEF2F2",
+                      opacity: pressed || isBusy ? 0.7 : 1,
+                    })}
+                  >
+                    <Feather name="trash-2" size={13} color="#DC2626" />
+                    <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#DC2626" }}>Delete</Text>
+                  </Pressable>
+                </View>
+              </View>
+            );
+          })
+        )}
+      </View>
+    </>
   );
 }
 

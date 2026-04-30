@@ -1,5 +1,5 @@
-import { db, staffTable, activityEventsTable } from "@workspace/db";
-import { eq, and, gte, lt } from "drizzle-orm";
+import { candidatesTable, db, staffTable, activityEventsTable } from "@workspace/db";
+import { eq, and, gte, lt, isNull, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import crypto from "node:crypto";
 
@@ -544,6 +544,107 @@ router.get("/staff/has-password", async (req, res, next) => {
       .limit(1);
 
     res.json({ hasPassword: !!(row?.passwordHash) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── GET /api/staff/daily-report?staffId=...&date=YYYY-MM-DD ─────────────────
+// Returns today's field summary for a staff member (for WhatsApp share).
+
+router.get("/staff/daily-report", async (req, res, next) => {
+  try {
+    const { staffId, date } = req.query as { staffId?: string; date?: string };
+    if (!staffId) {
+      res.status(400).json({ title: "staffId required", status: 400 });
+      return;
+    }
+
+    const targetDate = date ?? new Date().toISOString().slice(0, 10);
+    const dayStart = new Date(`${targetDate}T00:00:00Z`);
+    const dayEnd = new Date(`${targetDate}T23:59:59.999Z`);
+
+    // Staff details
+    const [staffRow] = await db
+      .select()
+      .from(staffTable)
+      .where(eq(staffTable.id, staffId))
+      .limit(1);
+
+    if (!staffRow) {
+      res.status(404).json({ title: "Staff not found", status: 404 });
+      return;
+    }
+
+    // Today's activity events for this staff
+    const events = await db
+      .select()
+      .from(activityEventsTable)
+      .where(
+        and(
+          eq(activityEventsTable.staffId, staffId),
+          gte(activityEventsTable.occurredAt, dayStart),
+          lt(activityEventsTable.occurredAt, dayEnd),
+        ),
+      )
+      .orderBy(activityEventsTable.occurredAt);
+
+    const checkIn = events.find((e) => e.kind === "checkin");
+    const checkOut = events.find((e) => e.kind === "checkout");
+    const tripEnds = events.filter((e) => e.kind === "trip-end");
+    const tripCount = tripEnds.length;
+
+    let totalKm = 0;
+    for (const te of tripEnds) {
+      const p = te.payload as Record<string, unknown>;
+      const km = typeof p["km"] === "number" ? p["km"] : parseFloat(String(p["km"] ?? 0));
+      if (!isNaN(km)) totalKm += km;
+    }
+
+    // Candidates submitted by this staff today
+    const [candRow] = await db
+      .select({ count: sql<number>`count(*)::int`.as("count") })
+      .from(candidatesTable)
+      .where(
+        and(
+          eq(candidatesTable.submittedByPhone, staffRow.phone),
+          gte(candidatesTable.createdAt, dayStart),
+          lt(candidatesTable.createdAt, dayEnd),
+        ),
+      );
+
+    const totalCandidates = candRow?.count ?? 0;
+
+    // Pending/verified for this staff (all time totals too)
+    const candStatusRows = await db
+      .select({
+        status: candidatesTable.status,
+        count: sql<number>`count(*)::int`.as("count"),
+      })
+      .from(candidatesTable)
+      .where(eq(candidatesTable.submittedByPhone, staffRow.phone))
+      .groupBy(candidatesTable.status);
+
+    const candByStatus: Record<string, number> = {};
+    for (const r of candStatusRows) {
+      candByStatus[r.status] = r.count;
+    }
+
+    res.json({
+      staffName: staffRow.name,
+      empCode: staffRow.empCode,
+      phone: staffRow.phone,
+      date: targetDate,
+      checkInTime: checkIn?.occurredAt?.toISOString() ?? null,
+      checkOutTime: checkOut?.occurredAt?.toISOString() ?? null,
+      totalCandidatesToday: totalCandidates,
+      tripCount,
+      totalKm: parseFloat(totalKm.toFixed(2)),
+      candPending: candByStatus["pending"] ?? 0,
+      candVerified: candByStatus["verified"] ?? 0,
+      candEnrolled: candByStatus["enrolled"] ?? 0,
+      candRejected: candByStatus["rejected"] ?? 0,
+    });
   } catch (err) {
     next(err);
   }

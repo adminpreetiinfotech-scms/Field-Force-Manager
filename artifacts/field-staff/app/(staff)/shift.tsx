@@ -5,7 +5,10 @@ import { router, useFocusEffect } from "expo-router";
 import * as Haptics from "expo-haptics";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
+  Linking,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -27,6 +30,7 @@ import { SyncBanner } from "@/components/SyncBanner";
 import {
   AttendanceRecord,
   GeoPoint,
+  Trip,
   useApp,
 } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
@@ -91,6 +95,7 @@ export default function StaffHome() {
   const isCheckedIn = lastEntry?.type === "in";
 
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showReport, setShowReport] = useState(false);
   useFocusEffect(
     useCallback(() => {
       if (!user?.phone) return;
@@ -473,8 +478,28 @@ export default function StaffHome() {
                   />
                 }
               />
+              <Button
+                label="Daily Outcome Report"
+                onPress={() => setShowReport(true)}
+                variant="ghost"
+                size="lg"
+                fullWidth
+                icon={<Feather name="share-2" size={18} color="#16A34A" />}
+                style={{ borderColor: "#16A34A33", backgroundColor: "#F0FDF4" }}
+              />
             </View>
           </View>
+
+          <DailyReportModal
+            visible={showReport}
+            onClose={() => setShowReport(false)}
+            userId={user?.id ?? ""}
+            userName={user?.name ?? ""}
+            empCode={user?.empCode ?? ""}
+            myAttendance={myAttendance}
+            trips={trips}
+            todayKm={todayKm}
+          />
 
           {/* Pillars */}
           <View
@@ -589,6 +614,309 @@ export default function StaffHome() {
           </View>
         </View>
       </ScrollView>
+    </View>
+  );
+}
+
+type DailyReport = {
+  staffName: string;
+  empCode: string;
+  phone: string;
+  date: string;
+  checkInTime: string | null;
+  checkOutTime: string | null;
+  totalCandidatesToday: number;
+  tripCount: number;
+  totalKm: number;
+  candPending: number;
+  candVerified: number;
+  candEnrolled: number;
+  candRejected: number;
+};
+
+type DailyReportModalProps = {
+  visible: boolean;
+  onClose: () => void;
+  userId: string;
+  userName: string;
+  empCode: string;
+  myAttendance: AttendanceRecord[];
+  trips: Trip[];
+  todayKm: number;
+};
+
+function DailyReportModal({ visible, onClose, userId, todayKm, trips, myAttendance }: DailyReportModalProps) {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const [report, setReport] = useState<DailyReport | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  const todayCheckin = myAttendance
+    .filter((a) => new Date(a.timestamp).toISOString().slice(0, 10) === today && a.type === "in")
+    .sort((a, b) => a.timestamp - b.timestamp)[0];
+
+  const todayCheckout = myAttendance
+    .filter((a) => new Date(a.timestamp).toISOString().slice(0, 10) === today && a.type === "out")
+    .sort((a, b) => b.timestamp - a.timestamp)[0];
+
+  const todayTrips = trips.filter((t) => t.date === today);
+
+  useEffect(() => {
+    if (!visible || !userId) return;
+    setLoading(true);
+    fetch(`/api/staff/daily-report?staffId=${encodeURIComponent(userId)}&date=${today}`)
+      .then((r) => r.json() as Promise<DailyReport>)
+      .then((data) => setReport(data))
+      .catch(() => setReport(null))
+      .finally(() => setLoading(false));
+  }, [visible, userId, today]);
+
+  const fmtTime = (iso: string | null | undefined) => {
+    if (!iso) return null;
+    return new Date(iso).toLocaleTimeString("en-IN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+
+  const fmtDate = (d: string) => {
+    return new Date(d).toLocaleDateString("en-IN", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  };
+
+  const checkinTime = report?.checkInTime
+    ? fmtTime(report.checkInTime)
+    : todayCheckin
+    ? formatTime(todayCheckin.timestamp)
+    : null;
+
+  const checkoutTime = report?.checkOutTime
+    ? fmtTime(report.checkOutTime)
+    : todayCheckout
+    ? formatTime(todayCheckout.timestamp)
+    : null;
+
+  const totalTrips = report?.tripCount ?? todayTrips.length;
+  const totalDist = report?.totalKm ?? todayKm;
+  const candidates = report?.totalCandidatesToday ?? 0;
+  const pending = report?.candPending ?? 0;
+  const verified = report?.candVerified ?? 0;
+  const name = report?.staffName ?? "Field Staff";
+  const emp = report?.empCode ?? "";
+
+  const buildReportText = () => {
+    const lines: string[] = [
+      `━━━━━━━━━━━━━━━━━━━━━`,
+      `📋 DAILY FIELD REPORT`,
+      `━━━━━━━━━━━━━━━━━━━━━`,
+      `👤 ${name}${emp ? ` (${emp})` : ""}`,
+      `🗓️ ${fmtDate(today)}`,
+      ``,
+      `⏰ Check-in:  ${checkinTime ?? "Not checked in"}`,
+      checkoutTime ? `🔚 Check-out: ${checkoutTime}` : "",
+      ``,
+      `📊 Candidate Registrations`,
+      `   Today: ${candidates}`,
+      `   Pending: ${pending}  |  Verified: ${verified}`,
+      ``,
+      `🚗 Trips Today: ${totalTrips}`,
+      `📏 Distance Covered: ${totalDist.toFixed(1)} km`,
+      ``,
+      `━━━━━━━━━━━━━━━━━━━━━`,
+      `Field Staff Manager App`,
+      `DDU-GKY / JSDMS Jharkhand`,
+    ].filter((l) => l !== "" || true);
+
+    return lines.join("\n");
+  };
+
+  const shareOnWhatsApp = () => {
+    const text = buildReportText();
+    const encoded = encodeURIComponent(text);
+    const url =
+      Platform.OS === "web"
+        ? `https://api.whatsapp.com/send?text=${encoded}`
+        : `whatsapp://send?text=${encoded}`;
+
+    Linking.openURL(url).catch(() => {
+      Alert.alert(
+        "WhatsApp not available",
+        "Please install WhatsApp or copy the report text and share manually.",
+      );
+    });
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <Pressable
+        style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}
+        onPress={onClose}
+      >
+        <Pressable
+          style={{
+            backgroundColor: colors.background,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            paddingHorizontal: 22,
+            paddingTop: 16,
+            paddingBottom: insets.bottom + 28,
+            maxHeight: "88%",
+          }}
+          onPress={(e) => e.stopPropagation()}
+        >
+          {/* Handle */}
+          <View style={{ width: 40, height: 4, borderRadius: 999, backgroundColor: colors.border, alignSelf: "center", marginBottom: 20 }} />
+
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <View style={{ backgroundColor: "#16A34A14", borderRadius: 10, padding: 8 }}>
+                <Feather name="bar-chart-2" size={18} color="#16A34A" />
+              </View>
+              <View>
+                <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: colors.foreground }}>
+                  Daily Outcome Report
+                </Text>
+                <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 2 }}>
+                  {fmtDate(today)}
+                </Text>
+              </View>
+            </View>
+            <Pressable onPress={onClose} hitSlop={10}>
+              <Feather name="x" size={20} color={colors.mutedForeground} />
+            </Pressable>
+          </View>
+
+          {loading ? (
+            <View style={{ paddingVertical: 40, alignItems: "center" }}>
+              <ActivityIndicator size="large" color="#16A34A" />
+              <Text style={{ marginTop: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 14 }}>
+                Loading report…
+              </Text>
+            </View>
+          ) : (
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={{ gap: 12 }}>
+                {/* Attendance */}
+                <View
+                  style={{
+                    flexDirection: "row",
+                    gap: 10,
+                  }}
+                >
+                  <ReportStatBox
+                    icon="clock"
+                    label="Check-in"
+                    value={checkinTime ?? "—"}
+                    color="#1E3A5F"
+                  />
+                  <ReportStatBox
+                    icon="log-out"
+                    label="Check-out"
+                    value={checkoutTime ?? "—"}
+                    color="#6B7280"
+                  />
+                </View>
+
+                {/* Candidates */}
+                <View
+                  style={{
+                    backgroundColor: colors.card,
+                    borderRadius: 14,
+                    borderWidth: StyleSheet.hairlineWidth,
+                    borderColor: colors.border,
+                    padding: 16,
+                  }}
+                >
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                    <Feather name="users" size={16} color="#0D6EAE" />
+                    <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: colors.foreground }}>
+                      Candidate Registrations
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    <ReportStatBox icon="user-plus" label="Today" value={String(candidates)} color="#0D6EAE" small />
+                    <ReportStatBox icon="clock" label="Pending" value={String(pending)} color="#D97706" small />
+                    <ReportStatBox icon="check-circle" label="Verified" value={String(verified)} color="#16A34A" small />
+                  </View>
+                </View>
+
+                {/* Trips & Distance */}
+                <View style={{ flexDirection: "row", gap: 10 }}>
+                  <ReportStatBox icon="map" label="Trips Today" value={String(totalTrips)} color="#7C3AED" />
+                  <ReportStatBox icon="navigation" label="Distance" value={`${totalDist.toFixed(1)} km`} color="#0D6EAE" />
+                </View>
+
+                {/* Share button */}
+                <Pressable
+                  onPress={shareOnWhatsApp}
+                  style={({ pressed }) => ({
+                    marginTop: 6,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 10,
+                    height: 54,
+                    borderRadius: 14,
+                    backgroundColor: "#25D366",
+                    opacity: pressed ? 0.88 : 1,
+                  })}
+                >
+                  <Feather name="message-circle" size={20} color="#fff" />
+                  <Text style={{ color: "#fff", fontSize: 16, fontFamily: "Inter_700Bold" }}>
+                    Share on WhatsApp
+                  </Text>
+                </Pressable>
+
+                <Text style={{ fontSize: 11, color: colors.mutedForeground, textAlign: "center", fontFamily: "Inter_400Regular", marginTop: 2 }}>
+                  Opens WhatsApp with a pre-filled message. You can choose who to send it to.
+                </Text>
+              </View>
+            </ScrollView>
+          )}
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function ReportStatBox({
+  icon,
+  label,
+  value,
+  color,
+  small,
+}: {
+  icon: React.ComponentProps<typeof Feather>["name"];
+  label: string;
+  value: string;
+  color: string;
+  small?: boolean;
+}) {
+  const colors = useColors();
+  return (
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: color + "10",
+        borderRadius: 12,
+        borderWidth: StyleSheet.hairlineWidth,
+        borderColor: color + "30",
+        paddingVertical: small ? 10 : 14,
+        paddingHorizontal: 12,
+        alignItems: "center",
+        gap: 4,
+      }}
+    >
+      <Feather name={icon} size={small ? 14 : 18} color={color} />
+      <Text style={{ fontSize: small ? 16 : 20, fontFamily: "Inter_700Bold", color }}>{value}</Text>
+      <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>{label}</Text>
     </View>
   );
 }

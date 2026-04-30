@@ -23,6 +23,10 @@ export const staffTable = pgTable("staff", {
   failedMpinAttempts: integer("failed_mpin_attempts").notNull().default(0),
   /** If set, MPIN login is blocked until this time. */
   mpinBlockedUntil: timestamp("mpin_blocked_until", { withTimezone: true }),
+  /** If set, staff is disabled and cannot login or submit data. */
+  disabledAt: timestamp("disabled_at", { withTimezone: true }),
+  /** If set, staff is soft-deleted. Old candidate records are preserved. */
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

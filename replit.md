@@ -34,18 +34,25 @@ Mobile-first field operations app for distribution/utility staff and ops admins.
 
 **Roles & demo login**
 
-- Registration flow: welcome screen → "Register as Admin" or "Register as Staff" → OTP verify
-- Phone `9999999999` → Demo Admin (Anita Sharma, ADM-001, bypasses registration)
-- Phone `9876543210` → Demo Field Staff (bypasses registration)
-- OTP is mocked: always `1234`
+- Registration flow: welcome screen → "Register as Admin" or "Register as Staff" → phone entry → MPIN setup
+- Login flow: phone entry → MPIN entry (4-digit PIN, scrypt-hashed)
+- Phone `9999999999` → Demo Admin (Anita Sharma, ADM-001)
+- Phone `9876543210` → Demo Field Staff
+- 3 failed MPIN attempts → 15-minute lockout
 - `adminCode`: admins get a 6-char invite code on registration; staff can supply it to link to an org
+
+**Auth routes**
+
+- `POST /api/auth/check-phone` — check if phone is registered and MPIN is set
+- `POST /api/auth/login-mpin` — verify MPIN, return user (with lockout/disable checks)
+- `POST /api/auth/set-mpin` — set/reset MPIN for registered user (scrypt)
 
 **Pillars**: Discipline, Transparency, Accuracy, Control — surfaced in UI as colored pillar badges.
 
 **Key features**
 
-- Registration: welcome → register-admin / register-staff → OTP verify; `POST /api/staff/register`
-- OTP login (`app/(auth)/phone.tsx`, `otp.tsx`)
+- MPIN login (`app/(auth)/phone.tsx`, `app/(auth)/mpin.tsx`)
+- Registration: welcome → register-admin / register-staff → MPIN setup; `POST /api/staff/register`
 - Selfie + GPS check-in / check-out (`app/attendance/check-in.tsx`)
 - Live shift timer with auto-kilometer GPS tracking (`app/(staff)/index.tsx`)
 - Meter reading capture with photo + consumer no. + GPS (`app/meter/add.tsx`)
@@ -78,7 +85,22 @@ Mobile-first field operations app for distribution/utility staff and ops admins.
   - Secure file upload: server rejects non-image MIME types (returns 400) and files > 6 MB; client `pickImage` also guards before upload
 - Offline-first sync via AsyncStorage; auto-syncs after ~4s, manual `Sync` button via `SyncBanner`
 
-**State**: `contexts/AppContext.tsx` — `register()` + `requestOtp()` + `verifyOtp()` actions; persisted to AsyncStorage at key `@field-staff/state-v1`.
+**Admin Staff Management** (`app/(admin)/dashboard.tsx` `StaffManagementSection`):
+- `GET /api/admin/staff-list` — all non-deleted staff with `disabledAt` flag
+- `PATCH /api/admin/staff/:id/disable` — prevent login/submissions; blocked at MPIN login route
+- `PATCH /api/admin/staff/:id/enable` — restore access
+- `DELETE /api/admin/staff/:id` — soft-delete (sets `deletedAt`); candidate records preserved for reports
+- Confirmation modal before delete; inline Disable/Enable toggle; admin accounts protected (cannot disable/delete)
+- DB columns added: `disabledAt timestamp`, `deletedAt timestamp` on `staff` table
+
+**Staff Daily Outcome Report & WhatsApp Share** (`app/(staff)/shift.tsx` `DailyReportModal`):
+- "Daily Outcome Report" button in shift quick actions (green, opens bottom-sheet modal)
+- `GET /api/staff/daily-report?staffId=&date=` — returns check-in time, candidate counts (today/pending/verified), trip count, total km
+- Modal shows: check-in/out time, today's candidates, pending/verified counts, trips, distance
+- "Share on WhatsApp" button — generates formatted text report and opens `whatsapp://send` (or WhatsApp web on web)
+- Falls back to local attendance/trip state if server data unavailable
+
+**State**: `contexts/AppContext.tsx` — `register()` + `setPendingPhone()` + `checkPhone()` + `loginWithMpin()` + `setupMpin()` actions; persisted to AsyncStorage at key `@field-staff/state-v1`.
 
 **Maps**: `react-native-maps` is used on native only. The web build uses a schematic SVG-grid placeholder. To keep the import platform-safe, the native map lives in `components/admin/MapView.tsx` with a web stub at `components/admin/MapView.web.tsx` (Metro picks the right one). Do not put `.web.tsx` files inside `app/`, since expo-router's `require.context` would still load the native variant.
 
