@@ -1,0 +1,31 @@
+
+E:\Field-Force-Manager>pnpm install
+Scope: all 9 workspace projects
+Lockfile is up to date, resolution step is skipped
+Packages: +1246
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ WARN  GET https://registry.npmjs.org/supports-color/-/supports-color-5.5.0.tgz error (ECONNRESET). Will retry in 10 seconds. 2 retries left.
+ WARN  GET https://registry.npmjs.org/@expo/config-plugins/-/config-plugins-54.0.4.tgz error (ECONNRESET). Will retry in 10 seconds. 2 retries left.
+ WARN  GET https://registry.npmjs.org/@expo/config-types/-/config-types-54.0.10.tgz error (ECONNRESET). Will retry in 10 seconds. 2 retries left.
+ WARN  GET https://registry.npmjs.org/@expo/json-file/-/json-file-10.0.13.tgz error (ECONNRESET). Will retry in 10 seconds. 2 retries left.
+ WARN  Tarball download average speed 4 KiB/s (size 10 KiB) is below 50 KiB/s: https://registry.npmjs.org/@babel/code-frame/-/code-frame-7.29.0.tgz (GET)
+ WARN  Tarball download average speed 26 KiB/s (size 42 KiB) is below 50 KiB/s: https://registry.npmjs.org/@expo/config/-/config-12.0.13.tgz (GET)
+ WARN  Tarball download average speed 10 KiB/s (size 11 KiB) is below 50 KiB/s: https://registry.npmjs.org/@expo/code-signing-certificates/-/code-signing-certificates-0.0.6.tgz (GET)
+ WARN  Tarball download average speed 13 KiB/s (size 54 KiB) is below 50 KiB/s: https://registry.npmjs.org/@babel/runtime/-/runtime-7.29.2.tgz (GET)
+ WARN  Tarball download average speed 44 KiB/s (size 425 KiB) is below 50 KiB/s: https://registry.npmjs.org/node-forge/-/node-forge-1.4.0.tgz (GET)
+ WARN  53 other warnings
+Downloading react-native@0.81.5: 24.77 MB/24.77 MB, done
+Progress: resolved 1246, reused 0, downloaded 1220, added 1246, done
+node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild: Running postinstall script, done in 3.4s
+
+devDependencies:
++ prettier 3.8.3
++ typescript 5.9.3
+
+. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm…
+│ 'sh' is not recognized as an internal or external command,
+│ operable program or batch file.
+└─ Failed in 78ms at E:\Field-Force-Manager
+ ELIFECYCLE  Command failed with exit code 1.
+
+E:\Field-Force-Manager>
