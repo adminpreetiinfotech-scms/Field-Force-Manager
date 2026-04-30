@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 export const staffTable = pgTable("staff", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -6,31 +6,23 @@ export const staffTable = pgTable("staff", {
   name: text("name").notNull(),
   phone: text("phone").notNull(),
   role: text("role", { enum: ["staff", "admin"] }).notNull().default("staff"),
-  /** Organization / company name (set by admin on registration). */
   organization: text("organization"),
-  /** Assigned territory or area (set by staff on registration). */
   area: text("area"),
-  /** Short invite code generated for admin orgs so staff can link to them. */
   adminCode: text("admin_code").unique(),
-  /** Admin performance notes / area assignment text for this staff member. */
   notes: text("notes"),
-  /**
-   * Approval workflow status.
-   * - 'pending'  — newly registered staff, not yet approved by admin
-   * - 'approved' — admin approved; staff can log in
-   * - 'rejected' — admin rejected; staff cannot log in
-   * Admins are always 'approved' on registration.
-   */
   approvalStatus: text("approval_status", {
     enum: ["pending", "approved", "rejected"],
   })
     .notNull()
     .default("approved"),
-  /**
-   * Optional bcrypt-style PIN/password hash.
-   * Null means no password is set (OTP-only login).
-   */
+  /** Legacy password hash for account settings (not used for login anymore). */
   passwordHash: text("password_hash"),
+  /** Hashed MPIN used for login (scrypt). Null = MPIN not yet set. */
+  mpinHash: text("mpin_hash"),
+  /** Number of consecutive failed MPIN attempts. Reset on success. */
+  failedMpinAttempts: integer("failed_mpin_attempts").notNull().default(0),
+  /** If set, MPIN login is blocked until this time. */
+  mpinBlockedUntil: timestamp("mpin_blocked_until", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

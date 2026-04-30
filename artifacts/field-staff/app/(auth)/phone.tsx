@@ -1,9 +1,8 @@
 import { Feather } from "@expo/vector-icons";
-import { FirebaseRecaptchaVerifierModal } from "expo-firebase-recaptcha";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -21,24 +20,13 @@ import { Button } from "@/components/Button";
 import { PillarsRow } from "@/components/PillarBadge";
 import { useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
-import { firebaseConfig } from "@/services/firebaseAuth";
-
-// Web: Firebase needs a real DOM element for the invisible reCAPTCHA
-let RecaptchaDiv: React.FC | null = null;
-if (Platform.OS === "web") {
-  RecaptchaDiv = () => (
-    <div id="recaptcha-container" style={{ position: "absolute", bottom: 0 }} />
-  );
-}
 
 export default function PhoneScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { requestOtp } = useApp();
+  const { checkPhone, setPendingPhone } = useApp();
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
-  // Native reCAPTCHA modal (expo-firebase-recaptcha) — null on web
-  const recaptchaVerifier = useRef<FirebaseRecaptchaVerifierModal>(null);
 
   const valid = phone.replace(/\D/g, "").length === 10;
 
@@ -47,20 +35,26 @@ export default function PhoneScreen() {
       Alert.alert("Invalid number", "Enter a valid 10-digit phone number.");
       return;
     }
+    const digits = phone.replace(/\D/g, "");
     setLoading(true);
     try {
-      const verifier = Platform.OS !== "web" ? recaptchaVerifier.current ?? undefined : undefined;
-      await requestOtp(phone.replace(/\D/g, ""), verifier);
-      if (Platform.OS !== "web") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
-          () => {},
+      const result = await checkPhone(digits);
+      if (!result.exists) {
+        Alert.alert(
+          "Not registered",
+          "This phone number is not registered. Please register first.",
         );
+        return;
       }
-      router.push("/(auth)/otp");
+      setPendingPhone(digits);
+      if (Platform.OS !== "web") {
+        Haptics.selectionAsync().catch(() => {});
+      }
+      const mode = result.hasMpin ? "login" : "setup";
+      router.push({ pathname: "/(auth)/mpin", params: { mode } });
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error ? err.message : "Unknown error";
-      Alert.alert("OTP Error", msg);
+      const msg = err instanceof Error ? err.message : "Something went wrong.";
+      Alert.alert("Error", msg);
     } finally {
       setLoading(false);
     }
@@ -70,14 +64,6 @@ export default function PhoneScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* Native reCAPTCHA modal — invisible on first attempt, shows WebView only if needed */}
-      {Platform.OS !== "web" && (
-        <FirebaseRecaptchaVerifierModal
-          ref={recaptchaVerifier}
-          firebaseConfig={firebaseConfig}
-          attemptInvisibleVerification
-        />
-      )}
       <LinearGradient
         colors={[colors.primary, "#13325F"]}
         style={[StyleSheet.absoluteFill, { height: 360 + insets.top + webTop }]}
@@ -133,7 +119,7 @@ export default function PhoneScreen() {
               Sign in to start{"\n"}your shift
             </Text>
             <Text style={styles.heroSub}>
-              Enter your registered phone number to receive an OTP.
+              Enter your registered mobile number to continue.
             </Text>
             <View style={{ marginTop: 14 }}>
               <PillarsRow />
@@ -181,7 +167,7 @@ export default function PhoneScreen() {
               />
             </View>
             <Button
-              label="Send OTP"
+              label="Continue"
               onPress={onContinue}
               loading={loading}
               disabled={!valid}
@@ -226,7 +212,6 @@ export default function PhoneScreen() {
 
         </ScrollView>
       </KeyboardAvoidingView>
-      {RecaptchaDiv && <RecaptchaDiv />}
     </View>
   );
 }
@@ -315,21 +300,5 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     lineHeight: 16,
     marginTop: 14,
-  },
-  demoCard: {
-    marginHorizontal: 18,
-    marginTop: 18,
-    padding: 14,
-    flexDirection: "row",
-    gap: 10,
-    alignItems: "flex-start",
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  demoTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  demoText: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    marginTop: 2,
-    lineHeight: 17,
   },
 });

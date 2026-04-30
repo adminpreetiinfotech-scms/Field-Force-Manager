@@ -52,7 +52,7 @@ export default function RegisterAdminScreen() {
           Haptics.NotificationFeedbackType.Success,
         ).catch(() => {});
       }
-      router.push("/(auth)/otp");
+      router.push({ pathname: "/(auth)/mpin", params: { mode: "setup" } });
     } catch (e: any) {
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(

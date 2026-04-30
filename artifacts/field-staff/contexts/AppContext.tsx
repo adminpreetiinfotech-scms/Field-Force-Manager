@@ -96,9 +96,9 @@ export type RegisterData = {
 type AppState = {
   bootstrapped: boolean;
   user: User | null;
-  /** Phone number waiting for OTP during a login flow. */
+  /** Phone number being verified during login / MPIN setup flow. */
   pendingPhone: string | null;
-  /** User record created during registration, waiting for OTP verification. */
+  /** User record created during registration, waiting for MPIN setup. */
   pendingRegistration: { user: User; approvalStatus: string } | null;
   attendance: AttendanceRecord[];
   meterReadings: MeterReading[];
@@ -110,8 +110,14 @@ type AppState = {
 
 type AppActions = {
   register: (data: RegisterData) => Promise<User>;
-  requestOtp: (phone: string, verifier?: unknown) => Promise<void>;
-  verifyOtp: (otp: string) => Promise<User>;
+  /** Set pendingPhone explicitly (used by phone screen before navigating to MPIN). */
+  setPendingPhone: (phone: string) => void;
+  /** Check if a phone number is registered and whether an MPIN is set. */
+  checkPhone: (phone: string) => Promise<{ exists: boolean; hasMpin: boolean }>;
+  /** Log in an existing user with their MPIN. */
+  loginWithMpin: (phone: string, mpin: string) => Promise<User>;
+  /** Set the MPIN for a registered user (first-time or after registration). */
+  setupMpin: (phone: string, mpin: string) => Promise<User>;
   signOut: () => Promise<void>;
   addAttendance: (
     record: Omit<AttendanceRecord, "id" | "synced">,
@@ -475,109 +481,107 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return user;
   }, []);
 
-  const requestOtp = useCallback(async (phone: string, verifier?: unknown) => {
-    setState((s) => ({ ...s, pendingPhone: phone, pendingRegistration: null }));
-    const { sendFirebaseOtp, clearOtpState } = await import("@/services/firebaseAuth");
-    clearOtpState();
-    await sendFirebaseOtp(phone, verifier as import("firebase/auth").ApplicationVerifier | undefined);
+  const setPendingPhone = useCallback((phone: string) => {
+    setState((s) => ({ ...s, pendingPhone: phone }));
   }, []);
 
-  const verifyOtp = useCallback(async (otp: string) => {
-    const phone = stateRef.current.pendingPhone || "";
-    const { confirmFirebaseOtp } = await import("@/services/firebaseAuth");
-    const idToken = await confirmFirebaseOtp(otp);
+  const checkPhone = useCallback(
+    async (phone: string): Promise<{ exists: boolean; hasMpin: boolean }> => {
+      const res = await fetch("/api/auth/check-phone", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone }),
+      });
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+        throw new Error((err["title"] as string) || "Failed to check phone.");
+      }
+      return res.json() as Promise<{ exists: boolean; hasMpin: boolean }>;
+    },
+    [],
+  );
 
-    const res = await fetch("/api/otp/verify-token", {
+  const loginWithMpin = useCallback(async (phone: string, mpin: string) => {
+    const res = await fetch("/api/auth/login-mpin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idToken, phone }),
+      body: JSON.stringify({ phone, mpin }),
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({})) as Record<string, unknown>;
-      throw new Error((err["title"] as string) || "Verification failed. Please try again.");
+      const err = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+      throw new Error((err["title"] as string) || "Login failed. Please try again.");
     }
-
-    // Registration flow: the user was just created — check approval status.
-    const pending = stateRef.current.pendingRegistration;
-    if (pending) {
-      if (pending.approvalStatus === "pending") {
-        // Clear pending state so they don't get stuck, but don't log them in.
-        setState((s) => ({ ...s, pendingPhone: null, pendingRegistration: null }));
-        throw new Error(
-          "Your account is pending admin approval. Please wait for your admin to review your registration.",
-        );
-      }
-      if (pending.approvalStatus === "rejected") {
-        setState((s) => ({ ...s, pendingPhone: null, pendingRegistration: null }));
-        throw new Error(
-          "Your registration was rejected. Please contact admin.",
-        );
-      }
-      setState((s) => ({
-        ...s,
-        user: pending.user,
-        pendingPhone: null,
-        pendingRegistration: null,
-      }));
-      return pending.user;
-    }
-
-    // Login flow: resolve the user by looking up the phone on the server.
-    let user: User | null = null;
-    try {
-      const staff = await listStaff();
-      const found = staff.find((s) => s.phone === phone);
-      if (found) {
-        // Block unapproved staff from logging in.
-        if (found.approvalStatus === "pending") {
-          throw new Error(
-            "Your account is pending admin approval. Please contact your admin.",
-          );
-        }
-        if (found.approvalStatus === "rejected") {
-          throw new Error(
-            "Your registration was rejected. Please contact admin.",
-          );
-        }
-        user = {
-          id: found.id,
-          name: found.name,
-          phone: found.phone,
-          role: found.role as UserRole,
-          empCode: found.empCode,
-        };
-      }
-    } catch (err) {
-      // Re-throw approval errors; swallow network/offline errors.
-      const msg = (err as Error)?.message ?? "";
-      if (msg.includes("pending") || msg.includes("rejected")) throw err;
-      /* offline — fall through to demo fallback */
-    }
-
-    // Demo fallback: known seed phone numbers still work offline.
-    if (!user) {
-      const knownId = KNOWN_STAFF_UUID[phone];
-      if (knownId) {
-        const isAdmin = phone === seedAdminPhone;
-        user = {
-          id: knownId,
-          name: isAdmin ? "Anita Sharma" : "Staff " + phone.slice(-4),
-          phone,
-          role: isAdmin ? "admin" : "staff",
-          empCode: isAdmin ? "ADM-001" : "FS-" + phone.slice(-4),
-        };
-      }
-    }
-
-    if (!user) {
-      throw new Error(
-        "Phone number not registered. Please register first or use a demo number.",
-      );
-    }
-
-    setState((s) => ({ ...s, user, pendingPhone: null }));
+    const { user: dto } = (await res.json()) as {
+      user: {
+        id: string;
+        name: string;
+        phone: string;
+        role: string;
+        empCode: string;
+      };
+    };
+    const user: User = {
+      id: dto.id,
+      name: dto.name,
+      phone: dto.phone,
+      role: dto.role as UserRole,
+      empCode: dto.empCode,
+    };
+    setState((s) => ({ ...s, user, pendingPhone: null, pendingRegistration: null }));
     return user;
   }, []);
+
+  const setupMpin = useCallback(async (phone: string, mpin: string) => {
+    const res = await fetch("/api/auth/set-mpin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone, mpin }),
+    });
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+      throw new Error((err["title"] as string) || "Failed to set MPIN. Please try again.");
+    }
+    const { user: dto } = (await res.json()) as {
+      user: {
+        id: string;
+        name: string;
+        phone: string;
+        role: string;
+        empCode: string;
+      };
+    };
+    // For the registration flow: if pendingRegistration is set, use that user
+    const pending = stateRef.current.pendingRegistration;
+    const user: User = pending
+      ? pending.user
+      : {
+          id: dto.id,
+          name: dto.name,
+          phone: dto.phone,
+          role: dto.role as UserRole,
+          empCode: dto.empCode,
+        };
+    setState((s) => ({ ...s, user, pendingPhone: null, pendingRegistration: null }));
+    return user;
+  }, []);
+
+  // ── Legacy demo login fallback (offline) ─────────────────────────────────────
+  // Keep a stub so existing switchRole / demo logic still compiles.
+  const _resolveDemoUser = useCallback((phone: string): User | null => {
+    const knownId = KNOWN_STAFF_UUID[phone];
+    if (!knownId) return null;
+    const isAdmin = phone === seedAdminPhone;
+    return {
+      id: knownId,
+      name: isAdmin ? "Anita Sharma" : "Staff " + phone.slice(-4),
+      phone,
+      role: isAdmin ? "admin" : "staff",
+      empCode: isAdmin ? "ADM-001" : "FS-" + phone.slice(-4),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  void _resolveDemoUser; // suppress unused-variable warning
 
   const signOut = useCallback(async () => {
     setState((s) => ({ ...s, user: null, pendingPhone: null, activeTripId: null }));
@@ -807,8 +811,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     () => ({
       ...state,
       register,
-      requestOtp,
-      verifyOtp,
+      setPendingPhone,
+      checkPhone,
+      loginWithMpin,
+      setupMpin,
       signOut,
       addAttendance,
       addMeterReading,
@@ -823,8 +829,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [
       state,
       register,
-      requestOtp,
-      verifyOtp,
+      setPendingPhone,
+      checkPhone,
+      loginWithMpin,
+      setupMpin,
       signOut,
       addAttendance,
       addMeterReading,
