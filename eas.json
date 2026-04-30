@@ -9,8 +9,7 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal",
-      "installCommand": "pnpm install --no-frozen-lockfile"
+      "distribution": "internal"
     },
     "production": {
       "autoIncrement": true

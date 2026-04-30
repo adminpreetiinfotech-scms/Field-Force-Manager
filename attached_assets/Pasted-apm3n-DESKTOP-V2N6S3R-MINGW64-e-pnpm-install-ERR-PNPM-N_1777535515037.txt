@@ -1,0 +1,243 @@
+apm3n@DESKTOP-V2N6S3R MINGW64 /e
+$ pnpm install
+ ERR_PNPM_NO_PKG_MANIFEST  No package.json found in E:\
+
+apm3n@DESKTOP-V2N6S3R MINGW64 /e
+$ cd Field-Force-Manager
+
+apm3n@DESKTOP-V2N6S3R MINGW64 /e/Field-Force-Manager (main)
+$ ^C
+
+apm3n@DESKTOP-V2N6S3R MINGW64 /e/Field-Force-Manager (main)
+$ ^C
+
+apm3n@DESKTOP-V2N6S3R MINGW64 /e/Field-Force-Manager (main)
+$ Is
+bash: Is: command not found
+
+apm3n@DESKTOP-V2N6S3R MINGW64 /e/Field-Force-Manager (main)
+$ pnpm install
+Scope: all 9 workspace projects
+Lockfile is up to date, resolution step is skipped
+Already up to date
+. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_use…
+└─ Done in 238ms
+. postinstall$ node scripts/patches/fontkit-gpos-null-anchor.js || true
+│ Patched: main.cjs
+│ Patched: browser.cjs
+│ fontkit GPOS patch applied.
+└─ Done in 263ms
+╭ Warning ─────────────────────────────────────────────────────────────────────╮
+│                                                                              │
+│   Ignored build scripts: @firebase/util@1.15.0, protobufjs@7.5.6.            │
+│   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+│   to run scripts.                                                            │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+Done in 4.1s using pnpm v10.33.2
+
+apm3n@DESKTOP-V2N6S3R MINGW64 /e/Field-Force-Manager (main)
+$ eas login
+You are already logged in as nistha_skill.
+√ Do you want to continue? ... yes
+Log in to EAS with email or username (exit and run eas login --help to see other login options)
+√ Email or username ... nistha_skill
+√ Password ... ************
+Logged in
+
+apm3n@DESKTOP-V2N6S3R MINGW64 /e/Field-Force-Manager (main)
+$ eas build --platform android --profile preview
+eas.json is not valid.
+- "build.preview.installCommand" is not allowed
+    Error: build command failed.
+
+apm3n@DESKTOP-V2N6S3R MINGW64 /e/Field-Force-Manager (main)
+$ <<'PY' import json p='easjson' data=json.load(open(p)) data['build']['preview'].pop('imstallCommand',None
+) open(p,'w').write(jsno.dumps(data, indent=2)) PY
+>
+>
+eas build --platform android --profile preview
+> cd Field-Force-Manager
+> pnpm install
+> ^C
+
+apm3n@DESKTOP-V2N6S3R MINGW64 /e/Field-Force-Manager (main)
+$ eas build --platform android --profile preview
+Resolved "preview" environment for the build. Learn more: https://docs.expo.dev/eas/environment-variables/#setting-the-environment-for-your-builds
+No environment variables with visibility "Plain text" and "Sensitive" found for the "preview" environment on EAS.
+
+
+
+√ EAS Build does not officially support building managed project with Expo SDK < 41. Do you want to proceed? ... yes
+√ Using remote Android credentials (Expo server)
+√ Using Keystore from configuration: Build Credentials 2hwBWjoCdK (default)
+
+Compressing project files and uploading to EAS Build. Learn more: https://expo.fyi/eas-build-archive
+√ Compressed project files 10s (11.7 MB)
+√ Uploaded to EAS 10s
+
+See logs: https://expo.dev/accounts/nistha_skill/projects/workspace/builds/727a7380-6bbb-44b2-bd02-f813a3917f91
+
+Waiting for build to complete. You can press Ctrl+C to exit.
+× Build failed
+
+🤖 Android build failed:
+Unknown error. See logs of the Install dependencies build phase for more information.
+
+apm3n@DESKTOP-V2N6S3R MINGW64 /e/Field-Force-Manager (main)
+$ pnpm install
+Scope: all 9 workspace projects
+Lockfile is up to date, resolution step is skipped
+Already up to date
+. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) e…
+└─ Done in 271ms
+. postinstall$ node scripts/patches/fontkit-gpos-null-anchor.js || true
+│ Already patched: main.cjs
+│ Already patched: browser.cjs
+│ fontkit GPOS patch applied.
+└─ Done in 226ms
+╭ Warning ───────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                            │
+│   Ignored build scripts: @firebase/util@1.15.0, protobufjs@7.5.6.                          │
+│   Run "pnpm approve-builds" to pick which dependencies should be allowed to run scripts.   │
+│                                                                                            │
+╰────────────────────────────────────────────────────────────────────────────────────────────╯
+Done in 4s using pnpm v10.33.2
+
+apm3n@DESKTOP-V2N6S3R MINGW64 /e/Field-Force-Manager (main)
+$ git add package.json pnpm-lock.yaml eas.json app.json
+warning: in the working copy of 'eas.json', LF will be replaced by CRLF the next time Git touches it
+
+apm3n@DESKTOP-V2N6S3R MINGW64 /e/Field-Force-Manager (main)
+$ git commit -m "fix eas android build"
+Author identity unknown
+
+*** Please tell me who you are.
+
+Run
+
+  git config --global user.email "you@example.com"
+  git config --global user.name "Your Name"
+
+to set your account's default identity.
+Omit --global to set the identity only in this repository.
+
+fatal: unable to auto-detect email address (got 'apm3n@DESKTOP-V2N6S3R.(none)')
+
+apm3n@DESKTOP-V2N6S3R MINGW64 /e/Field-Force-Manager (main)
+$ eas build --platform android --profile preview
+Resolved "preview" environment for the build. Learn more: https://docs.expo.dev/eas/environment-variables/#setting-the-environment-for-your-builds
+No environment variables with visibility "Plain text" and "Sensitive" found for the "preview" environment on EAS.
+
+
+
+√ EAS Build does not officially support building managed project with Expo SDK < 41. Do you want to proceed? ... yes
+√ Using remote Android credentials (Expo server)
+√ Using Keystore from configuration: Build Credentials 2hwBWjoCdK (default)
+
+Compressing project files and uploading to EAS Build. Learn more: https://expo.fyi/eas-build-archive
+√ Compressed project files 8s (11.7 MB)
+√ Uploaded to EAS 15s
+
+See logs: https://expo.dev/accounts/nistha_skill/projects/workspace/builds/6f0732f4-1a2f-4860-a260-6d87c5024744
+
+Waiting for build to complete. You can press Ctrl+C to exit.
+× Build failed
+
+🤖 Android build failed:
+Unknown error. See logs of the Install dependencies build phase for more information.
+
+apm3n@DESKTOP-V2N6S3R MINGW64 /e/Field-Force-Manager (main)
+$ rm -rf node_modules pnpm-lock.yaml
+npm install
+npm install
+npm install
+
+apm3n@DESKTOP-V2N6S3R MINGW64 /e/Field-Force-Manager (main)
+$ npm install
+npm warn Unknown project config "auto-install-peers". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown project config "strict-peer-dependencies". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> workspace@0.0.0 preinstall
+> sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+
+Use pnpm instead
+npm error code 1
+npm error path E:\Field-Force-Manager
+npm error command failed
+npm error command C:\WINDOWS\system32\cmd.exe /d /s /c sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+npm error A complete log of this run can be found in: C:\Users\apm3n\AppData\Local\npm-cache\_logs\2026-04-30T07_28_03_518Z-debug-0.log
+
+apm3n@DESKTOP-V2N6S3R MINGW64 /e/Field-Force-Manager (main)
+$ Use pnpm instead
+bash: Use: command not found
+
+apm3n@DESKTOP-V2N6S3R MINGW64 /e/Field-Force-Manager (main)
+$ rm -f package-lock.json
+
+apm3n@DESKTOP-V2N6S3R MINGW64 /e/Field-Force-Manager (main)
+$ pnpm install
+Scope: all 9 workspace projects
+ WARN  Moving typescript that was installed by a different package manager to "node_modules/.ignored"
+ WARN  Moving prettier that was installed by a different package manager to "node_modules/.ignored"
+ WARN  Request took 11824ms: https://registry.npmjs.org/react
+ WARN  Request took 16370ms: https://registry.npmjs.org/react-dom
+ WARN  Request took 21781ms: https://registry.npmjs.org/multer
+ WARN  16 other warnings
+ WARN  9 deprecated subdependencies found: glob@7.2.3, inflight@1.0.6, node-domexception@1.0.0, rimraf@3.0.2, scmp@2.1.0, uuid@3.4.0, uuid@7.0.3, uuid@8.3.2, uuid@9.0.1
+Packages: +1246
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 1227, reused 1219, downloaded 1, added 1246, done
+node_modules/.pnpm/esbuild@0.27.3/node_modules/esbuild: Running postinstall script, done in 3.9s
+. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) e…
+└─ Done in 414ms
+. postinstall$ node scripts/patches/fontkit-gpos-null-anchor.js || true
+│ Patched: main.cjs
+│ Patched: browser.cjs
+│ fontkit GPOS patch applied.
+└─ Done in 330ms
+
+devDependencies:
++ prettier 3.8.3
++ typescript 5.9.3 (6.0.3 is available)
+
+╭ Warning ───────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                            │
+│   Ignored build scripts: @firebase/util@1.15.0, protobufjs@7.5.6.                          │
+│   Run "pnpm approve-builds" to pick which dependencies should be allowed to run scripts.   │
+│                                                                                            │
+╰────────────────────────────────────────────────────────────────────────────────────────────╯
+Done in 2m 5.8s using pnpm v10.33.2
+
+apm3n@DESKTOP-V2N6S3R MINGW64 /e/Field-Force-Manager (main)
+$ git add pachage.json pnpm-lock.yaml eas.jsno app.jsno
+fatal: pathspec 'pachage.json' did not match any files
+
+apm3n@DESKTOP-V2N6S3R MINGW64 /e/Field-Force-Manager (main)
+$ git commit -n "fix pnpm lockfile for eas build"
+error: pathspec 'fix pnpm lockfile for eas build' did not match any file(s) known to git
+
+apm3n@DESKTOP-V2N6S3R MINGW64 /e/Field-Force-Manager (main)
+$ eas build --platform android --profile preview
+Resolved "preview" environment for the build. Learn more: https://docs.expo.dev/eas/environment-variables/#setting-the-environment-for-your-builds
+No environment variables with visibility "Plain text" and "Sensitive" found for the "preview" environment on EAS.
+
+
+
+√ EAS Build does not officially support building managed project with Expo SDK < 41. Do you want to proceed? ... yes
+√ Using remote Android credentials (Expo server)
+√ Using Keystore from configuration: Build Credentials 2hwBWjoCdK (default)
+
+Compressing project files and uploading to EAS Build. Learn more: https://expo.fyi/eas-build-archive
+√ Compressed project files 8s (11.7 MB)
+√ Uploaded to EAS 11s
+
+See logs: https://expo.dev/accounts/nistha_skill/projects/workspace/builds/e21bc8e3-d132-443f-829e-9f3c8523a1a9
+
+Waiting for build to complete. You can press Ctrl+C to exit.
+× Build failed
+
+🤖 Android build failed:
+Unknown error. See logs of the Install dependencies build phase for more information.
+
+apm3n@DESKTOP-V2N6S3R MINGW64 /e/Field-Force-Manager (main)
