@@ -205,7 +205,7 @@ export default function RegisterAdminScreen() {
           />
 
           <Text style={[styles.legal, { color: colors.mutedForeground }]}>
-            An OTP will be sent to verify your number. Your account details are
+            You will set a 4-digit MPIN to secure your account. Your account details are
             securely stored and never shared.
           </Text>
         </ScrollView>

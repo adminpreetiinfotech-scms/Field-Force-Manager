@@ -23,7 +23,7 @@ const strings = {
     registerStaff: "Register as Mobilizer",
     registerStaffSub: "Register candidates & track field activities",
     alreadyRegistered: "Already registered? Sign in",
-    demoHint: "Demo: use 9999999999 (admin) or 9876543210 (staff). OTP will be sent via SMS.",
+    demoHint: "Demo: use 9999999999 (admin) or 9876543210 (staff). Login with your 4-digit MPIN.",
 
     // Auth
     enterPhone: "Enter your mobile number",
@@ -99,7 +99,7 @@ const strings = {
     registerStaff: "मोबिलाइज़र के रूप में रजिस्टर करें",
     registerStaffSub: "उम्मीदवार पंजीकृत करें और क्षेत्र गतिविधियाँ ट्रैक करें",
     alreadyRegistered: "पहले से पंजीकृत हैं? लॉगिन करें",
-    demoHint: "डेमो: 9999999999 (एडमिन) या 9876543210 (स्टाफ) उपयोग करें। OTP SMS द्वारा भेजा जाएगा।",
+    demoHint: "डेमो: 9999999999 (एडमिन) या 9876543210 (स्टाफ) उपयोग करें। 4-अंक MPIN से लॉगिन करें।",
 
     // Auth
     enterPhone: "अपना मोबाइल नंबर दर्ज करें",

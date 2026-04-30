@@ -245,7 +245,7 @@ export default function RegisterStaffScreen() {
           />
 
           <Text style={[styles.legal, { color: colors.mutedForeground }]}>
-            An OTP will be sent to verify your number. You consent to GPS,
+            You will set a 4-digit MPIN to secure your account. You consent to GPS,
             camera and movement logging during active shifts.
           </Text>
         </ScrollView>
