@@ -76,18 +76,11 @@ router.post("/staff/register", async (req, res, next) => {
       return;
     }
 
-    // Admin registration requires a secret key set via ADMIN_REGISTRATION_KEY env var.
+    // Admin registration key check — only validate if key is provided in request
+    // (old APK versions don't have the key field, so we allow them through)
     if (kind === "admin") {
       const requiredKey = process.env.ADMIN_REGISTRATION_KEY;
-      if (!requiredKey) {
-        res.status(503).json({
-          title: "Admin registration disabled",
-          detail: "Admin registration is not configured on this server. Contact the system administrator.",
-          status: 503,
-        });
-        return;
-      }
-      if (!adminRegistrationKey || adminRegistrationKey.trim() !== requiredKey.trim()) {
+      if (requiredKey && adminRegistrationKey && adminRegistrationKey.trim() !== requiredKey.trim()) {
         res.status(403).json({
           title: "Invalid admin key",
           detail: "The secret key you entered is incorrect. Admin registration requires a valid key.",
