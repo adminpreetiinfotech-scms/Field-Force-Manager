@@ -54,3 +54,13 @@ externalPort = 3002
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+EXPO_PUBLIC_FIREBASE_API_KEY = "AIzaSyCqa7Kqvyw0uOk8We7yoDvgQowEbV9BwLw"
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN = "field-force-manager-app.firebaseapp.com"
+EXPO_PUBLIC_FIREBASE_PROJECT_ID = "field-force-manager-app"
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET = "field-force-manager-app.firebasestorage.app"
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID = "801783418442"
+EXPO_PUBLIC_FIREBASE_APP_ID = "1:801783418442:web:95f760ba3f8b2379fb20b3"

@@ -110,7 +110,7 @@ type AppState = {
 
 type AppActions = {
   register: (data: RegisterData) => Promise<User>;
-  requestOtp: (phone: string) => Promise<string>;
+  requestOtp: (phone: string) => Promise<void>;
   verifyOtp: (otp: string) => Promise<User>;
   signOut: () => Promise<void>;
   addAttendance: (
@@ -477,27 +477,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const requestOtp = useCallback(async (phone: string) => {
     setState((s) => ({ ...s, pendingPhone: phone, pendingRegistration: null }));
-    const res = await fetch("/api/otp/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone }),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({})) as Record<string, unknown>;
-      throw new Error((err["title"] as string) || "Failed to send OTP. Please try again.");
-    }
+    const { sendFirebaseOtp, clearOtpState } = await import("@/services/firebaseAuth");
+    clearOtpState();
+    await sendFirebaseOtp(phone);
   }, []);
 
   const verifyOtp = useCallback(async (otp: string) => {
     const phone = stateRef.current.pendingPhone || "";
-    const res = await fetch("/api/otp/verify", {
+    const { confirmFirebaseOtp } = await import("@/services/firebaseAuth");
+    const idToken = await confirmFirebaseOtp(otp);
+
+    const res = await fetch("/api/otp/verify-token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone, otp }),
+      body: JSON.stringify({ idToken, phone }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({})) as Record<string, unknown>;
-      throw new Error((err["title"] as string) || "Invalid OTP. Please try again.");
+      throw new Error((err["title"] as string) || "Verification failed. Please try again.");
     }
 
     // Registration flow: the user was just created — check approval status.

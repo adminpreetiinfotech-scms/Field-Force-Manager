@@ -15,6 +15,14 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+// Firebase reCAPTCHA container (web only — invisible, required by Firebase Phone Auth)
+let RecaptchaDiv: React.FC | null = null;
+if (Platform.OS === "web") {
+  RecaptchaDiv = () => (
+    <div id="recaptcha-container" style={{ position: "absolute", bottom: 0 }} />
+  );
+}
+
 import { Button } from "@/components/Button";
 import { useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
@@ -91,6 +99,7 @@ export default function OtpScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
+      {RecaptchaDiv && <RecaptchaDiv />}
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
