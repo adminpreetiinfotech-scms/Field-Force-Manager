@@ -650,4 +650,33 @@ router.get("/staff/daily-report", async (req, res, next) => {
   }
 });
 
+// ─── Real-time location ping ────────────────────────────────────────────────
+// Staff device calls this every ~30 s while checked in to update their live
+// position on the admin map.
+router.post("/staff/ping-location", async (req, res, next) => {
+  try {
+    const { staffId, lat, lng } = req.body as {
+      staffId?: unknown;
+      lat?: unknown;
+      lng?: unknown;
+    };
+    if (
+      typeof staffId !== "string" ||
+      typeof lat !== "number" ||
+      typeof lng !== "number" ||
+      !staffId.trim()
+    ) {
+      res.status(400).json({ title: "staffId (string), lat and lng (numbers) required", status: 400 });
+      return;
+    }
+    await db
+      .update(staffTable)
+      .set({ lastLat: lat, lastLng: lng, lastLocationAt: new Date() })
+      .where(eq(staffTable.id, staffId));
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

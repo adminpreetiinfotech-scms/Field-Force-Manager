@@ -744,6 +744,23 @@ router.post("/activity", async (req, res, next) => {
       })
       .returning();
 
+    // Keep staff's shift status + live location in sync with activity events
+    if (input.kind === "checkin") {
+      const loc = input.location;
+      await db
+        .update(staffTable)
+        .set({
+          isOnShift: true,
+          ...(loc ? { lastLat: loc.latitude, lastLng: loc.longitude, lastLocationAt: new Date() } : {}),
+        })
+        .where(eq(staffTable.id, input.staffId));
+    } else if (input.kind === "checkout") {
+      await db
+        .update(staffTable)
+        .set({ isOnShift: false })
+        .where(eq(staffTable.id, input.staffId));
+    }
+
     req.log.info(
       { kind: inserted.kind, staffId: inserted.staffId },
       "activity event ingested",

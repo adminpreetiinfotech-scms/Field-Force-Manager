@@ -116,6 +116,7 @@ export default function StaffHome() {
   const activeTrip = trips.find((t) => t.id === activeTripId) || null;
   const lastPosRef = useRef<GeoPoint | null>(null);
   const totalKmRef = useRef(0);
+  const lastPingRef = useRef<number>(0);
 
   // GPS watcher while on shift.
   useEffect(() => {
@@ -149,6 +150,17 @@ export default function StaffHome() {
               }
             }
             lastPosRef.current = p;
+            // Ping server every 30 s so admin map shows real-time location
+            const nowMs = Date.now();
+            if (user && nowMs - lastPingRef.current >= 30_000) {
+              lastPingRef.current = nowMs;
+              const base = getApiBase();
+              fetch(`${base}/api/staff/ping-location`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ staffId: user.id, lat: p.latitude, lng: p.longitude }),
+              }).catch(() => {});
+            }
           },
         );
       } catch {

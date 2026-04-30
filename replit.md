@@ -85,6 +85,14 @@ Mobile-first field operations app for distribution/utility staff and ops admins.
   - Secure file upload: server rejects non-image MIME types (returns 400) and files > 6 MB; client `pickImage` also guards before upload
 - Offline-first sync via AsyncStorage; auto-syncs after ~4s, manual `Sync` button via `SyncBanner`
 
+**Real-time Staff Tracking** (`app/(admin)/map.tsx`):
+- `GET /api/admin/live-locations` — returns all non-deleted staff with `lastLat`, `lastLng`, `lastLocationAt`, `isOnShift`; polled every 15 s by admin map
+- `POST /api/staff/ping-location` — staff device sends `{ staffId, lat, lng }` every 30 s while shift is active; updates `last_lat`, `last_lng`, `last_location_at` on staff row
+- `POST /api/activity` (checkin) now also sets `is_on_shift=true` + updates location; checkout sets `is_on_shift=false`
+- Admin map: fetches live-locations on mount and polls every 15 s; merges server data over local demo data; shows a green/red live-status pill (green = synced, red = offline) with time-since-last-sync
+- Staff shift.tsx: throttled ping — fires at most once per 30 s inside `watchPositionAsync` callback while checked in; fire-and-forget (`.catch(() => {})`)
+- DB columns added: `last_lat double precision`, `last_lng double precision`, `last_location_at timestamp`, `is_on_shift boolean`
+
 **Admin Staff Management** (`app/(admin)/dashboard.tsx` `StaffManagementSection`):
 - `GET /api/admin/staff-list` — all non-deleted staff with `disabledAt` flag
 - `PATCH /api/admin/staff/:id/disable` — prevent login/submissions; blocked at MPIN login route

@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { router } from "expo-router";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Platform,
   Pressable,
@@ -16,6 +16,24 @@ import { StaffLocation, useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
 
 import { NativeMapView } from "@/components/admin/MapView";
+
+function getApiBase(): string {
+  const domain = process.env.EXPO_PUBLIC_DOMAIN;
+  if (domain) return `https://${domain}`;
+  return "";
+}
+
+type LiveLocationRow = {
+  staffId: string;
+  staffName: string;
+  empCode: string;
+  area: string | null;
+  role: string;
+  lastLat: number | null;
+  lastLng: number | null;
+  lastLocationAt: string | null;
+  isOnShift: boolean;
+};
 
 export default function AdminMap() {
   const colors = useColors();
@@ -34,11 +52,53 @@ export default function AdminMap() {
     staffLocations[0] || null,
   );
 
+  // ── Real-time server location polling ────────────────────────────────────
+  const [serverLocations, setServerLocations] = useState<StaffLocation[]>([]);
+  const [lastFetched, setLastFetched] = useState<number | null>(null);
+  const [liveError, setLiveError] = useState(false);
+
+  const fetchLiveLocations = useCallback(async () => {
+    try {
+      const base = getApiBase();
+      const res = await fetch(`${base}/api/admin/live-locations`);
+      if (!res.ok) return;
+      const rows: LiveLocationRow[] = await res.json();
+      const locs: StaffLocation[] = rows
+        .filter((r) => r.lastLat !== null && r.lastLng !== null && r.role !== "admin")
+        .map((r) => ({
+          staffId: r.staffId,
+          staffName: r.staffName,
+          empCode: r.empCode,
+          location: { latitude: r.lastLat!, longitude: r.lastLng! },
+          status: r.isOnShift ? "in" : "out",
+          updatedAt: r.lastLocationAt ? new Date(r.lastLocationAt).getTime() : Date.now(),
+        }));
+      setServerLocations(locs);
+      setLastFetched(Date.now());
+      setLiveError(false);
+    } catch {
+      setLiveError(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLiveLocations();
+    const id = setInterval(fetchLiveLocations, 15_000);
+    return () => clearInterval(id);
+  }, [fetchLiveLocations]);
+
+  // Merge: server data overrides local demo data; keep demo entries that have
+  // no server equivalent (e.g. staff who never pinged location yet).
+  const mergedLocations = useMemo<StaffLocation[]>(() => {
+    if (serverLocations.length > 0) return serverLocations;
+    return staffLocations;
+  }, [serverLocations, staffLocations]);
+
   useEffect(() => {
     (async () => {
       try {
         if (Platform.OS === "web") {
-          const center = staffLocations[0]?.location || {
+          const center = mergedLocations[0]?.location || {
             latitude: 28.6139,
             longitude: 77.209,
           };
@@ -51,7 +111,7 @@ export default function AdminMap() {
         }
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== "granted") {
-          const center = staffLocations[0]?.location || {
+          const center = mergedLocations[0]?.location || {
             latitude: 28.6139,
             longitude: 77.209,
           };
@@ -78,11 +138,11 @@ export default function AdminMap() {
         });
       }
     })();
-  }, [staffLocations]);
+  }, [mergedLocations]);
 
   const sorted = useMemo(
-    () => [...staffLocations].sort((a, b) => b.updatedAt - a.updatedAt),
-    [staffLocations],
+    () => [...mergedLocations].sort((a, b) => b.updatedAt - a.updatedAt),
+    [mergedLocations],
   );
 
   const onShift = sorted.filter((s) => s.status === "in").length;
@@ -117,9 +177,21 @@ export default function AdminMap() {
         }}
       >
         <Text style={[styles.title, { color: colors.foreground }]}>Live map</Text>
-        <Text style={[styles.sub, { color: colors.mutedForeground }]}>
-          {onShift} on shift  ·  {offShift} off  ·  Updated continuously
-        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 }}>
+          <Text style={[styles.sub, { color: colors.mutedForeground }]}>
+            {onShift} on shift  ·  {offShift} off
+          </Text>
+          {/* Live status pill */}
+          <View style={[styles.livePill, { backgroundColor: liveError ? "#F87171" + "22" : "#34D399" + "22" }]}>
+            <View style={{
+              width: 6, height: 6, borderRadius: 3,
+              backgroundColor: liveError ? "#F87171" : "#34D399",
+            }} />
+            <Text style={{ fontSize: 10, fontFamily: "Inter_600SemiBold", color: liveError ? "#F87171" : "#34D399" }}>
+              {liveError ? "Offline" : lastFetched ? `${minutesAgo(lastFetched)} ago` : "Syncing…"}
+            </Text>
+          </View>
+        </View>
       </View>
 
       <View style={styles.mapWrap}>
@@ -127,12 +199,12 @@ export default function AdminMap() {
           <NativeMapView
             ref={mapRef as React.Ref<never>}
             initialRegion={region}
-            staffLocations={staffLocations}
+            staffLocations={mergedLocations}
             onSelect={(s) => setSelected(s)}
           />
         ) : (
           <WebMapPlaceholder
-            staffLocations={staffLocations}
+            staffLocations={mergedLocations}
             selected={selected}
             onSelect={(s) => setSelected(s)}
           />
@@ -515,6 +587,14 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.9)",
     paddingHorizontal: 10,
     paddingVertical: 6,
+    borderRadius: 999,
+  },
+  livePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
     borderRadius: 999,
   },
 });

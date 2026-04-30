@@ -5,7 +5,7 @@ import {
   db,
   staffTable,
 } from "@workspace/db";
-import { and, desc, eq, gte, ilike, isNotNull, lt, sql } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 
 const router: IRouter = Router();
@@ -360,5 +360,44 @@ router.delete("/admin/staff/:id", async (req, res, next) => {
 
 // ─── GET /api/admin/candidates/csv (with date + mobilizer filter) ─────────────
 // This is registered here so we can use enhanced params before the generic route in candidates.ts
+
+// ─── GET /api/admin/live-locations ─────────────────────────────────────────────
+// Returns all non-deleted staff with their last known GPS position and shift status.
+// Admin map polls this every 15 s for real-time tracking.
+router.get("/admin/live-locations", async (_req, res, next) => {
+  try {
+    const rows = await db
+      .select({
+        id: staffTable.id,
+        name: staffTable.name,
+        empCode: staffTable.empCode,
+        area: staffTable.area,
+        role: staffTable.role,
+        lastLat: staffTable.lastLat,
+        lastLng: staffTable.lastLng,
+        lastLocationAt: staffTable.lastLocationAt,
+        isOnShift: staffTable.isOnShift,
+      })
+      .from(staffTable)
+      .where(isNull(staffTable.deletedAt))
+      .orderBy(staffTable.name);
+
+    res.json(
+      rows.map((r) => ({
+        staffId: r.id,
+        staffName: r.name,
+        empCode: r.empCode,
+        area: r.area ?? null,
+        role: r.role,
+        lastLat: r.lastLat ?? null,
+        lastLng: r.lastLng ?? null,
+        lastLocationAt: r.lastLocationAt?.toISOString() ?? null,
+        isOnShift: r.isOnShift,
+      })),
+    );
+  } catch (err) {
+    next(err);
+  }
+});
 
 export default router;

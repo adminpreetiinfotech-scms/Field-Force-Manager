@@ -1,4 +1,4 @@
-import { integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, doublePrecision, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 export const staffTable = pgTable("staff", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -27,6 +27,14 @@ export const staffTable = pgTable("staff", {
   disabledAt: timestamp("disabled_at", { withTimezone: true }),
   /** If set, staff is soft-deleted. Old candidate records are preserved. */
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  /** Last known GPS latitude (updated by ping-location endpoint). */
+  lastLat: doublePrecision("last_lat"),
+  /** Last known GPS longitude (updated by ping-location endpoint). */
+  lastLng: doublePrecision("last_lng"),
+  /** When the last GPS ping was received. */
+  lastLocationAt: timestamp("last_location_at", { withTimezone: true }),
+  /** True while staff has an active shift (check-in done, no checkout yet). */
+  isOnShift: boolean("is_on_shift").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
