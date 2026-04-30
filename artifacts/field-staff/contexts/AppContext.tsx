@@ -91,6 +91,7 @@ export type RegisterData = {
   empCode?: string;
   area?: string;
   adminCode?: string;
+  adminRegistrationKey?: string;
 };
 
 type AppState = {
@@ -463,6 +464,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       empCode: data.empCode ?? null,
       area: data.area ?? null,
       adminCode: data.adminCode ?? null,
+      adminRegistrationKey: data.adminRegistrationKey ?? null,
     });
     const user: User = {
       id: staff.id,

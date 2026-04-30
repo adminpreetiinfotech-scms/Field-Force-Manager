@@ -31,7 +31,7 @@ router.get("/staff", async (_req, res, next) => {
 
 router.post("/staff/register", async (req, res, next) => {
   try {
-    const { kind, name, phone, organization, empCode, area, adminCode } =
+    const { kind, name, phone, organization, empCode, area, adminCode, adminRegistrationKey } =
       req.body as {
         kind?: string;
         name?: string;
@@ -40,6 +40,7 @@ router.post("/staff/register", async (req, res, next) => {
         empCode?: string | null;
         area?: string | null;
         adminCode?: string | null;
+        adminRegistrationKey?: string | null;
       };
 
     if (!kind || !["admin", "staff"].includes(kind)) {
@@ -73,6 +74,27 @@ router.post("/staff/register", async (req, res, next) => {
         status: 400,
       });
       return;
+    }
+
+    // Admin registration requires a secret key set via ADMIN_REGISTRATION_KEY env var.
+    if (kind === "admin") {
+      const requiredKey = process.env.ADMIN_REGISTRATION_KEY;
+      if (!requiredKey) {
+        res.status(503).json({
+          title: "Admin registration disabled",
+          detail: "Admin registration is not configured on this server. Contact the system administrator.",
+          status: 503,
+        });
+        return;
+      }
+      if (!adminRegistrationKey || adminRegistrationKey.trim() !== requiredKey.trim()) {
+        res.status(403).json({
+          title: "Invalid admin key",
+          detail: "The secret key you entered is incorrect. Admin registration requires a valid key.",
+          status: 403,
+        });
+        return;
+      }
     }
 
     // Check for duplicate phone.

@@ -77,6 +77,8 @@ export interface RegisterInput {
   area?: string | null;
   /** Invite code of an existing admin org to link to. */
   adminCode?: string | null;
+  /** Secret key required to create an admin account. */
+  adminRegistrationKey?: string | null;
 }
 
 export interface GeoPoint {

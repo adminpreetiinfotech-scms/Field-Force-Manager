@@ -27,15 +27,18 @@ export default function RegisterAdminScreen() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [organization, setOrganization] = useState("");
+  const [adminKey, setAdminKey] = useState("");
   const [loading, setLoading] = useState(false);
 
   const phoneRef = useRef<TextInput>(null);
   const orgRef = useRef<TextInput>(null);
+  const keyRef = useRef<TextInput>(null);
 
   const valid =
     name.trim().length >= 2 &&
     phone.replace(/\D/g, "").length === 10 &&
-    organization.trim().length >= 2;
+    organization.trim().length >= 2 &&
+    adminKey.trim().length >= 4;
 
   const onRegister = async () => {
     if (!valid) return;
@@ -46,6 +49,7 @@ export default function RegisterAdminScreen() {
         name: name.trim(),
         phone: phone.replace(/\D/g, ""),
         organization: organization.trim(),
+        adminRegistrationKey: adminKey.trim(),
       });
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(
@@ -187,10 +191,42 @@ export default function RegisterAdminScreen() {
               value={organization}
               onChangeText={setOrganization}
               placeholder="e.g. Vidyut Seva Pvt Ltd"
-              returnKeyType="done"
-              onSubmitEditing={onRegister}
+              returnKeyType="next"
+              onSubmitEditing={() => keyRef.current?.focus()}
               colors={colors}
             />
+
+            <View>
+              <Text style={[styles.label, { color: colors.mutedForeground }]}>
+                SECRET ADMIN KEY
+              </Text>
+              <Text style={[styles.keyHint, { color: colors.mutedForeground }]}>
+                Aapke admin key ke bina registration nahi hogi. Yeh key sirf aapko pata hai.
+              </Text>
+              <TextInput
+                ref={keyRef}
+                value={adminKey}
+                onChangeText={setAdminKey}
+                placeholder="Enter secret key"
+                placeholderTextColor={colors.mutedForeground}
+                secureTextEntry
+                autoCapitalize="none"
+                returnKeyType="done"
+                onSubmitEditing={onRegister}
+                style={[
+                  styles.textField,
+                  {
+                    color: colors.foreground,
+                    borderColor: adminKey.length > 0 && adminKey.trim().length < 4
+                      ? "#ef4444"
+                      : colors.border,
+                    borderRadius: colors.radius,
+                    backgroundColor: colors.background,
+                    fontFamily: "Inter_400Regular",
+                  },
+                ]}
+              />
+            </View>
           </View>
 
           <Button
@@ -335,5 +371,11 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     marginTop: 16,
     textAlign: "center",
+  },
+  keyHint: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 17,
+    marginBottom: 8,
   },
 });
