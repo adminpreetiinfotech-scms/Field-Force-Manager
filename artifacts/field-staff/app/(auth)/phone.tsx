@@ -1,8 +1,9 @@
 import { Feather } from "@expo/vector-icons";
+import { FirebaseRecaptchaVerifierModal } from "expo-firebase-recaptcha";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -20,9 +21,9 @@ import { Button } from "@/components/Button";
 import { PillarsRow } from "@/components/PillarBadge";
 import { useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
+import { firebaseConfig } from "@/services/firebaseAuth";
 
-// Firebase requires a real DOM element to mount the invisible reCAPTCHA.
-// It must exist in the component that calls signInWithPhoneNumber (this screen).
+// Web: Firebase needs a real DOM element for the invisible reCAPTCHA
 let RecaptchaDiv: React.FC | null = null;
 if (Platform.OS === "web") {
   RecaptchaDiv = () => (
@@ -36,6 +37,8 @@ export default function PhoneScreen() {
   const { requestOtp } = useApp();
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
+  // Native reCAPTCHA modal (expo-firebase-recaptcha) — null on web
+  const recaptchaVerifier = useRef<FirebaseRecaptchaVerifierModal>(null);
 
   const valid = phone.replace(/\D/g, "").length === 10;
 
@@ -46,7 +49,8 @@ export default function PhoneScreen() {
     }
     setLoading(true);
     try {
-      await requestOtp(phone.replace(/\D/g, ""));
+      const verifier = Platform.OS !== "web" ? recaptchaVerifier.current ?? undefined : undefined;
+      await requestOtp(phone.replace(/\D/g, ""), verifier);
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
           () => {},
@@ -66,6 +70,14 @@ export default function PhoneScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
+      {/* Native reCAPTCHA modal — invisible on first attempt, shows WebView only if needed */}
+      {Platform.OS !== "web" && (
+        <FirebaseRecaptchaVerifierModal
+          ref={recaptchaVerifier}
+          firebaseConfig={firebaseConfig}
+          attemptInvisibleVerification
+        />
+      )}
       <LinearGradient
         colors={[colors.primary, "#13325F"]}
         style={[StyleSheet.absoluteFill, { height: 360 + insets.top + webTop }]}

@@ -110,7 +110,7 @@ type AppState = {
 
 type AppActions = {
   register: (data: RegisterData) => Promise<User>;
-  requestOtp: (phone: string) => Promise<void>;
+  requestOtp: (phone: string, verifier?: unknown) => Promise<void>;
   verifyOtp: (otp: string) => Promise<User>;
   signOut: () => Promise<void>;
   addAttendance: (
@@ -475,11 +475,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return user;
   }, []);
 
-  const requestOtp = useCallback(async (phone: string) => {
+  const requestOtp = useCallback(async (phone: string, verifier?: unknown) => {
     setState((s) => ({ ...s, pendingPhone: phone, pendingRegistration: null }));
     const { sendFirebaseOtp, clearOtpState } = await import("@/services/firebaseAuth");
     clearOtpState();
-    await sendFirebaseOtp(phone);
+    await sendFirebaseOtp(phone, verifier as import("firebase/auth").ApplicationVerifier | undefined);
   }, []);
 
   const verifyOtp = useCallback(async (otp: string) => {
