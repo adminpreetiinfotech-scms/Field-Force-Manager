@@ -21,6 +21,15 @@ import { PillarsRow } from "@/components/PillarBadge";
 import { useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
 
+// Firebase requires a real DOM element to mount the invisible reCAPTCHA.
+// It must exist in the component that calls signInWithPhoneNumber (this screen).
+let RecaptchaDiv: React.FC | null = null;
+if (Platform.OS === "web") {
+  RecaptchaDiv = () => (
+    <div id="recaptcha-container" style={{ position: "absolute", bottom: 0 }} />
+  );
+}
+
 export default function PhoneScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -44,8 +53,10 @@ export default function PhoneScreen() {
         );
       }
       router.push("/(auth)/otp");
-    } catch {
-      Alert.alert("Error", "Could not send OTP. Try again.");
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : "Unknown error";
+      Alert.alert("OTP Error", msg);
     } finally {
       setLoading(false);
     }
@@ -203,6 +214,7 @@ export default function PhoneScreen() {
 
         </ScrollView>
       </KeyboardAvoidingView>
+      {RecaptchaDiv && <RecaptchaDiv />}
     </View>
   );
 }
