@@ -1,11 +1,13 @@
 import {
   activityEventsTable,
+  candidateAuditLogTable,
+  candidateNotificationsTable,
   candidatesTable,
   companiesTable,
   db,
   staffTable,
 } from "@workspace/db";
-import { and, count, eq, isNull } from "drizzle-orm";
+import { and, count, eq, inArray, isNull, sql } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import crypto from "node:crypto";
 import { toCompanyDTO } from "./companies";
@@ -282,6 +284,119 @@ router.get("/super-admin/staff", requireSuperAdmin, async (_req, res, next) => {
       .where(isNull(staffTable.deletedAt))
       .orderBy(staffTable.createdAt);
     res.json(rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/super-admin/production-setup
+ * One-time production setup: removes seed/demo data and registers the primary company.
+ * Protected by x-setup-key matching ADMIN_REGISTRATION_KEY.
+ */
+router.post("/super-admin/production-setup", async (req, res, next) => {
+  try {
+    const key = req.headers["x-setup-key"];
+    const expected = process.env.ADMIN_REGISTRATION_KEY;
+    if (!expected || key !== expected) {
+      res.status(403).json({ title: "Forbidden", status: 403 });
+      return;
+    }
+
+    // Phones to delete (seed / demo data)
+    const SEED_PHONES = [
+      "9999999999", // Anita Sharma (demo admin)
+      "9876543210", // Demo Field Staff
+      "9876500001", // Ramesh Kumar (seed)
+      "9876500002", // Sita Devi (seed)
+      "9876500003", // Arjun Singh (seed)
+      "9876500004", // Pooja Verma (seed)
+    ];
+
+    // 1. Get IDs of seed staff
+    const seedStaff = await db
+      .select({ id: staffTable.id })
+      .from(staffTable)
+      .where(inArray(staffTable.phone, SEED_PHONES));
+    const seedIds = seedStaff.map((s) => s.id);
+
+    let deletedActivities = 0;
+    let deletedCandidates = 0;
+    let deletedStaff = 0;
+
+    if (seedIds.length > 0) {
+      // Delete activity events for seed staff
+      const delActs = await db
+        .delete(activityEventsTable)
+        .where(inArray(activityEventsTable.staffId, seedIds));
+      deletedActivities = Number((delActs as { rowCount?: number }).rowCount ?? 0);
+
+      // Delete candidate notifications for seed phones
+      await db
+        .delete(candidateNotificationsTable)
+        .where(inArray(candidateNotificationsTable.staffPhone, SEED_PHONES));
+
+      // Delete candidates submitted by seed phones
+      const seedCands = await db
+        .select({ id: candidatesTable.id })
+        .from(candidatesTable)
+        .where(inArray(candidatesTable.submittedByPhone, SEED_PHONES));
+      if (seedCands.length > 0) {
+        const candIds = seedCands.map((c) => c.id);
+        await db.delete(candidateAuditLogTable).where(inArray(candidateAuditLogTable.candidateId, candIds));
+        await db.delete(candidateNotificationsTable).where(inArray(candidateNotificationsTable.candidateId, candIds));
+        const delCands = await db.delete(candidatesTable).where(inArray(candidatesTable.id, candIds));
+        deletedCandidates = Number((delCands as { rowCount?: number }).rowCount ?? 0);
+      }
+
+      // Hard-delete seed staff rows
+      const delStaff = await db.delete(staffTable).where(inArray(staffTable.id, seedIds));
+      deletedStaff = Number((delStaff as { rowCount?: number }).rowCount ?? 0);
+    }
+
+    // 2. Create primary company if not already present
+    const { companyName, companyPhone, companyProject, companyState } = req.body as {
+      companyName?: string;
+      companyPhone?: string;
+      companyProject?: string;
+      companyState?: string;
+    };
+
+    let company = null;
+    const existing = await db.select().from(companiesTable).limit(1);
+    if (existing.length === 0 && companyName) {
+      const [created] = await db
+        .insert(companiesTable)
+        .values({
+          name: companyName,
+          phone: companyPhone ?? null,
+          projectName: companyProject ?? null,
+          state: companyState ?? null,
+          status: "active",
+          subscriptionActive: true,
+        })
+        .returning();
+      company = created;
+
+      // 3. Assign all staff with NULL company_id to this company
+      await db
+        .update(staffTable)
+        .set({ companyId: created.id })
+        .where(sql`company_id IS NULL`);
+    } else if (existing.length > 0) {
+      company = existing[0];
+    }
+
+    res.json({
+      success: true,
+      deletedSeedStaff: deletedStaff,
+      deletedActivities,
+      deletedCandidates,
+      company: company ? { id: company.id, name: company.name } : null,
+      message: company
+        ? `Cleanup done. Company "${company.name}" is set up.`
+        : "Cleanup done. No company created (no companyName provided or already exists).",
+    });
   } catch (err) {
     next(err);
   }
