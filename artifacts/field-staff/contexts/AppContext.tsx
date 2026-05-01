@@ -24,6 +24,7 @@ export type User = {
   role: UserRole;
   empCode: string;
   organization?: string | null;
+  centerName?: string | null;
   projectName?: string | null;
   email?: string | null;
   state?: string | null;
@@ -93,6 +94,7 @@ export type RegisterData = {
   name: string;
   phone: string;
   organization?: string;
+  centerName?: string;
   projectName?: string;
   email?: string;
   state?: string;
@@ -146,6 +148,7 @@ type AppActions = {
     name?: string;
     email?: string | null;
     organization?: string | null;
+    centerName?: string | null;
     projectName?: string | null;
     state?: string | null;
     district?: string | null;
@@ -481,6 +484,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       name: data.name,
       phone: data.phone,
       organization: data.organization ?? null,
+      centerName: data.centerName ?? null,
       projectName: data.projectName ?? null,
       email: data.email ?? null,
       state: data.state ?? null,
@@ -497,6 +501,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       role: staff.role as UserRole,
       empCode: staff.empCode,
       organization: (staff as any).organization ?? null,
+      centerName: (staff as any).centerName ?? null,
       projectName: (staff as any).projectName ?? null,
       email: (staff as any).email ?? null,
       state: (staff as any).state ?? null,
@@ -550,6 +555,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         role: string;
         empCode: string;
         organization?: string | null;
+        centerName?: string | null;
         projectName?: string | null;
         email?: string | null;
         state?: string | null;
@@ -563,6 +569,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       role: dto.role as UserRole,
       empCode: dto.empCode,
       organization: dto.organization ?? null,
+      centerName: dto.centerName ?? null,
       projectName: dto.projectName ?? null,
       email: dto.email ?? null,
       state: dto.state ?? null,
@@ -590,6 +597,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         role: string;
         empCode: string;
         organization?: string | null;
+        centerName?: string | null;
         projectName?: string | null;
         email?: string | null;
         state?: string | null;
@@ -607,6 +615,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           role: dto.role as UserRole,
           empCode: dto.empCode,
           organization: dto.organization ?? null,
+          centerName: dto.centerName ?? null,
           projectName: dto.projectName ?? null,
           email: dto.email ?? null,
           state: dto.state ?? null,
@@ -863,6 +872,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       name?: string;
       email?: string | null;
       organization?: string | null;
+      centerName?: string | null;
       projectName?: string | null;
       state?: string | null;
       district?: string | null;
@@ -880,13 +890,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       const dto = (await res.json()) as {
         id: string; name: string; phone: string; role: string; empCode: string;
-        organization?: string | null; projectName?: string | null;
+        organization?: string | null; centerName?: string | null; projectName?: string | null;
         email?: string | null; state?: string | null; district?: string | null;
       };
       const updated: User = {
         ...currentUser,
         name: dto.name,
         organization: dto.organization ?? null,
+        centerName: dto.centerName ?? null,
         projectName: dto.projectName ?? null,
         email: dto.email ?? null,
         state: dto.state ?? null,

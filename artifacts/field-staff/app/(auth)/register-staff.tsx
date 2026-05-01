@@ -26,16 +26,33 @@ export default function RegisterStaffScreen() {
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [area, setArea] = useState("");
+  const [email, setEmail] = useState("");
+  const [centerName, setCenterName] = useState("");
+  const [projectName, setProjectName] = useState("");
+  const [state, setState_] = useState("");
+  const [district, setDistrict] = useState("");
   const [adminCode, setAdminCode] = useState("");
   const [loading, setLoading] = useState(false);
 
   const phoneRef = useRef<TextInput>(null);
-  const areaRef = useRef<TextInput>(null);
+  const emailRef = useRef<TextInput>(null);
+  const centerRef = useRef<TextInput>(null);
+  const projectRef = useRef<TextInput>(null);
+  const stateRef = useRef<TextInput>(null);
+  const districtRef = useRef<TextInput>(null);
   const adminCodeRef = useRef<TextInput>(null);
 
+  const isValidEmail = (e: string) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
+
   const valid =
-    name.trim().length >= 2 && phone.replace(/\D/g, "").length === 10;
+    name.trim().length >= 2 &&
+    phone.replace(/\D/g, "").length === 10 &&
+    isValidEmail(email) &&
+    centerName.trim().length >= 2 &&
+    projectName.trim().length >= 2 &&
+    state.trim().length >= 2 &&
+    district.trim().length >= 2;
 
   const onRegister = async () => {
     if (!valid) return;
@@ -45,7 +62,11 @@ export default function RegisterStaffScreen() {
         kind: "staff",
         name: name.trim(),
         phone: phone.replace(/\D/g, ""),
-        area: area.trim() || undefined,
+        email: email.trim(),
+        centerName: centerName.trim(),
+        projectName: projectName.trim(),
+        state: state.trim(),
+        district: district.trim(),
         adminCode: adminCode.trim().toUpperCase() || undefined,
       });
       if (Platform.OS !== "web") {
@@ -117,18 +138,18 @@ export default function RegisterStaffScreen() {
               <Feather name="user" size={22} color={colors.pillarAccuracy} />
             </View>
             <Text style={[styles.title, { color: colors.foreground }]}>
-              Register as Staff
+              Staff Registration
             </Text>
             <Text style={[styles.sub, { color: colors.mutedForeground }]}>
-              Create your field staff account to log attendance, meter reads and
-              trips.
+              Apna field staff account banayein. Saari details sahi bharein.
             </Text>
           </View>
 
-          {/* Form */}
-          <View style={[styles.form, { marginTop: 28 }]}>
+          {/* Section: Personal Details */}
+          <SectionHeader label="PERSONAL DETAILS" colors={colors} />
+          <View style={[styles.form]}>
             <FieldInput
-              label="FULL NAME"
+              label="STAFF NAME *"
               value={name}
               onChangeText={setName}
               placeholder="Ramesh Kumar"
@@ -140,7 +161,7 @@ export default function RegisterStaffScreen() {
             {/* Phone */}
             <View>
               <Text style={[styles.label, { color: colors.mutedForeground }]}>
-                MOBILE NUMBER
+                MOBILE NUMBER *
               </Text>
               <View
                 style={[
@@ -171,7 +192,7 @@ export default function RegisterStaffScreen() {
                   placeholder="98765 43210"
                   placeholderTextColor={colors.mutedForeground}
                   returnKeyType="next"
-                  onSubmitEditing={() => areaRef.current?.focus()}
+                  onSubmitEditing={() => emailRef.current?.focus()}
                   style={[
                     styles.input,
                     {
@@ -182,24 +203,94 @@ export default function RegisterStaffScreen() {
                   maxLength={10}
                 />
               </View>
+              {phone.length > 0 && phone.replace(/\D/g, "").length !== 10 && (
+                <Text style={[styles.fieldError, { color: colors.destructive ?? "#ef4444" }]}>
+                  Mobile number 10 digits ka hona chahiye
+                </Text>
+              )}
             </View>
 
             <FieldInput
-              ref={areaRef}
-              label="SERVICE AREA  (optional)"
-              value={area}
-              onChangeText={setArea}
-              placeholder="e.g. Sector 14, Gurgaon"
+              ref={emailRef}
+              label="EMAIL ID *"
+              value={email}
+              onChangeText={setEmail}
+              placeholder="ramesh@example.com"
+              returnKeyType="next"
+              onSubmitEditing={() => centerRef.current?.focus()}
+              colors={colors}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+            {email.length > 0 && !isValidEmail(email) && (
+              <Text style={[styles.fieldError, { color: colors.destructive ?? "#ef4444" }]}>
+                Valid email address daalen
+              </Text>
+            )}
+          </View>
+
+          {/* Section: Organization Details */}
+          <SectionHeader label="ORGANIZATION DETAILS" colors={colors} />
+          <View style={[styles.form]}>
+            <FieldInput
+              ref={centerRef}
+              label="CENTER / BRANCH NAME *"
+              value={centerName}
+              onChangeText={setCenterName}
+              placeholder="e.g. Ranchi Training Center"
+              returnKeyType="next"
+              onSubmitEditing={() => projectRef.current?.focus()}
+              colors={colors}
+              autoCapitalize="words"
+            />
+
+            <FieldInput
+              ref={projectRef}
+              label="SCHEME / PROJECT NAME *"
+              value={projectName}
+              onChangeText={setProjectName}
+              placeholder="e.g. DDU-GKY, JSDMS"
+              returnKeyType="next"
+              onSubmitEditing={() => stateRef.current?.focus()}
+              colors={colors}
+              autoCapitalize="words"
+            />
+          </View>
+
+          {/* Section: Location */}
+          <SectionHeader label="LOCATION" colors={colors} />
+          <View style={[styles.form]}>
+            <FieldInput
+              ref={stateRef}
+              label="STATE *"
+              value={state}
+              onChangeText={setState_}
+              placeholder="e.g. Jharkhand"
+              returnKeyType="next"
+              onSubmitEditing={() => districtRef.current?.focus()}
+              colors={colors}
+              autoCapitalize="words"
+            />
+
+            <FieldInput
+              ref={districtRef}
+              label="DISTRICT *"
+              value={district}
+              onChangeText={setDistrict}
+              placeholder="e.g. Ranchi"
               returnKeyType="next"
               onSubmitEditing={() => adminCodeRef.current?.focus()}
               colors={colors}
               autoCapitalize="words"
             />
+          </View>
 
-            {/* Admin code */}
+          {/* Admin code */}
+          <SectionHeader label="LINK TO ADMIN (OPTIONAL)" colors={colors} />
+          <View style={[styles.form]}>
             <View>
               <Text style={[styles.label, { color: colors.mutedForeground }]}>
-                ADMIN INVITE CODE  (optional)
+                ADMIN INVITE CODE
               </Text>
               <TextInput
                 ref={adminCodeRef}
@@ -227,8 +318,7 @@ export default function RegisterStaffScreen() {
               <Text
                 style={[styles.fieldHint, { color: colors.mutedForeground }]}
               >
-                Ask your admin for their 6-character invite code to link your
-                account to their organization.
+                Admin ka 6-character invite code daalen apna account link karne ke liye.
               </Text>
             </View>
           </View>
@@ -245,12 +335,19 @@ export default function RegisterStaffScreen() {
           />
 
           <Text style={[styles.legal, { color: colors.mutedForeground }]}>
-            You will set a 4-digit MPIN to secure your account. You consent to GPS,
-            camera and movement logging during active shifts.
+            Account banane ke baad aapko 4-digit MPIN set karna hoga. Aap GPS, camera aur movement logging ke liye consent dete hain.
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
+  );
+}
+
+function SectionHeader({ label, colors }: { label: string; colors: ReturnType<typeof import("@/hooks/useColors").useColors> }) {
+  return (
+    <Text style={[styles.sectionHeader, { color: colors.mutedForeground }]}>
+      {label}
+    </Text>
   );
 }
 
@@ -263,6 +360,7 @@ type FieldProps = {
   onSubmitEditing?: () => void;
   colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
   autoCapitalize?: "none" | "sentences" | "words" | "characters";
+  keyboardType?: "default" | "email-address" | "number-pad";
 };
 
 const FieldInput = React.forwardRef<TextInput, FieldProps>(
@@ -276,6 +374,7 @@ const FieldInput = React.forwardRef<TextInput, FieldProps>(
       onSubmitEditing,
       colors,
       autoCapitalize = "words",
+      keyboardType = "default",
     },
     ref,
   ) => (
@@ -292,6 +391,7 @@ const FieldInput = React.forwardRef<TextInput, FieldProps>(
         returnKeyType={returnKeyType}
         onSubmitEditing={onSubmitEditing}
         autoCapitalize={autoCapitalize}
+        keyboardType={keyboardType}
         style={[
           styles.textField,
           {
@@ -335,6 +435,13 @@ const styles = StyleSheet.create({
     marginTop: 8,
     lineHeight: 20,
   },
+  sectionHeader: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.8,
+    marginTop: 24,
+    marginBottom: 12,
+  },
   form: {
     gap: 16,
   },
@@ -376,6 +483,11 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     lineHeight: 16,
     marginTop: 6,
+  },
+  fieldError: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    marginTop: 4,
   },
   legal: {
     fontSize: 11,

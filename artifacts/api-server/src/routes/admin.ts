@@ -261,9 +261,14 @@ router.get("/admin/staff-list", async (req, res, next) => {
           empCode: r.empCode,
           name: r.name,
           phone: r.phone,
+          email: r.email ?? null,
           role: r.role,
           area: r.area ?? null,
           organization: r.organization ?? null,
+          centerName: r.centerName ?? null,
+          projectName: r.projectName ?? null,
+          state: r.state ?? null,
+          district: r.district ?? null,
           approvalStatus: r.approvalStatus,
           disabledAt: r.disabledAt?.toISOString() ?? null,
           createdAt: r.createdAt?.toISOString() ?? null,
@@ -353,6 +358,82 @@ router.delete("/admin/staff/:id", async (req, res, next) => {
 
     req.log.info({ staffId: id }, "Staff soft-deleted");
     res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── PATCH /api/admin/staff/:id/profile ──────────────────────────────────────
+// Admin can edit staff profile fields: name, email, centerName, projectName, state, district, area, organization
+
+router.patch("/admin/staff/:id/profile", async (req, res, next) => {
+  try {
+    const { id } = req.params as { id: string };
+    const { name, email, organization, centerName, projectName, state, district, area } = req.body as {
+      name?: string;
+      email?: string | null;
+      organization?: string | null;
+      centerName?: string | null;
+      projectName?: string | null;
+      state?: string | null;
+      district?: string | null;
+      area?: string | null;
+    };
+
+    const [row] = await db
+      .select({ id: staffTable.id })
+      .from(staffTable)
+      .where(and(eq(staffTable.id, id), isNull(staffTable.deletedAt)))
+      .limit(1);
+
+    if (!row) {
+      res.status(404).json({ title: "Staff not found", status: 404 });
+      return;
+    }
+
+    if (name !== undefined && name.trim().length < 2) {
+      res.status(400).json({ title: "Name too short", status: 400 });
+      return;
+    }
+
+    if (email && email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      res.status(400).json({ title: "Invalid email", status: 400 });
+      return;
+    }
+
+    const updates: Partial<typeof staffTable.$inferInsert> = {};
+    if (name !== undefined) updates.name = name.trim();
+    if (email !== undefined) updates.email = email?.trim() || null;
+    if (organization !== undefined) updates.organization = organization?.trim() || null;
+    if (centerName !== undefined) updates.centerName = centerName?.trim() || null;
+    if (projectName !== undefined) updates.projectName = projectName?.trim() || null;
+    if (state !== undefined) updates.state = state?.trim() || null;
+    if (district !== undefined) updates.district = district?.trim() || null;
+    if (area !== undefined) updates.area = area?.trim() || null;
+
+    if (Object.keys(updates).length === 0) {
+      res.status(400).json({ title: "No fields to update", status: 400 });
+      return;
+    }
+
+    const [updated] = await db
+      .update(staffTable)
+      .set(updates)
+      .where(eq(staffTable.id, id))
+      .returning();
+
+    res.json({
+      id: updated.id,
+      name: updated.name,
+      phone: updated.phone,
+      email: updated.email ?? null,
+      organization: updated.organization ?? null,
+      centerName: updated.centerName ?? null,
+      projectName: updated.projectName ?? null,
+      state: updated.state ?? null,
+      district: updated.district ?? null,
+      area: updated.area ?? null,
+    });
   } catch (err) {
     next(err);
   }

@@ -7,6 +7,7 @@ export const staffTable = pgTable("staff", {
   phone: text("phone").notNull(),
   role: text("role", { enum: ["staff", "admin"] }).notNull().default("staff"),
   organization: text("organization"),
+  centerName: text("center_name"),
   projectName: text("project_name"),
   email: text("email"),
   state: text("state"),

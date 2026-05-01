@@ -134,6 +134,7 @@ export default function AccountSettingsScreen() {
   const [profName, setProfName] = useState(user?.name ?? "");
   const [profEmail, setProfEmail] = useState(user?.email ?? "");
   const [profOrg, setProfOrg] = useState(user?.organization ?? "");
+  const [profCenter, setProfCenter] = useState(user?.centerName ?? "");
   const [profProject, setProfProject] = useState(user?.projectName ?? "");
   const [profState, setProfState] = useState(user?.state ?? "");
   const [profDistrict, setProfDistrict] = useState(user?.district ?? "");
@@ -146,6 +147,7 @@ export default function AccountSettingsScreen() {
       setProfName(user.name ?? "");
       setProfEmail(user.email ?? "");
       setProfOrg(user.organization ?? "");
+      setProfCenter(user.centerName ?? "");
       setProfProject(user.projectName ?? "");
       setProfState(user.state ?? "");
       setProfDistrict(user.district ?? "");
@@ -168,6 +170,7 @@ export default function AccountSettingsScreen() {
         name: profName.trim(),
         email: profEmail.trim() || null,
         organization: profOrg.trim() || null,
+        centerName: profCenter.trim() || null,
         projectName: profProject.trim() || null,
         state: profState.trim() || null,
         district: profDistrict.trim() || null,
@@ -257,9 +260,9 @@ export default function AccountSettingsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.profileName}>{user.name}</Text>
-              {!!(user.organization || user.projectName) && (
+              {!!(user.centerName || user.organization || user.projectName) && (
                 <Text style={styles.profileOrg} numberOfLines={1}>
-                  {[user.organization, user.projectName].filter(Boolean).join(" · ")}
+                  {[user.centerName || user.organization, user.projectName].filter(Boolean).join(" · ")}
                 </Text>
               )}
               <View style={styles.roleBadge}>
@@ -273,6 +276,9 @@ export default function AccountSettingsScreen() {
             <InfoRow icon="phone" label={t("phone")} value={user.phone} />
             <InfoRow icon="tag" label={t("empCode")} value={user.empCode} />
             <InfoRow icon="briefcase" label={t("role")} value={roleLabel} />
+            {!!user.centerName && (
+              <InfoRow icon="home" label="Center" value={user.centerName} />
+            )}
             {!!(user.state || user.district) && (
               <InfoRow
                 icon="map-pin"
@@ -344,6 +350,13 @@ export default function AccountSettingsScreen() {
                 value={profOrg}
                 onChangeText={setProfOrg}
                 placeholder="e.g. JSDMS / DDU-GKY"
+              />
+
+              <Field
+                label="CENTER / BRANCH NAME"
+                value={profCenter}
+                onChangeText={setProfCenter}
+                placeholder="e.g. Ranchi Training Center"
               />
 
               <Field

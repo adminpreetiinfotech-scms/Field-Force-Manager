@@ -188,6 +188,77 @@ export default function MobilizerProfile() {
     }
   };
 
+  // ── Edit profile modal ─────────────────────────────────────────────────────
+  const [editProfileVisible, setEditProfileVisible] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editCenter, setEditCenter] = useState("");
+  const [editProject, setEditProject] = useState("");
+  const [editState, setEditState_] = useState("");
+  const [editDistrict, setEditDistrict] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+
+  const openEditProfile = () => {
+    setEditName(data?.name ?? "");
+    setEditEmail((data as any)?.email ?? "");
+    setEditCenter((data as any)?.centerName ?? "");
+    setEditProject((data as any)?.projectName ?? "");
+    setEditState_((data as any)?.state ?? "");
+    setEditDistrict((data as any)?.district ?? "");
+    setEditProfileVisible(true);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!id) return;
+    if (editName.trim().length < 2) {
+      Alert.alert("Validation", "Name kam se kam 2 characters ka hona chahiye.");
+      return;
+    }
+    if (editEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editEmail.trim())) {
+      Alert.alert("Validation", "Valid email address daalen.");
+      return;
+    }
+    setEditSaving(true);
+    try {
+      const res = await fetch(`${apiBase}/api/admin/staff/${id}/profile`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editName.trim(),
+          email: editEmail.trim() || null,
+          centerName: editCenter.trim() || null,
+          projectName: editProject.trim() || null,
+          state: editState.trim() || null,
+          district: editDistrict.trim() || null,
+        }),
+      });
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+        throw new Error((err["title"] as string) || "Save failed");
+      }
+      queryClient.setQueryData(
+        getGetStaffProfileStatsQueryKey(id),
+        (old: typeof data) => old
+          ? {
+              ...old,
+              name: editName.trim(),
+              email: editEmail.trim() || null,
+              centerName: editCenter.trim() || null,
+              projectName: editProject.trim() || null,
+              state: editState.trim() || null,
+              district: editDistrict.trim() || null,
+            } as typeof old
+          : old,
+      );
+      setEditProfileVisible(false);
+      Alert.alert("Saved", "Profile update ho gaya.");
+    } catch (e: any) {
+      Alert.alert("Error", e?.message || "Save nahi hua. Dobara try karen.");
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   const { mutate: saveNotes, isPending: notesSaving } = useUpdateStaffNotes({
     mutation: {
       onSuccess: (res) => {
@@ -375,6 +446,54 @@ export default function MobilizerProfile() {
               />
             )}
           </View>
+
+          {/* Staff details */}
+          {((data as any).email || (data as any).centerName || (data as any).projectName || (data as any).state || (data as any).district) && (
+            <View style={{ marginTop: 14, gap: 8, alignSelf: "stretch" }}>
+              {(data as any).email && (
+                <StaffDetailRow icon="mail" label="Email" value={(data as any).email} colors={colors} />
+              )}
+              {(data as any).centerName && (
+                <StaffDetailRow icon="home" label="Center / Branch" value={(data as any).centerName} colors={colors} />
+              )}
+              {(data as any).projectName && (
+                <StaffDetailRow icon="briefcase" label="Scheme / Project" value={(data as any).projectName} colors={colors} />
+              )}
+              {((data as any).state || (data as any).district) && (
+                <StaffDetailRow
+                  icon="map-pin"
+                  label="Location"
+                  value={[(data as any).district, (data as any).state].filter(Boolean).join(", ")}
+                  colors={colors}
+                />
+              )}
+            </View>
+          )}
+
+          {/* Edit Profile button */}
+          {data.role !== "admin" && (
+            <Pressable
+              onPress={openEditProfile}
+              style={({ pressed }) => ({
+                marginTop: 14,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                height: 38,
+                paddingHorizontal: 16,
+                backgroundColor: colors.muted,
+                borderRadius: colors.radius,
+                alignSelf: "center",
+                opacity: pressed ? 0.7 : 1,
+              })}
+            >
+              <Feather name="edit-2" size={13} color={colors.foreground} />
+              <Text style={{ color: colors.foreground, fontSize: 13, fontFamily: "Inter_600SemiBold" }}>
+                Edit Profile
+              </Text>
+            </Pressable>
+          )}
 
           {data.firstRideDate && (
             <Text
@@ -746,11 +865,155 @@ export default function MobilizerProfile() {
           )}
         </View>
       </ScrollView>
+
+      {/* ── Edit Profile Modal ───────────────────────────────────────────── */}
+      {editProfileVisible && (
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={[StyleSheet.absoluteFill, { zIndex: 999 }]}
+          pointerEvents="box-none"
+        >
+          <Pressable
+            style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.5)" }]}
+            onPress={() => setEditProfileVisible(false)}
+          />
+          <View
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              backgroundColor: colors.background,
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              paddingTop: 20,
+              paddingHorizontal: 20,
+              paddingBottom: insets.bottom + 20,
+              gap: 14,
+            }}
+          >
+            <Text style={{ color: colors.foreground, fontSize: 18, fontFamily: "Inter_700Bold", marginBottom: 4 }}>
+              Edit Staff Profile
+            </Text>
+
+            <EditField label="FULL NAME *" value={editName} onChangeText={setEditName} colors={colors} />
+            <EditField label="EMAIL ID" value={editEmail} onChangeText={setEditEmail} colors={colors} keyboardType="email-address" autoCapitalize="none" />
+            <EditField label="CENTER / BRANCH NAME" value={editCenter} onChangeText={setEditCenter} colors={colors} />
+            <EditField label="SCHEME / PROJECT NAME" value={editProject} onChangeText={setEditProject} colors={colors} />
+            <EditField label="STATE" value={editState} onChangeText={setEditState_} colors={colors} />
+            <EditField label="DISTRICT" value={editDistrict} onChangeText={setEditDistrict} colors={colors} />
+
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 4 }}>
+              <Pressable
+                onPress={() => setEditProfileVisible(false)}
+                style={({ pressed }) => ({
+                  flex: 1,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  height: 46,
+                  backgroundColor: colors.muted,
+                  borderRadius: colors.radius,
+                  opacity: pressed ? 0.7 : 1,
+                })}
+              >
+                <Text style={{ color: colors.foreground, fontSize: 14, fontFamily: "Inter_600SemiBold" }}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleSaveProfile}
+                disabled={editSaving || editName.trim().length < 2}
+                style={({ pressed }) => ({
+                  flex: 2,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  height: 46,
+                  backgroundColor: colors.primary,
+                  borderRadius: colors.radius,
+                  opacity: pressed || editSaving || editName.trim().length < 2 ? 0.6 : 1,
+                })}
+              >
+                <Text style={{ color: "#fff", fontSize: 14, fontFamily: "Inter_700Bold" }}>
+                  {editSaving ? "Saving…" : "Save Changes"}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      )}
     </View>
   );
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
+
+function StaffDetailRow({
+  icon,
+  label,
+  value,
+  colors,
+}: {
+  icon: string;
+  label: string;
+  value: string;
+  colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
+}) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10, paddingHorizontal: 4 }}>
+      <View style={{ width: 20, alignItems: "center", paddingTop: 1 }}>
+        <Feather name={icon as any} size={13} color={colors.mutedForeground} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: colors.mutedForeground, fontSize: 10, fontFamily: "Inter_500Medium", letterSpacing: 0.4 }}>
+          {label}
+        </Text>
+        <Text style={{ color: colors.foreground, fontSize: 12, fontFamily: "Inter_500Medium", marginTop: 1 }}>
+          {value}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function EditField({
+  label,
+  value,
+  onChangeText,
+  colors,
+  keyboardType,
+  autoCapitalize,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (v: string) => void;
+  colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
+  keyboardType?: "default" | "email-address";
+  autoCapitalize?: "none" | "words" | "sentences";
+}) {
+  return (
+    <View>
+      <Text style={{ color: colors.mutedForeground, fontSize: 10, fontFamily: "Inter_600SemiBold", letterSpacing: 0.6, marginBottom: 5 }}>
+        {label}
+      </Text>
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        keyboardType={keyboardType ?? "default"}
+        autoCapitalize={autoCapitalize ?? "words"}
+        style={{
+          height: 46,
+          paddingHorizontal: 12,
+          fontSize: 14,
+          fontFamily: "Inter_400Regular",
+          color: colors.foreground,
+          backgroundColor: colors.muted,
+          borderRadius: colors.radius,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: colors.border,
+        }}
+        placeholderTextColor={colors.mutedForeground}
+      />
+    </View>
+  );
+}
 
 function SectionHeader({
   icon,

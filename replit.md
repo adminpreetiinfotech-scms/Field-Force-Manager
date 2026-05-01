@@ -109,13 +109,20 @@ Mobile-first field operations app for distribution/utility staff and ops admins.
 - Falls back to local attendance/trip state if server data unavailable
 
 **Admin Profile / Organization Settings** (`app/account-settings.tsx`):
-- `PATCH /api/staff/profile` — update name, email, organization, projectName, state, district for any staff/admin (body: `{ phone, name?, email?, organization?, projectName?, state?, district? }`); validates email format server-side
-- DB columns added: `email text`, `project_name text`, `state text`, `district text` on `staff` table
-- Admin registration screen (`app/(auth)/register-admin.tsx`) now accepts all 7 fields (name, phone, email, organization, projectName, state, district) with sectioned form; org fields are optional at registration time
-- Account Settings screen has a new "Profile" tab (admin only) — shows/edits name, email, organization, project, state, district; profile card shows org+project combined; location (state/district) and email shown as info rows
-- `AppContext.User` type extended with `projectName`, `email`, `state`, `district`; `updateProfile()` action added
-- Reports (PDF/Excel/ReportContextBar): org header now shows `"Organization | ProjectName"` if both set
-- Auth DTO (`mpin.ts`) and staff DTO (`staff.ts`) both return all new fields on login/register/update
+- `PATCH /api/staff/profile` — update name, email, organization, centerName, projectName, state, district (body includes all); validates email format server-side
+- DB columns added: `email text`, `center_name text`, `project_name text`, `state text`, `district text` on `staff` table
+- Admin registration screen (`app/(auth)/register-admin.tsx`) now accepts all fields with sectioned form; org fields are optional at registration time
+
+**Staff Registration / Staff Profile Fields Expansion**:
+- Staff registration (`app/(auth)/register-staff.tsx`): All 7 fields now required — Name, Mobile (10-digit), Email, Center/Branch Name, Scheme/Project Name, State, District. Sectioned into Personal / Organization / Location / Admin Code groups with inline validation.
+- Staff profile (`app/(staff)/profile.tsx`): "Account Details" card shows email, centerName, projectName, state, district when set.
+- Admin mobilizer detail (`app/(admin)/mobilizer/[id].tsx`): Identity card shows email, centerName, projectName, state+district. "Edit Profile" button opens a bottom-sheet modal for admin to edit all fields via `PATCH /api/admin/staff/:id/profile`.
+- `PATCH /api/admin/staff/:id/profile` — new endpoint for admin editing staff fields (name, email, centerName, projectName, state, district, area, organization).
+- Daily Field Report (`DailyReportModal`): Shows Center/Branch Name, Scheme/Project, Location (district+state) in report header and footer.
+- Shift header (`ReportContextBar`): Shows `centerName` (or falls back to `organization`) as the center line.
+- `AppContext.User` type extended with `centerName`; all auth/update flows (register, loginWithMpin, setupMpin, updateProfile) propagate it.
+- `GET /api/admin/staff-list` and `GET /api/staff/:staffId/profile-stats` both return centerName, email, projectName, state, district.
+- Auth DTO (`mpin.ts`) and staff DTO (`staff.ts`) both return all new fields on login/register/update.
 
 **State**: `contexts/AppContext.tsx` — `register()` + `setPendingPhone()` + `checkPhone()` + `loginWithMpin()` + `setupMpin()` + `updateProfile()` actions; persisted to AsyncStorage at key `@field-staff/state-v1`.
 

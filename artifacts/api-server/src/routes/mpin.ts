@@ -30,6 +30,7 @@ function toUserDTO(row: typeof staffTable.$inferSelect) {
     phone: row.phone,
     role: row.role,
     organization: row.organization ?? null,
+    centerName: row.centerName ?? null,
     projectName: row.projectName ?? null,
     email: row.email ?? null,
     state: row.state ?? null,

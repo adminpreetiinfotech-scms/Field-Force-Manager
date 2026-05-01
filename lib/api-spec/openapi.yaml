@@ -1032,9 +1032,26 @@ components:
           type: string
         phone:
           type: string
+        email:
+          type: string
+          nullable: true
         role:
           type: string
         organization:
+          type: string
+          nullable: true
+        centerName:
+          type: string
+          nullable: true
+          description: Center or branch name where the staff member is assigned.
+        projectName:
+          type: string
+          nullable: true
+          description: Scheme or project name (e.g. DDU-GKY).
+        state:
+          type: string
+          nullable: true
+        district:
           type: string
           nullable: true
         area:

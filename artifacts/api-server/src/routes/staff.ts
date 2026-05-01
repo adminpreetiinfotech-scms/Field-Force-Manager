@@ -13,6 +13,7 @@ function toStaffDTO(r: typeof staffTable.$inferSelect) {
     phone: r.phone,
     role: r.role,
     organization: r.organization ?? null,
+    centerName: r.centerName ?? null,
     projectName: r.projectName ?? null,
     email: r.email ?? null,
     state: r.state ?? null,
@@ -36,13 +37,14 @@ router.get("/staff", async (_req, res, next) => {
 router.post("/staff/register", async (req, res, next) => {
   try {
     const {
-      kind, name, phone, organization, projectName, email, state, district,
+      kind, name, phone, organization, centerName, projectName, email, state, district,
       empCode, area, adminCode, adminRegistrationKey,
     } = req.body as {
       kind?: string;
       name?: string;
       phone?: string;
       organization?: string | null;
+      centerName?: string | null;
       projectName?: string | null;
       email?: string | null;
       state?: string | null;
@@ -164,6 +166,7 @@ router.post("/staff/register", async (req, res, next) => {
         phone: phone.trim(),
         role: kind === "admin" ? "admin" : "staff",
         organization: resolvedOrganization,
+        centerName: centerName?.trim() || null,
         projectName: projectName?.trim() || null,
         email: email?.trim() || null,
         state: state?.trim() || null,
@@ -416,6 +419,11 @@ router.get("/staff/:staffId/profile-stats", async (req, res, next) => {
       role: staffRow.role,
       approvalStatus: staffRow.approvalStatus ?? "pending",
       organization: staffRow.organization ?? null,
+      centerName: staffRow.centerName ?? null,
+      projectName: staffRow.projectName ?? null,
+      email: staffRow.email ?? null,
+      state: staffRow.state ?? null,
+      district: staffRow.district ?? null,
       area: staffRow.area ?? null,
       notes: staffRow.notes ?? null,
       lifetimeTotalRides,
@@ -510,16 +518,17 @@ function verifyPassword(plain: string, stored: string): boolean {
 }
 
 // ─── PATCH /api/staff/profile ─────────────────────────────────────────────────
-// Update admin/staff profile fields (name, email, organization, projectName, state, district)
-// Body: { phone, name?, email?, organization?, projectName?, state?, district? }
+// Update admin/staff profile fields
+// Body: { phone, name?, email?, organization?, centerName?, projectName?, state?, district? }
 router.patch("/staff/profile", async (req, res, next) => {
   try {
-    const { phone, name, email, organization, projectName, state, district } =
+    const { phone, name, email, organization, centerName, projectName, state, district } =
       req.body as {
         phone?: string;
         name?: string;
         email?: string | null;
         organization?: string | null;
+        centerName?: string | null;
         projectName?: string | null;
         state?: string | null;
         district?: string | null;
@@ -555,6 +564,7 @@ router.patch("/staff/profile", async (req, res, next) => {
     if (name !== undefined) updates.name = name.trim();
     if (email !== undefined) updates.email = email?.trim() || null;
     if (organization !== undefined) updates.organization = organization?.trim() || null;
+    if (centerName !== undefined) updates.centerName = centerName?.trim() || null;
     if (projectName !== undefined) updates.projectName = projectName?.trim() || null;
     if (state !== undefined) updates.state = state?.trim() || null;
     if (district !== undefined) updates.district = district?.trim() || null;
