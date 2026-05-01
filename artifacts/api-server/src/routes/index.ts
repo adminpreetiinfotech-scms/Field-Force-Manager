@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
+import storageRouter from "./storage";
 import activityRouter from "./activity";
 import staffRouter from "./staff";
 import candidatesRouter from "./candidates";
@@ -13,6 +14,7 @@ import superAdminRouter from "./super-admin";
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(storageRouter);
 router.use(mpinRouter);
 router.use(companiesRouter);
 router.use(superAdminRouter);

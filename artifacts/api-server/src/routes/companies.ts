@@ -1,38 +1,48 @@
 import { companiesTable, db, staffTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { Router, type IRouter } from "express";
-import fs from "node:fs";
-import path from "node:path";
+import { uploadLogoBuffer } from "../lib/logoStorage";
 
 const router: IRouter = Router();
 
-const UPLOADS_BASE = path.join(process.cwd(), "uploads");
-const COMPANIES_DIR = path.join(UPLOADS_BASE, "companies");
-fs.mkdirSync(COMPANIES_DIR, { recursive: true });
-
-// Expose uploads directory (shared with candidates route, but that one already serves /api/uploads).
-// No duplicate needed here — just use the same static middleware from candidates.
-
-function saveLogoBase64(
+/**
+ * Convert a base64-encoded logo string to a Buffer and upload to GCS.
+ * Returns the GCS object path (/objects/logos/<companyId>.ext) or null.
+ */
+async function saveLogoToGCS(
   base64: string | null | undefined,
   mimeType: string | null | undefined,
   companyId: string,
-): string | null {
+): Promise<string | null> {
   if (!base64) return null;
-  const ext = (mimeType || "image/jpeg").includes("png") ? "png" : "jpg";
-  const filepath = path.join(COMPANIES_DIR, `${companyId}.${ext}`);
   try {
-    fs.writeFileSync(filepath, Buffer.from(base64, "base64"));
-    return filepath;
-  } catch {
+    const buf = Buffer.from(base64, "base64");
+    const mime = mimeType || "image/jpeg";
+    return await uploadLogoBuffer(buf, mime, companyId);
+  } catch (err) {
+    console.error("[companies] logo upload failed:", err);
     return null;
   }
 }
 
-function toLogoUrl(filePath: string | null | undefined): string | null {
+/**
+ * Convert a DB logoPath to a URL that clients can fetch.
+ *   - GCS paths  (/objects/logos/...)   → /api/storage/objects/logos/...
+ *   - Legacy disk paths (/home/... or uploads/...) → /api/uploads/...
+ *   - Already-correct /api/... paths   → returned as-is
+ */
+export function toLogoUrl(filePath: string | null | undefined): string | null {
   if (!filePath) return null;
-  const rel = path.relative(UPLOADS_BASE, filePath).replace(/\\/g, "/");
-  return `/api/uploads/${rel}`;
+  // GCS object path stored in DB
+  if (filePath.startsWith("/objects/")) {
+    return `/api/storage${filePath}`;
+  }
+  // Legacy disk path (old data) — keep serving via /api/uploads
+  if (filePath.startsWith("/") || filePath.startsWith("uploads/")) {
+    const rel = filePath.replace(/^.*\/uploads\//, "uploads/").replace(/\\/g, "/");
+    return `/api/${rel}`;
+  }
+  return null;
 }
 
 function toCompanyDTO(c: typeof companiesTable.$inferSelect) {
@@ -58,19 +68,16 @@ function toCompanyDTO(c: typeof companiesTable.$inferSelect) {
 router.post("/companies/register", async (req, res, next) => {
   try {
     const {
-      // Company fields
       companyName,
       companyState,
       companyDistrict,
       projectName,
       logoBase64,
       logoMime,
-      // Admin personal fields
       adminName,
       adminPhone,
       adminEmail,
       adminRegistrationKey,
-      // Admin location/center (stored on staff row)
       centerName,
       state,
       district,
@@ -90,22 +97,18 @@ router.post("/companies/register", async (req, res, next) => {
       district?: string | null;
     };
 
-    // Validate company name
     if (!companyName || companyName.trim().length < 2) {
       res.status(400).json({ title: "Company name required", status: 400 });
       return;
     }
-    // Validate admin name
     if (!adminName || adminName.trim().length < 2) {
       res.status(400).json({ title: "Admin name required (min 2 chars)", status: 400 });
       return;
     }
-    // Validate admin phone
     if (!adminPhone || !/^\d{10}$/.test(adminPhone.trim())) {
       res.status(400).json({ title: "Admin phone must be exactly 10 digits", status: 400 });
       return;
     }
-    // Validate admin registration key
     const requiredKey = process.env.ADMIN_REGISTRATION_KEY;
     if (!adminRegistrationKey?.trim()) {
       res.status(403).json({ title: "Admin registration key required", status: 403 });
@@ -115,12 +118,10 @@ router.post("/companies/register", async (req, res, next) => {
       res.status(403).json({ title: "Invalid admin registration key", status: 403 });
       return;
     }
-    // Validate admin email if provided
     if (adminEmail?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adminEmail.trim())) {
       res.status(400).json({ title: "Invalid admin email address", status: 400 });
       return;
     }
-    // Check duplicate admin phone
     const [existingStaff] = await db
       .select({ id: staffTable.id })
       .from(staffTable)
@@ -135,7 +136,7 @@ router.post("/companies/register", async (req, res, next) => {
       return;
     }
 
-    // Create company
+    // Create company row first (no logo yet)
     const [company] = await db
       .insert(companiesTable)
       .values({
@@ -151,9 +152,9 @@ router.post("/companies/register", async (req, res, next) => {
       })
       .returning();
 
-    // Save logo if provided
+    // Upload logo to GCS (async, after company row exists so we have an ID)
     if (logoBase64) {
-      const logoPath = saveLogoBase64(logoBase64, logoMime, company.id);
+      const logoPath = await saveLogoToGCS(logoBase64, logoMime, company.id);
       if (logoPath) {
         await db
           .update(companiesTable)
@@ -250,7 +251,7 @@ router.patch("/companies/:id/logo", async (req, res, next) => {
       res.status(404).json({ title: "Company not found", status: 404 });
       return;
     }
-    const logoPath = saveLogoBase64(logoBase64, logoMime, id);
+    const logoPath = await saveLogoToGCS(logoBase64, logoMime, id);
     const [updated] = await db
       .update(companiesTable)
       .set({ logoPath: logoPath ?? company.logoPath })
@@ -263,7 +264,7 @@ router.patch("/companies/:id/logo", async (req, res, next) => {
 });
 
 // ─── PATCH /api/companies/:id/profile ─────────────────────────────────────────
-// Update company profile fields.
+// Update company profile fields (name, adminName, email, state, district, projectName).
 
 router.patch("/companies/:id/profile", async (req, res, next) => {
   try {
@@ -299,5 +300,5 @@ router.patch("/companies/:id/profile", async (req, res, next) => {
   }
 });
 
-export { toCompanyDTO, toLogoUrl };
+export { toCompanyDTO };
 export default router;

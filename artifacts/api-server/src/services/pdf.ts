@@ -154,6 +154,12 @@ function safeImg(doc: PDFDoc, fp: string | null | undefined,
   try { doc.image(fp, x, y, opts); return true; }
   catch { return false; }
 }
+function safeImgBuf(doc: PDFDoc, buf: Buffer | null | undefined,
+  x: number, y: number, opts: Record<string, unknown>): boolean {
+  if (!buf || buf.length === 0) return false;
+  try { doc.image(buf, x, y, opts); return true; }
+  catch { return false; }
+}
 
 // ─── Form layout constants ────────────────────────────────────────────────────
 const ROW = 20;     // standard row height
@@ -224,6 +230,8 @@ export type PdfReportOpts = {
   companyName?: string | null;
   companyNameHindi?: string | null;
   companyLogoPath?: string | null;
+  /** Pre-fetched logo Buffer (from GCS) — takes priority over companyLogoPath */
+  companyLogoBuffer?: Buffer | null;
   schemeName?: string | null;
 };
 
@@ -322,6 +330,7 @@ export async function generateCandidatePdf(
     const brandHindi   = reportOpts?.companyNameHindi?.trim() || "झारखण्ड कौशल विकास मिशन सोसाइटी";
     const brandScheme  = reportOpts?.schemeName?.trim()       || "DDU-GKY";
     const brandLogoPath = reportOpts?.companyLogoPath         || LOGO_PATH;
+    const brandLogoBuf  = reportOpts?.companyLogoBuffer ?? null;
     const isCustomBrand = !!(reportOpts?.companyName?.trim());
 
     // ── English left column ────────────────────────────────────────────────
@@ -350,8 +359,9 @@ export async function generateCandidatePdf(
 
     // ── Centre logo ────────────────────────────────────────────────────────
     const logoY = MT + (HEADER_H - LGSZ) / 2;          // vertically centred
-    const logoLoaded = safeImg(doc, brandLogoPath, logoX, logoY,
-      { width: LGSZ, height: LGSZ, fit: [LGSZ, LGSZ] });
+    const logoLoaded =
+      safeImgBuf(doc, brandLogoBuf, logoX, logoY, { width: LGSZ, height: LGSZ, fit: [LGSZ, LGSZ] }) ||
+      safeImg(doc, brandLogoPath, logoX, logoY, { width: LGSZ, height: LGSZ, fit: [LGSZ, LGSZ] });
     if (!logoLoaded) {
       const cx2 = logoX + LGSZ / 2; const cy2 = logoY + LGSZ / 2;
       doc.circle(cx2, cy2, 28).strokeColor(INK).lineWidth(0.8).stroke();

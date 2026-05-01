@@ -130,6 +130,7 @@ Mobile-first field operations app for distribution/utility staff and ops admins.
 - Staff role enum: `staff | admin | super_admin`; super_admin has no company filter (sees all)
 - "Nistha Skill" company ID: `28477d2c-9b59-4e12-a962-b926b697e5c5`; all existing data backfilled to it
 - Company registration: `POST /api/companies/register` (ADMIN_REGISTRATION_KEY env var guards it); creates company + admin atomically; accepts `logoBase64` for company logo
+- **Company logos stored in Replit GCS object storage** (not disk): `uploadLogoBuffer` / `downloadLogoBuffer` / `streamLogoToResponse` in `artifacts/api-server/src/lib/logoStorage.ts`; `PRIVATE_OBJECT_DIR` env var points to GCS bucket; DB stores object path `/objects/logos/<companyId>.ext`; served via `GET /api/storage/objects/logos/<companyId>.ext` (regex route in `routes/storage.ts` — needed because Express 5 + path-to-regexp v8 comma-separates wildcard segments)
 - Company branding: `GET /api/companies/:id/branding` — public endpoint for name, logo URL, projectName, state, district
 - Super Admin routes (`/api/super-admin/`): list companies, patch status/subscription, get per-company stats, reset admin MPIN; guarded by `x-admin-phone` with super_admin role
 - `requireAdmin` middleware: sets `res.locals.companyId` (string for company admin, null for super admin = no filter); all admin routes filter by it

@@ -10,6 +10,7 @@ import { and, desc, eq, gte, ilike, lt, or } from "drizzle-orm";
 import express, { Router } from "express";
 import fs from "fs";
 import path from "path";
+import { downloadLogoBuffer } from "../lib/logoStorage";
 import { generateCandidatePdf, type PdfReportOpts } from "../services/pdf";
 import { requireAdmin } from "./admin";
 
@@ -24,6 +25,7 @@ function fmtDMY(d: Date | null | undefined): string {
 type CompanyBranding = {
   companyName?: string | null;
   companyLogoPath?: string | null;
+  companyLogoBuffer?: Buffer | null;
   schemeName?: string | null;
 };
 
@@ -33,12 +35,13 @@ function buildPdfOpts(
   branding?: CompanyBranding,
 ): PdfReportOpts {
   return {
-    organization:    query?.["organization"]?.trim() || candidate.skillCentreName?.trim() || null,
-    staffName:       query?.["staffName"]?.trim()    || candidate.mobilizer?.trim() || candidate.submittedBy?.trim() || null,
-    reportDate:      fmtDMY(candidate.createdAt ? new Date(candidate.createdAt) : new Date()),
-    companyName:     branding?.companyName     ?? null,
-    companyLogoPath: branding?.companyLogoPath ?? null,
-    schemeName:      branding?.schemeName      ?? null,
+    organization:      query?.["organization"]?.trim() || candidate.skillCentreName?.trim() || null,
+    staffName:         query?.["staffName"]?.trim()    || candidate.mobilizer?.trim() || candidate.submittedBy?.trim() || null,
+    reportDate:        fmtDMY(candidate.createdAt ? new Date(candidate.createdAt) : new Date()),
+    companyName:       branding?.companyName       ?? null,
+    companyLogoPath:   branding?.companyLogoPath   ?? null,
+    companyLogoBuffer: branding?.companyLogoBuffer ?? null,
+    schemeName:        branding?.schemeName        ?? null,
   };
 }
 
@@ -51,10 +54,15 @@ async function fetchCompanyBranding(companyId: string | null | undefined): Promi
       .where(eq(companiesTable.id, companyId))
       .limit(1);
     if (!co) return {};
+    // Download logo buffer from GCS (if path is a GCS object path)
+    const logoBuffer = co.logoPath
+      ? await downloadLogoBuffer(co.logoPath)
+      : null;
     return {
-      companyName:     co.name ?? null,
-      companyLogoPath: co.logoPath ?? null,
-      schemeName:      co.projectName ?? null,
+      companyName:       co.name ?? null,
+      companyLogoPath:   co.logoPath ?? null,   // kept as fallback for legacy disk paths
+      companyLogoBuffer: logoBuffer,
+      schemeName:        co.projectName ?? null,
     };
   } catch {
     return {};

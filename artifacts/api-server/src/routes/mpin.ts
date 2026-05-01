@@ -1,14 +1,13 @@
-import path from "node:path";
 import { companiesTable, db, staffTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { Router } from "express";
 import crypto from "node:crypto";
 
-const UPLOADS_BASE = path.join(process.cwd(), "uploads");
 function toLogoUrl(filePath: string | null | undefined): string | null {
   if (!filePath) return null;
-  const rel = path.relative(UPLOADS_BASE, filePath).replace(/\\/g, "/");
-  return `/api/uploads/${rel}`;
+  if (filePath.startsWith("/objects/")) return `/api/storage${filePath}`;
+  const rel = filePath.replace(/^.*\/uploads\//, "uploads/").replace(/\\/g, "/");
+  return `/api/${rel}`;
 }
 
 const router = Router();
