@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { router } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { Component, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Platform,
   Pressable,
@@ -16,6 +16,23 @@ import { StaffLocation, useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
 
 import { NativeMapView } from "@/components/admin/MapView";
+
+class MapErrorBoundary extends Component<
+  { children: React.ReactNode; fallback: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode; fallback: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) return this.props.fallback;
+    return this.props.children;
+  }
+}
 
 function getApiBase(): string {
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
@@ -196,12 +213,23 @@ export default function AdminMap() {
 
       <View style={styles.mapWrap}>
         {Platform.OS !== "web" && region ? (
-          <NativeMapView
-            ref={mapRef as React.Ref<never>}
-            initialRegion={region}
-            staffLocations={mergedLocations}
-            onSelect={(s) => setSelected(s)}
-          />
+          <MapErrorBoundary
+            fallback={
+              <View style={[StyleSheet.absoluteFill, { alignItems: "center", justifyContent: "center", backgroundColor: "#DEE7F2" }]}>
+                <Feather name="map-off" size={40} color="#94A3B8" />
+                <Text style={{ color: "#64748B", fontSize: 14, fontFamily: "Inter_600SemiBold", marginTop: 12, textAlign: "center" }}>
+                  Map load nahi hua{"\n"}Google Maps API key required hai
+                </Text>
+              </View>
+            }
+          >
+            <NativeMapView
+              ref={mapRef as React.Ref<never>}
+              initialRegion={region}
+              staffLocations={mergedLocations}
+              onSelect={(s) => setSelected(s)}
+            />
+          </MapErrorBoundary>
         ) : (
           <WebMapPlaceholder
             staffLocations={mergedLocations}
