@@ -408,6 +408,40 @@ export interface DashboardStats {
   thisMonthRegistrations: number;
 }
 
+export type CompanyStatus = typeof CompanyStatus[keyof typeof CompanyStatus];
+
+
+export const CompanyStatus = {
+  active: 'active',
+  inactive: 'inactive',
+} as const;
+
+export interface Company {
+  id: string;
+  name: string;
+  adminName?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  state?: string | null;
+  district?: string | null;
+  projectName?: string | null;
+  logoUrl?: string | null;
+  status: CompanyStatus;
+  subscriptionActive: boolean;
+  createdAt?: string | null;
+}
+
+export type CompanyStatsStats = {
+  staffCount: number;
+  candidateCount: number;
+  activityCount: number;
+};
+
+export interface CompanyStats {
+  company: Company;
+  stats: CompanyStatsStats;
+}
+
 export interface ProblemDetails {
   title: string;
   detail?: string;
@@ -567,5 +601,28 @@ export type CheckPhoneBody = {
 export type LoginMpinBody = {
   phone: string;
   mpin: string;
+};
+
+export type UpdateCompanyBodyStatus = typeof UpdateCompanyBodyStatus[keyof typeof UpdateCompanyBodyStatus];
+
+
+export const UpdateCompanyBodyStatus = {
+  active: 'active',
+  inactive: 'inactive',
+} as const;
+
+export type UpdateCompanyBody = {
+  status?: UpdateCompanyBodyStatus;
+  subscriptionActive?: boolean;
+  name?: string;
+  projectName?: string | null;
+  state?: string | null;
+  district?: string | null;
+};
+
+export type ResetCompanyAdmin200 = {
+  message: string;
+  adminId: string;
+  phone: string;
 };
 

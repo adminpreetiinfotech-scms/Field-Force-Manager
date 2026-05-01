@@ -746,6 +746,130 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
 
+  /super-admin/companies:
+    get:
+      operationId: listCompanies
+      tags: [super-admin]
+      summary: List all registered companies
+      responses:
+        "200":
+          description: List of companies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Company"
+
+  /super-admin/companies/{companyId}:
+    patch:
+      operationId: updateCompany
+      tags: [super-admin]
+      summary: Update company status or subscription
+      parameters:
+        - in: path
+          name: companyId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [active, inactive]
+                subscriptionActive:
+                  type: boolean
+                name:
+                  type: string
+                projectName:
+                  type: string
+                  nullable: true
+                state:
+                  type: string
+                  nullable: true
+                district:
+                  type: string
+                  nullable: true
+      responses:
+        "200":
+          description: Updated company
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Company"
+        "404":
+          description: Company not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /super-admin/companies/{companyId}/stats:
+    get:
+      operationId: getCompanyStats
+      tags: [super-admin]
+      summary: Get stats for a single company
+      parameters:
+        - in: path
+          name: companyId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Company stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyStats"
+        "404":
+          description: Company not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /super-admin/companies/{companyId}/reset-admin:
+    post:
+      operationId: resetCompanyAdmin
+      tags: [super-admin]
+      summary: Reset admin MPIN for a company
+      parameters:
+        - in: path
+          name: companyId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Admin MPIN reset
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  adminId:
+                    type: string
+                  phone:
+                    type: string
+                required: [message, adminId, phone]
+        "404":
+          description: No admin found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
   /candidates/{id}:
     get:
       operationId: getCandidate
@@ -1485,6 +1609,63 @@ components:
         - pendingApprovals
         - todayRegistrations
         - thisMonthRegistrations
+
+    Company:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        adminName:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        state:
+          type: string
+          nullable: true
+        district:
+          type: string
+          nullable: true
+        projectName:
+          type: string
+          nullable: true
+        logoUrl:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [active, inactive]
+        subscriptionActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+      required: [id, name, status, subscriptionActive]
+
+    CompanyStats:
+      type: object
+      properties:
+        company:
+          $ref: "#/components/schemas/Company"
+        stats:
+          type: object
+          properties:
+            staffCount:
+              type: integer
+            candidateCount:
+              type: integer
+            activityCount:
+              type: integer
+          required: [staffCount, candidateCount, activityCount]
+      required: [company, stats]
 
     ProblemDetails:
       type: object

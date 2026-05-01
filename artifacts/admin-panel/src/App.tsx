@@ -9,7 +9,10 @@ import Dashboard from "@/pages/dashboard";
 import StaffManagement from "@/pages/staff";
 import Candidates from "@/pages/candidates";
 import Reports from "@/pages/reports";
+import SuperAdminCompanies from "@/pages/super-admin-companies";
+import SuperAdminCompanyDetail from "@/pages/super-admin-company-detail";
 import { AdminLayout } from "@/components/admin-layout";
+import { useAuth } from "@/hooks/use-auth";
 
 setAdminPhoneGetter(() => {
   try {
@@ -42,6 +45,31 @@ function ProtectedRoute({ component: Component, ...rest }: any) {
   );
 }
 
+function SuperAdminRoute({ component: Component, ...rest }: any) {
+  const { user } = useAuth();
+  return (
+    <Route {...rest}>
+      {(params) => {
+        if (!user || user.role !== "super_admin") {
+          return (
+            <AdminLayout>
+              <div className="flex flex-col items-center justify-center h-64 text-center gap-3">
+                <p className="text-lg font-semibold">Access Denied</p>
+                <p className="text-sm text-muted-foreground">This section is only available to Super Admins.</p>
+              </div>
+            </AdminLayout>
+          );
+        }
+        return (
+          <AdminLayout>
+            <Component params={params} />
+          </AdminLayout>
+        );
+      }}
+    </Route>
+  );
+}
+
 function Router() {
   return (
     <Switch>
@@ -54,6 +82,10 @@ function Router() {
       <ProtectedRoute path="/staff" component={StaffManagement} />
       <ProtectedRoute path="/candidates" component={Candidates} />
       <ProtectedRoute path="/reports" component={Reports} />
+      <SuperAdminRoute path="/super-admin/companies/:id" component={({ params }: any) => (
+        <SuperAdminCompanyDetail companyId={params.id} />
+      )} />
+      <SuperAdminRoute path="/super-admin/companies" component={SuperAdminCompanies} />
       <Route component={NotFound} />
     </Switch>
   );

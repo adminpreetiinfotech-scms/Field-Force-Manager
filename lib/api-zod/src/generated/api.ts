@@ -668,6 +668,102 @@ export const DeactivateStaffResponse = zod.object({
 
 
 /**
+ * @summary List all registered companies
+ */
+export const ListCompaniesResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "name": zod.string(),
+  "adminName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "district": zod.string().nullish(),
+  "projectName": zod.string().nullish(),
+  "logoUrl": zod.string().nullish(),
+  "status": zod.enum(['active', 'inactive']),
+  "subscriptionActive": zod.boolean(),
+  "createdAt": zod.coerce.date().nullish()
+})
+export const ListCompaniesResponse = zod.array(ListCompaniesResponseItem)
+
+
+/**
+ * @summary Update company status or subscription
+ */
+export const UpdateCompanyParams = zod.object({
+  "companyId": zod.coerce.string().uuid()
+})
+
+export const UpdateCompanyBody = zod.object({
+  "status": zod.enum(['active', 'inactive']).optional(),
+  "subscriptionActive": zod.boolean().optional(),
+  "name": zod.string().optional(),
+  "projectName": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "district": zod.string().nullish()
+})
+
+export const UpdateCompanyResponse = zod.object({
+  "id": zod.string().uuid(),
+  "name": zod.string(),
+  "adminName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "district": zod.string().nullish(),
+  "projectName": zod.string().nullish(),
+  "logoUrl": zod.string().nullish(),
+  "status": zod.enum(['active', 'inactive']),
+  "subscriptionActive": zod.boolean(),
+  "createdAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary Get stats for a single company
+ */
+export const GetCompanyStatsParams = zod.object({
+  "companyId": zod.coerce.string().uuid()
+})
+
+export const GetCompanyStatsResponse = zod.object({
+  "company": zod.object({
+  "id": zod.string().uuid(),
+  "name": zod.string(),
+  "adminName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "district": zod.string().nullish(),
+  "projectName": zod.string().nullish(),
+  "logoUrl": zod.string().nullish(),
+  "status": zod.enum(['active', 'inactive']),
+  "subscriptionActive": zod.boolean(),
+  "createdAt": zod.coerce.date().nullish()
+}),
+  "stats": zod.object({
+  "staffCount": zod.number(),
+  "candidateCount": zod.number(),
+  "activityCount": zod.number()
+})
+})
+
+
+/**
+ * @summary Reset admin MPIN for a company
+ */
+export const ResetCompanyAdminParams = zod.object({
+  "companyId": zod.coerce.string().uuid()
+})
+
+export const ResetCompanyAdminResponse = zod.object({
+  "message": zod.string(),
+  "adminId": zod.string(),
+  "phone": zod.string()
+})
+
+
+/**
  * @summary Get a single candidate
  */
 export const GetCandidateParams = zod.object({

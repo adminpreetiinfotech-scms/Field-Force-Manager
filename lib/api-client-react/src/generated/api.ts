@@ -28,6 +28,8 @@ import type {
   CheckDuplicateCandidateBody,
   CheckPhoneBody,
   CheckPhoneResult,
+  Company,
+  CompanyStats,
   CreateActivityInput,
   DashboardStats,
   DistanceStats,
@@ -47,11 +49,13 @@ import type {
   NotificationDto,
   ProblemDetails,
   RegisterInput,
+  ResetCompanyAdmin200,
   RideCalendarMonth,
   Staff,
   StaffProfileStats,
   TripReportRow,
   UpdateCandidateStatusBody,
+  UpdateCompanyBody,
   UpdateNotesInput,
   UpdateStaffNotes200
 } from './api.schemas';
@@ -2058,6 +2062,302 @@ export const useDeactivateStaff = <TError = ErrorType<ProblemDetails>,
         TContext
       > => {
       return useMutation(getDeactivateStaffMutationOptions(options));
+    }
+
+/**
+ * @summary List all registered companies
+ */
+export const getListCompaniesUrl = () => {
+
+
+
+
+  return `/api/super-admin/companies`
+}
+
+export const listCompanies = async ( options?: RequestInit): Promise<Company[]> => {
+
+  return customFetch<Company[]>(getListCompaniesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCompaniesQueryKey = () => {
+    return [
+    `/api/super-admin/companies`
+    ] as const;
+    }
+
+
+export const getListCompaniesQueryOptions = <TData = Awaited<ReturnType<typeof listCompanies>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCompanies>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCompaniesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCompanies>>> = ({ signal }) => listCompanies({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCompanies>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCompaniesQueryResult = NonNullable<Awaited<ReturnType<typeof listCompanies>>>
+export type ListCompaniesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all registered companies
+ */
+
+export function useListCompanies<TData = Awaited<ReturnType<typeof listCompanies>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCompanies>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCompaniesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+/**
+ * @summary Update company status or subscription
+ */
+export const getUpdateCompanyUrl = (companyId: string,) => {
+
+
+
+
+  return `/api/super-admin/companies/${companyId}`
+}
+
+export const updateCompany = async (companyId: string,
+    updateCompanyBody: UpdateCompanyBody, options?: RequestInit): Promise<Company> => {
+
+  return customFetch<Company>(getUpdateCompanyUrl(companyId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateCompanyBody,)
+  }
+);}
+
+
+
+
+export const getUpdateCompanyMutationOptions = <TError = ErrorType<ProblemDetails>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCompany>>, TError,{companyId: string;data: BodyType<UpdateCompanyBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCompany>>, TError,{companyId: string;data: BodyType<UpdateCompanyBody>}, TContext> => {
+
+const mutationKey = ['updateCompany'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCompany>>, {companyId: string;data: BodyType<UpdateCompanyBody>}> = (props) => {
+          const {companyId,data} = props ?? {};
+
+          return  updateCompany(companyId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCompanyMutationResult = NonNullable<Awaited<ReturnType<typeof updateCompany>>>
+    export type UpdateCompanyMutationBody = BodyType<UpdateCompanyBody>
+    export type UpdateCompanyMutationError = ErrorType<ProblemDetails>
+
+    /**
+ * @summary Update company status or subscription
+ */
+export const useUpdateCompany = <TError = ErrorType<ProblemDetails>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCompany>>, TError,{companyId: string;data: BodyType<UpdateCompanyBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCompany>>,
+        TError,
+        {companyId: string;data: BodyType<UpdateCompanyBody>},
+        TContext
+      > => {
+      return useMutation(getUpdateCompanyMutationOptions(options));
+    }
+
+/**
+ * @summary Get stats for a single company
+ */
+export const getGetCompanyStatsUrl = (companyId: string,) => {
+
+
+
+
+  return `/api/super-admin/companies/${companyId}/stats`
+}
+
+export const getCompanyStats = async (companyId: string, options?: RequestInit): Promise<CompanyStats> => {
+
+  return customFetch<CompanyStats>(getGetCompanyStatsUrl(companyId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCompanyStatsQueryKey = (companyId: string,) => {
+    return [
+    `/api/super-admin/companies/${companyId}/stats`
+    ] as const;
+    }
+
+
+export const getGetCompanyStatsQueryOptions = <TData = Awaited<ReturnType<typeof getCompanyStats>>, TError = ErrorType<ProblemDetails>>(companyId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCompanyStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCompanyStatsQueryKey(companyId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCompanyStats>>> = ({ signal }) => getCompanyStats(companyId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(companyId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCompanyStats>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCompanyStatsQueryResult = NonNullable<Awaited<ReturnType<typeof getCompanyStats>>>
+export type GetCompanyStatsQueryError = ErrorType<ProblemDetails>
+
+
+/**
+ * @summary Get stats for a single company
+ */
+
+export function useGetCompanyStats<TData = Awaited<ReturnType<typeof getCompanyStats>>, TError = ErrorType<ProblemDetails>>(
+ companyId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCompanyStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCompanyStatsQueryOptions(companyId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+/**
+ * @summary Reset admin MPIN for a company
+ */
+export const getResetCompanyAdminUrl = (companyId: string,) => {
+
+
+
+
+  return `/api/super-admin/companies/${companyId}/reset-admin`
+}
+
+export const resetCompanyAdmin = async (companyId: string, options?: RequestInit): Promise<ResetCompanyAdmin200> => {
+
+  return customFetch<ResetCompanyAdmin200>(getResetCompanyAdminUrl(companyId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getResetCompanyAdminMutationOptions = <TError = ErrorType<ProblemDetails>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetCompanyAdmin>>, TError,{companyId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resetCompanyAdmin>>, TError,{companyId: string}, TContext> => {
+
+const mutationKey = ['resetCompanyAdmin'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resetCompanyAdmin>>, {companyId: string}> = (props) => {
+          const {companyId} = props ?? {};
+
+          return  resetCompanyAdmin(companyId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResetCompanyAdminMutationResult = NonNullable<Awaited<ReturnType<typeof resetCompanyAdmin>>>
+
+    export type ResetCompanyAdminMutationError = ErrorType<ProblemDetails>
+
+    /**
+ * @summary Reset admin MPIN for a company
+ */
+export const useResetCompanyAdmin = <TError = ErrorType<ProblemDetails>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetCompanyAdmin>>, TError,{companyId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resetCompanyAdmin>>,
+        TError,
+        {companyId: string},
+        TContext
+      > => {
+      return useMutation(getResetCompanyAdminMutationOptions(options));
     }
 
 /**

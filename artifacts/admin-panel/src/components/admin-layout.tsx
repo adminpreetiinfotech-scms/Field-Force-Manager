@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { LayoutDashboard, Users, UserSquare2, FileText, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, UserSquare2, FileText, LogOut, Building2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const navItems = [
@@ -8,6 +8,10 @@ const navItems = [
   { href: "/staff", label: "Staff Management", icon: Users },
   { href: "/candidates", label: "Candidates", icon: UserSquare2 },
   { href: "/reports", label: "Reports", icon: FileText },
+];
+
+const superAdminItems = [
+  { href: "/super-admin/companies", label: "All Companies", icon: Building2 },
 ];
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -19,9 +23,28 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     return null;
   }
 
+  const isSuperAdmin = user.role === "super_admin";
+
   const handleLogout = () => {
     logout();
     setLocation("/login");
+  };
+
+  const NavLink = ({ href, label, icon: Icon }: { href: string; label: string; icon: React.ElementType }) => {
+    const isActive = location === href || location.startsWith(href + "/");
+    return (
+      <Link
+        href={href}
+        className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+          isActive
+            ? "bg-primary/10 text-primary"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+        }`}
+      >
+        <Icon className="h-4 w-4" />
+        {label}
+      </Link>
+    );
   };
 
   return (
@@ -30,25 +53,37 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       <aside className="w-64 border-r bg-card flex flex-col hidden md:flex">
         <div className="p-6 border-b">
           <div className="flex items-center gap-2 font-bold text-xl text-primary">
-            <div className="w-8 h-8 rounded bg-primary text-primary-foreground flex items-center justify-center">NS</div>
+            <div className="w-8 h-8 rounded bg-primary text-primary-foreground flex items-center justify-center text-xs">NS</div>
             Nistha Skill
           </div>
-          <div className="mt-2 text-sm text-muted-foreground">Admin Portal</div>
+          <div className="mt-1 text-xs text-muted-foreground">Admin Portal</div>
+          {isSuperAdmin && (
+            <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-medium">
+              <ShieldCheck className="h-3 w-3" />
+              Super Admin
+            </div>
+          )}
         </div>
-        
+
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location === item.href || location.startsWith(item.href + "/");
-            return (
-              <Link key={item.href} href={item.href} className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
-                <Icon className="h-4 w-4" />
-                {item.label}
-              </Link>
-            );
-          })}
+          {navItems.map((item) => (
+            <NavLink key={item.href} {...item} />
+          ))}
+
+          {isSuperAdmin && (
+            <>
+              <div className="pt-4 pb-1 px-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+                  Super Admin
+                </p>
+              </div>
+              {superAdminItems.map((item) => (
+                <NavLink key={item.href} {...item} />
+              ))}
+            </>
+          )}
         </nav>
-        
+
         <div className="p-4 border-t">
           <div className="mb-4 px-3">
             <p className="text-sm font-medium truncate">{user.name}</p>
@@ -65,9 +100,10 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Mobile Header */}
         <header className="h-14 border-b bg-card flex items-center px-4 md:hidden justify-between">
-           <div className="font-bold text-primary flex items-center gap-2">
+          <div className="font-bold text-primary flex items-center gap-2">
             <div className="w-6 h-6 rounded bg-primary text-primary-foreground flex items-center justify-center text-xs">NS</div>
             Nistha Skill
+            {isSuperAdmin && <span className="text-xs text-amber-600 font-normal">(Super Admin)</span>}
           </div>
           <Button variant="ghost" size="icon" onClick={handleLogout}>
             <LogOut className="h-4 w-4" />
