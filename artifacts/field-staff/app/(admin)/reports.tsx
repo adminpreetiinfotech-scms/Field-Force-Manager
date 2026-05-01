@@ -30,6 +30,7 @@ import {
 
 import { useColors } from "@/hooks/useColors";
 import { buildCsv, exportCsvFile, formatLocalTime } from "@/utils/csvExport";
+import { downloadXlsxFile } from "@/utils/xlsxExport";
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
@@ -234,6 +235,35 @@ export default function ReportsScreen() {
   }, [trips, dates]);
 
   const totalKm = trips?.reduce((s, r) => s + (r.distanceKm ?? 0), 0) ?? 0;
+
+  // ── Excel export state ──────────────────────────────────────────────────────
+  const [xlPreset, setXlPreset] = useState<CsvPreset>("30d");
+  const [xlCustomFrom, setXlCustomFrom] = useState(daysAgoISO(29));
+  const [xlCustomTo, setXlCustomTo] = useState(todayISO());
+  const [xlStaffId, setXlStaffId] = useState<string | null>(null);
+  const [xlReportType, setXlReportType] = useState<"daily" | "weekly" | "monthly">("daily");
+  const [xlDownloading, setXlDownloading] = useState(false);
+
+  const xlDates =
+    xlPreset === "custom"
+      ? { from: xlCustomFrom, to: xlCustomTo }
+      : csvPresetDates(xlPreset);
+
+  const onExportXlsx = useCallback(async () => {
+    setXlDownloading(true);
+    try {
+      await downloadXlsxFile({
+        from: xlDates.from,
+        to: xlDates.to,
+        staffId: xlStaffId,
+        reportType: xlReportType,
+      });
+    } catch (e: any) {
+      Alert.alert("Download Failed", e?.message || "Could not download Excel report.");
+    } finally {
+      setXlDownloading(false);
+    }
+  }, [xlDates, xlStaffId, xlReportType]);
 
   const renderTrip = useCallback(
     ({ item, index }: { item: TripReportRow; index: number }) => (
@@ -1105,6 +1135,254 @@ export default function ReportsScreen() {
             isError
           />
         )}
+
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {/* SECTION 3 — EXCEL EXPORT                                          */}
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        <View style={[styles.sectionGroup, { marginTop: 20 }]}>
+          {/* Section title */}
+          <View style={styles.sectionTitleRow}>
+            <View
+              style={[
+                styles.sectionTitleIcon,
+                { backgroundColor: "#16A34A18", borderRadius: 8 },
+              ]}
+            >
+              <Feather name="file-text" size={15} color="#16A34A" />
+            </View>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              Export Excel Report
+            </Text>
+          </View>
+
+          {/* Report Type */}
+          <Text
+            style={[styles.filterLabel, { color: colors.mutedForeground }]}
+          >
+            REPORT TYPE
+          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipRow}
+          >
+            {(["daily", "weekly", "monthly"] as const).map((rt) => {
+              const active = xlReportType === rt;
+              return (
+                <Pressable
+                  key={rt}
+                  onPress={() => setXlReportType(rt)}
+                  style={[
+                    styles.chip,
+                    {
+                      backgroundColor: active ? "#16A34A" : colors.muted,
+                      borderColor: active ? "#16A34A" : colors.border,
+                      borderRadius: 999,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      { color: active ? "#fff" : colors.foreground },
+                    ]}
+                  >
+                    {rt.charAt(0).toUpperCase() + rt.slice(1)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+
+          {/* Date range presets */}
+          <Text
+            style={[
+              styles.filterLabel,
+              { color: colors.mutedForeground, marginTop: 14 },
+            ]}
+          >
+            DATE RANGE
+          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipRow}
+          >
+            {CSV_PRESETS.map((p) => {
+              const active = xlPreset === p.key;
+              return (
+                <Pressable
+                  key={p.key}
+                  onPress={() => setXlPreset(p.key)}
+                  style={[
+                    styles.chip,
+                    {
+                      backgroundColor: active ? "#16A34A" : colors.muted,
+                      borderColor: active ? "#16A34A" : colors.border,
+                      borderRadius: 999,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      { color: active ? "#fff" : colors.foreground },
+                    ]}
+                  >
+                    {p.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+
+          {xlPreset === "custom" ? (
+            <View style={styles.customDateRow}>
+              <DateField
+                label="FROM"
+                value={xlCustomFrom}
+                onChange={setXlCustomFrom}
+                colors={colors}
+              />
+              <View style={styles.dateArrow}>
+                <Feather
+                  name="arrow-right"
+                  size={14}
+                  color={colors.mutedForeground}
+                />
+              </View>
+              <DateField
+                label="TO"
+                value={xlCustomTo}
+                onChange={setXlCustomTo}
+                colors={colors}
+              />
+            </View>
+          ) : (
+            <Text
+              style={[styles.dateRangeText, { color: colors.mutedForeground }]}
+            >
+              {xlDates.from === xlDates.to
+                ? xlDates.from
+                : `${xlDates.from} → ${xlDates.to}`}
+            </Text>
+          )}
+
+          {/* Staff filter */}
+          <Text
+            style={[
+              styles.filterLabel,
+              { color: colors.mutedForeground, marginTop: 16 },
+            ]}
+          >
+            STAFF FILTER
+          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipRow}
+          >
+            <Pressable
+              onPress={() => setXlStaffId(null)}
+              style={[
+                styles.chip,
+                {
+                  backgroundColor: !xlStaffId ? "#16A34A" : colors.muted,
+                  borderColor: !xlStaffId ? "#16A34A" : colors.border,
+                  borderRadius: 999,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  { color: !xlStaffId ? "#fff" : colors.foreground },
+                ]}
+              >
+                All Staff
+              </Text>
+            </Pressable>
+            {(staffList ?? [])
+              .filter((s) => s.role === "staff")
+              .map((s) => {
+                const active = xlStaffId === s.id;
+                return (
+                  <Pressable
+                    key={s.id}
+                    onPress={() => setXlStaffId(active ? null : s.id)}
+                    style={[
+                      styles.chip,
+                      {
+                        backgroundColor: active ? "#16A34A" : colors.muted,
+                        borderColor: active ? "#16A34A" : colors.border,
+                        borderRadius: 999,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        { color: active ? "#fff" : colors.foreground },
+                      ]}
+                    >
+                      {s.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+          </ScrollView>
+
+          {/* Download button */}
+          <View
+            style={[
+              styles.summaryCard,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                borderRadius: colors.radius + 2,
+                marginTop: 14,
+              },
+            ]}
+          >
+            <View style={styles.summaryLeft}>
+              <Text
+                style={[styles.summaryCount, { color: colors.foreground }]}
+              >
+                .xlsx
+              </Text>
+              <Text
+                style={[
+                  styles.summaryCountLabel,
+                  { color: colors.mutedForeground },
+                ]}
+              >
+                {xlReportType} · {xlDates.from === xlDates.to ? xlDates.from : `${xlDates.from} → ${xlDates.to}`}
+              </Text>
+            </View>
+
+            <Pressable
+              onPress={onExportXlsx}
+              disabled={xlDownloading}
+              style={({ pressed }) => [
+                styles.exportBtn,
+                {
+                  backgroundColor: "#16A34A",
+                  borderRadius: colors.radius,
+                  opacity: pressed || xlDownloading ? 0.75 : 1,
+                },
+              ]}
+            >
+              {xlDownloading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Feather name="download" size={15} color="#fff" />
+              )}
+              <Text style={[styles.exportBtnText, { color: "#fff" }]}>
+                {xlDownloading ? "Generating…" : "Download Excel"}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
       </ScrollView>
     </View>
   );
