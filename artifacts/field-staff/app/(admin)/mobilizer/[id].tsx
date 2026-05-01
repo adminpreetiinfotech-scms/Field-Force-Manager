@@ -115,6 +115,79 @@ export default function MobilizerProfile() {
     }
   };
 
+  // ── Delete / Suspend / Enable ───────────────────────────────────────────────
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const apiBase = `https://${process.env.EXPO_PUBLIC_DOMAIN || "field-force-manager-Mobilization.replit.app"}`;
+
+  const handleDelete = () => {
+    Alert.alert(
+      "Account Delete Karen?",
+      `${data?.name} ka account permanently delete ho jaayega. Kya aap sure hain?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setActionLoading(true);
+            try {
+              const res = await fetch(`${apiBase}/api/admin/staff/${id}`, { method: "DELETE" });
+              if (!res.ok) throw new Error("Delete failed");
+              Alert.alert("Deleted", "Staff account delete ho gaya.");
+              router.back();
+            } catch {
+              Alert.alert("Error", "Delete nahi hua. Dobara try karen.");
+            } finally {
+              setActionLoading(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleSuspend = () => {
+    Alert.alert(
+      "Account Suspend Karen?",
+      `${data?.name} ka account suspend ho jaayega. Woh login nahi kar paayega.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Suspend",
+          style: "destructive",
+          onPress: async () => {
+            setActionLoading(true);
+            try {
+              const res = await fetch(`${apiBase}/api/admin/staff/${id}/disable`, { method: "PATCH" });
+              if (!res.ok) throw new Error("Suspend failed");
+              Alert.alert("Suspended", "Staff account suspend ho gaya.");
+              refetch();
+            } catch {
+              Alert.alert("Error", "Suspend nahi hua. Dobara try karen.");
+            } finally {
+              setActionLoading(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleEnable = async () => {
+    setActionLoading(true);
+    try {
+      const res = await fetch(`${apiBase}/api/admin/staff/${id}/enable`, { method: "PATCH" });
+      if (!res.ok) throw new Error("Enable failed");
+      Alert.alert("Active", "Staff account activate ho gaya.");
+      refetch();
+    } catch {
+      Alert.alert("Error", "Activate nahi hua. Dobara try karen.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const { mutate: saveNotes, isPending: notesSaving } = useUpdateStaffNotes({
     mutation: {
       onSuccess: (res) => {
@@ -311,6 +384,65 @@ export default function MobilizerProfile() {
             </Text>
           )}
         </View>
+
+        {/* ── Admin Actions ────────────────────────────────────────────── */}
+        {data.role !== "admin" && (
+          <View style={[styles.section, { paddingTop: 16, paddingBottom: 4 }]}>
+            <SectionHeader icon="settings" title="Admin Actions" colors={colors} />
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
+              {(data as any).approvalStatus === "suspended" ? (
+                <Pressable
+                  onPress={handleEnable}
+                  disabled={actionLoading}
+                  style={({ pressed }) => ({
+                    flex: 1, flexDirection: "row", alignItems: "center",
+                    justifyContent: "center", gap: 8, height: 44,
+                    backgroundColor: "#16a34a", borderRadius: colors.radius,
+                    opacity: pressed || actionLoading ? 0.7 : 1,
+                  })}
+                >
+                  <Feather name="check-circle" size={15} color="#fff" />
+                  <Text style={{ color: "#fff", fontSize: 13, fontFamily: "Inter_600SemiBold" }}>
+                    Activate Karen
+                  </Text>
+                </Pressable>
+              ) : (
+                <Pressable
+                  onPress={handleSuspend}
+                  disabled={actionLoading}
+                  style={({ pressed }) => ({
+                    flex: 1, flexDirection: "row", alignItems: "center",
+                    justifyContent: "center", gap: 8, height: 44,
+                    backgroundColor: "#F59E0B22", borderWidth: 1,
+                    borderColor: "#F59E0B", borderRadius: colors.radius,
+                    opacity: pressed || actionLoading ? 0.7 : 1,
+                  })}
+                >
+                  <Feather name="pause-circle" size={15} color="#F59E0B" />
+                  <Text style={{ color: "#F59E0B", fontSize: 13, fontFamily: "Inter_600SemiBold" }}>
+                    Suspend Karen
+                  </Text>
+                </Pressable>
+              )}
+              <Pressable
+                onPress={handleDelete}
+                disabled={actionLoading}
+                style={({ pressed }) => ({
+                  flex: 1, flexDirection: "row", alignItems: "center",
+                  justifyContent: "center", gap: 8, height: 44,
+                  backgroundColor: "#ef444422", borderWidth: 1,
+                  borderColor: "#ef4444", borderRadius: colors.radius,
+                  opacity: pressed || actionLoading ? 0.7 : 1,
+                })}
+              >
+                <Feather name="trash-2" size={15} color="#ef4444" />
+                <Text style={{ color: "#ef4444", fontSize: 13, fontFamily: "Inter_600SemiBold" }}>
+                  Delete Karen
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
 
         {/* ── Lifetime stats grid ─────────────────────────────────────── */}
         <View style={[styles.section, { paddingTop: 20 }]}>

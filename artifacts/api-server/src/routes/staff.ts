@@ -391,6 +391,7 @@ router.get("/staff/:staffId/profile-stats", async (req, res, next) => {
       empCode: staffRow.empCode,
       phone: staffRow.phone,
       role: staffRow.role,
+      approvalStatus: staffRow.approvalStatus ?? "pending",
       organization: staffRow.organization ?? null,
       area: staffRow.area ?? null,
       notes: staffRow.notes ?? null,
