@@ -186,10 +186,6 @@ router.post("/auth/set-mpin", async (req, res, next) => {
 
     const row = rows[0]!;
 
-    if (row.approvalStatus === "pending") {
-      res.status(403).json({ title: "Your account is pending admin approval.", status: 403 });
-      return;
-    }
     if (row.approvalStatus === "rejected") {
       res.status(403).json({ title: "Your account has been rejected. Please contact admin.", status: 403 });
       return;
