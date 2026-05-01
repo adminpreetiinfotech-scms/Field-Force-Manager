@@ -6,6 +6,7 @@ import candidatesRouter from "./candidates";
 import adminRouter from "./admin";
 import mpinRouter from "./mpin";
 import reportsRouter from "./reports";
+import noticesRouter from "./notices";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(activityRouter);
 router.use(adminRouter);
 router.use(candidatesRouter);
 router.use(reportsRouter);
+router.use(noticesRouter);
 
 export default router;

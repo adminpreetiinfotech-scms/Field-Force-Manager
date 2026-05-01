@@ -1,0 +1,111 @@
+Build a complete Admin Notification / Notice System (production-level).
+
+FEATURE NAME: Smart Notice & Alert System
+
+1. Admin Panel Features:
+
+- Create Notice with:
+  - Title
+  - Message (multi-line)
+  - Priority: Normal / Important / Urgent
+  - Type: Notice / Alert / Reminder
+  - Attachment (optional: image or PDF)
+  - Expiry Date (optional)
+
+- Target Audience:
+  - Single Staff (by ID)
+  - Multiple Staff (multi-select)
+  - All Staff
+  - Filter by:
+    - District / Block / Center (optional future-ready)
+
+- Schedule Option:
+  - Send Immediately
+  - Schedule for later date/time
+
+2. Delivery System:
+
+- Real-time popup (in-app modal)
+- Push notification (if app minimized)
+- Badge count on notification bell
+
+3. Staff Side Behavior:
+
+- On receive:
+  - Full-screen popup for Urgent notices
+  - Normal popup for others
+
+Popup should show:
+- Title
+- Message
+- Priority (color-coded)
+- Date & Time
+- Attachment preview (if any)
+
+Buttons:
+- Mark as Read
+- View Details
+
+4. Smart Rules:
+
+- If staff is offline:
+  - Show notice on next login
+- If unread:
+  - Show reminder popup after some time
+- Urgent notice:
+  - Force popup until acknowledged
+
+5. Notice Center (Staff):
+
+- Notification Bell icon
+- Unread count badge
+- List of:
+  - Unread notices (top)
+  - Read notices (history)
+
+6. Admin Tracking Dashboard:
+
+- See all sent notices
+- Track:
+  - Delivered
+  - Read
+  - Pending
+
+- Per staff:
+  - Read time
+  - Device status (optional)
+
+7. Data Storage:
+
+- Store:
+  - Notice ID
+  - Staff ID mapping
+  - Read status
+  - Read timestamp
+
+8. Security:
+
+- Only admin can send notice
+- Disabled/deleted staff should not receive
+
+9. UI/UX:
+
+- Clean mobile UI
+- Color code:
+  - Red = Urgent
+  - Yellow = Important
+  - Blue = Normal
+
+- Smooth animations for popup
+
+10. Performance:
+
+- Lightweight & fast
+- Works on low network
+- Offline-safe syncing
+
+11. Extra (Optional but Recommended):
+
+- Sound alert for urgent notice
+- WhatsApp share option for notice
+- Auto-delete expired notices

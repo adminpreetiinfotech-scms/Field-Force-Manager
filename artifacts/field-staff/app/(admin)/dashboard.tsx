@@ -26,12 +26,14 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 
 import { LiveActivityFeed } from "@/components/admin/LiveActivityFeed";
+import { NoticePopup } from "@/components/NoticePopup";
 import { PillarsRow } from "@/components/PillarBadge";
 import { ReportContextBar } from "@/components/ReportContextBar";
 import { StatCard } from "@/components/StatCard";
 import { SyncBanner } from "@/components/SyncBanner";
 import { useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
+import { useNotices } from "@/hooks/useNotices";
 
 type CandidateStats = {
   total: number;
@@ -71,6 +73,12 @@ export default function AdminDashboard() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user, attendance, meterReadings, staffLocations } = useApp();
+  const { unreadCount, unreadNotices, markRead } = useNotices({
+    phone: user?.phone,
+    enabled: !!user?.phone,
+    pollIntervalMs: 60_000,
+  });
+  const popupNotice = unreadNotices[0] ?? null;
 
   const today = new Date().toISOString().slice(0, 10);
   const { stats: candidateStats, loading: candidateStatsLoading } = useCandidateStats();
@@ -463,6 +471,13 @@ export default function AdminDashboard() {
           <StaffManagementSection />
         </View>
       </ScrollView>
+
+      <NoticePopup
+        notice={popupNotice}
+        totalUnread={unreadCount}
+        onRead={markRead}
+        noticesRoute="/(admin)/notices"
+      />
     </View>
   );
 }

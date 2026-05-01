@@ -24,6 +24,7 @@ import {
 } from "@workspace/api-client-react";
 
 import { Button } from "@/components/Button";
+import { NoticePopup, NotifBell } from "@/components/NoticePopup";
 import { PillarsRow } from "@/components/PillarBadge";
 import { ReportContextBar } from "@/components/ReportContextBar";
 import { StatCard } from "@/components/StatCard";
@@ -35,6 +36,7 @@ import {
   useApp,
 } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
+import { useNotices } from "@/hooks/useNotices";
 
 function haversine(a: GeoPoint, b: GeoPoint) {
   const R = 6371;
@@ -95,17 +97,21 @@ export default function StaffHome() {
   const lastEntry = myAttendance[0] as AttendanceRecord | undefined;
   const isCheckedIn = lastEntry?.type === "in";
 
-  const [unreadCount, setUnreadCount] = useState(0);
   const [showReport, setShowReport] = useState(false);
+
+  const {
+    unreadCount,
+    unreadNotices,
+    markRead,
+    refresh: refreshNotices,
+  } = useNotices({ phone: user?.phone, enabled: !!user?.phone, pollIntervalMs: 30_000 });
+
+  const popupNotice = unreadNotices[0] ?? null;
+
   useFocusEffect(
     useCallback(() => {
-      if (!user?.phone) return;
-      const apiBase = getApiBase();
-      fetch(`${apiBase}/api/notifications?phone=${encodeURIComponent(user.phone)}`)
-        .then((r) => r.json() as Promise<{ isRead: boolean }[]>)
-        .then((data) => setUnreadCount(data.filter((n) => !n.isRead).length))
-        .catch(() => {/* non-fatal */});
-    }, [user?.phone]),
+      void refreshNotices();
+    }, [refreshNotices]),
   );
 
   const [now, setNow] = useState(Date.now());
@@ -290,18 +296,11 @@ export default function StaffHome() {
               <Text style={styles.name}>{user?.name || "Field Staff"}</Text>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Pressable
-                onPress={() => router.push("/notifications")}
-                style={{ position: "relative", padding: 6 }}
-                hitSlop={8}
-              >
-                <Feather name="bell" size={20} color="#fff" />
-                {unreadCount > 0 && (
-                  <View style={styles.notifBadge}>
-                    <Text style={styles.notifBadgeText}>{unreadCount > 9 ? "9+" : String(unreadCount)}</Text>
-                  </View>
-                )}
-              </Pressable>
+              <NotifBell
+                count={unreadCount}
+                onPress={() => router.push("/(staff)/notices" as never)}
+                light
+              />
               <View style={[styles.empBadge, { backgroundColor: "rgba(255,255,255,0.12)" }]}>
                 <Feather name="hash" size={11} color="#FCD34D" />
                 <Text style={styles.empText}>{user?.empCode}</Text>
@@ -634,6 +633,14 @@ export default function StaffHome() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Notice Popup */}
+      <NoticePopup
+        notice={popupNotice}
+        totalUnread={unreadCount}
+        onRead={markRead}
+        noticesRoute="/(staff)/notices"
+      />
     </View>
   );
 }
