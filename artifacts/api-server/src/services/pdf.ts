@@ -578,26 +578,7 @@ export async function generateCandidatePdf(
     }
     y += Math.ceil(docs.length / 2) * 16 + 5;
 
-    // Aadhaar images — front and back side by side if captured
-    const hasFront = !!(c.aadhaarFrontPath && fs.existsSync(c.aadhaarFrontPath!));
-    const hasBack  = !!(c.aadhaarBackPath  && fs.existsSync(c.aadhaarBackPath!));
-    if (hasFront || hasBack) {
-      const imgH2 = 68;
-      const imgW2 = (FW - 12) / 2;
-      hl(doc, FX, y, FX + FW, 0.4, LGRAY);
-      y += 4;
-      if (hasFront) {
-        safeImg(doc, c.aadhaarFrontPath!, FX, y, { width: imgW2, height: imgH2, fit: [imgW2, imgH2] });
-        doc.font("DVR").fontSize(6).fillColor(GRAY)
-           .text("Aadhaar — Front", FX, y + imgH2 + 2, { width: imgW2, align: "center", lineBreak: false });
-      }
-      if (hasBack) {
-        safeImg(doc, c.aadhaarBackPath!, FX + imgW2 + 12, y, { width: imgW2, height: imgH2, fit: [imgW2, imgH2] });
-        doc.font("DVR").fontSize(6).fillColor(GRAY)
-           .text("Aadhaar — Back", FX + imgW2 + 12, y + imgH2 + 2, { width: imgW2, align: "center", lineBreak: false });
-      }
-      y += imgH2 + 12;
-    }
+    // Aadhaar images intentionally excluded from PDF for privacy
 
     // ══════════════════════════════════════════════════════════════════════════
     // G — DECLARATION & SIGNATURE
@@ -685,8 +666,6 @@ export async function generateCandidatePdf(
     // PAGE 2+ — Attached document images
     // ══════════════════════════════════════════════════════════════════════════
     const attached: Array<{ label: string; path: string | null | undefined }> = [
-      { label: "Aadhaar Card – Front  /  आधार कार्ड (आगे)",       path: c.aadhaarFrontPath  },
-      { label: "Aadhaar Card – Back  /  आधार कार्ड (पीछे)",        path: c.aadhaarBackPath   },
       { label: "Education Certificate  /  शैक्षिक प्रमाण पत्र",   path: c.educationCertPath },
       { label: "Bank Passbook  /  बैंक पासबुक",                    path: c.bankPassbookPath  },
       { label: "Caste Certificate  /  जाति प्रमाण पत्र",           path: c.casteCertPath     },
