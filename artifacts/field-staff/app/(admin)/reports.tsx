@@ -28,6 +28,8 @@ import {
   type TripReportRow,
 } from "@workspace/api-client-react";
 
+import { ReportContextBar } from "@/components/ReportContextBar";
+import { useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { buildCsv, exportCsvFile, formatLocalTime } from "@/utils/csvExport";
 import { downloadXlsxFile } from "@/utils/xlsxExport";
@@ -121,6 +123,7 @@ export default function ReportsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const webTop = Platform.OS === "web" ? 67 : 0;
+  const { user } = useApp();
 
   // ── Calendar state ─────────────────────────────────────────────────────────
   const now = new Date();
@@ -257,6 +260,8 @@ export default function ReportsScreen() {
         to: xlDates.to,
         staffId: xlStaffId,
         reportType: xlReportType,
+        organization: user?.organization ?? undefined,
+        staffName: user?.name ?? undefined,
       });
     } catch (e: any) {
       Alert.alert("Download Failed", e?.message || "Could not download Excel report.");
@@ -306,17 +311,26 @@ export default function ReportsScreen() {
           styles.header,
           {
             paddingTop: insets.top + 16 + webTop,
-            backgroundColor: colors.card,
+            paddingBottom: 14,
+            backgroundColor: colors.primary,
             borderBottomColor: colors.border,
           },
         ]}
       >
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>
+        <Text style={[styles.headerTitle, { color: "#fff" }]}>
           Reports
         </Text>
-        <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>
-          Calendar · Leaderboard · CSV export
+        <Text style={[styles.headerSub, { color: "rgba(255,255,255,0.72)" }]}>
+          Calendar · Leaderboard · Export
         </Text>
+        <ReportContextBar
+          organization={user?.organization}
+          staffName={user?.name}
+          from={dates.from}
+          to={dates.to}
+          textColor="#fff"
+          subColor="rgba(255,255,255,0.72)"
+        />
       </View>
 
       <ScrollView

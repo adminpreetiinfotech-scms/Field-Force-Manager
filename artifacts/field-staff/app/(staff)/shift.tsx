@@ -25,6 +25,7 @@ import {
 
 import { Button } from "@/components/Button";
 import { PillarsRow } from "@/components/PillarBadge";
+import { ReportContextBar } from "@/components/ReportContextBar";
 import { StatCard } from "@/components/StatCard";
 import { SyncBanner } from "@/components/SyncBanner";
 import {
@@ -307,6 +308,12 @@ export default function StaffHome() {
               </View>
             </View>
           </View>
+
+          <ReportContextBar
+            organization={user?.organization}
+            staffName={user?.name}
+            reportType="daily"
+          />
 
           <View style={[styles.shiftCard, { borderRadius: 20 }]}>
             <View style={styles.shiftRow}>

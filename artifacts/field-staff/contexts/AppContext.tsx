@@ -23,6 +23,7 @@ export type User = {
   phone: string;
   role: UserRole;
   empCode: string;
+  organization?: string | null;
 };
 
 export type GeoPoint = {
@@ -523,6 +524,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         phone: string;
         role: string;
         empCode: string;
+        organization?: string | null;
       };
     };
     const user: User = {
@@ -531,6 +533,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       phone: dto.phone,
       role: dto.role as UserRole,
       empCode: dto.empCode,
+      organization: dto.organization ?? null,
     };
     setState((s) => ({ ...s, user, pendingPhone: null, pendingRegistration: null }));
     return user;
@@ -553,6 +556,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         phone: string;
         role: string;
         empCode: string;
+        organization?: string | null;
       };
     };
     // For the registration flow: if pendingRegistration is set, use that user
@@ -565,6 +569,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           phone: dto.phone,
           role: dto.role as UserRole,
           empCode: dto.empCode,
+          organization: dto.organization ?? null,
         };
     setState((s) => ({ ...s, user, pendingPhone: null, pendingRegistration: null }));
     return user;

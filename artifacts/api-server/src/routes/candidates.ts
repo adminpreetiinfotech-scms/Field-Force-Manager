@@ -9,7 +9,26 @@ import { and, desc, eq, gte, ilike, lt, or } from "drizzle-orm";
 import express, { Router } from "express";
 import fs from "fs";
 import path from "path";
-import { generateCandidatePdf } from "../services/pdf";
+import { generateCandidatePdf, type PdfReportOpts } from "../services/pdf";
+
+const PDF_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"] as const;
+
+function fmtDMY(d: Date | null | undefined): string {
+  if (!d) return new Date().toLocaleDateString("en-IN");
+  const day = d.getDate().toString().padStart(2, "0");
+  return `${day} ${PDF_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function buildPdfOpts(
+  candidate: { skillCentreName?: string | null; mobilizer?: string | null; submittedBy?: string | null; createdAt?: Date | null },
+  query?: Record<string, string>,
+): PdfReportOpts {
+  return {
+    organization: query?.["organization"]?.trim() || candidate.skillCentreName?.trim() || null,
+    staffName:    query?.["staffName"]?.trim()    || candidate.mobilizer?.trim() || candidate.submittedBy?.trim() || null,
+    reportDate:   fmtDMY(candidate.createdAt ? new Date(candidate.createdAt) : new Date()),
+  };
+}
 
 const router = Router();
 
@@ -349,7 +368,11 @@ router.post("/candidates", async (req, res, next) => {
     };
     const pdfFilePath = path.join(candidateDir, "profile.pdf");
     try {
-      await generateCandidatePdf(candidateWithFiles as typeof candidate, pdfFilePath);
+      await generateCandidatePdf(
+        candidateWithFiles as typeof candidate,
+        pdfFilePath,
+        buildPdfOpts(candidate),
+      );
     } catch {
       /* PDF generation failure is non-fatal */
     }
@@ -632,10 +655,12 @@ router.get("/candidates/:id/pdf", async (req, res, next) => {
     }
 
     const pdfFilePath = path.join(CANDIDATES_DIR, candidate.id, "profile.pdf");
-    if (!fs.existsSync(pdfFilePath)) {
+    const pdfOpts = buildPdfOpts(candidate, req.query as Record<string, string>);
+    const hasOptsFromQuery = !!(req.query["organization"] || req.query["staffName"]);
+    if (!fs.existsSync(pdfFilePath) || hasOptsFromQuery) {
       fs.mkdirSync(path.dirname(pdfFilePath), { recursive: true });
       try {
-        await generateCandidatePdf(candidate, pdfFilePath);
+        await generateCandidatePdf(candidate, pdfFilePath, pdfOpts);
       } catch (pdfErr) {
         next(pdfErr);
         return;

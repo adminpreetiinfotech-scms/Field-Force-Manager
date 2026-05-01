@@ -120,7 +120,12 @@ export default function CandidateListScreen() {
 
   const handleDownloadPdf = (pdfUrl: string | null | undefined) => {
     if (!pdfUrl) return;
-    void Linking.openURL(`${getApiBase()}${pdfUrl}`);
+    const base = `${getApiBase()}${pdfUrl}`;
+    const params = new URLSearchParams();
+    if (user?.organization) params.set("organization", user.organization);
+    if (user?.name)         params.set("staffName", user.name);
+    const query = params.toString();
+    void Linking.openURL(query ? `${base}?${query}` : base);
   };
 
   const handleExportCsv = () => {

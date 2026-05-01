@@ -43,10 +43,12 @@ function coordStr(p: ActivityPayload | null, field: "origin" | "destination" | "
 
 router.get("/admin/reports/rides/xlsx", async (req, res, next) => {
   try {
-    const rawFrom       = req.query.from       as string | undefined;
-    const rawTo         = req.query.to         as string | undefined;
-    const rawStaffId    = req.query.staffId    as string | undefined;
-    const reportType    = (req.query.reportType as string | undefined) ?? "daily";
+    const rawFrom       = req.query.from         as string | undefined;
+    const rawTo         = req.query.to           as string | undefined;
+    const rawStaffId    = req.query.staffId      as string | undefined;
+    const reportType    = (req.query.reportType  as string | undefined) ?? "daily";
+    const organization  = (req.query.organization as string | undefined)?.trim() || null;
+    const staffNameHdr  = (req.query.staffName   as string | undefined)?.trim()  || null;
 
     const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
     if (!rawFrom || !DATE_RE.test(rawFrom) || !rawTo || !DATE_RE.test(rawTo)) {
@@ -234,9 +236,13 @@ router.get("/admin/reports/rides/xlsx", async (req, res, next) => {
     }
 
     // Header rows
-    mergeHeader(ws, 1, "Jharkhand Skill Development Mission Society (JSDMS) / DDU-GKY", NAVY, WHITE, 13);
+    const orgLine = organization ?? "Jharkhand Skill Development Mission Society (JSDMS) / DDU-GKY";
+    mergeHeader(ws, 1, orgLine, NAVY, WHITE, 13);
     mergeHeader(ws, 2, "STAFF RIDE READING REPORT", NAVY, AMBER, 14);
-    mergeHeader(ws, 3, `Date Range: ${rawFrom}  →  ${rawTo}   |   Report Type: ${rows[0]?.reportType ?? reportType}`, "FF1E3A5F", WHITE, 10);
+
+    const staffPart = staffNameHdr ? `Staff: ${staffNameHdr}   |   ` : "";
+    const rtLabel   = (rows[0]?.reportType ?? reportType.charAt(0).toUpperCase() + reportType.slice(1));
+    mergeHeader(ws, 3, `${staffPart}Report: ${rawFrom}  →  ${rawTo}   |   Type: ${rtLabel}`, "FF1E3A5F", WHITE, 10);
 
     // Summary block (row 5-8)
     const summaryData = [

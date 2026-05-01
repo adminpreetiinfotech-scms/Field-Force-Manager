@@ -216,9 +216,16 @@ function chk(doc: PDFDoc, x: number, y: number, checked: boolean, label: string)
 }
 
 // ─── Main PDF generator ───────────────────────────────────────────────────────
+export type PdfReportOpts = {
+  organization?: string | null;
+  staffName?: string | null;
+  reportDate?: string | null;
+};
+
 export async function generateCandidatePdf(
   rawCandidate: Candidate,
   pdfPath: string,
+  reportOpts?: PdfReportOpts,
 ): Promise<void> {
   const c = rawCandidate as Candidate & {
     maritalStatus?: string | null;
@@ -362,10 +369,30 @@ export async function generateCandidatePdf(
     // Header bottom (no divider line — keep title area clean)
     const sepY = MT + HEADER_H;
 
+    // ── Optional report context strip ─────────────────────────────────────
+    let reportStripH = 0;
+    const rOrg  = reportOpts?.organization?.trim() || c.skillCentreName?.trim() || null;
+    const rStaff = reportOpts?.staffName?.trim() || null;
+    const rDate  = reportOpts?.reportDate?.trim() || null;
+    if (rOrg || rStaff || rDate) {
+      const stripY = sepY;
+      reportStripH = 18;
+      // Light navy band
+      fill(doc, ML, stripY, CW, reportStripH, NAVY + "12");
+      fill(doc, ML, stripY, 3, reportStripH, AMBER);
+      const contentParts: string[] = [];
+      if (rOrg)   contentParts.push(rOrg);
+      if (rStaff) contentParts.push(`Staff: ${rStaff}`);
+      if (rDate)  contentParts.push(`Date: ${rDate}`);
+      const stripText = contentParts.join("   |   ");
+      t(doc, stripText, ML + 6, stripY + 5,
+        { size: 7, color: NAVY, width: CW - 12, align: "center" });
+    }
+
     // ══════════════════════════════════════════════════════════════════════════
     // TITLE AREA  (left of photo box)
     // ══════════════════════════════════════════════════════════════════════════
-    let y = sepY + 6;
+    let y = sepY + reportStripH + 6;
     const TW = PX - ML;   // title area width
 
     // "मेगा स्कील सेंटर" — pure Devanagari (anusvara form), centered bold

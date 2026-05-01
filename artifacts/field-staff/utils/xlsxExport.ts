@@ -11,12 +11,16 @@ export type XlsxReportParams = {
   to: string;
   staffId?: string | null;
   reportType?: string;
+  organization?: string | null;
+  staffName?: string | null;
 };
 
 export function buildXlsxUrl(params: XlsxReportParams): string {
   const q = new URLSearchParams({ from: params.from, to: params.to });
-  if (params.staffId) q.set("staffId", params.staffId);
-  if (params.reportType) q.set("reportType", params.reportType);
+  if (params.staffId)      q.set("staffId",      params.staffId);
+  if (params.reportType)   q.set("reportType",   params.reportType);
+  if (params.organization) q.set("organization", params.organization);
+  if (params.staffName)    q.set("staffName",    params.staffName);
   return `${API_BASE}/api/admin/reports/rides/xlsx?${q.toString()}`;
 }
 

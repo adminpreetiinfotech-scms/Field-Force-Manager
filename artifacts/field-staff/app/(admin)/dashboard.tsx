@@ -27,6 +27,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { LiveActivityFeed } from "@/components/admin/LiveActivityFeed";
 import { PillarsRow } from "@/components/PillarBadge";
+import { ReportContextBar } from "@/components/ReportContextBar";
 import { StatCard } from "@/components/StatCard";
 import { SyncBanner } from "@/components/SyncBanner";
 import { useApp } from "@/contexts/AppContext";
@@ -154,6 +155,12 @@ export default function AdminDashboard() {
               <Text style={styles.empText}>ADMIN</Text>
             </View>
           </View>
+
+          <ReportContextBar
+            organization={user?.organization}
+            staffName={user?.name}
+            reportType="daily"
+          />
 
           <View style={[styles.heroCard, { borderRadius: 20 }]}>
             <Text style={styles.heroLabel}>STAFF ON SHIFT</Text>
