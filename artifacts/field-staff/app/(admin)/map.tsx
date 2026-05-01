@@ -35,7 +35,7 @@ class MapErrorBoundary extends Component<
 }
 
 function getApiBase(): string {
-  const domain = process.env.EXPO_PUBLIC_DOMAIN;
+  const domain = process.env.EXPO_PUBLIC_DOMAIN || "field-force-manager-Mobilization.replit.app";
   if (domain) return `https://${domain}`;
   return "";
 }

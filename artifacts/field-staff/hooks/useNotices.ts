@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 
-const _domain = process.env.EXPO_PUBLIC_DOMAIN;
+const _domain = process.env.EXPO_PUBLIC_DOMAIN || "field-force-manager-Mobilization.replit.app";
 const API_BASE = _domain ? `https://${_domain}` : "";
 
 export type NoticeItem = {

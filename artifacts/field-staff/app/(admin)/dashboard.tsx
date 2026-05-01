@@ -48,7 +48,7 @@ type CandidateStats = {
   pendingMobilizers: number;
 };
 
-const _domain = process.env.EXPO_PUBLIC_DOMAIN;
+const _domain = process.env.EXPO_PUBLIC_DOMAIN || "field-force-manager-Mobilization.replit.app";
 const API_BASE = _domain ? `https://${_domain}` : "";
 
 function useCandidateStats() {

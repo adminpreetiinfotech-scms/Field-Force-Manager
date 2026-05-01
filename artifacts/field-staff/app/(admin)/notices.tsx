@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
 
-const _domain = process.env.EXPO_PUBLIC_DOMAIN;
+const _domain = process.env.EXPO_PUBLIC_DOMAIN || "field-force-manager-Mobilization.replit.app";
 const API_BASE = _domain ? `https://${_domain}` : "";
 
 // ─── Types ────────────────────────────────────────────────────────────────────

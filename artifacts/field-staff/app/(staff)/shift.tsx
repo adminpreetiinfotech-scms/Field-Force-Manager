@@ -68,7 +68,7 @@ function formatDate(ts: number) {
 
 function getApiBase(): string {
   if (Platform.OS === "web") return "";
-  const domain = process.env.EXPO_PUBLIC_DOMAIN;
+  const domain = process.env.EXPO_PUBLIC_DOMAIN || "field-force-manager-Mobilization.replit.app";
   if (!domain) return "";
   return domain.startsWith("http") ? domain : `https://${domain}`;
 }
