@@ -99,6 +99,9 @@ export function CompanyBrand({
             {schemeName}
           </Text>
         )}
+        <Text style={[styles.devCredit, { color: schemeColor }]}>
+          Developed by Preeti Infotech
+        </Text>
       </View>
     </View>
   );
@@ -136,5 +139,13 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     textAlign: "center",
     letterSpacing: 0.2,
+  },
+  devCredit: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 10,
+    textAlign: "center",
+    letterSpacing: 0.1,
+    opacity: 0.7,
+    marginTop: 2,
   },
 });
