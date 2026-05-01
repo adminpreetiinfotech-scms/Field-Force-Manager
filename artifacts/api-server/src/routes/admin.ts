@@ -551,4 +551,113 @@ router.get("/admin/live-locations", requireAdmin, async (_req, res, next) => {
   }
 });
 
+// ─── GET /api/admin/dashboard/stats ─────────────────────────────────────────
+// Consolidated stats for the admin web panel dashboard.
+
+router.get("/admin/dashboard/stats", requireAdmin, async (_req, res, next) => {
+  try {
+    const companyId = res.locals.companyId as string | null;
+    const candFilter = companyId ? eq(candidatesTable.companyId, companyId) : undefined;
+    const staffFilter = companyId ? eq(staffTable.companyId, companyId) : undefined;
+
+    // Candidate counts by status
+    const statusCounts = await db
+      .select({
+        status: candidatesTable.status,
+        count: sql<number>`count(*)::int`.as("count"),
+      })
+      .from(candidatesTable)
+      .where(candFilter)
+      .groupBy(candidatesTable.status);
+
+    const candCounts: Record<string, number> = {};
+    let totalCandidates = 0;
+    for (const row of statusCounts) {
+      candCounts[row.status] = row.count;
+      totalCandidates += row.count;
+    }
+
+    // Today's registrations
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(todayStart);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const [todayRow] = await db
+      .select({ count: sql<number>`count(*)::int`.as("count") })
+      .from(candidatesTable)
+      .where(and(candFilter, gte(candidatesTable.createdAt, todayStart), lt(candidatesTable.createdAt, tomorrow)));
+
+    // This month's registrations
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    const [monthRow] = await db
+      .select({ count: sql<number>`count(*)::int`.as("count") })
+      .from(candidatesTable)
+      .where(and(candFilter, gte(candidatesTable.createdAt, monthStart)));
+
+    // Staff counts
+    const staffCounts = await db
+      .select({
+        approvalStatus: staffTable.approvalStatus,
+        disabledAt: staffTable.disabledAt,
+        count: sql<number>`count(*)::int`.as("count"),
+      })
+      .from(staffTable)
+      .where(and(staffFilter, isNull(staffTable.deletedAt)))
+      .groupBy(staffTable.approvalStatus, staffTable.disabledAt);
+
+    let totalStaff = 0;
+    let activeStaff = 0;
+    let pendingApprovals = 0;
+    for (const row of staffCounts) {
+      totalStaff += row.count;
+      if (row.approvalStatus === "approved" && !row.disabledAt) activeStaff += row.count;
+      if (row.approvalStatus === "pending") pendingApprovals += row.count;
+    }
+
+    res.json({
+      totalCandidates,
+      pendingCandidates: candCounts["pending"] ?? 0,
+      verifiedCandidates: candCounts["verified"] ?? 0,
+      enrolledCandidates: candCounts["enrolled"] ?? 0,
+      rejectedCandidates: candCounts["rejected"] ?? 0,
+      todayRegistrations: todayRow?.count ?? 0,
+      thisMonthRegistrations: monthRow?.count ?? 0,
+      totalStaff,
+      activeStaff,
+      pendingApprovals,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── PATCH /api/admin/staff/:id/deactivate ───────────────────────────────────
+// Deactivate (soft-disable) a staff member.
+
+router.patch("/admin/staff/:id/deactivate", requireAdmin, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const companyId = res.locals.companyId as string | null;
+
+    const filter = companyId
+      ? and(eq(staffTable.id, id), eq(staffTable.companyId, companyId), isNull(staffTable.deletedAt))
+      : and(eq(staffTable.id, id), isNull(staffTable.deletedAt));
+
+    const [row] = await db.select({ id: staffTable.id }).from(staffTable).where(filter).limit(1);
+    if (!row) {
+      res.status(404).json({ title: "Staff not found", status: 404 });
+      return;
+    }
+
+    await db.update(staffTable).set({ disabledAt: new Date() }).where(eq(staffTable.id, id));
+    req.log.info({ staffId: id }, "Staff deactivated by admin");
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;
+

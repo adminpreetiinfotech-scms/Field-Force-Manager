@@ -26,7 +26,10 @@ import type {
   CandidateDto,
   CheckDuplicateCandidate200,
   CheckDuplicateCandidateBody,
+  CheckPhoneBody,
+  CheckPhoneResult,
   CreateActivityInput,
+  DashboardStats,
   DistanceStats,
   GetDistanceStatsParams,
   GetLeaderboardParams,
@@ -38,6 +41,8 @@ import type {
   ListCandidatesParams,
   ListMyCandidatesParams,
   ListNotificationsParams,
+  LoginMpinBody,
+  LoginResult,
   MarkAllNotificationsReadBody,
   NotificationDto,
   ProblemDetails,
@@ -1764,6 +1769,295 @@ export const useMarkNotificationRead = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getMarkNotificationReadMutationOptions(options));
+    }
+
+/**
+ * @summary Check if a phone number is registered
+ */
+export const getCheckPhoneUrl = () => {
+
+
+
+
+  return `/api/auth/check-phone`
+}
+
+export const checkPhone = async (checkPhoneBody: CheckPhoneBody, options?: RequestInit): Promise<CheckPhoneResult> => {
+
+  return customFetch<CheckPhoneResult>(getCheckPhoneUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      checkPhoneBody,)
+  }
+);}
+
+
+
+
+export const getCheckPhoneMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkPhone>>, TError,{data: BodyType<CheckPhoneBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof checkPhone>>, TError,{data: BodyType<CheckPhoneBody>}, TContext> => {
+
+const mutationKey = ['checkPhone'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof checkPhone>>, {data: BodyType<CheckPhoneBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  checkPhone(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CheckPhoneMutationResult = NonNullable<Awaited<ReturnType<typeof checkPhone>>>
+    export type CheckPhoneMutationBody = BodyType<CheckPhoneBody>
+    export type CheckPhoneMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Check if a phone number is registered
+ */
+export const useCheckPhone = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkPhone>>, TError,{data: BodyType<CheckPhoneBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof checkPhone>>,
+        TError,
+        {data: BodyType<CheckPhoneBody>},
+        TContext
+      > => {
+      return useMutation(getCheckPhoneMutationOptions(options));
+    }
+
+/**
+ * @summary Login with phone and MPIN
+ */
+export const getLoginMpinUrl = () => {
+
+
+
+
+  return `/api/auth/login-mpin`
+}
+
+export const loginMpin = async (loginMpinBody: LoginMpinBody, options?: RequestInit): Promise<LoginResult> => {
+
+  return customFetch<LoginResult>(getLoginMpinUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      loginMpinBody,)
+  }
+);}
+
+
+
+
+export const getLoginMpinMutationOptions = <TError = ErrorType<ProblemDetails>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof loginMpin>>, TError,{data: BodyType<LoginMpinBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof loginMpin>>, TError,{data: BodyType<LoginMpinBody>}, TContext> => {
+
+const mutationKey = ['loginMpin'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof loginMpin>>, {data: BodyType<LoginMpinBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  loginMpin(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LoginMpinMutationResult = NonNullable<Awaited<ReturnType<typeof loginMpin>>>
+    export type LoginMpinMutationBody = BodyType<LoginMpinBody>
+    export type LoginMpinMutationError = ErrorType<ProblemDetails>
+
+    /**
+ * @summary Login with phone and MPIN
+ */
+export const useLoginMpin = <TError = ErrorType<ProblemDetails>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof loginMpin>>, TError,{data: BodyType<LoginMpinBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof loginMpin>>,
+        TError,
+        {data: BodyType<LoginMpinBody>},
+        TContext
+      > => {
+      return useMutation(getLoginMpinMutationOptions(options));
+    }
+
+/**
+ * @summary Get admin dashboard summary statistics
+ */
+export const getGetDashboardStatsUrl = () => {
+
+
+
+
+  return `/api/admin/dashboard/stats`
+}
+
+export const getDashboardStats = async ( options?: RequestInit): Promise<DashboardStats> => {
+
+  return customFetch<DashboardStats>(getGetDashboardStatsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDashboardStatsQueryKey = () => {
+    return [
+    `/api/admin/dashboard/stats`
+    ] as const;
+    }
+
+
+export const getGetDashboardStatsQueryOptions = <TData = Awaited<ReturnType<typeof getDashboardStats>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDashboardStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDashboardStatsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDashboardStats>>> = ({ signal }) => getDashboardStats({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDashboardStats>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDashboardStatsQueryResult = NonNullable<Awaited<ReturnType<typeof getDashboardStats>>>
+export type GetDashboardStatsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get admin dashboard summary statistics
+ */
+
+export function useGetDashboardStats<TData = Awaited<ReturnType<typeof getDashboardStats>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDashboardStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDashboardStatsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+/**
+ * @summary Deactivate (soft-delete) a staff member
+ */
+export const getDeactivateStaffUrl = (staffId: string,) => {
+
+
+
+
+  return `/api/admin/staff/${staffId}/deactivate`
+}
+
+export const deactivateStaff = async (staffId: string, options?: RequestInit): Promise<Staff> => {
+
+  return customFetch<Staff>(getDeactivateStaffUrl(staffId),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+export const getDeactivateStaffMutationOptions = <TError = ErrorType<ProblemDetails>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deactivateStaff>>, TError,{staffId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deactivateStaff>>, TError,{staffId: string}, TContext> => {
+
+const mutationKey = ['deactivateStaff'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deactivateStaff>>, {staffId: string}> = (props) => {
+          const {staffId} = props ?? {};
+
+          return  deactivateStaff(staffId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeactivateStaffMutationResult = NonNullable<Awaited<ReturnType<typeof deactivateStaff>>>
+
+    export type DeactivateStaffMutationError = ErrorType<ProblemDetails>
+
+    /**
+ * @summary Deactivate (soft-delete) a staff member
+ */
+export const useDeactivateStaff = <TError = ErrorType<ProblemDetails>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deactivateStaff>>, TError,{staffId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deactivateStaff>>,
+        TError,
+        {staffId: string},
+        TContext
+      > => {
+      return useMutation(getDeactivateStaffMutationOptions(options));
     }
 
 /**

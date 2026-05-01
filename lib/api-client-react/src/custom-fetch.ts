@@ -17,6 +17,15 @@ const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 
 let _baseUrl: string | null = null;
 let _authTokenGetter: AuthTokenGetter | null = null;
+let _adminPhoneGetter: (() => string | null) | null = null;
+
+/**
+ * Register a getter that supplies the x-admin-phone header value.
+ * Used by the web admin panel to authenticate admin API calls.
+ */
+export function setAdminPhoneGetter(getter: (() => string | null) | null): void {
+  _adminPhoneGetter = getter;
+}
 
 /**
  * Set a base URL that is prepended to every relative request URL
@@ -355,6 +364,14 @@ export async function customFetch<T = unknown>(
     const token = await _authTokenGetter();
     if (token) {
       headers.set("authorization", `Bearer ${token}`);
+    }
+  }
+
+  // Attach x-admin-phone header when an admin phone getter is configured.
+  if (_adminPhoneGetter && !headers.has("x-admin-phone")) {
+    const phone = _adminPhoneGetter();
+    if (phone) {
+      headers.set("x-admin-phone", phone);
     }
   }
 

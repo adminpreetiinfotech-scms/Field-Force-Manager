@@ -23,7 +23,7 @@ export interface StaffProfileStats {
   organization?: string | null;
   /** Center or branch name where the staff member is assigned. */
   centerName?: string | null;
-  /** Scheme or project name (e.g. DDU-GKY). */
+  /** Scheme or project name (e.g. DDU-KK). */
   projectName?: string | null;
   state?: string | null;
   district?: string | null;

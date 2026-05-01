@@ -16,6 +16,10 @@ tags:
     description: Staff directory
   - name: candidates
     description: Candidate registrations
+  - name: auth
+    description: Authentication
+  - name: admin
+    description: Admin operations
 paths:
   /healthz:
     get:
@@ -648,6 +652,99 @@ paths:
                 $ref: "#/components/schemas/NotificationDto"
         "404":
           description: Not found
+
+  /auth/check-phone:
+    post:
+      operationId: checkPhone
+      tags: [auth]
+      summary: Check if a phone number is registered
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone:
+                  type: string
+              required: [phone]
+      responses:
+        "200":
+          description: Phone check result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckPhoneResult"
+
+  /auth/login-mpin:
+    post:
+      operationId: loginMpin
+      tags: [auth]
+      summary: Login with phone and MPIN
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone:
+                  type: string
+                mpin:
+                  type: string
+              required: [phone, mpin]
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResult"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /admin/dashboard/stats:
+    get:
+      operationId: getDashboardStats
+      tags: [admin]
+      summary: Get admin dashboard summary statistics
+      responses:
+        "200":
+          description: Dashboard statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /admin/staff/{staffId}/deactivate:
+    patch:
+      operationId: deactivateStaff
+      tags: [admin]
+      summary: Deactivate (soft-delete) a staff member
+      parameters:
+        - in: path
+          name: staffId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Staff deactivated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Staff"
+        "404":
+          description: Staff not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
 
   /candidates/{id}:
     get:
@@ -1337,6 +1434,57 @@ components:
           type: string
           format: date-time
       required: [id, candidateId, candidateName, message, isRead, createdAt]
+
+    CheckPhoneResult:
+      type: object
+      properties:
+        exists:
+          type: boolean
+        hasMpin:
+          type: boolean
+      required: [exists, hasMpin]
+
+    LoginResult:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/Staff"
+      required: [user]
+
+    DashboardStats:
+      type: object
+      properties:
+        totalCandidates:
+          type: integer
+        pendingCandidates:
+          type: integer
+        verifiedCandidates:
+          type: integer
+        enrolledCandidates:
+          type: integer
+        rejectedCandidates:
+          type: integer
+        totalStaff:
+          type: integer
+        activeStaff:
+          type: integer
+        pendingApprovals:
+          type: integer
+        todayRegistrations:
+          type: integer
+        thisMonthRegistrations:
+          type: integer
+      required:
+        - totalCandidates
+        - pendingCandidates
+        - verifiedCandidates
+        - enrolledCandidates
+        - rejectedCandidates
+        - totalStaff
+        - activeStaff
+        - pendingApprovals
+        - todayRegistrations
+        - thisMonthRegistrations
 
     ProblemDetails:
       type: object

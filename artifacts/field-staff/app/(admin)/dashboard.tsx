@@ -182,11 +182,6 @@ export default function AdminDashboard() {
           />
 
           <View style={[styles.heroCard, { borderRadius: 20 }]}>
-            <Text style={styles.heroLabel}>STAFF ON SHIFT</Text>
-            <Text style={styles.heroValue}>
-              {stats.onShiftNow}
-              <Text style={styles.heroValueSub}> / {staffLocations.length}</Text>
-            </Text>
             <Text style={styles.heroMeta}>
               {stats.checkInsToday} check-ins today  ·  {stats.accuracy}% audit
               accuracy

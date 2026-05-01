@@ -142,7 +142,7 @@ export const GetStaffProfileStatsResponse = zod.object({
   "role": zod.string(),
   "organization": zod.string().nullish(),
   "centerName": zod.string().nullish().describe('Center or branch name where the staff member is assigned.'),
-  "projectName": zod.string().nullish().describe('Scheme or project name (e.g. DDU-GKY).'),
+  "projectName": zod.string().nullish().describe('Scheme or project name (e.g. DDU-KK).'),
   "state": zod.string().nullish(),
   "district": zod.string().nullish(),
   "area": zod.string().nullish(),
@@ -589,6 +589,81 @@ export const MarkNotificationReadResponse = zod.object({
   "message": zod.string(),
   "isRead": zod.boolean(),
   "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Check if a phone number is registered
+ */
+export const CheckPhoneBody = zod.object({
+  "phone": zod.string()
+})
+
+export const CheckPhoneResponse = zod.object({
+  "exists": zod.boolean(),
+  "hasMpin": zod.boolean()
+})
+
+
+/**
+ * @summary Login with phone and MPIN
+ */
+export const LoginMpinBody = zod.object({
+  "phone": zod.string(),
+  "mpin": zod.string()
+})
+
+export const LoginMpinResponse = zod.object({
+  "user": zod.object({
+  "id": zod.string().uuid(),
+  "empCode": zod.string(),
+  "name": zod.string(),
+  "phone": zod.string(),
+  "role": zod.enum(['staff', 'admin']),
+  "organization": zod.string().nullish().describe('Company \/ organization name (populated for admins and linked staff).'),
+  "area": zod.string().nullish().describe('Assigned territory or area (staff only).'),
+  "adminCode": zod.string().nullish().describe('Invite code that staff can use to link to this admin\'s organization.'),
+  "approvalStatus": zod.enum(['pending', 'approved', 'rejected']).describe('Approval workflow status. Staff are pending until an admin approves them.'),
+  "createdAt": zod.coerce.date().nullish().describe('Registration timestamp (ISO 8601).')
+})
+})
+
+
+/**
+ * @summary Get admin dashboard summary statistics
+ */
+export const GetDashboardStatsResponse = zod.object({
+  "totalCandidates": zod.number(),
+  "pendingCandidates": zod.number(),
+  "verifiedCandidates": zod.number(),
+  "enrolledCandidates": zod.number(),
+  "rejectedCandidates": zod.number(),
+  "totalStaff": zod.number(),
+  "activeStaff": zod.number(),
+  "pendingApprovals": zod.number(),
+  "todayRegistrations": zod.number(),
+  "thisMonthRegistrations": zod.number()
+})
+
+
+/**
+ * @summary Deactivate (soft-delete) a staff member
+ */
+export const DeactivateStaffParams = zod.object({
+  "staffId": zod.coerce.string().uuid()
+})
+
+export const DeactivateStaffResponse = zod.object({
+  "id": zod.string().uuid(),
+  "empCode": zod.string(),
+  "name": zod.string(),
+  "phone": zod.string(),
+  "role": zod.enum(['staff', 'admin']),
+  "organization": zod.string().nullish().describe('Company \/ organization name (populated for admins and linked staff).'),
+  "area": zod.string().nullish().describe('Assigned territory or area (staff only).'),
+  "adminCode": zod.string().nullish().describe('Invite code that staff can use to link to this admin\'s organization.'),
+  "approvalStatus": zod.enum(['pending', 'approved', 'rejected']).describe('Approval workflow status. Staff are pending until an admin approves them.'),
+  "createdAt": zod.coerce.date().nullish().describe('Registration timestamp (ISO 8601).')
 })
 
 

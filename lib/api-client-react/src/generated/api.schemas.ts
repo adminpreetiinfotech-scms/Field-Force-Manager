@@ -230,7 +230,7 @@ export interface StaffProfileStats {
   organization?: string | null;
   /** Center or branch name where the staff member is assigned. */
   centerName?: string | null;
-  /** Scheme or project name (e.g. DDU-GKY). */
+  /** Scheme or project name (e.g. DDU-KK). */
   projectName?: string | null;
   state?: string | null;
   district?: string | null;
@@ -386,6 +386,28 @@ export interface NotificationDto {
   createdAt: string;
 }
 
+export interface CheckPhoneResult {
+  exists: boolean;
+  hasMpin: boolean;
+}
+
+export interface LoginResult {
+  user: Staff;
+}
+
+export interface DashboardStats {
+  totalCandidates: number;
+  pendingCandidates: number;
+  verifiedCandidates: number;
+  enrolledCandidates: number;
+  rejectedCandidates: number;
+  totalStaff: number;
+  activeStaff: number;
+  pendingApprovals: number;
+  todayRegistrations: number;
+  thisMonthRegistrations: number;
+}
+
 export interface ProblemDetails {
   title: string;
   detail?: string;
@@ -536,5 +558,14 @@ phone: string;
 
 export type MarkAllNotificationsReadBody = {
   phone: string;
+};
+
+export type CheckPhoneBody = {
+  phone: string;
+};
+
+export type LoginMpinBody = {
+  phone: string;
+  mpin: string;
 };
 

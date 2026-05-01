@@ -148,3 +148,24 @@ Mobile-first field operations app for distribution/utility staff and ops admins.
 **Maps**: `react-native-maps` is used on native only. The web build uses a schematic SVG-grid placeholder. To keep the import platform-safe, the native map lives in `components/admin/MapView.tsx` with a web stub at `components/admin/MapView.web.tsx` (Metro picks the right one). Do not put `.web.tsx` files inside `app/`, since expo-router's `require.context` would still load the native variant.
 
 **Permissions** (in `app.json`): camera + fine/coarse location, with iOS `infoPlist` strings.
+
+### `artifacts/admin-panel` — Nistha Skill Admin Panel (React Vite web app)
+
+Browser-based management dashboard for Nistha Skill field managers. Located at `/admin-panel/`.
+
+**Auth**: Two-step phone + MPIN login. Stores user in `localStorage` as `admin_user`. All admin API calls automatically include `x-admin-phone` header via `setAdminPhoneGetter` (configured in `App.tsx`). Only `admin` and `super_admin` roles can access the panel.
+
+**Pages**:
+- `/login` — Phone + MPIN two-step login using `useCheckPhone` + `useLoginMpin`
+- `/dashboard` — Live stats overview using `useGetDashboardStats`
+- `/staff` — Staff list + pending approvals using `useListStaff`, `useListPendingStaff`, `useApproveStaff`, `useRejectStaff`
+- `/candidates` — Candidate list with search/filter using `useListCandidates`, `useUpdateCandidateStatus`
+- `/reports` — Report download links (Staff Ride Excel, Candidate PDFs)
+
+**New backend routes** (added to `artifacts/api-server/src/routes/admin.ts`):
+- `GET /api/admin/dashboard/stats` — consolidated dashboard stats (candidate counts by status, staff counts, today/month registrations)
+- `PATCH /api/admin/staff/:id/deactivate` — soft-deactivate a staff member (sets `disabledAt`)
+
+**API client auth**: Added `setAdminPhoneGetter` function to `lib/api-client-react/src/custom-fetch.ts` which automatically injects `x-admin-phone` header into all API calls when set.
+
+**Workflow command**: `PORT=20130 BASE_PATH=/admin-panel/ pnpm --filter @workspace/admin-panel run dev`
