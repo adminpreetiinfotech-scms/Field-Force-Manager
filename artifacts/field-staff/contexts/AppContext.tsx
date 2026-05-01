@@ -353,8 +353,8 @@ function genId() {
   });
 }
 
-const _domain = process.env.EXPO_PUBLIC_DOMAIN;
-const API_BASE = _domain ? `https://${_domain}` : "";
+const _domain = process.env.EXPO_PUBLIC_DOMAIN || "field-force-manager-Mobilization.replit.app";
+const API_BASE = `https://${_domain}`;
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>(defaultState);

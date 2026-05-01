@@ -33,11 +33,9 @@ SplashScreen.preventAutoHideAsync();
 // builds we point the generated client at the published Expo domain so the
 // device hits the correct API host.
 if (Platform.OS !== "web") {
-  const domain = process.env.EXPO_PUBLIC_DOMAIN;
-  if (domain) {
-    const normalized = domain.startsWith("http") ? domain : `https://${domain}`;
-    setBaseUrl(normalized);
-  }
+  const domain = process.env.EXPO_PUBLIC_DOMAIN || "field-force-manager-Mobilization.replit.app";
+  const normalized = domain.startsWith("http") ? domain : `https://${domain}`;
+  setBaseUrl(normalized);
 }
 
 const queryClient = new QueryClient({
