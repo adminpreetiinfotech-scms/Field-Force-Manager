@@ -227,29 +227,6 @@ export default function AdminDashboard() {
                   View All
                 </Text>
               </Pressable>
-              <Pressable
-                onPress={() => router.push("/candidate/register")}
-                style={({ pressed }) => [
-                  {
-                    flex: 1,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 8,
-                    height: 44,
-                    backgroundColor: colors.muted,
-                    borderColor: "#1E3A5F" + "44",
-                    borderWidth: StyleSheet.hairlineWidth,
-                    borderRadius: colors.radius,
-                    opacity: pressed ? 0.85 : 1,
-                  },
-                ]}
-              >
-                <Feather name="user-plus" size={15} color="#1E3A5F" />
-                <Text style={{ color: "#1E3A5F", fontSize: 13, fontFamily: "Inter_600SemiBold" }}>
-                  Register
-                </Text>
-              </Pressable>
             </View>
 
             {/* Candidate stats grid */}
