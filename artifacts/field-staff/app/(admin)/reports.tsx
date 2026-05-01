@@ -28,6 +28,7 @@ import {
   type TripReportRow,
 } from "@workspace/api-client-react";
 
+import { CompanyBrand } from "@/components/CompanyBrand";
 import { ReportContextBar } from "@/components/ReportContextBar";
 import { useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
@@ -311,20 +312,34 @@ export default function ReportsScreen() {
           styles.header,
           {
             paddingTop: insets.top + 16 + webTop,
-            paddingBottom: 14,
+            paddingBottom: 18,
             backgroundColor: colors.primary,
             borderBottomColor: colors.border,
           },
         ]}
       >
-        <Text style={[styles.headerTitle, { color: "#fff" }]}>
-          Reports
-        </Text>
-        <Text style={[styles.headerSub, { color: "rgba(255,255,255,0.72)" }]}>
-          Calendar · Leaderboard · Export
-        </Text>
+        {/* Title row with company logo */}
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <View>
+            <Text style={[styles.headerTitle, { color: "#fff" }]}>
+              Reports
+            </Text>
+            <Text style={[styles.headerSub, { color: "rgba(255,255,255,0.72)" }]}>
+              Calendar · Leaderboard · Export
+            </Text>
+          </View>
+          <CompanyBrand
+            companyName={user?.companyName || user?.organization}
+            companyLogoUrl={user?.companyLogoUrl}
+            schemeName={user?.companySchemeName || user?.projectName}
+            size="sm"
+            centered={false}
+            nameColor="#FFFFFF"
+            schemeColor="rgba(255,255,255,0.72)"
+            logoBackground="rgba(255,255,255,0.18)"
+          />
+        </View>
         <ReportContextBar
-          organization={user?.companyName || [user?.organization, user?.projectName].filter(Boolean).join(" | ") || user?.organization}
           staffName={user?.name}
           from={dates.from}
           to={dates.to}

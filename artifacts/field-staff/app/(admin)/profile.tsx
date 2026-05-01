@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button } from "@/components/Button";
+import { CompanyBrand } from "@/components/CompanyBrand";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
 import { useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
@@ -51,6 +52,27 @@ export default function AdminProfile() {
       <Text style={[styles.title, { color: colors.foreground }]}>
         Admin profile
       </Text>
+
+      {/* ── Company Branding Card ─────────────────────────────────── */}
+      {(user?.companyName || user?.organization) && (
+        <View
+          style={[
+            styles.brandCard,
+            { backgroundColor: colors.primary, borderRadius: colors.radius + 4 },
+          ]}
+        >
+          <CompanyBrand
+            companyName={user?.companyName || user?.organization}
+            companyLogoUrl={user?.companyLogoUrl}
+            schemeName={user?.companySchemeName || user?.projectName}
+            size="md"
+            centered
+            nameColor="#FFFFFF"
+            schemeColor="rgba(255,255,255,0.72)"
+            logoBackground="rgba(255,255,255,0.18)"
+          />
+        </View>
+      )}
 
       <View
         style={[
@@ -220,6 +242,11 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     letterSpacing: -0.5,
     marginBottom: 16,
+  },
+  brandCard: {
+    padding: 20,
+    marginBottom: 14,
+    alignItems: "center",
   },
   card: {
     padding: 18,

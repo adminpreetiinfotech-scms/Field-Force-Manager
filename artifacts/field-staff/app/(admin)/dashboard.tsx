@@ -5,7 +5,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Image,
   Modal,
   Platform,
   Pressable,
@@ -26,6 +25,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 
+import { CompanyBrand } from "@/components/CompanyBrand";
 import { LiveActivityFeed } from "@/components/admin/LiveActivityFeed";
 import { NoticePopup } from "@/components/NoticePopup";
 import { PillarsRow } from "@/components/PillarBadge";
@@ -154,28 +154,29 @@ export default function AdminDashboard() {
               <Text style={styles.greet}>Operations control</Text>
               <Text style={styles.name}>{user?.name}</Text>
             </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              {!!user?.companyLogoUrl && (
-                <Image
-                  source={{ uri: `${API_BASE}${user.companyLogoUrl}` }}
-                  style={{ width: 34, height: 34, borderRadius: 8, backgroundColor: "rgba(255,255,255,0.15)" }}
-                  resizeMode="contain"
-                />
-              )}
-              <View
-                style={[
-                  styles.empBadge,
-                  { backgroundColor: "rgba(255,255,255,0.12)" },
-                ]}
-              >
-                <Feather name="shield" size={11} color="#FCD34D" />
-                <Text style={styles.empText}>ADMIN</Text>
-              </View>
+            <View
+              style={[
+                styles.empBadge,
+                { backgroundColor: "rgba(255,255,255,0.12)" },
+              ]}
+            >
+              <Feather name="shield" size={11} color="#FCD34D" />
+              <Text style={styles.empText}>ADMIN</Text>
             </View>
           </View>
 
+          {/* ── Company Branding ─────────────────────────────────────── */}
+          <View style={{ alignItems: "center", marginTop: 16, marginBottom: 4 }}>
+            <CompanyBrand
+              companyName={user?.companyName || user?.organization}
+              companyLogoUrl={user?.companyLogoUrl}
+              schemeName={user?.companySchemeName || user?.projectName}
+              size="md"
+              centered
+            />
+          </View>
+
           <ReportContextBar
-            organization={user?.companyName || user?.organization}
             staffName={user?.name}
             reportType="daily"
           />

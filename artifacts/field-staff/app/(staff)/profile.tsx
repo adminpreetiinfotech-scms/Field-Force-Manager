@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button } from "@/components/Button";
+import { CompanyBrand } from "@/components/CompanyBrand";
 import { PillarsRow } from "@/components/PillarBadge";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
 import { useApp } from "@/contexts/AppContext";
@@ -56,6 +57,32 @@ export default function StaffProfile() {
       }}
     >
       <Text style={[styles.title, { color: colors.foreground }]}>Profile</Text>
+
+      {/* ── Company Branding Card ─────────────────────────────────── */}
+      {(user?.companyName || user?.organization) && (
+        <View
+          style={[
+            {
+              backgroundColor: colors.primary,
+              borderRadius: colors.radius + 4,
+              padding: 20,
+              marginBottom: 14,
+              alignItems: "center",
+            },
+          ]}
+        >
+          <CompanyBrand
+            companyName={user?.companyName || user?.organization}
+            companyLogoUrl={user?.companyLogoUrl}
+            schemeName={user?.companySchemeName || user?.projectName}
+            size="md"
+            centered
+            nameColor="#FFFFFF"
+            schemeColor="rgba(255,255,255,0.72)"
+            logoBackground="rgba(255,255,255,0.18)"
+          />
+        </View>
+      )}
 
       <View
         style={[

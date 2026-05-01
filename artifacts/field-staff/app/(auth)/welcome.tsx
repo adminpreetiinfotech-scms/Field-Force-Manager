@@ -65,20 +65,17 @@ export default function WelcomeScreen() {
           alignItems: "center",
         }}
       >
-        {/* ── Circular avatar ─────────────────────────────────────── */}
+        {/* ── App logo ─────────────────────────────────────────────── */}
         <View style={styles.avatarShadow}>
           <View style={styles.avatarRing}>
             <Image
               // eslint-disable-next-line @typescript-eslint/no-require-imports
-              source={require("../../assets/admin-photo.png")}
+              source={require("../../assets/images/icon.png")}
               style={styles.avatar}
-              resizeMode="cover"
+              resizeMode="contain"
             />
           </View>
         </View>
-
-        {/* ── Credit line ───────────────────────────────────────────── */}
-        <Text style={styles.creditLine}>{t("developedBy")}</Text>
 
         <View style={styles.goldBar} />
         <Text style={styles.heroTitle}>{t("welcomeTitle")}</Text>
@@ -226,17 +223,6 @@ const styles = StyleSheet.create({
   avatar: {
     width: 132,
     height: 132,
-  },
-
-  // Credit line
-  creditLine: {
-    color: "rgba(255,255,255,0.92)",
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-    letterSpacing: 0.4,
-    textAlign: "center",
-    marginTop: 4,
-    marginBottom: 4,
   },
 
   goldBar: {
