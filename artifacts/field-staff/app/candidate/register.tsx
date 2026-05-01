@@ -762,6 +762,7 @@ export default function CandidateRegisterScreen() {
   // ─ Personal
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [parentMobile, setParentMobile] = useState("");
   const [email, setEmail] = useState("");
   const [fatherName, setFatherName] = useState("");
   const [motherName, setMotherName] = useState("");
@@ -845,13 +846,13 @@ export default function CandidateRegisterScreen() {
     id: activeDraftId.current,
     savedAt: new Date().toISOString(),
     pendingSync: pendingSyncRef.current,
-    name, phone, email, fatherName, motherName, dob,
+    name, phone, ...(parentMobile ? { parentMobile } : {}), email, fatherName, motherName, dob,
     gender, maritalStatus, religion, caste, pwd, disabilityType,
     address, village, policeStation, postOffice, district, state, pin, area,
     course, skillCentreName, aadhaarNumber, bpl, bplNumber,
     education, yearOfPassing, bankAccount, bankName, bankBranch, ifsc, mobilizer,
     photo, aadhaarFront, aadhaarBack, educationCert, bankPassbook, casteCert, signature,
-  }), [name, phone, email, fatherName, motherName, dob, gender, maritalStatus,
+  }), [name, phone, parentMobile, email, fatherName, motherName, dob, gender, maritalStatus,
     religion, caste, pwd, disabilityType, address, village, policeStation,
     postOffice, district, state, pin, area, course, skillCentreName,
     aadhaarNumber, bpl, bplNumber, education, yearOfPassing, bankAccount,
@@ -862,7 +863,7 @@ export default function CandidateRegisterScreen() {
     activeDraftId.current = d.id;
     pendingSyncRef.current = d.pendingSync;
     setPendingSync(d.pendingSync);
-    setName(d.name ?? ""); setPhone(d.phone ?? ""); setEmail(d.email ?? "");
+    setName(d.name ?? ""); setPhone(d.phone ?? ""); setParentMobile((d as any).parentMobile ?? ""); setEmail(d.email ?? "");
     setFatherName(d.fatherName ?? ""); setMotherName(d.motherName ?? "");
     setDob(d.dob ?? ""); setGender(d.gender ?? null);
     setMaritalStatus(d.maritalStatus ?? null); setReligion(d.religion ?? null);
@@ -909,7 +910,7 @@ export default function CandidateRegisterScreen() {
   }, [buildDraft, name, phone]);
 
   const clearForm = useCallback(async () => {
-    setName(""); setPhone(""); setEmail(""); setFatherName(""); setMotherName("");
+    setName(""); setPhone(""); setParentMobile(""); setEmail(""); setFatherName(""); setMotherName("");
     setDob(""); setGender(null); setMaritalStatus(null); setReligion(null);
     setCaste(null); setPwd("No"); setDisabilityType("");
     setAddress(""); setVillage(""); setPoliceStation(""); setPostOffice("");
@@ -1067,6 +1068,7 @@ export default function CandidateRegisterScreen() {
       const body = {
         name: name.trim(),
         phone: phone.trim(),
+        parentMobile: parentMobile.trim() || null,
         email: email.trim() || null,
         fatherName: fatherName.trim() || null,
         motherName: motherName.trim() || null,
@@ -1305,12 +1307,16 @@ export default function CandidateRegisterScreen() {
                 <HalfField label="Mobile No. / मोबाइल नंबर" value={phone} onChangeText={(v) => { setPhone(v); if (errors.phone) setErrors((prev) => ({ ...prev, phone: "" })); }} keyboardType="phone-pad" required error={errors.phone} />
               </HalfRow>
               <HalfRow>
+                <HalfField label="Parent's Mobile / अभिभावक का मोबाइल" value={parentMobile} onChangeText={(v) => { if (/^\d{0,10}$/.test(v)) setParentMobile(v); }} keyboardType="phone-pad" placeholder="10-digit number" />
+                <HalfField label="Email / ईमेल" value={email} onChangeText={(v) => { setEmail(v); if (errors.email) setErrors((prev) => ({ ...prev, email: "" })); }} keyboardType="email-address" error={errors.email} />
+              </HalfRow>
+              <HalfRow>
                 <HalfRadio label="Marital Status / वैवाहिक स्थिति" options={MARITAL} value={maritalStatus} onSelect={setMaritalStatus} />
                 <HalfRadio label="Sex / लिंग" options={GENDERS} value={gender} onSelect={setGender} />
               </HalfRow>
               <HalfRow>
-                <HalfField label="Email / ईमेल" value={email} onChangeText={(v) => { setEmail(v); if (errors.email) setErrors((prev) => ({ ...prev, email: "" })); }} keyboardType="email-address" error={errors.email} />
                 <HalfField label="Religion / धर्म" value={religion ?? ""} onChangeText={(v) => setReligion(v || null)} />
+                <View style={styles.halfCell} />
               </HalfRow>
               <RadioRow label="Category / वर्ग" options={CASTES} value={caste} onSelect={setCaste} />
               <HalfRow>

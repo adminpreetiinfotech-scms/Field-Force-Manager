@@ -77,6 +77,7 @@ function toDto(c: typeof candidatesTable.$inferSelect) {
     candidateIdCode: c.candidateIdCode ?? null,
     name: c.name,
     phone: c.phone,
+    parentMobile: c.parentMobile ?? null,
     email: c.email ?? null,
     fatherName: c.fatherName ?? null,
     motherName: c.motherName ?? null,
@@ -182,6 +183,7 @@ router.post("/candidates", async (req, res, next) => {
     const body = req.body as {
       name?: string;
       phone?: string;
+      parentMobile?: string | null;
       email?: string | null;
       fatherName?: string | null;
       motherName?: string | null;
@@ -238,6 +240,10 @@ router.post("/candidates", async (req, res, next) => {
       res.status(400).json({ title: "Valid 10-digit phone required", status: 400 });
       return;
     }
+    if (body.parentMobile?.trim() && !/^\d{10}$/.test(body.parentMobile.trim())) {
+      res.status(400).json({ title: "Parent's mobile must be a valid 10-digit number", status: 400 });
+      return;
+    }
     if (body.aadhaarNumber?.trim() && !/^\d{12}$/.test(body.aadhaarNumber.trim())) {
       res.status(400).json({ title: "Aadhaar number must be exactly 12 digits", status: 400 });
       return;
@@ -283,6 +289,7 @@ router.post("/candidates", async (req, res, next) => {
       .values({
         name: body.name.trim(),
         phone: body.phone.trim(),
+        parentMobile: body.parentMobile?.trim() || null,
         email: body.email?.trim() || null,
         fatherName: body.fatherName?.trim() || null,
         motherName: body.motherName?.trim() || null,
@@ -467,7 +474,7 @@ router.get("/admin/candidates/csv", async (req, res, next) => {
       .orderBy(desc(candidatesTable.createdAt));
 
     const headers = [
-      "Candidate ID", "Name", "Phone", "Email", "Father's Name", "Mother's Name",
+      "Candidate ID", "Name", "Phone", "Parent's Mobile", "Email", "Father's Name", "Mother's Name",
       "DOB", "Gender", "Marital Status", "Religion", "Category", "PwD",
       "Address", "Village", "Police Station", "Post Office", "District", "State", "PIN",
       "Course", "Skill Centre", "Aadhaar No.", "BPL", "BPL No.",
@@ -489,7 +496,7 @@ router.get("/admin/candidates/csv", async (req, res, next) => {
     for (const r of rows) {
       const pdfLink = r.pdfPath ? `${baseUrl}/api/candidates/${r.id}/pdf` : "";
       lines.push([
-        r.candidateIdCode, r.name, r.phone, r.email, r.fatherName, r.motherName,
+        r.candidateIdCode, r.name, r.phone, r.parentMobile, r.email, r.fatherName, r.motherName,
         r.dob, r.gender, r.maritalStatus, r.religion, r.caste, r.pwd,
         r.address, r.village, r.policeStation, r.postOffice, r.district, r.state, r.pin,
         r.course, r.skillCentreName, r.aadhaarNumber, r.bpl, r.bplNumber,

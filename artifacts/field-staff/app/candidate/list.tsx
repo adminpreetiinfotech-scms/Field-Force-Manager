@@ -258,6 +258,7 @@ export default function CandidateListScreen() {
                     <Text style={[ss.cardPhone, { color: colors.mutedForeground }]}>
                       {c.phone}{c.area ? ` · ${c.area}` : ""}
                     </Text>
+                    {(c as any).parentMobile ? <Text style={[ss.cardSub, { color: colors.mutedForeground }]}>Parent: {(c as any).parentMobile}</Text> : null}
                     {c.village ? <Text style={[ss.cardSub, { color: colors.mutedForeground }]}>Village: {c.village}</Text> : null}
                     {c.course ? <Text style={[ss.cardSub, { color: colors.mutedForeground }]}>Course: {c.course}</Text> : null}
                   </View>

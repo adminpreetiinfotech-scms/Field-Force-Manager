@@ -12,6 +12,7 @@ export const candidatesTable = pgTable("candidates", {
   candidateIdCode: text("candidate_id_code"),
   name: text("name").notNull(),
   phone: text("phone").notNull(),
+  parentMobile: text("parent_mobile"),
   email: text("email"),
   fatherName: text("father_name"),
   motherName: text("mother_name"),

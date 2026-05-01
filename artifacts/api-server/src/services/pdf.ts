@@ -450,8 +450,10 @@ export async function generateCandidatePdf(
     seg(doc, "मोबाइल / Mobile", c.phone, FX + fhW + 4, y, 90, FW - fhW - 4);
     y += ROW;
 
-    // A4 — Mother's Name
-    seg(doc, "माता का नाम / Mother's Name", c.motherName, FX, y, 116, FW);
+    // A4 — Mother's Name + Parent's Mobile
+    const mnW = FW * 0.55;
+    seg(doc, "माता का नाम / Mother's Name", c.motherName, FX, y, 116, mnW);
+    seg(doc, "Parent's Mobile / अभिभावक का मोबाइल", c.parentMobile, FX + mnW + 4, y, 140, FW - mnW - 4);
     y += ROW;
 
     // A5 — Marital Status
