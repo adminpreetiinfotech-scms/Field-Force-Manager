@@ -663,7 +663,76 @@ export async function generateCandidatePdf(
     box(doc, ML, MT, CW, A4_H - MT * 2, 1.0);
 
     // ══════════════════════════════════════════════════════════════════════════
-    // PAGE 2+ — Attached document images
+    // PAGE 2 — Aadhaar combined page (front + back on same A4 sheet)
+    // ══════════════════════════════════════════════════════════════════════════
+    const hasFront = !!(c.aadhaarFrontPath && fs.existsSync(c.aadhaarFrontPath!));
+    const hasBack  = !!(c.aadhaarBackPath  && fs.existsSync(c.aadhaarBackPath!));
+
+    if (hasFront || hasBack) {
+      doc.addPage({ size: "A4", margin: 0 });
+
+      // Header — same navy style as other document pages
+      fill(doc, 0, 0, A4_W, 44, NAVY);
+      fill(doc, 0, 0, 4,    44, AMBER);
+
+      // Title (mixed Hindi + English)
+      const aadhaarTitle = "Aadhaar Card  /  आधार कार्ड";
+      const aadhaarSegs  = splitScript(aadhaarTitle);
+      if (aadhaarSegs.length === 1) {
+        doc.font(fk(aadhaarSegs[0]!.dev, true)).fontSize(11).fillColor("#FFFFFF")
+           .text(aadhaarSegs[0]!.text, 14, 10, { lineBreak: false });
+      } else {
+        let lx = 14;
+        for (const s of aadhaarSegs) {
+          doc.font(fk(s.dev, true)).fontSize(11).fillColor("#FFFFFF");
+          const sw = doc.widthOfString(s.text);
+          doc.text(s.text, lx, 10, { lineBreak: false });
+          lx += sw;
+        }
+      }
+
+      // Candidate name (top-right, faded)
+      if (c.name) {
+        doc.font("NSR").fontSize(8).fillColor("rgba(255,255,255,0.65)")
+           .text(c.name, 0, 30, { width: A4_W - 14, align: "right", lineBreak: false });
+      }
+
+      // Layout: split usable area below header into two equal halves
+      const PAD    = 20;
+      const imgW   = A4_W - PAD * 2;
+      const startY = 52;
+      const totalH = A4_H - startY - PAD;
+      const halfH  = Math.floor(totalH / 2) - 6;
+
+      // ── Front (top half) ──
+      doc.font("DVB").fontSize(8).fillColor(NAVY)
+         .text("FRONT  /  आगे", PAD, startY + 4, { lineBreak: false });
+      if (hasFront) {
+        box(doc, PAD, startY + 16, imgW, halfH - 20, 0.5, LGRAY);
+        safeImg(doc, c.aadhaarFrontPath!, PAD + 4, startY + 20, {
+          width: imgW - 8, height: halfH - 28,
+          fit: [imgW - 8, halfH - 28], align: "center", valign: "center",
+        });
+      }
+
+      // ── Divider ──
+      const midY = startY + halfH + 4;
+      hl(doc, PAD, midY, A4_W - PAD, 1.0, LGRAY);
+
+      // ── Back (bottom half) ──
+      doc.font("DVB").fontSize(8).fillColor(NAVY)
+         .text("BACK  /  पीछे", PAD, midY + 6, { lineBreak: false });
+      if (hasBack) {
+        box(doc, PAD, midY + 18, imgW, halfH - 20, 0.5, LGRAY);
+        safeImg(doc, c.aadhaarBackPath!, PAD + 4, midY + 22, {
+          width: imgW - 8, height: halfH - 28,
+          fit: [imgW - 8, halfH - 28], align: "center", valign: "center",
+        });
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // PAGE 3+ — Other attached document images
     // ══════════════════════════════════════════════════════════════════════════
     const attached: Array<{ label: string; path: string | null | undefined }> = [
       { label: "Education Certificate  /  शैक्षिक प्रमाण पत्र",   path: c.educationCertPath },
