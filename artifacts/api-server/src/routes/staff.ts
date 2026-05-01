@@ -13,6 +13,10 @@ function toStaffDTO(r: typeof staffTable.$inferSelect) {
     phone: r.phone,
     role: r.role,
     organization: r.organization ?? null,
+    projectName: r.projectName ?? null,
+    email: r.email ?? null,
+    state: r.state ?? null,
+    district: r.district ?? null,
     area: r.area ?? null,
     adminCode: r.adminCode ?? null,
     approvalStatus: r.approvalStatus,
@@ -31,17 +35,23 @@ router.get("/staff", async (_req, res, next) => {
 
 router.post("/staff/register", async (req, res, next) => {
   try {
-    const { kind, name, phone, organization, empCode, area, adminCode, adminRegistrationKey } =
-      req.body as {
-        kind?: string;
-        name?: string;
-        phone?: string;
-        organization?: string | null;
-        empCode?: string | null;
-        area?: string | null;
-        adminCode?: string | null;
-        adminRegistrationKey?: string | null;
-      };
+    const {
+      kind, name, phone, organization, projectName, email, state, district,
+      empCode, area, adminCode, adminRegistrationKey,
+    } = req.body as {
+      kind?: string;
+      name?: string;
+      phone?: string;
+      organization?: string | null;
+      projectName?: string | null;
+      email?: string | null;
+      state?: string | null;
+      district?: string | null;
+      empCode?: string | null;
+      area?: string | null;
+      adminCode?: string | null;
+      adminRegistrationKey?: string | null;
+    };
 
     if (!kind || !["admin", "staff"].includes(kind)) {
       res.status(400).json({
@@ -114,6 +124,16 @@ router.post("/staff/register", async (req, res, next) => {
     // Staff never own an admin_code; instead, if they supply one during
     // registration we use it to look up the admin's organization so we can
     // copy it onto the staff record.
+    // Validate email if provided
+    if (email && email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      res.status(400).json({
+        title: "Invalid email",
+        detail: "Please enter a valid email address",
+        status: 400,
+      });
+      return;
+    }
+
     let resolvedOrganization = organization?.trim() || null;
     const resolvedAdminCode =
       kind === "admin"
@@ -144,9 +164,12 @@ router.post("/staff/register", async (req, res, next) => {
         phone: phone.trim(),
         role: kind === "admin" ? "admin" : "staff",
         organization: resolvedOrganization,
+        projectName: projectName?.trim() || null,
+        email: email?.trim() || null,
+        state: state?.trim() || null,
+        district: district?.trim() || null,
         area: area?.trim() || null,
         adminCode: resolvedAdminCode,
-        // Admins are immediately approved; new staff must wait for admin approval.
         approvalStatus: kind === "admin" ? "approved" : "pending",
       })
       .returning();
@@ -485,6 +508,68 @@ function verifyPassword(plain: string, stored: string): boolean {
   const derived = crypto.scryptSync(plain, salt, 64).toString("hex");
   return crypto.timingSafeEqual(Buffer.from(derived), Buffer.from(hash));
 }
+
+// ─── PATCH /api/staff/profile ─────────────────────────────────────────────────
+// Update admin/staff profile fields (name, email, organization, projectName, state, district)
+// Body: { phone, name?, email?, organization?, projectName?, state?, district? }
+router.patch("/staff/profile", async (req, res, next) => {
+  try {
+    const { phone, name, email, organization, projectName, state, district } =
+      req.body as {
+        phone?: string;
+        name?: string;
+        email?: string | null;
+        organization?: string | null;
+        projectName?: string | null;
+        state?: string | null;
+        district?: string | null;
+      };
+
+    if (!phone || !/^\d{10}$/.test(phone.trim())) {
+      res.status(400).json({ title: "Invalid phone", status: 400 });
+      return;
+    }
+
+    if (name !== undefined && name.trim().length < 2) {
+      res.status(400).json({ title: "Name too short", detail: "Name must be at least 2 characters", status: 400 });
+      return;
+    }
+
+    if (email && email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      res.status(400).json({ title: "Invalid email", detail: "Please enter a valid email address", status: 400 });
+      return;
+    }
+
+    const [existing] = await db
+      .select({ id: staffTable.id })
+      .from(staffTable)
+      .where(and(eq(staffTable.phone, phone.trim()), isNull(staffTable.deletedAt)))
+      .limit(1);
+
+    if (!existing) {
+      res.status(404).json({ title: "Staff not found", status: 404 });
+      return;
+    }
+
+    const updates: Partial<typeof staffTable.$inferInsert> = {};
+    if (name !== undefined) updates.name = name.trim();
+    if (email !== undefined) updates.email = email?.trim() || null;
+    if (organization !== undefined) updates.organization = organization?.trim() || null;
+    if (projectName !== undefined) updates.projectName = projectName?.trim() || null;
+    if (state !== undefined) updates.state = state?.trim() || null;
+    if (district !== undefined) updates.district = district?.trim() || null;
+
+    const [updated] = await db
+      .update(staffTable)
+      .set(updates)
+      .where(eq(staffTable.id, existing.id))
+      .returning();
+
+    res.json(toStaffDTO(updated));
+  } catch (err) {
+    next(err);
+  }
+});
 
 // ─── POST /api/staff/change-password ─────────────────────────────────────────
 // Body: { phone, currentPassword?, newPassword }

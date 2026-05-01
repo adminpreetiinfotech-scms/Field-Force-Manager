@@ -24,6 +24,10 @@ export type User = {
   role: UserRole;
   empCode: string;
   organization?: string | null;
+  projectName?: string | null;
+  email?: string | null;
+  state?: string | null;
+  district?: string | null;
 };
 
 export type GeoPoint = {
@@ -89,6 +93,10 @@ export type RegisterData = {
   name: string;
   phone: string;
   organization?: string;
+  projectName?: string;
+  email?: string;
+  state?: string;
+  district?: string;
   empCode?: string;
   area?: string;
   adminCode?: string;
@@ -134,6 +142,14 @@ type AppActions = {
   switchRole: (target: "admin" | "staff") => Promise<User>;
   syncNow: () => Promise<void>;
   updateStaffLocation: (loc: GeoPoint) => void;
+  updateProfile: (fields: {
+    name?: string;
+    email?: string | null;
+    organization?: string | null;
+    projectName?: string | null;
+    state?: string | null;
+    district?: string | null;
+  }) => Promise<User>;
 };
 
 type AppContextValue = AppState & AppActions;
@@ -465,17 +481,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       name: data.name,
       phone: data.phone,
       organization: data.organization ?? null,
+      projectName: data.projectName ?? null,
+      email: data.email ?? null,
+      state: data.state ?? null,
+      district: data.district ?? null,
       empCode: data.empCode ?? null,
       area: data.area ?? null,
       adminCode: data.adminCode ?? null,
       adminRegistrationKey: data.adminRegistrationKey ?? null,
-    });
+    } as Parameters<typeof registerStaff>[0]);
     const user: User = {
       id: staff.id,
       name: staff.name,
       phone: staff.phone,
       role: staff.role as UserRole,
       empCode: staff.empCode,
+      organization: (staff as any).organization ?? null,
+      projectName: (staff as any).projectName ?? null,
+      email: (staff as any).email ?? null,
+      state: (staff as any).state ?? null,
+      district: (staff as any).district ?? null,
     };
     // Store the freshly-created user and set pendingPhone so the OTP screen
     // can display the number. OTP verification will use pendingRegistration.
@@ -525,6 +550,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         role: string;
         empCode: string;
         organization?: string | null;
+        projectName?: string | null;
+        email?: string | null;
+        state?: string | null;
+        district?: string | null;
       };
     };
     const user: User = {
@@ -534,6 +563,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       role: dto.role as UserRole,
       empCode: dto.empCode,
       organization: dto.organization ?? null,
+      projectName: dto.projectName ?? null,
+      email: dto.email ?? null,
+      state: dto.state ?? null,
+      district: dto.district ?? null,
     };
     setState((s) => ({ ...s, user, pendingPhone: null, pendingRegistration: null }));
     return user;
@@ -557,6 +590,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         role: string;
         empCode: string;
         organization?: string | null;
+        projectName?: string | null;
+        email?: string | null;
+        state?: string | null;
+        district?: string | null;
       };
     };
     // For the registration flow: if pendingRegistration is set, use that user
@@ -570,6 +607,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           role: dto.role as UserRole,
           empCode: dto.empCode,
           organization: dto.organization ?? null,
+          projectName: dto.projectName ?? null,
+          email: dto.email ?? null,
+          state: dto.state ?? null,
+          district: dto.district ?? null,
         };
     setState((s) => ({ ...s, user, pendingPhone: null, pendingRegistration: null }));
     return user;
@@ -817,6 +858,46 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const updateProfile = useCallback(
+    async (fields: {
+      name?: string;
+      email?: string | null;
+      organization?: string | null;
+      projectName?: string | null;
+      state?: string | null;
+      district?: string | null;
+    }): Promise<User> => {
+      const currentUser = stateRef.current.user;
+      if (!currentUser) throw new Error("Not logged in");
+      const res = await fetch(`${API_BASE}/api/staff/profile`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: currentUser.phone, ...fields }),
+      });
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+        throw new Error((err["title"] as string) || "Failed to update profile");
+      }
+      const dto = (await res.json()) as {
+        id: string; name: string; phone: string; role: string; empCode: string;
+        organization?: string | null; projectName?: string | null;
+        email?: string | null; state?: string | null; district?: string | null;
+      };
+      const updated: User = {
+        ...currentUser,
+        name: dto.name,
+        organization: dto.organization ?? null,
+        projectName: dto.projectName ?? null,
+        email: dto.email ?? null,
+        state: dto.state ?? null,
+        district: dto.district ?? null,
+      };
+      setState((s) => ({ ...s, user: updated }));
+      return updated;
+    },
+    [],
+  );
+
   const value = useMemo<AppContextValue>(
     () => ({
       ...state,
@@ -835,6 +916,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       switchRole,
       syncNow,
       updateStaffLocation,
+      updateProfile,
     }),
     [
       state,
@@ -853,6 +935,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       switchRole,
       syncNow,
       updateStaffLocation,
+      updateProfile,
     ],
   );
 

@@ -122,8 +122,9 @@ export default function CandidateListScreen() {
     if (!pdfUrl) return;
     const base = `${getApiBase()}${pdfUrl}`;
     const params = new URLSearchParams();
-    if (user?.organization) params.set("organization", user.organization);
-    if (user?.name)         params.set("staffName", user.name);
+    const orgParts = [user?.organization, user?.projectName].filter(Boolean);
+    if (orgParts.length > 0) params.set("organization", orgParts.join(" | "));
+    if (user?.name)          params.set("staffName", user.name);
     const query = params.toString();
     void Linking.openURL(query ? `${base}?${query}` : base);
   };

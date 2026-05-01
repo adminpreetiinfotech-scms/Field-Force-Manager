@@ -22,17 +22,15 @@ import { useLanguage } from "@/contexts/LanguageContext";
 const _domain = process.env.EXPO_PUBLIC_DOMAIN;
 const API_BASE = _domain ? `https://${_domain}` : "";
 
-const ACCENT       = "#1E3A5F";
+const ACCENT        = "#1E3A5F";
 const SUCCESS_GREEN = "#16A34A";
-const ERROR_RED    = "#DC2626";
-const BORDER       = "#D1D5DB";
-const MUTED        = "#6B7280";
-const BG           = "#F3F4F6";
+const ERROR_RED     = "#DC2626";
+const BORDER        = "#D1D5DB";
+const MUTED         = "#6B7280";
+const BG            = "#F3F4F6";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-type SectionKey = "info" | "password";
+type SectionKey = "profile" | "password";
 
-// ─── API helpers ──────────────────────────────────────────────────────────────
 async function apiHasPassword(phone: string): Promise<boolean> {
   try {
     const res = await fetch(`/api/staff/has-password?phone=${encodeURIComponent(phone)}`);
@@ -58,23 +56,24 @@ async function apiChangePassword(
     const data = await res.json() as { message?: string; title?: string };
     if (!res.ok) return { ok: false, message: data.title ?? "Error updating password" };
     return { ok: true, message: data.message ?? "Password updated" };
-  } catch (e) {
+  } catch {
     return { ok: false, message: "Network error. Please try again." };
   }
 }
 
-// ─── Inline field component ───────────────────────────────────────────────────
 function Field({
-  label, value, onChangeText, secure, placeholder, error,
+  label, value, onChangeText, secure, placeholder, error, keyboardType, editable = true,
 }: {
   label: string; value: string; onChangeText: (v: string) => void;
   secure?: boolean; placeholder?: string; error?: string;
+  keyboardType?: "default" | "email-address" | "phone-pad";
+  editable?: boolean;
 }) {
   const [show, setShow] = useState(false);
   return (
     <View style={fldStyles.wrap}>
       <Text style={fldStyles.label}>{label}</Text>
-      <View style={[fldStyles.inputRow, error ? fldStyles.inputError : null]}>
+      <View style={[fldStyles.inputRow, error ? fldStyles.inputError : null, !editable && fldStyles.inputDisabled]}>
         <TextInput
           style={fldStyles.input}
           value={value}
@@ -83,6 +82,8 @@ function Field({
           placeholder={placeholder}
           placeholderTextColor="#BBB"
           autoCapitalize="none"
+          keyboardType={keyboardType}
+          editable={editable}
         />
         {secure && (
           <TouchableOpacity onPress={() => setShow((s) => !s)} style={fldStyles.eyeBtn}>
@@ -106,6 +107,7 @@ const fldStyles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: "#fff",
   },
+  inputDisabled: { backgroundColor: "#F9FAFB" },
   inputError: { borderColor: ERROR_RED },
   input: {
     flex: 1,
@@ -119,16 +121,66 @@ const fldStyles = StyleSheet.create({
   errorText: { fontSize: 11, color: ERROR_RED, marginTop: 3, fontFamily: "Inter_400Regular" },
 });
 
-// ─── Main screen ─────────────────────────────────────────────────────────────
 export default function AccountSettingsScreen() {
   const { t, lang } = useLanguage();
-  const { user } = useApp();
+  const { user, updateProfile } = useApp();
   const insets = useSafeAreaInsets();
   const webTop = Platform.OS === "web" ? 67 : 0;
 
-  const [activeSection, setActiveSection] = useState<SectionKey>("info");
+  const isAdmin = user?.role === "admin";
+  const [activeSection, setActiveSection] = useState<SectionKey>(isAdmin ? "profile" : "password");
 
-  // Password section state
+  // ── Profile section state (admin only)
+  const [profName, setProfName] = useState(user?.name ?? "");
+  const [profEmail, setProfEmail] = useState(user?.email ?? "");
+  const [profOrg, setProfOrg] = useState(user?.organization ?? "");
+  const [profProject, setProfProject] = useState(user?.projectName ?? "");
+  const [profState, setProfState] = useState(user?.state ?? "");
+  const [profDistrict, setProfDistrict] = useState(user?.district ?? "");
+  const [profErrors, setProfErrors] = useState<Record<string, string>>({});
+  const [profSaving, setProfSaving] = useState(false);
+  const [profSuccess, setProfSuccess] = useState("");
+
+  useEffect(() => {
+    if (user) {
+      setProfName(user.name ?? "");
+      setProfEmail(user.email ?? "");
+      setProfOrg(user.organization ?? "");
+      setProfProject(user.projectName ?? "");
+      setProfState(user.state ?? "");
+      setProfDistrict(user.district ?? "");
+    }
+  }, [user]);
+
+  async function handleSaveProfile() {
+    const errs: Record<string, string> = {};
+    if (!profName.trim() || profName.trim().length < 2) errs.name = "Name must be at least 2 characters";
+    if (profEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profEmail.trim())) {
+      errs.email = "Please enter a valid email address";
+    }
+    setProfErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+
+    setProfSaving(true);
+    setProfSuccess("");
+    try {
+      await updateProfile({
+        name: profName.trim(),
+        email: profEmail.trim() || null,
+        organization: profOrg.trim() || null,
+        projectName: profProject.trim() || null,
+        state: profState.trim() || null,
+        district: profDistrict.trim() || null,
+      });
+      setProfSuccess("Profile updated successfully!");
+    } catch (e: any) {
+      Alert.alert("Error", e?.message || "Failed to update profile. Please try again.");
+    } finally {
+      setProfSaving(false);
+    }
+  }
+
+  // ── Password section state
   const [hasPassword, setHasPassword] = useState<boolean | null>(null);
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
@@ -165,7 +217,6 @@ export default function AccountSettingsScreen() {
       setCurrentPw(""); setNewPw(""); setConfirmPw("");
       setPwErrors({});
     } else {
-      // Map server errors to field-level
       if (result.message.includes("incorrect") || result.message.includes("Current")) {
         setPwErrors({ currentPw: t("wrongPassword") });
       } else if (result.message.includes("4 char")) {
@@ -197,7 +248,7 @@ export default function AccountSettingsScreen() {
 
         <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
 
-          {/* ── User info card ────────────────────────────────────── */}
+          {/* ── User info card */}
           <View style={styles.profileCard}>
             <View style={styles.profileAvatar}>
               <Text style={styles.profileAvatarText}>
@@ -206,37 +257,144 @@ export default function AccountSettingsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.profileName}>{user.name}</Text>
+              {!!(user.organization || user.projectName) && (
+                <Text style={styles.profileOrg} numberOfLines={1}>
+                  {[user.organization, user.projectName].filter(Boolean).join(" · ")}
+                </Text>
+              )}
               <View style={styles.roleBadge}>
                 <Text style={styles.roleBadgeText}>{roleLabel}</Text>
               </View>
             </View>
           </View>
 
-          {/* ── Info rows ─────────────────────────────────────────── */}
+          {/* ── Static info rows */}
           <View style={styles.infoCard}>
             <InfoRow icon="phone" label={t("phone")} value={user.phone} />
             <InfoRow icon="tag" label={t("empCode")} value={user.empCode} />
             <InfoRow icon="briefcase" label={t("role")} value={roleLabel} />
+            {!!(user.state || user.district) && (
+              <InfoRow
+                icon="map-pin"
+                label="Location"
+                value={[user.district, user.state].filter(Boolean).join(", ")}
+              />
+            )}
+            {!!user.email && (
+              <InfoRow icon="mail" label="Email" value={user.email} last />
+            )}
           </View>
 
-          {/* ── Tab bar ───────────────────────────────────────────── */}
+          {/* ── Tab bar */}
           <View style={styles.tabBar}>
+            {isAdmin && (
+              <TouchableOpacity
+                style={[styles.tab, activeSection === "profile" && styles.tabActive]}
+                onPress={() => setActiveSection("profile")}
+              >
+                <Feather name="user" size={14} color={activeSection === "profile" ? ACCENT : MUTED} />
+                <Text style={[styles.tabText, activeSection === "profile" && styles.tabTextActive]}>
+                  Profile
+                </Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               style={[styles.tab, activeSection === "password" && styles.tabActive]}
               onPress={() => setActiveSection("password")}
             >
-              <Feather
-                name="lock"
-                size={14}
-                color={activeSection === "password" ? ACCENT : MUTED}
-              />
+              <Feather name="lock" size={14} color={activeSection === "password" ? ACCENT : MUTED} />
               <Text style={[styles.tabText, activeSection === "password" && styles.tabTextActive]}>
                 {t("changePassword")}
               </Text>
             </TouchableOpacity>
           </View>
 
-          {/* ── Password section ──────────────────────────────────── */}
+          {/* ── Profile section (admin only) */}
+          {activeSection === "profile" && isAdmin && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Personal & Organization Info</Text>
+              <Text style={styles.sectionSub}>
+                Yeh details PDF/Excel reports ke header mein dikhenge.
+              </Text>
+
+              <View style={{ height: 16 }} />
+
+              <Field
+                label="FULL NAME *"
+                value={profName}
+                onChangeText={setProfName}
+                placeholder="Anita Sharma"
+                error={profErrors.name}
+              />
+
+              <Field
+                label="EMAIL ID"
+                value={profEmail}
+                onChangeText={setProfEmail}
+                placeholder="anita@example.com"
+                keyboardType="email-address"
+                error={profErrors.email}
+              />
+
+              <View style={[styles.dividerLine, { marginVertical: 14 }]} />
+              <Text style={styles.subHeading}>ORGANIZATION</Text>
+
+              <Field
+                label="COMPANY / ORGANIZATION NAME"
+                value={profOrg}
+                onChangeText={setProfOrg}
+                placeholder="e.g. JSDMS / DDU-GKY"
+              />
+
+              <Field
+                label="SCHEME / PROJECT NAME"
+                value={profProject}
+                onChangeText={setProfProject}
+                placeholder="e.g. Kaushal Vikas Yojana"
+              />
+
+              <View style={[styles.dividerLine, { marginVertical: 14 }]} />
+              <Text style={styles.subHeading}>LOCATION</Text>
+
+              <Field
+                label="STATE"
+                value={profState}
+                onChangeText={setProfState}
+                placeholder="e.g. Jharkhand"
+              />
+
+              <Field
+                label="DISTRICT"
+                value={profDistrict}
+                onChangeText={setProfDistrict}
+                placeholder="e.g. Ranchi"
+              />
+
+              {!!profSuccess && (
+                <View style={styles.successBanner}>
+                  <Feather name="check-circle" size={15} color={SUCCESS_GREEN} />
+                  <Text style={styles.successText}>{profSuccess}</Text>
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={[styles.saveBtn, profSaving && { opacity: 0.7 }]}
+                onPress={handleSaveProfile}
+                disabled={profSaving}
+              >
+                {profSaving
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : (
+                    <>
+                      <Feather name="save" size={16} color="#fff" />
+                      <Text style={styles.saveBtnText}>Save Profile</Text>
+                    </>
+                  )}
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* ── Password section */}
           {activeSection === "password" && (
             <View style={styles.section}>
               {hasPassword === null ? (
@@ -308,12 +466,12 @@ export default function AccountSettingsScreen() {
   );
 }
 
-function InfoRow({ icon, label, value }: { icon: string; label: string; value: string }) {
+function InfoRow({ icon, label, value, last }: { icon: string; label: string; value: string; last?: boolean }) {
   return (
-    <View style={styles.infoRow}>
+    <View style={[styles.infoRow, last && { borderBottomWidth: 0 }]}>
       <Feather name={icon as any} size={15} color={MUTED} style={{ width: 20 }} />
       <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue}>{value}</Text>
+      <Text style={styles.infoValue} numberOfLines={1}>{value}</Text>
     </View>
   );
 }
@@ -364,17 +522,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  profileAvatarText: {
-    color: "#fff",
-    fontSize: 24,
-    fontFamily: "Inter_700Bold",
-  },
-  profileName: {
-    fontSize: 17,
-    fontFamily: "Inter_700Bold",
-    color: "#111",
-    marginBottom: 6,
-  },
+  profileAvatarText: { color: "#fff", fontSize: 24, fontFamily: "Inter_700Bold" },
+  profileName: { fontSize: 17, fontFamily: "Inter_700Bold", color: "#111", marginBottom: 2 },
+  profileOrg: { fontSize: 12, fontFamily: "Inter_400Regular", color: MUTED, marginBottom: 6 },
   roleBadge: {
     alignSelf: "flex-start",
     backgroundColor: ACCENT + "18",
@@ -382,11 +532,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
-  roleBadgeText: {
-    color: ACCENT,
-    fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
-  },
+  roleBadgeText: { color: ACCENT, fontSize: 11, fontFamily: "Inter_600SemiBold" },
 
   infoCard: {
     backgroundColor: "#fff",
@@ -407,17 +553,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "#F0F0F0",
   },
-  infoLabel: {
-    fontSize: 13,
-    color: MUTED,
-    fontFamily: "Inter_400Regular",
-    flex: 1,
-  },
-  infoValue: {
-    fontSize: 13,
-    color: "#111",
-    fontFamily: "Inter_600SemiBold",
-  },
+  infoLabel: { fontSize: 13, color: MUTED, fontFamily: "Inter_400Regular", flex: 1 },
+  infoValue: { fontSize: 13, color: "#111", fontFamily: "Inter_600SemiBold", maxWidth: "55%" },
 
   tabBar: {
     flexDirection: "row",
@@ -443,15 +580,8 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  tabText: {
-    fontSize: 13,
-    color: MUTED,
-    fontFamily: "Inter_500Medium",
-  },
-  tabTextActive: {
-    color: ACCENT,
-    fontFamily: "Inter_600SemiBold",
-  },
+  tabText: { fontSize: 13, color: MUTED, fontFamily: "Inter_500Medium" },
+  tabTextActive: { color: ACCENT, fontFamily: "Inter_600SemiBold" },
 
   section: {
     backgroundColor: "#fff",
@@ -463,6 +593,11 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
+  sectionTitle: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#111", marginBottom: 4 },
+  sectionSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: MUTED, lineHeight: 18 },
+  subHeading: { fontSize: 11, letterSpacing: 0.6, fontFamily: "Inter_600SemiBold", color: MUTED, marginBottom: 12 },
+  dividerLine: { height: StyleSheet.hairlineWidth, backgroundColor: "#E5E7EB" },
+
   noPasswordBanner: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -474,13 +609,7 @@ const styles = StyleSheet.create({
     borderColor: "#FDE68A",
     marginBottom: 14,
   },
-  noPasswordText: {
-    flex: 1,
-    fontSize: 12,
-    color: "#92400E",
-    fontFamily: "Inter_400Regular",
-    lineHeight: 18,
-  },
+  noPasswordText: { flex: 1, fontSize: 12, color: "#92400E", fontFamily: "Inter_400Regular", lineHeight: 18 },
   successBanner: {
     flexDirection: "row",
     alignItems: "center",
@@ -492,12 +621,7 @@ const styles = StyleSheet.create({
     borderColor: "#BBF7D0",
     marginBottom: 12,
   },
-  successText: {
-    flex: 1,
-    fontSize: 13,
-    color: SUCCESS_GREEN,
-    fontFamily: "Inter_500Medium",
-  },
+  successText: { flex: 1, fontSize: 13, color: SUCCESS_GREEN, fontFamily: "Inter_500Medium" },
   saveBtn: {
     backgroundColor: ACCENT,
     borderRadius: 10,
@@ -508,9 +632,5 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 4,
   },
-  saveBtnText: {
-    color: "#fff",
-    fontSize: 15,
-    fontFamily: "Inter_700Bold",
-  },
+  saveBtnText: { color: "#fff", fontSize: 15, fontFamily: "Inter_700Bold" },
 });

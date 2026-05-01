@@ -108,7 +108,16 @@ Mobile-first field operations app for distribution/utility staff and ops admins.
 - "Share on WhatsApp" button — generates formatted text report and opens `whatsapp://send` (or WhatsApp web on web)
 - Falls back to local attendance/trip state if server data unavailable
 
-**State**: `contexts/AppContext.tsx` — `register()` + `setPendingPhone()` + `checkPhone()` + `loginWithMpin()` + `setupMpin()` actions; persisted to AsyncStorage at key `@field-staff/state-v1`.
+**Admin Profile / Organization Settings** (`app/account-settings.tsx`):
+- `PATCH /api/staff/profile` — update name, email, organization, projectName, state, district for any staff/admin (body: `{ phone, name?, email?, organization?, projectName?, state?, district? }`); validates email format server-side
+- DB columns added: `email text`, `project_name text`, `state text`, `district text` on `staff` table
+- Admin registration screen (`app/(auth)/register-admin.tsx`) now accepts all 7 fields (name, phone, email, organization, projectName, state, district) with sectioned form; org fields are optional at registration time
+- Account Settings screen has a new "Profile" tab (admin only) — shows/edits name, email, organization, project, state, district; profile card shows org+project combined; location (state/district) and email shown as info rows
+- `AppContext.User` type extended with `projectName`, `email`, `state`, `district`; `updateProfile()` action added
+- Reports (PDF/Excel/ReportContextBar): org header now shows `"Organization | ProjectName"` if both set
+- Auth DTO (`mpin.ts`) and staff DTO (`staff.ts`) both return all new fields on login/register/update
+
+**State**: `contexts/AppContext.tsx` — `register()` + `setPendingPhone()` + `checkPhone()` + `loginWithMpin()` + `setupMpin()` + `updateProfile()` actions; persisted to AsyncStorage at key `@field-staff/state-v1`.
 
 **Maps**: `react-native-maps` is used on native only. The web build uses a schematic SVG-grid placeholder. To keep the import platform-safe, the native map lives in `components/admin/MapView.tsx` with a web stub at `components/admin/MapView.web.tsx` (Metro picks the right one). Do not put `.web.tsx` files inside `app/`, since expo-router's `require.context` would still load the native variant.
 

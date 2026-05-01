@@ -255,12 +255,13 @@ export default function ReportsScreen() {
   const onExportXlsx = useCallback(async () => {
     setXlDownloading(true);
     try {
+      const orgParts = [user?.organization, user?.projectName].filter(Boolean);
       await downloadXlsxFile({
         from: xlDates.from,
         to: xlDates.to,
         staffId: xlStaffId,
         reportType: xlReportType,
-        organization: user?.organization ?? undefined,
+        organization: orgParts.length > 0 ? orgParts.join(" | ") : undefined,
         staffName: user?.name ?? undefined,
       });
     } catch (e: any) {
@@ -324,7 +325,7 @@ export default function ReportsScreen() {
           Calendar · Leaderboard · Export
         </Text>
         <ReportContextBar
-          organization={user?.organization}
+          organization={[user?.organization, user?.projectName].filter(Boolean).join(" | ") || user?.organization}
           staffName={user?.name}
           from={dates.from}
           to={dates.to}

@@ -19,6 +19,16 @@ import { Button } from "@/components/Button";
 import { useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
 
+const INDIA_STATES = [
+  "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh",
+  "Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka",
+  "Kerala","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram",
+  "Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana",
+  "Tripura","Uttar Pradesh","Uttarakhand","West Bengal",
+  "Andaman & Nicobar","Chandigarh","Dadra & Nagar Haveli","Daman & Diu",
+  "Delhi","Jammu & Kashmir","Ladakh","Lakshadweep","Puducherry",
+];
+
 export default function RegisterAdminScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -26,25 +36,47 @@ export default function RegisterAdminScreen() {
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [organization, setOrganization] = useState("");
+  const [projectName, setProjectName] = useState("");
+  const [state, setState] = useState("");
+  const [district, setDistrict] = useState("");
   const [adminKey, setAdminKey] = useState("");
   const [loading, setLoading] = useState(false);
 
   const phoneRef = useRef<TextInput>(null);
+  const emailRef = useRef<TextInput>(null);
+  const orgRef = useRef<TextInput>(null);
+  const projectRef = useRef<TextInput>(null);
+  const stateRef = useRef<TextInput>(null);
+  const districtRef = useRef<TextInput>(null);
   const keyRef = useRef<TextInput>(null);
+
+  const emailValid = !email.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
   const valid =
     name.trim().length >= 2 &&
     phone.replace(/\D/g, "").length === 10 &&
+    emailValid &&
     adminKey.trim().length >= 4;
 
   const onRegister = async () => {
     if (!valid) return;
+    if (email.trim() && !emailValid) {
+      Alert.alert("Invalid Email", "Please enter a valid email address.");
+      return;
+    }
     setLoading(true);
     try {
       await register({
         kind: "admin",
         name: name.trim(),
         phone: phone.replace(/\D/g, ""),
+        email: email.trim() || undefined,
+        organization: organization.trim() || undefined,
+        projectName: projectName.trim() || undefined,
+        state: state.trim() || undefined,
+        district: district.trim() || undefined,
         adminRegistrationKey: adminKey.trim(),
       });
       if (Platform.OS !== "web") {
@@ -119,14 +151,16 @@ export default function RegisterAdminScreen() {
               Register as Admin
             </Text>
             <Text style={[styles.sub, { color: colors.mutedForeground }]}>
-              Create your admin account to manage your field team.
+              Apna admin account banayein apni field team manage karne ke liye.
             </Text>
           </View>
 
-          {/* Form */}
-          <View style={[styles.form, { gap: 16, marginTop: 28 }]}>
+          {/* ── Section: Personal Info ── */}
+          <SectionLabel label="PERSONAL INFORMATION" colors={colors} />
+
+          <View style={[styles.form, { gap: 14 }]}>
             <FieldInput
-              label="FULL NAME"
+              label="FULL NAME *"
               value={name}
               onChangeText={setName}
               placeholder="Anita Sharma"
@@ -137,7 +171,7 @@ export default function RegisterAdminScreen() {
 
             <View>
               <Text style={[styles.label, { color: colors.mutedForeground }]}>
-                MOBILE NUMBER
+                MOBILE NUMBER *
               </Text>
               <View
                 style={[
@@ -168,7 +202,7 @@ export default function RegisterAdminScreen() {
                   placeholder="98765 43210"
                   placeholderTextColor={colors.mutedForeground}
                   returnKeyType="next"
-                  onSubmitEditing={() => keyRef.current?.focus()}
+                  onSubmitEditing={() => emailRef.current?.focus()}
                   style={[
                     styles.input,
                     {
@@ -181,9 +215,77 @@ export default function RegisterAdminScreen() {
               </View>
             </View>
 
+            <FieldInput
+              ref={emailRef}
+              label="EMAIL ID (optional)"
+              value={email}
+              onChangeText={setEmail}
+              placeholder="anita@example.com"
+              returnKeyType="next"
+              onSubmitEditing={() => orgRef.current?.focus()}
+              colors={colors}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              error={email.trim() && !emailValid ? "Invalid email address" : undefined}
+            />
+          </View>
+
+          {/* ── Section: Organization ── */}
+          <SectionLabel label="ORGANIZATION DETAILS (optional)" colors={colors} />
+
+          <View style={[styles.form, { gap: 14 }]}>
+            <FieldInput
+              ref={orgRef}
+              label="COMPANY / ORGANIZATION NAME"
+              value={organization}
+              onChangeText={setOrganization}
+              placeholder="e.g. JSDMS / DDU-GKY"
+              returnKeyType="next"
+              onSubmitEditing={() => projectRef.current?.focus()}
+              colors={colors}
+            />
+
+            <FieldInput
+              ref={projectRef}
+              label="SCHEME / PROJECT NAME"
+              value={projectName}
+              onChangeText={setProjectName}
+              placeholder="e.g. Kaushal Vikas Yojana"
+              returnKeyType="next"
+              onSubmitEditing={() => stateRef.current?.focus()}
+              colors={colors}
+            />
+
+            <FieldInput
+              ref={stateRef}
+              label="STATE"
+              value={state}
+              onChangeText={setState}
+              placeholder="e.g. Jharkhand"
+              returnKeyType="next"
+              onSubmitEditing={() => districtRef.current?.focus()}
+              colors={colors}
+            />
+
+            <FieldInput
+              ref={districtRef}
+              label="DISTRICT"
+              value={district}
+              onChangeText={setDistrict}
+              placeholder="e.g. Ranchi"
+              returnKeyType="next"
+              onSubmitEditing={() => keyRef.current?.focus()}
+              colors={colors}
+            />
+          </View>
+
+          {/* ── Section: Security ── */}
+          <SectionLabel label="SECURITY" colors={colors} />
+
+          <View style={[styles.form, { gap: 14 }]}>
             <View>
               <Text style={[styles.label, { color: colors.mutedForeground }]}>
-                SECRET ADMIN KEY
+                SECRET ADMIN KEY *
               </Text>
               <Text style={[styles.keyHint, { color: colors.mutedForeground }]}>
                 Aapke admin key ke bina registration nahi hogi. Yeh key sirf aapko pata hai.
@@ -226,11 +328,23 @@ export default function RegisterAdminScreen() {
           />
 
           <Text style={[styles.legal, { color: colors.mutedForeground }]}>
-            You will set a 4-digit MPIN to secure your account. Your account details are
-            securely stored and never shared.
+            Aapko 4-digit MPIN set karna hoga account secure karne ke liye.
+            Organization details baad mein settings mein edit ki ja sakti hain.
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
+    </View>
+  );
+}
+
+function SectionLabel({ label, colors }: { label: string; colors: ReturnType<typeof import("@/hooks/useColors").useColors> }) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 24, marginBottom: 12 }}>
+      <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.border }} />
+      <Text style={{ fontSize: 10, letterSpacing: 0.8, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground }}>
+        {label}
+      </Text>
+      <View style={{ flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.border }} />
     </View>
   );
 }
@@ -244,6 +358,8 @@ type FieldProps = {
   onSubmitEditing?: () => void;
   colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
   autoCapitalize?: "none" | "sentences" | "words" | "characters";
+  keyboardType?: "default" | "email-address" | "number-pad" | "phone-pad";
+  error?: string;
 };
 
 const FieldInput = React.forwardRef<TextInput, FieldProps>(
@@ -257,6 +373,8 @@ const FieldInput = React.forwardRef<TextInput, FieldProps>(
       onSubmitEditing,
       colors,
       autoCapitalize = "words",
+      keyboardType = "default",
+      error,
     },
     ref,
   ) => (
@@ -273,17 +391,23 @@ const FieldInput = React.forwardRef<TextInput, FieldProps>(
         returnKeyType={returnKeyType}
         onSubmitEditing={onSubmitEditing}
         autoCapitalize={autoCapitalize}
+        keyboardType={keyboardType}
         style={[
           styles.textField,
           {
             color: colors.foreground,
-            borderColor: colors.border,
+            borderColor: error ? "#ef4444" : colors.border,
             borderRadius: colors.radius,
             backgroundColor: colors.background,
             fontFamily: "Inter_400Regular",
           },
         ]}
       />
+      {!!error && (
+        <Text style={{ fontSize: 11, color: "#ef4444", marginTop: 4, fontFamily: "Inter_400Regular" }}>
+          {error}
+        </Text>
+      )}
     </View>
   ),
 );
