@@ -198,7 +198,7 @@ export default function AdminDashboard() {
             <View style={styles.sectionHeader}>
               <View>
                 <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                  Candidate Registrations
+                  Candidate Registration Details
                 </Text>
                 <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
                   Submit, review and download candidate profiles
