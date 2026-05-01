@@ -24,6 +24,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/contexts/AppContext";
+import { calcAge, DobPickerField } from "@/components/DobPicker";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -744,8 +745,15 @@ export default function CandidateRegisterScreen() {
     if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       e.email = "Valid email address enter करें";
     }
-    if (dob.trim() && !/^\d{2}\/\d{2}\/\d{4}$/.test(dob.trim())) {
-      e.dob = "Format: DD/MM/YYYY";
+    if (dob.trim()) {
+      const age = calcAge(dob.trim());
+      if (age === null) {
+        e.dob = "Valid date of birth select karein";
+      } else if (age < 18) {
+        e.dob = `Age ${age} — minimum 18 years required`;
+      } else if (age > 35) {
+        e.dob = `Age ${age} — maximum 35 years allowed`;
+      }
     }
     if (pin.trim() && !/^\d{6}$/.test(pin.trim())) {
       e.pin = "PIN code 6 अंकों का होना चाहिए";
@@ -1303,7 +1311,11 @@ export default function CandidateRegisterScreen() {
                 <HalfField label="Mother's Name / माता का नाम" value={motherName} onChangeText={setMotherName} />
               </HalfRow>
               <HalfRow>
-                <HalfField label="Date of Birth / जन्म तिथि (DD/MM/YYYY)" value={dob} onChangeText={(v) => { setDob(v); if (errors.dob) setErrors((prev) => ({ ...prev, dob: "" })); }} placeholder="DD/MM/YYYY" error={errors.dob} />
+                <DobPickerField
+                    value={dob}
+                    onChange={(v) => { setDob(v); if (errors.dob) setErrors((prev) => ({ ...prev, dob: "" })); }}
+                    error={errors.dob}
+                  />
                 <HalfField label="Mobile No. / मोबाइल नंबर" value={phone} onChangeText={(v) => { setPhone(v); if (errors.phone) setErrors((prev) => ({ ...prev, phone: "" })); }} keyboardType="phone-pad" required error={errors.phone} />
               </HalfRow>
               <HalfRow>
