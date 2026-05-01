@@ -1047,7 +1047,7 @@ components:
         projectName:
           type: string
           nullable: true
-          description: Scheme or project name (e.g. DDU-GKY).
+          description: Scheme or project name (e.g. DDU-KK).
         state:
           type: string
           nullable: true

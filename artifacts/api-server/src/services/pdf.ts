@@ -328,7 +328,7 @@ export async function generateCandidatePdf(
     // Determine branding source: use company override if provided, else JSDMS defaults
     const brandName    = reportOpts?.companyName?.trim()      || "Jharkhand Skill Development Mission Society";
     const brandHindi   = reportOpts?.companyNameHindi?.trim() || "झारखण्ड कौशल विकास मिशन सोसाइटी";
-    const brandScheme  = reportOpts?.schemeName?.trim()       || "DDU-GKY";
+    const brandScheme  = reportOpts?.schemeName?.trim()       || "DDU-KK";
     const brandLogoPath = reportOpts?.companyLogoPath         || LOGO_PATH;
     const brandLogoBuf  = reportOpts?.companyLogoBuffer ?? null;
     const isCustomBrand = !!(reportOpts?.companyName?.trim());
@@ -428,9 +428,9 @@ export async function generateCandidatePdf(
       doc.font("NSB").fontSize(20).fillColor(DARK)
          .text("मेगा स्कील सेंटर", ML, y, { width: TW, align: "center", lineBreak: false });
       y += 26;
-      // DDU-GKY English line
+      // DDU-KK English line
       doc.font("DVB").fontSize(8).fillColor(DARK)
-         .text("DEEN DAYAL UPADHYAY GRAMEEN KAUSHALYA YOJANA  (DDU-GKY)",
+         .text("DEEN DAYAL UPADHYAY KAUSHAL KENDRA  (DDU-KK)",
                ML, y, { width: TW, align: "center", lineBreak: false });
       y += 11;
     } else {
@@ -718,7 +718,7 @@ export async function generateCandidatePdf(
     y += 6;
     doc.font("DVR").fontSize(6).fillColor(GRAY)
        .text(
-         `Registration ID: ${c.id}   |   Status: ${(c.status ?? "Pending").toUpperCase()}   |   JSDMS / DDU-GKY Jharkhand`,
+         `Registration ID: ${c.id}   |   Status: ${(c.status ?? "Pending").toUpperCase()}   |   JSDMS / DDU-KK Jharkhand`,
          ML, y, { width: CW, align: "center", lineBreak: false },
        );
 

@@ -32,7 +32,7 @@ const INDIA_STATES = [
   "Delhi","Jammu & Kashmir","Ladakh","Lakshadweep","Puducherry",
 ];
 
-const PROJECT_OPTIONS = ["DDU-GKY", "JSDMS", "NULM", "PMKVY", "Other"];
+const PROJECT_OPTIONS = ["DDU-KK", "JSDMS", "NULM", "PMKVY", "Other"];
 
 export default function RegisterCompanyScreen() {
   const colors = useColors();

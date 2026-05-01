@@ -239,7 +239,7 @@ export default function RegisterAdminScreen() {
               label="COMPANY / ORGANIZATION NAME"
               value={organization}
               onChangeText={setOrganization}
-              placeholder="e.g. JSDMS / DDU-GKY"
+              placeholder="e.g. JSDMS / DDU-KK"
               returnKeyType="next"
               onSubmitEditing={() => projectRef.current?.focus()}
               colors={colors}

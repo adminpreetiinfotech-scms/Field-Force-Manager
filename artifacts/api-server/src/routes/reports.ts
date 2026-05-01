@@ -255,7 +255,7 @@ router.get("/admin/reports/rides/xlsx", async (req, res, next) => {
     }
 
     // Header rows
-    const orgLine = organization ?? "Jharkhand Skill Development Mission Society (JSDMS) / DDU-GKY";
+    const orgLine = organization ?? "Jharkhand Skill Development Mission Society (JSDMS) / DDU-KK";
     mergeHeader(ws, 1, orgLine, NAVY, WHITE, 13);
     mergeHeader(ws, 2, "STAFF RIDE READING REPORT", NAVY, AMBER, 14);
 

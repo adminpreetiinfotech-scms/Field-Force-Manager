@@ -349,7 +349,7 @@ export default function AccountSettingsScreen() {
                 label="COMPANY / ORGANIZATION NAME"
                 value={profOrg}
                 onChangeText={setProfOrg}
-                placeholder="e.g. JSDMS / DDU-GKY"
+                placeholder="e.g. JSDMS / DDU-KK"
               />
 
               <Field

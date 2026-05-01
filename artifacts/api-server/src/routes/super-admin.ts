@@ -385,6 +385,15 @@ router.post("/super-admin/production-setup", async (req, res, next) => {
         .where(sql`company_id IS NULL`);
     } else if (existing.length > 0) {
       company = existing[0];
+      // Update project name if provided
+      if (companyProject) {
+        const [updated] = await db
+          .update(companiesTable)
+          .set({ projectName: companyProject })
+          .where(eq(companiesTable.id, company.id))
+          .returning();
+        if (updated) company = updated;
+      }
     }
 
     res.json({
