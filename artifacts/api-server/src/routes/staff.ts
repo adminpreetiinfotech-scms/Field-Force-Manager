@@ -67,23 +67,21 @@ router.post("/staff/register", async (req, res, next) => {
       });
       return;
     }
-    if (kind === "admin" && (!organization || organization.trim().length < 2)) {
-      res.status(400).json({
-        title: "Organization required",
-        detail: "organization name is required for admin accounts",
-        status: 400,
-      });
-      return;
-    }
-
-    // Admin registration key check — only validate if key is provided in request
-    // (old APK versions don't have the key field, so we allow them through)
+    // Admin registration key — always required and always validated
     if (kind === "admin") {
       const requiredKey = process.env.ADMIN_REGISTRATION_KEY;
-      if (requiredKey && adminRegistrationKey && adminRegistrationKey.trim() !== requiredKey.trim()) {
+      if (!adminRegistrationKey || !adminRegistrationKey.trim()) {
         res.status(403).json({
-          title: "Invalid admin key",
-          detail: "The secret key you entered is incorrect. Admin registration requires a valid key.",
+          title: "Secret key required",
+          detail: "Admin registration ke liye secret key zaroori hai.",
+          status: 403,
+        });
+        return;
+      }
+      if (requiredKey && adminRegistrationKey.trim() !== requiredKey.trim()) {
+        res.status(403).json({
+          title: "Galat secret key",
+          detail: "Aapne jo secret key daali woh galat hai. Sahi key daalen.",
           status: 403,
         });
         return;

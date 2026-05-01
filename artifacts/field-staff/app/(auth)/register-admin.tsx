@@ -26,18 +26,15 @@ export default function RegisterAdminScreen() {
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [organization, setOrganization] = useState("");
   const [adminKey, setAdminKey] = useState("");
   const [loading, setLoading] = useState(false);
 
   const phoneRef = useRef<TextInput>(null);
-  const orgRef = useRef<TextInput>(null);
   const keyRef = useRef<TextInput>(null);
 
   const valid =
     name.trim().length >= 2 &&
     phone.replace(/\D/g, "").length === 10 &&
-    organization.trim().length >= 2 &&
     adminKey.trim().length >= 4;
 
   const onRegister = async () => {
@@ -48,7 +45,6 @@ export default function RegisterAdminScreen() {
         kind: "admin",
         name: name.trim(),
         phone: phone.replace(/\D/g, ""),
-        organization: organization.trim(),
         adminRegistrationKey: adminKey.trim(),
       });
       if (Platform.OS !== "web") {
@@ -172,7 +168,7 @@ export default function RegisterAdminScreen() {
                   placeholder="98765 43210"
                   placeholderTextColor={colors.mutedForeground}
                   returnKeyType="next"
-                  onSubmitEditing={() => orgRef.current?.focus()}
+                  onSubmitEditing={() => keyRef.current?.focus()}
                   style={[
                     styles.input,
                     {
@@ -184,17 +180,6 @@ export default function RegisterAdminScreen() {
                 />
               </View>
             </View>
-
-            <FieldInput
-              ref={orgRef}
-              label="ORGANIZATION / COMPANY NAME"
-              value={organization}
-              onChangeText={setOrganization}
-              placeholder="e.g. Vidyut Seva Pvt Ltd"
-              returnKeyType="next"
-              onSubmitEditing={() => keyRef.current?.focus()}
-              colors={colors}
-            />
 
             <View>
               <Text style={[styles.label, { color: colors.mutedForeground }]}>
