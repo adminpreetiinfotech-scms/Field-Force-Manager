@@ -116,10 +116,10 @@ export default function AdminDashboard() {
             (synced / (attendance.length + meterReadings.length)) * 100,
           );
     return {
-      checkInsToday: checkInsToday + 14,
+      checkInsToday,
       onShiftNow,
-      todayMeters: todayMeters + 27,
-      accuracy: Math.max(94, totalAccuracy),
+      todayMeters,
+      accuracy: totalAccuracy,
     };
   }, [attendance, meterReadings, staffLocations]);
 
@@ -348,7 +348,7 @@ export default function AdminDashboard() {
               value={`${stats.todayMeters}`}
               icon="activity"
               tint={colors.pillarTransparency}
-              trend="↑ 12% vs yesterday"
+              trend={stats.todayMeters > 0 ? "Aaj ke meter readings" : "Aaj koi reading nahi"}
             />
             <StatCard
               label="Distance"
@@ -378,18 +378,22 @@ export default function AdminDashboard() {
           </View>
           <View style={styles.row}>
             <StatCard
-              label="On-time rate"
-              value="96%"
+              label="Check-in rate"
+              value={
+                staffLocations.length === 0
+                  ? "0%"
+                  : `${Math.round((stats.checkInsToday / Math.max(staffLocations.length, 1)) * 100)}%`
+              }
               icon="clock"
               tint={colors.pillarDiscipline}
-              trend="Above 95% target"
+              trend={`${stats.checkInsToday} staff checked in today`}
             />
             <StatCard
               label="Audit accuracy"
               value={`${stats.accuracy}%`}
               icon="shield"
               tint={colors.pillarControl}
-              trend="0 disputes today"
+              trend={stats.accuracy === 100 ? "Sab synced" : "Kuch pending sync"}
             />
           </View>
 
