@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
 import { useListStaff, useListPendingStaff, useApproveStaff, useRejectStaff } from "@workspace/api-client-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -12,19 +11,16 @@ import { format } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
 
 export default function StaffManagement() {
-  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("all");
 
-  const reqOpts = { request: { headers: { "x-staff-phone": user?.phone || "" } } };
-  
-  const { data: allStaff, isLoading: isLoadingAll } = useListStaff(reqOpts);
-  const { data: pendingStaff, isLoading: isLoadingPending } = useListPendingStaff(reqOpts);
+  const { data: allStaff, isLoading: isLoadingAll } = useListStaff();
+  const { data: pendingStaff, isLoading: isLoadingPending } = useListPendingStaff();
 
-  const approveStaff = useApproveStaff(reqOpts);
-  const rejectStaff = useRejectStaff(reqOpts);
+  const approveStaff = useApproveStaff();
+  const rejectStaff = useRejectStaff();
 
   const handleAction = async (action: 'approve' | 'reject', staffId: string) => {
     try {

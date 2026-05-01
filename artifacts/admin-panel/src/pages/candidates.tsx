@@ -21,15 +21,13 @@ export default function Candidates() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [mobilizerFilter, setMobilizerFilter] = useState("");
 
-  const reqOpts = { request: { headers: { "x-staff-phone": user?.phone || "" } } };
-  
   const queryParams: any = {};
   if (debouncedSearch) queryParams.search = debouncedSearch;
   if (statusFilter !== "all") queryParams.status = statusFilter;
   if (mobilizerFilter) queryParams.mobilizer = mobilizerFilter;
 
-  const { data: candidates, isLoading } = useListCandidates(queryParams, reqOpts);
-  const updateStatus = useUpdateCandidateStatus(reqOpts);
+  const { data: candidates, isLoading } = useListCandidates(queryParams);
+  const updateStatus = useUpdateCandidateStatus();
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(e.target.value);

@@ -1,15 +1,10 @@
-import { useAuth } from "@/hooks/use-auth";
 import { useGetDashboardStats } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, UserCheck, Clock, XCircle, UserSquare2, TrendingUp, Calendar, AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Dashboard() {
-  const { user } = useAuth();
-  
-  const { data: stats, isLoading, error } = useGetDashboardStats({
-    request: { headers: { "x-staff-phone": user?.phone || "" } }
-  });
+  const { data: stats, isLoading, error } = useGetDashboardStats();
 
   if (isLoading) {
     return (

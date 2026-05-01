@@ -1,4 +1,4 @@
-import { Link, useLocation } from "wouter";
+import { Link, Redirect, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { LayoutDashboard, Users, UserSquare2, FileText, LogOut, Building2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,8 +19,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
 
   if (!user || (user.role !== "admin" && user.role !== "super_admin")) {
-    setLocation("/login");
-    return null;
+    return <Redirect to="/login" />;
   }
 
   const isSuperAdmin = user.role === "super_admin";
