@@ -1,0 +1,290 @@
+import {
+  activityEventsTable,
+  candidatesTable,
+  companiesTable,
+  db,
+  staffTable,
+} from "@workspace/db";
+import { and, count, eq, isNull } from "drizzle-orm";
+import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
+import crypto from "node:crypto";
+import { toCompanyDTO } from "./companies";
+
+const router: IRouter = Router();
+
+// ─── Super admin auth helpers ──────────────────────────────────────────────────
+
+export async function isSuperAdmin(phone: string): Promise<boolean> {
+  if (!phone?.trim()) return false;
+  const [row] = await db
+    .select({ role: staffTable.role })
+    .from(staffTable)
+    .where(and(eq(staffTable.phone, phone.trim()), isNull(staffTable.deletedAt)))
+    .limit(1);
+  return row?.role === "super_admin";
+}
+
+export function requireSuperAdmin(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
+  const phone =
+    (req.headers["x-admin-phone"] as string | undefined) ??
+    (req.query.adminPhone as string | undefined) ??
+    (req.body as Record<string, string>)?.adminPhone;
+
+  if (!phone) {
+    res.status(401).json({ title: "Unauthorized: phone required", status: 401 });
+    return;
+  }
+  isSuperAdmin(phone)
+    .then((ok) => {
+      if (!ok) {
+        res.status(403).json({ title: "Forbidden: super admin only", status: 403 });
+        return;
+      }
+      next();
+    })
+    .catch(next);
+}
+
+// ─── POST /api/super-admin/seed ───────────────────────────────────────────────
+// Create the first super admin. Protected by SUPER_ADMIN_KEY env var.
+
+router.post("/super-admin/seed", async (req, res, next) => {
+  try {
+    const { name, phone, email, superAdminKey } = req.body as {
+      name?: string;
+      phone?: string;
+      email?: string | null;
+      superAdminKey?: string | null;
+    };
+
+    const requiredKey = process.env.SUPER_ADMIN_KEY;
+    if (!requiredKey) {
+      res.status(503).json({ title: "Super admin seeding is not configured on this server", status: 503 });
+      return;
+    }
+    if (!superAdminKey || superAdminKey.trim() !== requiredKey.trim()) {
+      res.status(403).json({ title: "Invalid super admin key", status: 403 });
+      return;
+    }
+
+    if (!name || name.trim().length < 2) {
+      res.status(400).json({ title: "Name required (min 2 chars)", status: 400 });
+      return;
+    }
+    if (!phone || !/^\d{10}$/.test(phone.trim())) {
+      res.status(400).json({ title: "Phone must be 10 digits", status: 400 });
+      return;
+    }
+
+    // Upsert: if phone already exists, upgrade role to super_admin
+    const [existing] = await db
+      .select({ id: staffTable.id, role: staffTable.role })
+      .from(staffTable)
+      .where(eq(staffTable.phone, phone.trim()))
+      .limit(1);
+
+    if (existing) {
+      const [updated] = await db
+        .update(staffTable)
+        .set({ role: "super_admin", companyId: null })
+        .where(eq(staffTable.id, existing.id))
+        .returning();
+      res.json({
+        message: "Super admin role granted to existing user",
+        id: updated.id,
+        phone: updated.phone,
+        role: updated.role,
+      });
+      return;
+    }
+
+    const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
+    const [inserted] = await db
+      .insert(staffTable)
+      .values({
+        companyId: null,
+        empCode: `SA-${suffix}`,
+        name: name.trim(),
+        phone: phone.trim(),
+        role: "super_admin",
+        email: email?.trim() || null,
+        approvalStatus: "approved",
+      })
+      .returning();
+
+    res.status(201).json({
+      message: "Super admin created",
+      id: inserted.id,
+      phone: inserted.phone,
+      empCode: inserted.empCode,
+      role: inserted.role,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── GET /api/super-admin/companies ───────────────────────────────────────────
+
+router.get("/super-admin/companies", requireSuperAdmin, async (_req, res, next) => {
+  try {
+    const companies = await db.select().from(companiesTable).orderBy(companiesTable.createdAt);
+    res.json(companies.map(toCompanyDTO));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── GET /api/super-admin/companies/:id/stats ─────────────────────────────────
+
+router.get("/super-admin/companies/:id/stats", requireSuperAdmin, async (req, res, next) => {
+  try {
+    const id = req.params.id as string;
+    const [company] = await db
+      .select()
+      .from(companiesTable)
+      .where(eq(companiesTable.id, id))
+      .limit(1);
+    if (!company) {
+      res.status(404).json({ title: "Company not found", status: 404 });
+      return;
+    }
+
+    const [staffCount] = await db
+      .select({ count: count() })
+      .from(staffTable)
+      .where(and(eq(staffTable.companyId, id), isNull(staffTable.deletedAt)));
+
+    const [candidateCount] = await db
+      .select({ count: count() })
+      .from(candidatesTable)
+      .where(eq(candidatesTable.companyId, id));
+
+    const [activityCount] = await db
+      .select({ count: count() })
+      .from(activityEventsTable)
+      .where(eq(activityEventsTable.companyId, id));
+
+    res.json({
+      company: toCompanyDTO(company),
+      stats: {
+        staffCount: Number(staffCount?.count ?? 0),
+        candidateCount: Number(candidateCount?.count ?? 0),
+        activityCount: Number(activityCount?.count ?? 0),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── PATCH /api/super-admin/companies/:id ─────────────────────────────────────
+
+router.patch("/super-admin/companies/:id", requireSuperAdmin, async (req, res, next) => {
+  try {
+    const id = req.params.id as string;
+    const { status, subscriptionActive, name, projectName, state, district } = req.body as {
+      status?: "active" | "inactive";
+      subscriptionActive?: boolean;
+      name?: string;
+      projectName?: string | null;
+      state?: string | null;
+      district?: string | null;
+    };
+
+    const updates: Partial<typeof companiesTable.$inferInsert> = {};
+    if (status !== undefined) updates.status = status;
+    if (subscriptionActive !== undefined) updates.subscriptionActive = subscriptionActive;
+    if (name !== undefined) updates.name = name.trim();
+    if (projectName !== undefined) updates.projectName = projectName?.trim() || null;
+    if (state !== undefined) updates.state = state?.trim() || null;
+    if (district !== undefined) updates.district = district?.trim() || null;
+
+    const [updated] = await db
+      .update(companiesTable)
+      .set(updates)
+      .where(eq(companiesTable.id, id))
+      .returning();
+
+    if (!updated) {
+      res.status(404).json({ title: "Company not found", status: 404 });
+      return;
+    }
+    res.json(toCompanyDTO(updated));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── POST /api/super-admin/companies/:id/reset-admin ──────────────────────────
+// Reset the admin of a company (clear their MPIN so they must re-setup).
+
+router.post(
+  "/super-admin/companies/:id/reset-admin",
+  requireSuperAdmin,
+  async (req, res, next) => {
+    try {
+      const id = req.params.id as string;
+      // Find admin user for this company
+      const [admin] = await db
+        .select({ id: staffTable.id, name: staffTable.name, phone: staffTable.phone })
+        .from(staffTable)
+        .where(and(eq(staffTable.companyId, id), eq(staffTable.role, "admin"), isNull(staffTable.deletedAt)))
+        .limit(1);
+
+      if (!admin) {
+        res.status(404).json({ title: "No admin found for this company", status: 404 });
+        return;
+      }
+
+      // Clear MPIN hash (forces them to re-setup)
+      await db
+        .update(staffTable)
+        .set({
+          mpinHash: null,
+          failedMpinAttempts: 0,
+          mpinBlockedUntil: null,
+          disabledAt: null,
+        })
+        .where(eq(staffTable.id, admin.id));
+
+      res.json({ message: "Admin MPIN reset successfully", adminId: admin.id, phone: admin.phone });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// ─── GET /api/super-admin/staff ───────────────────────────────────────────────
+// List all staff across all companies (for super admin view).
+
+router.get("/super-admin/staff", requireSuperAdmin, async (_req, res, next) => {
+  try {
+    const rows = await db
+      .select({
+        id: staffTable.id,
+        name: staffTable.name,
+        phone: staffTable.phone,
+        role: staffTable.role,
+        empCode: staffTable.empCode,
+        companyId: staffTable.companyId,
+        companyName: companiesTable.name,
+        approvalStatus: staffTable.approvalStatus,
+        disabledAt: staffTable.disabledAt,
+        createdAt: staffTable.createdAt,
+      })
+      .from(staffTable)
+      .leftJoin(companiesTable, eq(staffTable.companyId, companiesTable.id))
+      .where(isNull(staffTable.deletedAt))
+      .orderBy(staffTable.createdAt);
+    res.json(rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+export default router;

@@ -1,11 +1,14 @@
 import { boolean, doublePrecision, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { companiesTable } from "./companies";
 
 export const staffTable = pgTable("staff", {
   id: uuid("id").defaultRandom().primaryKey(),
+  /** Null for super_admin who belongs to no company. */
+  companyId: uuid("company_id").references(() => companiesTable.id, { onDelete: "set null" }),
   empCode: text("emp_code").notNull().unique(),
   name: text("name").notNull(),
   phone: text("phone").notNull(),
-  role: text("role", { enum: ["staff", "admin"] }).notNull().default("staff"),
+  role: text("role", { enum: ["staff", "admin", "super_admin"] }).notNull().default("staff"),
   organization: text("organization"),
   centerName: text("center_name"),
   projectName: text("project_name"),

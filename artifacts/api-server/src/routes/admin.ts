@@ -5,7 +5,7 @@ import {
   db,
   staffTable,
 } from "@workspace/db";
-import { and, desc, eq, gte, ilike, isNotNull, isNull, lt, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 
 const router: IRouter = Router();
@@ -15,11 +15,11 @@ const router: IRouter = Router();
 export async function isAdminPhone(phone: string): Promise<boolean> {
   if (!phone?.trim()) return false;
   const [row] = await db
-    .select({ role: staffTable.role, approvalStatus: staffTable.approvalStatus })
+    .select({ role: staffTable.role })
     .from(staffTable)
     .where(eq(staffTable.phone, phone.trim()))
     .limit(1);
-  return row?.role === "admin";
+  return row?.role === "admin" || row?.role === "super_admin";
 }
 
 export async function isApprovedStaff(phone: string): Promise<boolean> {
@@ -44,7 +44,30 @@ export async function getStaffRole(
   return row ?? null;
 }
 
-// Middleware that requires admin role (phone passed via x-admin-phone header or adminPhone query param)
+/**
+ * Look up a staff member by phone and return their companyId.
+ * Super admin has no company (returns null, which means "all companies").
+ */
+export async function getAdminCompanyId(phone: string): Promise<{
+  companyId: string | null;
+  role: string;
+} | null> {
+  if (!phone?.trim()) return null;
+  const [row] = await db
+    .select({ role: staffTable.role, companyId: staffTable.companyId })
+    .from(staffTable)
+    .where(eq(staffTable.phone, phone.trim()))
+    .limit(1);
+  if (!row) return null;
+  if (row.role !== "admin" && row.role !== "super_admin") return null;
+  return { companyId: row.companyId ?? null, role: row.role };
+}
+
+/**
+ * Middleware: requires admin or super_admin role.
+ * Sets res.locals.companyId (string for company admin, null for super admin = sees all).
+ * Sets res.locals.adminRole to "admin" | "super_admin".
+ */
 export function requireAdmin(
   req: Request,
   res: Response,
@@ -59,12 +82,14 @@ export function requireAdmin(
     res.status(401).json({ title: "Unauthorized: admin phone required", status: 401 });
     return;
   }
-  isAdminPhone(phone)
-    .then((ok) => {
-      if (!ok) {
+  getAdminCompanyId(phone)
+    .then((info) => {
+      if (!info) {
         res.status(403).json({ title: "Forbidden: admin access only", status: 403 });
         return;
       }
+      res.locals.companyId = info.companyId; // null = super admin (no filter)
+      res.locals.adminRole = info.role;
       next();
     })
     .catch(next);
@@ -72,8 +97,11 @@ export function requireAdmin(
 
 // ─── GET /api/admin/candidate-stats ───────────────────────────────────────────
 
-router.get("/admin/candidate-stats", async (req, res, next) => {
+router.get("/admin/candidate-stats", requireAdmin, async (_req, res, next) => {
   try {
+    const companyId = res.locals.companyId as string | null;
+    const companyFilter = companyId ? eq(candidatesTable.companyId, companyId) : undefined;
+
     // Status breakdown
     const statusCounts = await db
       .select({
@@ -81,6 +109,7 @@ router.get("/admin/candidate-stats", async (req, res, next) => {
         count: sql<number>`count(*)::int`.as("count"),
       })
       .from(candidatesTable)
+      .where(companyFilter)
       .groupBy(candidatesTable.status);
 
     const counts: Record<string, number> = {};
@@ -101,6 +130,7 @@ router.get("/admin/candidate-stats", async (req, res, next) => {
       .from(candidatesTable)
       .where(
         and(
+          companyFilter,
           gte(candidatesTable.createdAt, todayStart),
           lt(candidatesTable.createdAt, tomorrow),
         ),
@@ -114,7 +144,7 @@ router.get("/admin/candidate-stats", async (req, res, next) => {
         name: candidatesTable.submittedBy,
       })
       .from(candidatesTable)
-      .where(isNotNull(candidatesTable.submittedByPhone));
+      .where(and(companyFilter, isNotNull(candidatesTable.submittedByPhone)));
 
     // Per-mobilizer counts
     const mobCountRows = await db
@@ -124,17 +154,19 @@ router.get("/admin/candidate-stats", async (req, res, next) => {
         count: sql<number>`count(*)::int`.as("count"),
       })
       .from(candidatesTable)
-      .where(isNotNull(candidatesTable.submittedByPhone))
+      .where(and(companyFilter, isNotNull(candidatesTable.submittedByPhone)))
       .groupBy(candidatesTable.submittedByPhone, candidatesTable.submittedBy)
       .orderBy(desc(sql`count(*)`));
 
     // Mobilizer approval status
+    const staffFilter = companyId ? eq(staffTable.companyId, companyId) : undefined;
     const phones = mobilizersAll.map((m) => m.phone).filter(Boolean) as string[];
     let mobStatusMap: Record<string, string> = {};
     if (phones.length > 0) {
       const staffRows = await db
         .select({ phone: staffTable.phone, approvalStatus: staffTable.approvalStatus })
-        .from(staffTable);
+        .from(staffTable)
+        .where(staffFilter);
       for (const r of staffRows) {
         if (r.phone) mobStatusMap[r.phone] = r.approvalStatus ?? "unknown";
       }
@@ -147,7 +179,6 @@ router.get("/admin/candidate-stats", async (req, res, next) => {
       approvalStatus: m.phone ? (mobStatusMap[m.phone] ?? "unknown") : "unknown",
     }));
 
-    // Pending mobilizers (staff not yet approved)
     const pendingMobilizers = mobilizersBreakdown.filter(
       (m) => m.approvalStatus === "pending",
     ).length;
@@ -173,7 +204,6 @@ router.get("/admin/candidate-stats", async (req, res, next) => {
 });
 
 // ─── GET /api/admin/permissions?phone=xxx ────────────────────────────────────
-// Returns the role + approval status for any phone — used by mobile for access control
 
 router.get("/admin/permissions", async (req, res, next) => {
   try {
@@ -191,7 +221,7 @@ router.get("/admin/permissions", async (req, res, next) => {
       role: info.role,
       approvalStatus: info.approvalStatus,
       canSubmitCandidates: info.approvalStatus === "approved",
-      isAdmin: info.role === "admin",
+      isAdmin: info.role === "admin" || info.role === "super_admin",
     });
   } catch (err) {
     next(err);
@@ -199,10 +229,10 @@ router.get("/admin/permissions", async (req, res, next) => {
 });
 
 // ─── GET /api/admin/audit-log ─────────────────────────────────────────────────
-// Optional ?candidateId=xxx to filter by candidate
 
-router.get("/admin/audit-log", async (req, res, next) => {
+router.get("/admin/audit-log", requireAdmin, async (req, res, next) => {
   try {
+    const companyId = res.locals.companyId as string | null;
     const { candidateId, phone, limit: limitParam } = req.query as {
       candidateId?: string;
       phone?: string;
@@ -210,7 +240,8 @@ router.get("/admin/audit-log", async (req, res, next) => {
     };
     const pageLimit = Math.min(parseInt(limitParam ?? "100", 10), 500);
 
-    const conditions = [];
+    const conditions: ReturnType<typeof eq>[] = [];
+    if (companyId) conditions.push(eq(candidateAuditLogTable.companyId, companyId));
     if (candidateId?.trim()) {
       conditions.push(eq(candidateAuditLogTable.candidateId, candidateId.trim()));
     }
@@ -244,13 +275,16 @@ router.get("/admin/audit-log", async (req, res, next) => {
 });
 
 // ─── GET /api/admin/staff-list ───────────────────────────────────────────────
-// Returns all non-deleted staff members with their status.
 
-router.get("/admin/staff-list", async (req, res, next) => {
+router.get("/admin/staff-list", requireAdmin, async (_req, res, next) => {
   try {
+    const companyId = res.locals.companyId as string | null;
+    const companyFilter = companyId ? eq(staffTable.companyId, companyId) : undefined;
+
     const rows = await db
       .select()
       .from(staffTable)
+      .where(companyFilter)
       .orderBy(staffTable.name);
 
     res.json(
@@ -279,23 +313,49 @@ router.get("/admin/staff-list", async (req, res, next) => {
   }
 });
 
-// ─── PATCH /api/admin/staff/:id/disable ──────────────────────────────────────
-// Disable a staff member (they cannot login or submit data).
+// ─── PATCH /api/admin/staff/:id/approve ──────────────────────────────────────
 
-router.patch("/admin/staff/:id/disable", async (req, res, next) => {
+router.patch("/admin/staff/:id/approve", requireAdmin, async (req, res, next) => {
   try {
     const { id } = req.params as { id: string };
+    const companyId = res.locals.companyId as string | null;
+    const filter = companyId
+      ? and(eq(staffTable.id, id), eq(staffTable.companyId, companyId))
+      : eq(staffTable.id, id);
+
+    const [row] = await db.select({ id: staffTable.id }).from(staffTable).where(filter).limit(1);
+    if (!row) {
+      res.status(404).json({ title: "Staff not found", status: 404 });
+      return;
+    }
+    await db.update(staffTable).set({ approvalStatus: "approved" }).where(eq(staffTable.id, id));
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── PATCH /api/admin/staff/:id/disable ──────────────────────────────────────
+
+router.patch("/admin/staff/:id/disable", requireAdmin, async (req, res, next) => {
+  try {
+    const { id } = req.params as { id: string };
+    const companyId = res.locals.companyId as string | null;
+    const filter = companyId
+      ? and(eq(staffTable.id, id), eq(staffTable.companyId, companyId))
+      : eq(staffTable.id, id);
+
     const [row] = await db
       .select({ id: staffTable.id, role: staffTable.role })
       .from(staffTable)
-      .where(eq(staffTable.id, id))
+      .where(filter)
       .limit(1);
 
     if (!row) {
       res.status(404).json({ title: "Staff not found", status: 404 });
       return;
     }
-    if (row.role === "admin") {
+    if (row.role === "admin" || row.role === "super_admin") {
       res.status(400).json({ title: "Cannot disable admin accounts", status: 400 });
       return;
     }
@@ -313,11 +373,21 @@ router.patch("/admin/staff/:id/disable", async (req, res, next) => {
 });
 
 // ─── PATCH /api/admin/staff/:id/enable ───────────────────────────────────────
-// Re-enable a disabled staff member.
 
-router.patch("/admin/staff/:id/enable", async (req, res, next) => {
+router.patch("/admin/staff/:id/enable", requireAdmin, async (req, res, next) => {
   try {
     const { id } = req.params as { id: string };
+    const companyId = res.locals.companyId as string | null;
+    const filter = companyId
+      ? and(eq(staffTable.id, id), eq(staffTable.companyId, companyId))
+      : eq(staffTable.id, id);
+
+    const [row] = await db.select({ id: staffTable.id }).from(staffTable).where(filter).limit(1);
+    if (!row) {
+      res.status(404).json({ title: "Staff not found", status: 404 });
+      return;
+    }
+
     await db
       .update(staffTable)
       .set({ disabledAt: null })
@@ -331,22 +401,26 @@ router.patch("/admin/staff/:id/enable", async (req, res, next) => {
 });
 
 // ─── DELETE /api/admin/staff/:id ─────────────────────────────────────────────
-// Soft-delete a staff member. Their candidate records are preserved.
 
-router.delete("/admin/staff/:id", async (req, res, next) => {
+router.delete("/admin/staff/:id", requireAdmin, async (req, res, next) => {
   try {
     const { id } = req.params as { id: string };
+    const companyId = res.locals.companyId as string | null;
+    const filter = companyId
+      ? and(eq(staffTable.id, id), eq(staffTable.companyId, companyId))
+      : eq(staffTable.id, id);
+
     const [row] = await db
       .select({ id: staffTable.id, role: staffTable.role })
       .from(staffTable)
-      .where(eq(staffTable.id, id))
+      .where(filter)
       .limit(1);
 
     if (!row) {
       res.status(404).json({ title: "Staff not found", status: 404 });
       return;
     }
-    if (row.role === "admin") {
+    if (row.role === "admin" || row.role === "super_admin") {
       res.status(400).json({ title: "Cannot delete admin accounts", status: 400 });
       return;
     }
@@ -364,11 +438,11 @@ router.delete("/admin/staff/:id", async (req, res, next) => {
 });
 
 // ─── PATCH /api/admin/staff/:id/profile ──────────────────────────────────────
-// Admin can edit staff profile fields: name, email, centerName, projectName, state, district, area, organization
 
-router.patch("/admin/staff/:id/profile", async (req, res, next) => {
+router.patch("/admin/staff/:id/profile", requireAdmin, async (req, res, next) => {
   try {
     const { id } = req.params as { id: string };
+    const companyId = res.locals.companyId as string | null;
     const { name, email, organization, centerName, projectName, state, district, area } = req.body as {
       name?: string;
       email?: string | null;
@@ -380,22 +454,19 @@ router.patch("/admin/staff/:id/profile", async (req, res, next) => {
       area?: string | null;
     };
 
-    const [row] = await db
-      .select({ id: staffTable.id })
-      .from(staffTable)
-      .where(and(eq(staffTable.id, id), isNull(staffTable.deletedAt)))
-      .limit(1);
+    const filter = companyId
+      ? and(eq(staffTable.id, id), eq(staffTable.companyId, companyId), isNull(staffTable.deletedAt))
+      : and(eq(staffTable.id, id), isNull(staffTable.deletedAt));
 
+    const [row] = await db.select({ id: staffTable.id }).from(staffTable).where(filter).limit(1);
     if (!row) {
       res.status(404).json({ title: "Staff not found", status: 404 });
       return;
     }
-
     if (name !== undefined && name.trim().length < 2) {
       res.status(400).json({ title: "Name too short", status: 400 });
       return;
     }
-
     if (email && email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       res.status(400).json({ title: "Invalid email", status: 400 });
       return;
@@ -439,14 +510,13 @@ router.patch("/admin/staff/:id/profile", async (req, res, next) => {
   }
 });
 
-// ─── GET /api/admin/candidates/csv (with date + mobilizer filter) ─────────────
-// This is registered here so we can use enhanced params before the generic route in candidates.ts
-
 // ─── GET /api/admin/live-locations ─────────────────────────────────────────────
-// Returns all non-deleted staff with their last known GPS position and shift status.
-// Admin map polls this every 15 s for real-time tracking.
-router.get("/admin/live-locations", async (_req, res, next) => {
+
+router.get("/admin/live-locations", requireAdmin, async (_req, res, next) => {
   try {
+    const companyId = res.locals.companyId as string | null;
+    const companyFilter = companyId ? eq(staffTable.companyId, companyId) : undefined;
+
     const rows = await db
       .select({
         id: staffTable.id,
@@ -460,7 +530,7 @@ router.get("/admin/live-locations", async (_req, res, next) => {
         isOnShift: staffTable.isOnShift,
       })
       .from(staffTable)
-      .where(isNull(staffTable.deletedAt))
+      .where(and(companyFilter, isNull(staffTable.deletedAt)))
       .orderBy(staffTable.name);
 
     res.json(

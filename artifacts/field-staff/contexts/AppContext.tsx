@@ -15,10 +15,11 @@ import {
   initActivityQueue,
 } from "@/services/activitySync";
 
-export type UserRole = "staff" | "admin";
+export type UserRole = "staff" | "admin" | "super_admin";
 
 export type User = {
   id: string;
+  companyId?: string | null;
   name: string;
   phone: string;
   role: UserRole;
@@ -29,6 +30,10 @@ export type User = {
   email?: string | null;
   state?: string | null;
   district?: string | null;
+  /** Company branding fields (set on login from DB) */
+  companyName?: string | null;
+  companyLogoUrl?: string | null;
+  companySchemeName?: string | null;
 };
 
 export type GeoPoint = {
@@ -120,8 +125,22 @@ type AppState = {
   unsyncedCount: number;
 };
 
+export type RegisterCompanyData = {
+  companyName: string;
+  companyState?: string;
+  companyDistrict?: string;
+  projectName?: string;
+  adminName: string;
+  adminPhone: string;
+  adminEmail?: string;
+  adminRegistrationKey: string;
+  centerName?: string;
+};
+
 type AppActions = {
   register: (data: RegisterData) => Promise<User>;
+  /** Register a new company + its admin in one call. Sets pendingPhone/pendingRegistration. */
+  registerCompany: (data: RegisterCompanyData) => Promise<User>;
   /** Set pendingPhone explicitly (used by phone screen before navigating to MPIN). */
   setPendingPhone: (phone: string) => void;
   /** Check if a phone number is registered and whether an MPIN is set. */
@@ -496,6 +515,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } as Parameters<typeof registerStaff>[0]);
     const user: User = {
       id: staff.id,
+      companyId: (staff as any).companyId ?? null,
       name: staff.name,
       phone: staff.phone,
       role: staff.role as UserRole,
@@ -513,6 +533,66 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ...s,
       pendingPhone: data.phone,
       pendingRegistration: { user, approvalStatus: staff.approvalStatus },
+    }));
+    return user;
+  }, []);
+
+  const registerCompany = useCallback(async (data: RegisterCompanyData) => {
+    const res = await fetch(`${API_BASE}/api/companies/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        companyName: data.companyName,
+        companyState: data.companyState ?? null,
+        companyDistrict: data.companyDistrict ?? null,
+        projectName: data.projectName ?? null,
+        adminName: data.adminName,
+        adminPhone: data.adminPhone,
+        adminEmail: data.adminEmail ?? null,
+        adminRegistrationKey: data.adminRegistrationKey,
+        centerName: data.centerName ?? null,
+      }),
+    });
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+      throw new Error((err["title"] as string) || "Registration failed. Please try again.");
+    }
+    const { admin } = (await res.json()) as {
+      company: unknown;
+      admin: {
+        id: string;
+        companyId: string | null;
+        empCode: string;
+        name: string;
+        phone: string;
+        role: string;
+        approvalStatus: string;
+        organization?: string | null;
+        centerName?: string | null;
+        projectName?: string | null;
+        email?: string | null;
+        state?: string | null;
+        district?: string | null;
+      };
+    };
+    const user: User = {
+      id: admin.id,
+      companyId: admin.companyId ?? null,
+      name: admin.name,
+      phone: admin.phone,
+      role: admin.role as UserRole,
+      empCode: admin.empCode,
+      organization: admin.organization ?? null,
+      centerName: admin.centerName ?? null,
+      projectName: admin.projectName ?? null,
+      email: admin.email ?? null,
+      state: admin.state ?? null,
+      district: admin.district ?? null,
+    };
+    setState((s) => ({
+      ...s,
+      pendingPhone: data.adminPhone,
+      pendingRegistration: { user, approvalStatus: admin.approvalStatus },
     }));
     return user;
   }, []);
@@ -550,6 +630,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const { user: dto } = (await res.json()) as {
       user: {
         id: string;
+        companyId?: string | null;
         name: string;
         phone: string;
         role: string;
@@ -560,10 +641,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         email?: string | null;
         state?: string | null;
         district?: string | null;
+        companyName?: string | null;
+        companyLogoUrl?: string | null;
+        companySchemeName?: string | null;
       };
     };
     const user: User = {
       id: dto.id,
+      companyId: dto.companyId ?? null,
       name: dto.name,
       phone: dto.phone,
       role: dto.role as UserRole,
@@ -574,6 +659,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       email: dto.email ?? null,
       state: dto.state ?? null,
       district: dto.district ?? null,
+      companyName: dto.companyName ?? null,
+      companyLogoUrl: dto.companyLogoUrl ?? null,
+      companySchemeName: dto.companySchemeName ?? null,
     };
     setState((s) => ({ ...s, user, pendingPhone: null, pendingRegistration: null }));
     return user;
@@ -592,6 +680,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const { user: dto } = (await res.json()) as {
       user: {
         id: string;
+        companyId?: string | null;
         name: string;
         phone: string;
         role: string;
@@ -602,6 +691,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         email?: string | null;
         state?: string | null;
         district?: string | null;
+        companyName?: string | null;
+        companyLogoUrl?: string | null;
+        companySchemeName?: string | null;
       };
     };
     // For the registration flow: if pendingRegistration is set, use that user
@@ -610,6 +702,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ? pending.user
       : {
           id: dto.id,
+          companyId: dto.companyId ?? null,
           name: dto.name,
           phone: dto.phone,
           role: dto.role as UserRole,
@@ -620,6 +713,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           email: dto.email ?? null,
           state: dto.state ?? null,
           district: dto.district ?? null,
+          companyName: dto.companyName ?? null,
+          companyLogoUrl: dto.companyLogoUrl ?? null,
+          companySchemeName: dto.companySchemeName ?? null,
         };
     setState((s) => ({ ...s, user, pendingPhone: null, pendingRegistration: null }));
     return user;
@@ -913,6 +1009,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     () => ({
       ...state,
       register,
+      registerCompany,
       setPendingPhone,
       checkPhone,
       loginWithMpin,
@@ -932,6 +1029,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [
       state,
       register,
+      registerCompany,
       setPendingPhone,
       checkPhone,
       loginWithMpin,

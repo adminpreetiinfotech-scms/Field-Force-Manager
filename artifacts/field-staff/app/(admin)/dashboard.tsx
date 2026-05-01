@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Modal,
   Platform,
   Pressable,
@@ -149,23 +150,32 @@ export default function AdminDashboard() {
           }}
         >
           <View style={styles.headerTop}>
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={styles.greet}>Operations control</Text>
               <Text style={styles.name}>{user?.name}</Text>
             </View>
-            <View
-              style={[
-                styles.empBadge,
-                { backgroundColor: "rgba(255,255,255,0.12)" },
-              ]}
-            >
-              <Feather name="shield" size={11} color="#FCD34D" />
-              <Text style={styles.empText}>ADMIN</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              {!!user?.companyLogoUrl && (
+                <Image
+                  source={{ uri: `${API_BASE}${user.companyLogoUrl}` }}
+                  style={{ width: 34, height: 34, borderRadius: 8, backgroundColor: "rgba(255,255,255,0.15)" }}
+                  resizeMode="contain"
+                />
+              )}
+              <View
+                style={[
+                  styles.empBadge,
+                  { backgroundColor: "rgba(255,255,255,0.12)" },
+                ]}
+              >
+                <Feather name="shield" size={11} color="#FCD34D" />
+                <Text style={styles.empText}>ADMIN</Text>
+              </View>
             </View>
           </View>
 
           <ReportContextBar
-            organization={user?.organization}
+            organization={user?.companyName || user?.organization}
             staffName={user?.name}
             reportType="daily"
           />
@@ -465,7 +475,7 @@ export default function AdminDashboard() {
                 </Text>
               </Pressable>
             </View>
-            <LiveActivityFeed />
+            <LiveActivityFeed companyId={user?.companyId} />
           </View>
 
           <StaffManagementSection />

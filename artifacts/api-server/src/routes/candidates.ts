@@ -2,6 +2,7 @@ import {
   candidateAuditLogTable,
   candidateNotificationsTable,
   candidatesTable,
+  companiesTable,
   db,
   staffTable,
 } from "@workspace/db";
@@ -10,6 +11,7 @@ import express, { Router } from "express";
 import fs from "fs";
 import path from "path";
 import { generateCandidatePdf, type PdfReportOpts } from "../services/pdf";
+import { requireAdmin } from "./admin";
 
 const PDF_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"] as const;
 
@@ -19,15 +21,44 @@ function fmtDMY(d: Date | null | undefined): string {
   return `${day} ${PDF_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
 
+type CompanyBranding = {
+  companyName?: string | null;
+  companyLogoPath?: string | null;
+  schemeName?: string | null;
+};
+
 function buildPdfOpts(
   candidate: { skillCentreName?: string | null; mobilizer?: string | null; submittedBy?: string | null; createdAt?: Date | null },
   query?: Record<string, string>,
+  branding?: CompanyBranding,
 ): PdfReportOpts {
   return {
-    organization: query?.["organization"]?.trim() || candidate.skillCentreName?.trim() || null,
-    staffName:    query?.["staffName"]?.trim()    || candidate.mobilizer?.trim() || candidate.submittedBy?.trim() || null,
-    reportDate:   fmtDMY(candidate.createdAt ? new Date(candidate.createdAt) : new Date()),
+    organization:    query?.["organization"]?.trim() || candidate.skillCentreName?.trim() || null,
+    staffName:       query?.["staffName"]?.trim()    || candidate.mobilizer?.trim() || candidate.submittedBy?.trim() || null,
+    reportDate:      fmtDMY(candidate.createdAt ? new Date(candidate.createdAt) : new Date()),
+    companyName:     branding?.companyName     ?? null,
+    companyLogoPath: branding?.companyLogoPath ?? null,
+    schemeName:      branding?.schemeName      ?? null,
   };
+}
+
+async function fetchCompanyBranding(companyId: string | null | undefined): Promise<CompanyBranding> {
+  if (!companyId) return {};
+  try {
+    const [co] = await db
+      .select({ name: companiesTable.name, logoPath: companiesTable.logoPath, projectName: companiesTable.projectName })
+      .from(companiesTable)
+      .where(eq(companiesTable.id, companyId))
+      .limit(1);
+    if (!co) return {};
+    return {
+      companyName:     co.name ?? null,
+      companyLogoPath: co.logoPath ?? null,
+      schemeName:      co.projectName ?? null,
+    };
+  } catch {
+    return {};
+  }
 }
 
 const router = Router();
@@ -286,10 +317,11 @@ router.post("/candidates", async (req, res, next) => {
       return;
     }
 
-    // Security: verify submitter is an approved staff member.
+    // Security: verify submitter is an approved staff member. Also capture their company_id.
+    let submitterCompanyId: string | null = null;
     if (body.submittedByPhone) {
       const [staffRow] = await db
-        .select({ approvalStatus: staffTable.approvalStatus })
+        .select({ approvalStatus: staffTable.approvalStatus, companyId: staffTable.companyId })
         .from(staffTable)
         .where(eq(staffTable.phone, body.submittedByPhone))
         .limit(1);
@@ -301,11 +333,13 @@ router.post("/candidates", async (req, res, next) => {
         });
         return;
       }
+      submitterCompanyId = staffRow?.companyId ?? null;
     }
 
     const [candidate] = await db
       .insert(candidatesTable)
       .values({
+        companyId: submitterCompanyId,
         name: body.name.trim(),
         phone: body.phone.trim(),
         parentMobile: body.parentMobile?.trim() || null,
@@ -368,10 +402,11 @@ router.post("/candidates", async (req, res, next) => {
     };
     const pdfFilePath = path.join(candidateDir, "profile.pdf");
     try {
+      const branding = await fetchCompanyBranding(submitterCompanyId);
       await generateCandidatePdf(
         candidateWithFiles as typeof candidate,
         pdfFilePath,
-        buildPdfOpts(candidate),
+        buildPdfOpts(candidate, undefined, branding),
       );
     } catch {
       /* PDF generation failure is non-fatal */
@@ -422,8 +457,9 @@ router.get("/candidates/my", async (req, res, next) => {
 
 // ─── GET /api/admin/candidates ────────────────────────────────────────────────
 
-router.get("/admin/candidates", async (req, res, next) => {
+router.get("/admin/candidates", requireAdmin, async (req, res, next) => {
   try {
+    const companyId = res.locals.companyId as string | null;
     const { search, status, mobilizer, village, course } = req.query as {
       search?: string;
       status?: string;
@@ -433,6 +469,7 @@ router.get("/admin/candidates", async (req, res, next) => {
     };
 
     const conditions = [];
+    if (companyId) conditions.push(eq(candidatesTable.companyId, companyId));
     if (search?.trim()) {
       conditions.push(
         or(
@@ -468,8 +505,9 @@ router.get("/admin/candidates", async (req, res, next) => {
 
 // ─── GET /api/admin/candidates/csv ───────────────────────────────────────────
 
-router.get("/admin/candidates/csv", async (req, res, next) => {
+router.get("/admin/candidates/csv", requireAdmin, async (req, res, next) => {
   try {
+    const companyId = res.locals.companyId as string | null;
     const { status, mobilizer, from, to } = req.query as {
       status?: string;
       mobilizer?: string;
@@ -477,6 +515,7 @@ router.get("/admin/candidates/csv", async (req, res, next) => {
       to?: string;   // YYYY-MM-DD
     };
     const conditions = [];
+    if (companyId) conditions.push(eq(candidatesTable.companyId, companyId));
     if (status?.trim()) conditions.push(eq(candidatesTable.status, status.trim()));
     if (mobilizer?.trim()) conditions.push(ilike(candidatesTable.mobilizer, `%${mobilizer.trim()}%`));
     if (from?.trim()) {
@@ -543,9 +582,10 @@ router.get("/admin/candidates/csv", async (req, res, next) => {
 
 // ─── PATCH /api/admin/candidates/:id/status ──────────────────────────────────
 
-router.patch("/admin/candidates/:id/status", async (req, res, next) => {
+router.patch("/admin/candidates/:id/status", requireAdmin, async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const companyId = res.locals.companyId as string | null;
+    const id = req.params.id as string;
     const { status, remarks, verifiedBy, verifiedByPhone } = req.body as {
       status?: string;
       remarks?: string;
@@ -585,6 +625,7 @@ router.patch("/admin/candidates/:id/status", async (req, res, next) => {
 
     // Write audit log entry
     await db.insert(candidateAuditLogTable).values({
+      companyId: candidate.companyId ?? null,
       candidateId: candidate.id,
       candidateName: candidate.name,
       actionBy: verifiedBy?.trim() || "admin",
@@ -606,6 +647,7 @@ router.patch("/admin/candidates/:id/status", async (req, res, next) => {
               : status;
       const message = `Your candidate ${candidate.name} has been ${statusLabel}.${remarks ? ` Remark: ${remarks}` : ""}`;
       await db.insert(candidateNotificationsTable).values({
+        companyId: candidate.companyId ?? null,
         staffPhone: candidate.submittedByPhone,
         candidateId: candidate.id,
         candidateName: candidate.name,
@@ -655,9 +697,10 @@ router.get("/candidates/:id/pdf", async (req, res, next) => {
     }
 
     const pdfFilePath = path.join(CANDIDATES_DIR, candidate.id, "profile.pdf");
-    const pdfOpts = buildPdfOpts(candidate, req.query as Record<string, string>);
+    const branding = await fetchCompanyBranding(candidate.companyId);
+    const pdfOpts = buildPdfOpts(candidate, req.query as Record<string, string>, branding);
     const hasOptsFromQuery = !!(req.query["organization"] || req.query["staffName"]);
-    if (!fs.existsSync(pdfFilePath) || hasOptsFromQuery) {
+    if (!fs.existsSync(pdfFilePath) || hasOptsFromQuery || branding.companyName) {
       fs.mkdirSync(path.dirname(pdfFilePath), { recursive: true });
       try {
         await generateCandidatePdf(candidate, pdfFilePath, pdfOpts);

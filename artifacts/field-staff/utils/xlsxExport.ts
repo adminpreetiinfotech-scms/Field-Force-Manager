@@ -13,6 +13,7 @@ export type XlsxReportParams = {
   reportType?: string;
   organization?: string | null;
   staffName?: string | null;
+  companyId?: string | null;
 };
 
 export function buildXlsxUrl(params: XlsxReportParams): string {
@@ -21,6 +22,7 @@ export function buildXlsxUrl(params: XlsxReportParams): string {
   if (params.reportType)   q.set("reportType",   params.reportType);
   if (params.organization) q.set("organization", params.organization);
   if (params.staffName)    q.set("staffName",    params.staffName);
+  if (params.companyId)    q.set("companyId",    params.companyId);
   return `${API_BASE}/api/admin/reports/rides/xlsx?${q.toString()}`;
 }
 

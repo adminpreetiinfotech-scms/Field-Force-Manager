@@ -60,6 +60,7 @@ function RootLayoutNav() {
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(staff)" options={{ headerShown: false }} />
       <Stack.Screen name="(admin)" options={{ headerShown: false }} />
+      <Stack.Screen name="(super-admin)" options={{ headerShown: false }} />
       <Stack.Screen
         name="attendance/check-in"
         options={{ headerShown: false, presentation: "fullScreenModal" }}

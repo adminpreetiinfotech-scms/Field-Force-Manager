@@ -5,9 +5,11 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
+import { companiesTable } from "./companies";
 
 export const candidatesTable = pgTable("candidates", {
   id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id").references(() => companiesTable.id, { onDelete: "set null" }),
   // Identity
   candidateIdCode: text("candidate_id_code"),
   name: text("name").notNull(),
@@ -73,6 +75,7 @@ export const candidateNotificationsTable = pgTable(
   "candidate_notifications",
   {
     id: uuid("id").defaultRandom().primaryKey(),
+    companyId: uuid("company_id").references(() => companiesTable.id, { onDelete: "set null" }),
     staffPhone: text("staff_phone").notNull(),
     candidateId: text("candidate_id").notNull(),
     candidateName: text("candidate_name").notNull(),
@@ -84,6 +87,7 @@ export const candidateNotificationsTable = pgTable(
 
 export const candidateAuditLogTable = pgTable("candidate_audit_log", {
   id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id").references(() => companiesTable.id, { onDelete: "set null" }),
   candidateId: text("candidate_id").notNull(),
   candidateName: text("candidate_name").notNull(),
   actionBy: text("action_by").notNull(),

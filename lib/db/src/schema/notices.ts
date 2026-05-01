@@ -1,9 +1,11 @@
 import { boolean, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
+import { companiesTable } from "./companies";
 import { staffTable } from "./staff";
 
 export const noticesTable = pgTable("notices", {
   id: uuid("id").defaultRandom().primaryKey(),
+  companyId: uuid("company_id").references(() => companiesTable.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   message: text("message").notNull(),
   priority: text("priority", {

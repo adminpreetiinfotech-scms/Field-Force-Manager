@@ -122,9 +122,9 @@ export default function CandidateListScreen() {
     if (!pdfUrl) return;
     const base = `${getApiBase()}${pdfUrl}`;
     const params = new URLSearchParams();
-    const orgParts = [user?.organization, user?.projectName].filter(Boolean);
-    if (orgParts.length > 0) params.set("organization", orgParts.join(" | "));
-    if (user?.name)          params.set("staffName", user.name);
+    // Backend auto-fetches company branding from DB via candidate.companyId;
+    // only pass staffName for the report context strip.
+    if (user?.name) params.set("staffName", user.name);
     const query = params.toString();
     void Linking.openURL(query ? `${base}?${query}` : base);
   };

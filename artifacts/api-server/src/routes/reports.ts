@@ -1,4 +1,4 @@
-import { activityEventsTable, db, staffTable } from "@workspace/db";
+import { activityEventsTable, companiesTable, db, staffTable } from "@workspace/db";
 import { and, eq, gte, inArray, isNull, lt } from "drizzle-orm";
 import ExcelJS from "exceljs";
 import { Router } from "express";
@@ -47,8 +47,25 @@ router.get("/admin/reports/rides/xlsx", async (req, res, next) => {
     const rawTo         = req.query.to           as string | undefined;
     const rawStaffId    = req.query.staffId      as string | undefined;
     const reportType    = (req.query.reportType  as string | undefined) ?? "daily";
-    const organization  = (req.query.organization as string | undefined)?.trim() || null;
+    const rawCompanyId  = (req.query.companyId   as string | undefined)?.trim() || null;
+    let   organization  = (req.query.organization as string | undefined)?.trim() || null;
     const staffNameHdr  = (req.query.staffName   as string | undefined)?.trim()  || null;
+
+    // Auto-resolve company name from DB when companyId is passed
+    if (rawCompanyId && !organization) {
+      try {
+        const [co] = await db
+          .select({ name: companiesTable.name, projectName: companiesTable.projectName })
+          .from(companiesTable)
+          .where(eq(companiesTable.id, rawCompanyId))
+          .limit(1);
+        if (co) {
+          organization = co.projectName
+            ? `${co.name} — ${co.projectName}`
+            : co.name;
+        }
+      } catch { /* non-fatal */ }
+    }
 
     const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
     if (!rawFrom || !DATE_RE.test(rawFrom) || !rawTo || !DATE_RE.test(rawTo)) {
@@ -65,7 +82,8 @@ router.get("/admin/reports/rides/xlsx", async (req, res, next) => {
       gte(activityEventsTable.occurredAt, startOfFrom),
       lt(activityEventsTable.occurredAt, new Date(endOfTo.getTime() + 1)),
     ] as ReturnType<typeof eq>[];
-    if (rawStaffId) tripConds.push(eq(activityEventsTable.staffId, rawStaffId));
+    if (rawStaffId)   tripConds.push(eq(activityEventsTable.staffId, rawStaffId));
+    if (rawCompanyId) tripConds.push(eq(activityEventsTable.companyId, rawCompanyId));
 
     const tripRows = await db
       .select()
@@ -101,8 +119,9 @@ router.get("/admin/reports/rides/xlsx", async (req, res, next) => {
       gte(activityEventsTable.occurredAt, startOfFrom),
       lt(activityEventsTable.occurredAt, new Date(endOfTo.getTime() + 1)),
     ] as ReturnType<typeof eq>[];
-    if (rawStaffId) meterConds.push(eq(activityEventsTable.staffId, rawStaffId));
+    if (rawStaffId)   meterConds.push(eq(activityEventsTable.staffId, rawStaffId));
     else if (uniqueIds.length) meterConds.push(inArray(activityEventsTable.staffId, uniqueIds));
+    if (rawCompanyId) meterConds.push(eq(activityEventsTable.companyId, rawCompanyId));
 
     const meterRows = completed.length
       ? await db

@@ -124,7 +124,25 @@ Mobile-first field operations app for distribution/utility staff and ops admins.
 - `GET /api/admin/staff-list` and `GET /api/staff/:staffId/profile-stats` both return centerName, email, projectName, state, district.
 - Auth DTO (`mpin.ts`) and staff DTO (`staff.ts`) both return all new fields on login/register/update.
 
-**State**: `contexts/AppContext.tsx` — `register()` + `setPendingPhone()` + `checkPhone()` + `loginWithMpin()` + `setupMpin()` + `updateProfile()` actions; persisted to AsyncStorage at key `@field-staff/state-v1`.
+**Multi-Company / Multi-Tenant System** (T001–T007 complete):
+- `companies` table: id, name, adminName, phone, email, state, district, projectName, logoPath, status, subscriptionActive
+- All data tables (`staff`, `candidates`, `activity_events`, `notices`, `candidate_notifications`, `candidate_audit_log`) have `company_id` FK
+- Staff role enum: `staff | admin | super_admin`; super_admin has no company filter (sees all)
+- "Nistha Skill" company ID: `28477d2c-9b59-4e12-a962-b926b697e5c5`; all existing data backfilled to it
+- Company registration: `POST /api/companies/register` (ADMIN_REGISTRATION_KEY env var guards it); creates company + admin atomically; accepts `logoBase64` for company logo
+- Company branding: `GET /api/companies/:id/branding` — public endpoint for name, logo URL, projectName, state, district
+- Super Admin routes (`/api/super-admin/`): list companies, patch status/subscription, get per-company stats, reset admin MPIN; guarded by `x-admin-phone` with super_admin role
+- `requireAdmin` middleware: sets `res.locals.companyId` (string for company admin, null for super admin = no filter); all admin routes filter by it
+- MPIN login response now includes `companyName`, `companyLogoUrl`, `companySchemeName` fetched from companies table
+- `AppContext.User` extended with `companyName`, `companyLogoUrl`, `companySchemeName`; loginWithMpin + setupMpin both populate them
+- Admin dashboard header: shows company logo (from `user.companyLogoUrl`) + `user.companyName` in ReportContextBar
+- `LiveActivityFeed` accepts `companyId` prop for company-scoped polling (`/api/activity?companyId=`)
+- PDF branding: `PdfReportOpts` accepts `companyName`, `companyLogoPath`, `schemeName`; PDF header dynamically uses company branding instead of hardcoded JSDMS when company data is provided; auto-fetched from DB in both the submission-time and direct PDF routes
+- XLSX report: `/api/admin/reports/rides/xlsx` accepts `companyId`; auto-fetches company name from DB for Excel header row; also filters by `companyId`
+- Frontend routes: `app/(auth)/welcome.tsx` (Register Company button), `app/(auth)/register-company.tsx` (full company + admin registration form), `app/(super-admin)/dashboard.tsx` + `app/(super-admin)/company/[id].tsx` (super admin management panel)
+- WhatsApp daily report: uses `user.companyName || user.organization` as org line; scheme name from `user.companySchemeName || user.projectName`
+
+**State**: `contexts/AppContext.tsx` — `register()` + `setPendingPhone()` + `checkPhone()` + `loginWithMpin()` + `setupMpin()` + `updateProfile()` + `registerCompany()` actions; persisted to AsyncStorage at key `@field-staff/state-v1`.
 
 **Maps**: `react-native-maps` is used on native only. The web build uses a schematic SVG-grid placeholder. To keep the import platform-safe, the native map lives in `components/admin/MapView.tsx` with a web stub at `components/admin/MapView.web.tsx` (Metro picks the right one). Do not put `.web.tsx` files inside `app/`, since expo-router's `require.context` would still load the native variant.
 

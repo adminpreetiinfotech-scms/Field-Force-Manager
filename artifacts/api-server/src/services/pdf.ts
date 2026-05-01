@@ -220,6 +220,11 @@ export type PdfReportOpts = {
   organization?: string | null;
   staffName?: string | null;
   reportDate?: string | null;
+  /** Dynamic company branding (overrides hardcoded JSDMS header) */
+  companyName?: string | null;
+  companyNameHindi?: string | null;
+  companyLogoPath?: string | null;
+  schemeName?: string | null;
 };
 
 export async function generateCandidatePdf(
@@ -297,7 +302,7 @@ export async function generateCandidatePdf(
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    // LETTERHEAD  (English left | JSDMS Logo centre | Hindi right)
+    // LETTERHEAD  (English left | Logo centre | Hindi/company right)
     //
     // Layout (all left of photo box):
     //   ML+4 ──── colW ──── logoGap ── LGSZ ── logoGap ──── colW ──── PX
@@ -312,58 +317,70 @@ export async function generateCandidatePdf(
     const rX       = logoX + LGSZ + logoGap;     // Hindi column left x
     const hY       = MT + 4;                    // top of text rows
 
-    // (vertical column dividers removed — keep header clean)
+    // Determine branding source: use company override if provided, else JSDMS defaults
+    const brandName    = reportOpts?.companyName?.trim()      || "Jharkhand Skill Development Mission Society";
+    const brandHindi   = reportOpts?.companyNameHindi?.trim() || "झारखण्ड कौशल विकास मिशन सोसाइटी";
+    const brandScheme  = reportOpts?.schemeName?.trim()       || "DDU-GKY";
+    const brandLogoPath = reportOpts?.companyLogoPath         || LOGO_PATH;
+    const isCustomBrand = !!(reportOpts?.companyName?.trim());
 
     // ── English left column ────────────────────────────────────────────────
+    // Split brandName at midpoint for two lines if long
+    const nameParts = brandName.split(/\s+/);
+    const midIdx    = Math.ceil(nameParts.length / 2);
+    const nameLine1 = nameParts.slice(0, midIdx).join(" ");
+    const nameLine2 = nameParts.slice(midIdx).join(" ");
     doc.font("DVB").fontSize(8.5).fillColor(DARK)
-       .text("Jharkhand Skill Development",
-             hX, hY, { width: colW, align: "left", lineBreak: false });
-    doc.font("DVB").fontSize(8.5).fillColor(DARK)
-       .text("Mission Society (JSDMS)",
-             hX, hY + 11, { width: colW, align: "left", lineBreak: false });
-    doc.font("DVR").fontSize(7).fillColor(DARK)
-       .text("Labour, Employment & Skill Dev. Dept.",
-             hX, hY + 23, { width: colW, lineBreak: false })
-       .text("Government of Jharkhand",
-             hX, hY + 33, { width: colW, lineBreak: false });
-    // (Training Centre ID moved to the Skill Centre Name row below the header)
+       .text(nameLine1, hX, hY, { width: colW, align: "left", lineBreak: false });
+    if (nameLine2) {
+      doc.font("DVB").fontSize(8.5).fillColor(DARK)
+         .text(nameLine2, hX, hY + 11, { width: colW, align: "left", lineBreak: false });
+    }
+    if (!isCustomBrand) {
+      doc.font("DVR").fontSize(7).fillColor(DARK)
+         .text("Labour, Employment & Skill Dev. Dept.",
+               hX, hY + 23, { width: colW, lineBreak: false })
+         .text("Government of Jharkhand",
+               hX, hY + 33, { width: colW, lineBreak: false });
+    } else {
+      doc.font("DVR").fontSize(7).fillColor(DARK)
+         .text(brandScheme,
+               hX, hY + 23, { width: colW, lineBreak: false });
+    }
 
     // ── Centre logo ────────────────────────────────────────────────────────
     const logoY = MT + (HEADER_H - LGSZ) / 2;          // vertically centred
-    const logoLoaded = safeImg(doc, LOGO_PATH, logoX, logoY,
+    const logoLoaded = safeImg(doc, brandLogoPath, logoX, logoY,
       { width: LGSZ, height: LGSZ, fit: [LGSZ, LGSZ] });
     if (!logoLoaded) {
       const cx2 = logoX + LGSZ / 2; const cy2 = logoY + LGSZ / 2;
       doc.circle(cx2, cy2, 28).strokeColor(INK).lineWidth(0.8).stroke();
       doc.circle(cx2, cy2, 20).strokeColor(INK).lineWidth(0.4).stroke();
       doc.circle(cx2, cy2,  4).fill(INK);
+      // Show abbreviated org name in the logo placeholder
+      const abbr = brandName.split(/\s+/).map((w: string) => w[0]).join("").slice(0, 6);
       doc.font("DVB").fontSize(6).fillColor(DARK)
-         .text("JSDMS", cx2 - 14, cy2 - 4, { width: 28, align: "center", lineBreak: false });
+         .text(abbr, cx2 - 14, cy2 - 4, { width: 28, align: "center", lineBreak: false });
     }
 
-    // ── Hindi right column ──────────────────────────────────────────────────
-    // Measure "(JSDMS)" width in DVB so we can reserve space, avoiding overlap
-    doc.font("DVB").fontSize(8.5);
-    const jsdmsW = doc.widthOfString(" (JSDMS)") + 2;
-
-    // Line 1: pure Devanagari, right-aligned
+    // ── Right column (Hindi brand name) ─────────────────────────────────────
+    const hindiParts = brandHindi.split(/\s+/);
+    const hMidIdx    = Math.ceil(hindiParts.length / 2);
+    const hindiLine1 = hindiParts.slice(0, hMidIdx).join(" ");
+    const hindiLine2 = hindiParts.slice(hMidIdx).join(" ");
     doc.font("NSB").fontSize(8.5).fillColor(DARK)
-       .text("झारखण्ड कौशल विकास",
-             rX, hY, { width: colW, align: "right", lineBreak: false });
-    // Line 2: Hindi part right-aligned in the left portion; Latin "(JSDMS)"
-    //         right-aligned in the right portion — no overlap
-    doc.font("NSB").fontSize(8.5).fillColor(DARK)
-       .text("मिशन सोसाइटी",
-             rX, hY + 11, { width: colW - jsdmsW, align: "right", lineBreak: false });
-    // "(JSDMS)" in DVB — clear Latin text, placed immediately after Hindi text
-    doc.font("DVB").fontSize(8.5).fillColor(DARK)
-       .text("(JSDMS)",
-             rX + colW - jsdmsW, hY + 11, { width: jsdmsW, lineBreak: false });
-    doc.font("NSR").fontSize(7).fillColor(DARK)
-       .text("श्रम, नियोजन एवं कौशल विकास विभाग",
-             rX, hY + 23, { width: colW, align: "right", lineBreak: false })
-       .text("झारखण्ड सरकार",
-             rX, hY + 33, { width: colW, align: "right", lineBreak: false });
+       .text(hindiLine1, rX, hY, { width: colW, align: "right", lineBreak: false });
+    if (hindiLine2) {
+      doc.font("NSB").fontSize(8.5).fillColor(DARK)
+         .text(hindiLine2, rX, hY + 11, { width: colW, align: "right", lineBreak: false });
+    }
+    if (!isCustomBrand) {
+      doc.font("NSR").fontSize(7).fillColor(DARK)
+         .text("श्रम, नियोजन एवं कौशल विकास विभाग",
+               rX, hY + 23, { width: colW, align: "right", lineBreak: false })
+         .text("झारखण्ड सरकार",
+               rX, hY + 33, { width: colW, align: "right", lineBreak: false });
+    }
     // (Training Centre ID row removed from header — now shown below header)
 
     // Header bottom (no divider line — keep title area clean)
@@ -395,16 +412,23 @@ export async function generateCandidatePdf(
     let y = sepY + reportStripH + 6;
     const TW = PX - ML;   // title area width
 
-    // "मेगा स्कील सेंटर" — pure Devanagari (anusvara form), centered bold
-    doc.font("NSB").fontSize(20).fillColor(DARK)
-       .text("मेगा स्कील सेंटर", ML, y, { width: TW, align: "center", lineBreak: false });
-    y += 26;
-
-    // DDU-GKY English line
-    doc.font("DVB").fontSize(8).fillColor(DARK)
-       .text("DEEN DAYAL UPADHYAY GRAMEEN KAUSHALYA YOJANA  (DDU-GKY)",
-             ML, y, { width: TW, align: "center", lineBreak: false });
-    y += 11;
+    // Title: company scheme name (Hindi if JSDMS, English if custom brand)
+    if (!isCustomBrand) {
+      // "मेगा स्कील सेंटर" — pure Devanagari (anusvara form), centered bold
+      doc.font("NSB").fontSize(20).fillColor(DARK)
+         .text("मेगा स्कील सेंटर", ML, y, { width: TW, align: "center", lineBreak: false });
+      y += 26;
+      // DDU-GKY English line
+      doc.font("DVB").fontSize(8).fillColor(DARK)
+         .text("DEEN DAYAL UPADHYAY GRAMEEN KAUSHALYA YOJANA  (DDU-GKY)",
+               ML, y, { width: TW, align: "center", lineBreak: false });
+      y += 11;
+    } else {
+      // Custom company: show scheme name prominently
+      doc.font("DVB").fontSize(16).fillColor(DARK)
+         .text(brandScheme, ML, y, { width: TW, align: "center", lineBreak: false });
+      y += 22;
+    }
 
     // Bordered form title box
     const formTitleW = 238; const formTitleX = ML + (TW - formTitleW) / 2;

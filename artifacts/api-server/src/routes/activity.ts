@@ -1,4 +1,4 @@
-import { activityEventsTable, db, staffTable } from "@workspace/db";
+import { activityEventsTable, companiesTable, db, staffTable } from "@workspace/db";
 import { and, desc, eq, gt, gte, inArray, lt, or, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
@@ -151,8 +151,13 @@ router.get("/activity", async (req, res, next) => {
       return;
     }
     const { limit, cursor, since, kinds } = parsed.data;
+    // Optional company filter — admin passes their companyId to scope to their data
+    const companyId = req.query.companyId as string | undefined;
 
     const conds = [] as ReturnType<typeof eq>[];
+    if (companyId?.trim()) {
+      conds.push(eq(activityEventsTable.companyId, companyId.trim()));
+    }
 
     if (kinds) {
       const list = kinds
@@ -731,9 +736,18 @@ router.post("/activity", async (req, res, next) => {
       destination: input.destination ?? null,
     };
 
+    // Look up the staff's company_id to associate the event with the right company
+    const [staffRow] = await db
+      .select({ companyId: staffTable.companyId })
+      .from(staffTable)
+      .where(eq(staffTable.id, input.staffId))
+      .limit(1);
+    const companyId = staffRow?.companyId ?? null;
+
     const [inserted] = await db
       .insert(activityEventsTable)
       .values({
+        companyId,
         kind: input.kind,
         staffId: input.staffId,
         staffName: input.staffName,

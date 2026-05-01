@@ -38,7 +38,7 @@ const LABEL: Record<ActivityKind, string> = {
   "trip-end": "Trip ended",
 };
 
-export function LiveActivityFeed() {
+export function LiveActivityFeed({ companyId }: { companyId?: string | null }) {
   const colors = useColors();
   const [, forceTick] = useState(0);
 
@@ -49,12 +49,13 @@ export function LiveActivityFeed() {
   }, []);
 
   const query = useInfiniteQuery<ActivityPage, ApiError>({
-    queryKey: ["activity", "feed"],
+    queryKey: ["activity", "feed", companyId ?? "all"],
     queryFn: async ({ pageParam }) =>
       listActivity({
         limit: PAGE_LIMIT,
         ...(pageParam ? { cursor: pageParam as string } : {}),
-      }),
+        ...(companyId ? ({ companyId } as object) : {}),
+      } as Parameters<typeof listActivity>[0]),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
     refetchInterval: POLL_INTERVAL_MS,

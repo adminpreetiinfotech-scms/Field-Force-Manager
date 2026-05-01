@@ -309,7 +309,7 @@ export default function StaffHome() {
           </View>
 
           <ReportContextBar
-            organization={user?.centerName || user?.organization}
+            organization={user?.companyName || user?.centerName || user?.organization}
             staffName={user?.name}
             reportType="daily"
           />
@@ -514,9 +514,9 @@ export default function StaffHome() {
             userId={user?.id ?? ""}
             userName={user?.name ?? ""}
             empCode={user?.empCode ?? ""}
-            organization={user?.organization}
+            organization={user?.companyName || user?.organization}
             centerName={user?.centerName}
-            projectName={user?.projectName}
+            projectName={user?.companySchemeName || user?.projectName}
             state={user?.state}
             district={user?.district}
             myAttendance={myAttendance}

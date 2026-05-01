@@ -25,6 +25,7 @@ export default function Index() {
   }
 
   if (!user) return <Redirect href="/(auth)/welcome" />;
+  if (user.role === "super_admin") return <Redirect href="/(super-admin)/dashboard" />;
   if (user.role === "admin") return <Redirect href="/(admin)/dashboard" />;
   return <Redirect href="/(staff)/shift" />;
 }

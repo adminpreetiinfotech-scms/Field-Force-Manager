@@ -1,4 +1,4 @@
-import { candidatesTable, db, staffTable, activityEventsTable } from "@workspace/db";
+import { candidatesTable, companiesTable, db, staffTable, activityEventsTable } from "@workspace/db";
 import { eq, and, gte, lt, isNull, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import crypto from "node:crypto";
@@ -8,6 +8,7 @@ const router: IRouter = Router();
 function toStaffDTO(r: typeof staffTable.$inferSelect) {
   return {
     id: r.id,
+    companyId: r.companyId ?? null,
     empCode: r.empCode,
     name: r.name,
     phone: r.phone,
@@ -38,7 +39,7 @@ router.post("/staff/register", async (req, res, next) => {
   try {
     const {
       kind, name, phone, organization, centerName, projectName, email, state, district,
-      empCode, area, adminCode, adminRegistrationKey,
+      empCode, area, adminCode, adminRegistrationKey, companyId,
     } = req.body as {
       kind?: string;
       name?: string;
@@ -53,6 +54,7 @@ router.post("/staff/register", async (req, res, next) => {
       area?: string | null;
       adminCode?: string | null;
       adminRegistrationKey?: string | null;
+      companyId?: string | null;
     };
 
     if (!kind || !["admin", "staff"].includes(kind)) {
@@ -137,14 +139,16 @@ router.post("/staff/register", async (req, res, next) => {
     }
 
     let resolvedOrganization = organization?.trim() || null;
+    let resolvedCompanyId: string | null = companyId?.trim() || null;
     const resolvedAdminCode =
       kind === "admin"
         ? Math.random().toString(36).slice(2, 8).toUpperCase()
         : null; // staff never store an admin_code
 
     if (kind === "staff" && adminCode?.trim()) {
+      // Look up admin by adminCode — copy their organization AND company_id
       const [adminRow] = await db
-        .select({ organization: staffTable.organization })
+        .select({ organization: staffTable.organization, companyId: staffTable.companyId })
         .from(staffTable)
         .where(
           and(
@@ -153,14 +157,31 @@ router.post("/staff/register", async (req, res, next) => {
           ),
         )
         .limit(1);
-      if (adminRow?.organization) {
-        resolvedOrganization = adminRow.organization;
-      }
+      if (adminRow?.organization) resolvedOrganization = adminRow.organization;
+      if (adminRow?.companyId) resolvedCompanyId = adminRow.companyId;
+    }
+
+    // If admin registration and no companyId, auto-create a company
+    if (kind === "admin" && !resolvedCompanyId) {
+      const [newCompany] = await db
+        .insert(companiesTable)
+        .values({
+          name: resolvedOrganization || name.trim(),
+          adminName: name.trim(),
+          phone: phone.trim(),
+          email: email?.trim() || null,
+          state: state?.trim() || null,
+          district: district?.trim() || null,
+          projectName: projectName?.trim() || null,
+        })
+        .returning();
+      resolvedCompanyId = newCompany.id;
     }
 
     const [inserted] = await db
       .insert(staffTable)
       .values({
+        companyId: resolvedCompanyId,
         empCode: resolvedEmpCode,
         name: name.trim(),
         phone: phone.trim(),

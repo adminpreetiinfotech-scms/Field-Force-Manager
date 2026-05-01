@@ -120,7 +120,22 @@ export default function WelcomeScreen() {
                 <Text style={styles.backLinkText}>{t("back")}</Text>
               </TouchableOpacity>
 
-              {/* Register as Admin */}
+              {/* Register New Company */}
+              <Pressable
+                onPress={() => router.push("/(auth)/register-company")}
+                style={({ pressed }) => [styles.roleCard, { opacity: pressed ? 0.9 : 1 }]}
+              >
+                <View style={[styles.roleIcon, { backgroundColor: "#FEF3C7" }]}>
+                  <Feather name="briefcase" size={20} color="#D97706" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.roleTitle}>New Company</Text>
+                  <Text style={styles.roleSub}>Register your organization & create admin account</Text>
+                </View>
+                <Feather name="chevron-right" size={16} color="#AAA" />
+              </Pressable>
+
+              {/* Register as Admin (existing company) */}
               <Pressable
                 onPress={() => router.push("/(auth)/register-admin")}
                 style={({ pressed }) => [styles.roleCard, { opacity: pressed ? 0.9 : 1 }]}
@@ -130,7 +145,7 @@ export default function WelcomeScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.roleTitle}>{t("registerAdmin")}</Text>
-                  <Text style={styles.roleSub}>{t("registerAdminSub")}</Text>
+                  <Text style={styles.roleSub}>Join as admin with registration key</Text>
                 </View>
                 <Feather name="chevron-right" size={16} color="#AAA" />
               </Pressable>

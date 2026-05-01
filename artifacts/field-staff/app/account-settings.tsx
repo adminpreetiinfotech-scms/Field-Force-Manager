@@ -260,9 +260,9 @@ export default function AccountSettingsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.profileName}>{user.name}</Text>
-              {!!(user.centerName || user.organization || user.projectName) && (
+              {!!(user.companyName || user.centerName || user.organization || user.projectName) && (
                 <Text style={styles.profileOrg} numberOfLines={1}>
-                  {[user.centerName || user.organization, user.projectName].filter(Boolean).join(" · ")}
+                  {user.companyName || [user.centerName || user.organization, user.projectName].filter(Boolean).join(" · ")}
                 </Text>
               )}
               <View style={styles.roleBadge}>

@@ -255,13 +255,12 @@ export default function ReportsScreen() {
   const onExportXlsx = useCallback(async () => {
     setXlDownloading(true);
     try {
-      const orgParts = [user?.organization, user?.projectName].filter(Boolean);
       await downloadXlsxFile({
         from: xlDates.from,
         to: xlDates.to,
         staffId: xlStaffId,
         reportType: xlReportType,
-        organization: orgParts.length > 0 ? orgParts.join(" | ") : undefined,
+        companyId: user?.companyId ?? undefined,
         staffName: user?.name ?? undefined,
       });
     } catch (e: any) {
@@ -269,7 +268,7 @@ export default function ReportsScreen() {
     } finally {
       setXlDownloading(false);
     }
-  }, [xlDates, xlStaffId, xlReportType]);
+  }, [xlDates, xlStaffId, xlReportType, user?.companyId, user?.name]);
 
   const renderTrip = useCallback(
     ({ item, index }: { item: TripReportRow; index: number }) => (
@@ -325,7 +324,7 @@ export default function ReportsScreen() {
           Calendar · Leaderboard · Export
         </Text>
         <ReportContextBar
-          organization={[user?.organization, user?.projectName].filter(Boolean).join(" | ") || user?.organization}
+          organization={user?.companyName || [user?.organization, user?.projectName].filter(Boolean).join(" | ") || user?.organization}
           staffName={user?.name}
           from={dates.from}
           to={dates.to}

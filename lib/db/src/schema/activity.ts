@@ -8,6 +8,7 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
+import { companiesTable } from "./companies";
 
 /**
  * Unified activity event log. Single table backs the live feed, detail
@@ -18,6 +19,7 @@ export const activityEventsTable = pgTable(
   "activity_events",
   {
     id: uuid("id").defaultRandom().primaryKey(),
+    companyId: uuid("company_id").references(() => companiesTable.id, { onDelete: "set null" }),
     kind: text("kind", {
       enum: ["checkin", "checkout", "meter", "trip-start", "trip-end"],
     }).notNull(),

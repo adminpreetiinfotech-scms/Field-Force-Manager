@@ -1,9 +1,36 @@
-import { db, staffTable } from "@workspace/db";
+import path from "node:path";
+import { companiesTable, db, staffTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { Router } from "express";
 import crypto from "node:crypto";
 
+const UPLOADS_BASE = path.join(process.cwd(), "uploads");
+function toLogoUrl(filePath: string | null | undefined): string | null {
+  if (!filePath) return null;
+  const rel = path.relative(UPLOADS_BASE, filePath).replace(/\\/g, "/");
+  return `/api/uploads/${rel}`;
+}
+
 const router = Router();
+
+async function getCompanyBranding(companyId: string | null | undefined) {
+  if (!companyId) return { companyName: null, companyLogoUrl: null, companySchemeName: null };
+  try {
+    const [co] = await db
+      .select({ name: companiesTable.name, logoPath: companiesTable.logoPath, projectName: companiesTable.projectName })
+      .from(companiesTable)
+      .where(eq(companiesTable.id, companyId))
+      .limit(1);
+    if (!co) return { companyName: null, companyLogoUrl: null, companySchemeName: null };
+    return {
+      companyName:      co.name ?? null,
+      companyLogoUrl:   toLogoUrl(co.logoPath),
+      companySchemeName: co.projectName ?? null,
+    };
+  } catch {
+    return { companyName: null, companyLogoUrl: null, companySchemeName: null };
+  }
+}
 
 function hashMpin(mpin: string): string {
   const salt = crypto.randomBytes(16).toString("hex");
@@ -25,6 +52,7 @@ function verifyMpin(mpin: string, stored: string): boolean {
 function toUserDTO(row: typeof staffTable.$inferSelect) {
   return {
     id: row.id,
+    companyId: row.companyId ?? null,
     empCode: row.empCode,
     name: row.name,
     phone: row.phone,
@@ -105,6 +133,23 @@ router.post("/auth/login-mpin", async (req, res, next) => {
       return;
     }
 
+    // Check company status (super_admin has no company, skip)
+    if (row.companyId) {
+      const [company] = await db
+        .select({ status: companiesTable.status, subscriptionActive: companiesTable.subscriptionActive })
+        .from(companiesTable)
+        .where(eq(companiesTable.id, row.companyId))
+        .limit(1);
+      if (company?.status === "inactive") {
+        res.status(403).json({ title: "Your organization's account is currently inactive. Please contact support.", status: 403 });
+        return;
+      }
+      if (company && !company.subscriptionActive) {
+        res.status(403).json({ title: "Your organization's subscription is inactive. Please contact your admin.", status: 403 });
+        return;
+      }
+    }
+
     // Check block
     if (row.mpinBlockedUntil && new Date() < row.mpinBlockedUntil) {
       const secsLeft = Math.ceil((row.mpinBlockedUntil.getTime() - Date.now()) / 1000);
@@ -157,8 +202,11 @@ router.post("/auth/login-mpin", async (req, res, next) => {
       .set({ failedMpinAttempts: 0, mpinBlockedUntil: null })
       .where(eq(staffTable.id, row.id));
 
+    // Fetch company branding for the response
+    const branding = await getCompanyBranding(row.companyId);
+
     req.log.info({ phone }, "MPIN login successful");
-    res.json({ user: toUserDTO(row) });
+    res.json({ user: { ...toUserDTO(row), ...branding } });
   } catch (err) {
     next(err);
   }
@@ -202,8 +250,9 @@ router.post("/auth/set-mpin", async (req, res, next) => {
       .set({ mpinHash, failedMpinAttempts: 0, mpinBlockedUntil: null })
       .where(eq(staffTable.id, row.id));
 
+    const branding = await getCompanyBranding(row.companyId);
     req.log.info({ phone }, "MPIN set successfully");
-    res.json({ user: toUserDTO(row) });
+    res.json({ user: { ...toUserDTO(row), ...branding } });
   } catch (err) {
     next(err);
   }

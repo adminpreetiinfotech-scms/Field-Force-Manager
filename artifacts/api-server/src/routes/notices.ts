@@ -42,6 +42,7 @@ async function getStaffByPhone(phone: string) {
 
 router.post("/notices/admin/create", requireAdmin, async (req, res, next) => {
   try {
+    const companyId = res.locals.companyId as string | null;
     const adminPhone =
       (req.headers["x-admin-phone"] as string | undefined) ??
       (req.query.adminPhone as string | undefined) ??
@@ -73,6 +74,7 @@ router.post("/notices/admin/create", requireAdmin, async (req, res, next) => {
     const [notice] = await db
       .insert(noticesTable)
       .values({
+        companyId,
         title: title.trim(),
         message: message.trim(),
         priority: (priority as "normal" | "important" | "urgent") ?? "normal",
@@ -94,7 +96,7 @@ router.post("/notices/admin/create", requireAdmin, async (req, res, next) => {
     if (targetType === "specific" && Array.isArray(targetStaffIds) && targetStaffIds.length > 0) {
       recipientIds = targetStaffIds;
     } else {
-      // All active, non-deleted staff
+      // All active, non-deleted staff scoped to this company (if company admin)
       const allStaff = await db
         .select({ id: staffTable.id })
         .from(staffTable)
@@ -103,6 +105,7 @@ router.post("/notices/admin/create", requireAdmin, async (req, res, next) => {
             isNull(staffTable.deletedAt),
             isNull(staffTable.disabledAt),
             eq(staffTable.approvalStatus, "approved"),
+            companyId ? eq(staffTable.companyId, companyId) : undefined,
           ),
         );
       recipientIds = allStaff.map((s) => s.id);
@@ -127,6 +130,7 @@ router.post("/notices/admin/create", requireAdmin, async (req, res, next) => {
 
 router.get("/notices/admin/list", requireAdmin, async (req, res, next) => {
   try {
+    const companyId = res.locals.companyId as string | null;
     const notices = await db
       .select({
         id: noticesTable.id,
@@ -147,6 +151,7 @@ router.get("/notices/admin/list", requireAdmin, async (req, res, next) => {
         noticeRecipientsTable,
         eq(noticesTable.id, noticeRecipientsTable.noticeId),
       )
+      .where(companyId ? eq(noticesTable.companyId, companyId) : undefined)
       .groupBy(
         noticesTable.id,
         staffTable.name,
@@ -163,12 +168,12 @@ router.get("/notices/admin/list", requireAdmin, async (req, res, next) => {
 
 router.get("/notices/admin/:id", requireAdmin, async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const [notice] = await db
       .select()
       .from(noticesTable)
-      .where(eq(noticesTable.id, id!))
+      .where(eq(noticesTable.id, id))
       .limit(1);
 
     if (!notice) {
@@ -187,7 +192,7 @@ router.get("/notices/admin/:id", requireAdmin, async (req, res, next) => {
       })
       .from(noticeRecipientsTable)
       .leftJoin(staffTable, eq(noticeRecipientsTable.staffId, staffTable.id))
-      .where(eq(noticeRecipientsTable.noticeId, id!))
+      .where(eq(noticeRecipientsTable.noticeId, id))
       .orderBy(desc(noticeRecipientsTable.deliveredAt));
 
     res.json({ notice, recipients });
@@ -200,8 +205,8 @@ router.get("/notices/admin/:id", requireAdmin, async (req, res, next) => {
 
 router.delete("/notices/admin/:id", requireAdmin, async (req, res, next) => {
   try {
-    const { id } = req.params;
-    await db.delete(noticesTable).where(eq(noticesTable.id, id!));
+    const id = req.params.id as string;
+    await db.delete(noticesTable).where(eq(noticesTable.id, id));
     res.json({ ok: true });
   } catch (e) {
     next(e);
