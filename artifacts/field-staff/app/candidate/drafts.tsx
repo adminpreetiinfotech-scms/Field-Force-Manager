@@ -43,6 +43,8 @@ type CandidateDraft = {
   education: string | null; yearOfPassing: string;
   bankAccount: string; bankName: string; bankBranch: string; ifsc: string;
   mobilizer: string;
+  casteCertAvailable: string | null;
+  casteName: string;
   photo: ImageData | null;
   aadhaarFront: ImageData | null;
   aadhaarBack: ImageData | null;
@@ -196,8 +198,10 @@ export default function DraftsScreen() {
         educationCertMime: draft.educationCert?.mimeType ?? null,
         bankPassbookBase64: draft.bankPassbook?.base64 ?? null,
         bankPassbookMime: draft.bankPassbook?.mimeType ?? null,
-        casteCertBase64: draft.casteCert?.base64 ?? null,
-        casteCertMime: draft.casteCert?.mimeType ?? null,
+        casteCertBase64: draft.casteCertAvailable === "no" ? null : (draft.casteCert?.base64 ?? null),
+        casteCertMime: draft.casteCertAvailable === "no" ? null : (draft.casteCert?.mimeType ?? null),
+        casteCertAvailable: draft.casteCertAvailable ?? null,
+        casteName: draft.casteCertAvailable === "no" ? (draft.casteName?.trim() || null) : null,
         signatureBase64: draft.signature?.base64 ?? null,
         signatureMime: draft.signature?.mimeType ?? null,
       };
