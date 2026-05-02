@@ -757,7 +757,9 @@ export default function CandidateRegisterScreen() {
     if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       e.email = "Valid email address enter करें";
     }
-    if (dob.trim()) {
+    if (!dob.trim()) {
+      e.dob = "जन्म तिथि जरूरी है";
+    } else {
       const age = calcAge(dob.trim());
       if (age === null) {
         e.dob = "Valid date of birth select karein";
@@ -766,6 +768,9 @@ export default function CandidateRegisterScreen() {
       } else if (age > 35) {
         e.dob = `Age ${age} — maximum 35 years allowed`;
       }
+    }
+    if (!parentMobile.trim() || !/^\d{10}$/.test(parentMobile.trim())) {
+      e.parentMobile = "माता/पिता का 10 अंकों का मोबाइल नंबर जरूरी है";
     }
     if (pin.trim() && !/^\d{6}$/.test(pin.trim())) {
       e.pin = "PIN code 6 अंकों का होना चाहिए";
@@ -1075,7 +1080,7 @@ export default function CandidateRegisterScreen() {
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
-      if (validationErrors.name || validationErrors.phone || validationErrors.email || validationErrors.dob || validationErrors.aadhaarNumber) setSecA(true);
+      if (validationErrors.name || validationErrors.phone || validationErrors.email || validationErrors.dob || validationErrors.aadhaarNumber || validationErrors.parentMobile) setSecA(true);
       if (validationErrors.pin) setSecC(true);
       if (validationErrors.ifsc || validationErrors.bankAccount) setSecF(true);
       Alert.alert("Form Incomplete", "Please correct the highlighted fields before submitting.");
@@ -1387,11 +1392,12 @@ export default function CandidateRegisterScreen() {
                     value={dob}
                     onChange={(v) => { setDob(v); if (errors.dob) setErrors((prev) => ({ ...prev, dob: "" })); }}
                     error={errors.dob}
+                    required
                   />
                 <HalfField label="Mobile No. / मोबाइल नंबर" value={phone} onChangeText={(v) => { setPhone(v); if (errors.phone) setErrors((prev) => ({ ...prev, phone: "" })); }} keyboardType="phone-pad" required error={errors.phone} />
               </HalfRow>
               <HalfRow>
-                <HalfField label="Parent's Mobile / अभिभावक का मोबाइल" value={parentMobile} onChangeText={(v) => { if (/^\d{0,10}$/.test(v)) setParentMobile(v); }} keyboardType="phone-pad" placeholder="10-digit number" />
+                <HalfField label="Parent's Mobile / अभिभावक का मोबाइल" value={parentMobile} onChangeText={(v) => { if (/^\d{0,10}$/.test(v)) { setParentMobile(v); if (errors.parentMobile) setErrors((prev) => ({ ...prev, parentMobile: "" })); } }} keyboardType="phone-pad" placeholder="10-digit number" required error={errors.parentMobile} />
                 <HalfField label="Email / ईमेल" value={email} onChangeText={(v) => { setEmail(v); if (errors.email) setErrors((prev) => ({ ...prev, email: "" })); }} keyboardType="email-address" error={errors.email} />
               </HalfRow>
               <HalfRow>

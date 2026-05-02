@@ -307,8 +307,12 @@ router.post("/candidates", async (req, res, next) => {
       res.status(400).json({ title: "Valid 10-digit phone required", status: 400 });
       return;
     }
-    if (body.parentMobile?.trim() && !/^\d{10}$/.test(body.parentMobile.trim())) {
-      res.status(400).json({ title: "Parent's mobile must be a valid 10-digit number", status: 400 });
+    if (!body.parentMobile?.trim() || !/^\d{10}$/.test(body.parentMobile.trim())) {
+      res.status(400).json({ title: "Parent's mobile number (10 digits) is required", status: 400 });
+      return;
+    }
+    if (!body.dob?.trim()) {
+      res.status(400).json({ title: "Date of birth is required", status: 400 });
       return;
     }
     if (body.aadhaarNumber?.trim() && !/^\d{12}$/.test(body.aadhaarNumber.trim())) {

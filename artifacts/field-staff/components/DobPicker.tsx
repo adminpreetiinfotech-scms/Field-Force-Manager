@@ -145,9 +145,10 @@ type DobPickerProps = {
   value: string;            // DD/MM/YYYY or ""
   onChange: (dob: string, age: number | null) => void;
   error?: string;
+  required?: boolean;
 };
 
-export function DobPickerField({ value, onChange, error }: DobPickerProps) {
+export function DobPickerField({ value, onChange, error, required }: DobPickerProps) {
   const colors = useColors();
   const [open, setOpen] = useState(false);
 
@@ -251,7 +252,7 @@ export function DobPickerField({ value, onChange, error }: DobPickerProps) {
           },
         ]}>
           <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
-            Date of Birth / जन्म तिथि
+            Date of Birth / जन्म तिथि{required ? <Text style={{ color: "#DC2626" }}> *</Text> : null}
           </Text>
           <View style={styles.fieldRow}>
             <Text style={[styles.fieldValue, { color: hasValue ? colors.foreground : colors.mutedForeground + "aa" }]}>
