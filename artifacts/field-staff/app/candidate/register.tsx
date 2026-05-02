@@ -23,7 +23,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import DocumentScannerModal from "@/components/DocumentScannerModal";
+import AutoScanCamera from "@/components/AutoScanCamera";
+import type { ScannedImage } from "@/components/DocumentScannerModal";
 
 import { useApp } from "@/contexts/AppContext";
 import { calcAge, DobPickerField } from "@/components/DobPicker";
@@ -131,41 +132,6 @@ function formatRelTime(d: Date): string {
   const m = Math.floor(diff / 60);
   if (m < 60) return `${m}m ago`;
   return `${Math.floor(m / 60)}h ago`;
-}
-
-/**
- * Raw camera capture helper — returns the picked asset or null.
- * The caller is responsible for showing the DocumentScannerModal.
- */
-async function launchDocumentCamera(): Promise<ImagePicker.ImagePickerAsset | null> {
-  const { status } = await ImagePicker.requestCameraPermissionsAsync();
-  if (status !== "granted") {
-    Alert.alert(
-      "Camera Permission Required",
-      "Please allow camera access. Gallery upload is disabled — documents must be captured live.",
-    );
-    return null;
-  }
-  const result = await ImagePicker.launchCameraAsync({
-    mediaTypes: ["images"] as ImagePicker.MediaType[],
-    base64: true,
-    quality: 0.92,          // higher quality; scanner will crop + compress
-    allowsEditing: false,   // we do our own crop in DocumentScannerModal
-  });
-  if (result.canceled || !result.assets[0]) return null;
-  const a = result.assets[0];
-  if (!a.base64 || a.base64.length < 2000) {
-    Alert.alert(
-      "Image Appears Blank",
-      "The captured image seems blank or very dark. Please try again in better lighting.",
-    );
-    return null;
-  }
-  if (a.fileSize && a.fileSize > 10 * 1024 * 1024) {
-    Alert.alert("File Too Large", "Image must be smaller than 10 MB.");
-    return null;
-  }
-  return a;
 }
 
 // ─── Passport-photo capture: camera-only, 7:9 crop, 350×450 resize ──────────
@@ -541,48 +507,37 @@ function AadhaarCaptureModal({
   const [front, setFront] = useState<ImageData | null>(null);
   const [back, setBack]   = useState<ImageData | null>(null);
 
-  // Internal DocumentScanner state for each Aadhaar side
-  const [scannerVisible, setScannerVisible] = useState(false);
-  const [scannerUri, setScannerUri]         = useState<string | null>(null);
-  const [scannerImgW, setScannerImgW]       = useState(0);
-  const [scannerImgH, setScannerImgH]       = useState(0);
-  const [pendingSide, setPendingSide]       = useState<"front" | "back">("front");
+  const [autoScanVisible, setAutoScanVisible] = useState(false);
+  const [pendingSide, setPendingSide]         = useState<"front" | "back">("front");
 
   function reset() {
     setStep("front-prompt"); setFront(null); setBack(null);
-    setScannerVisible(false); setScannerUri(null);
+    setAutoScanVisible(false);
   }
 
-  async function doCapture(side: "front" | "back") {
-    const asset = await launchDocumentCamera();
-    if (!asset) return;
+  function doCapture(side: "front" | "back") {
     setPendingSide(side);
-    setScannerImgW(asset.width ?? 0);
-    setScannerImgH(asset.height ?? 0);
-    setScannerUri(asset.uri);
-    setScannerVisible(true);
+    setAutoScanVisible(true);
   }
 
-  function handleScannerSave(img: ImageData) {
-    setScannerVisible(false);
-    setScannerUri(null);
-    if (pendingSide === "front") { setFront(img); setStep("front-preview"); }
-    else                         { setBack(img);  setStep("back-preview");  }
+  function handleScannerSave(img: ScannedImage) {
+    setAutoScanVisible(false);
+    const imgData: ImageData = { uri: img.uri, base64: img.base64, mimeType: img.mimeType };
+    if (pendingSide === "front") { setFront(imgData); setStep("front-preview"); }
+    else                         { setBack(imgData);  setStep("back-preview");  }
   }
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={() => { reset(); onClose(); }}>
       <View style={{ flex: 1, backgroundColor: "#fff" }}>
 
-        {/* DocumentScanner inside Aadhaar flow */}
-        <DocumentScannerModal
-          visible={scannerVisible}
-          imageUri={scannerUri}
-          imageWidth={scannerImgW}
-          imageHeight={scannerImgH}
+        {/* AutoScanCamera inside Aadhaar flow */}
+        <AutoScanCamera
+          visible={autoScanVisible}
           title={pendingSide === "front" ? "Aadhaar — Front Side" : "Aadhaar — Back Side"}
+          docMode="card"
           onSave={handleScannerSave}
-          onCancel={() => { setScannerVisible(false); setScannerUri(null); }}
+          onCancel={() => setAutoScanVisible(false)}
         />
 
         {/* Header */}
@@ -851,28 +806,19 @@ export default function CandidateRegisterScreen() {
   const [casteCert, setCasteCert] = useState<ImageData | null>(null);
   const [signature, setSignature] = useState<ImageData | null>(null);
 
-  // ─ Document scanner state (used for all non-passport document captures)
-  const [scannerVisible, setScannerVisible] = useState(false);
-  const [scannerUri, setScannerUri] = useState<string | null>(null);
-  const [scannerImgW, setScannerImgW] = useState(0);
-  const [scannerImgH, setScannerImgH] = useState(0);
-  const [scannerTitle, setScannerTitle] = useState("Scan Document");
+  // ─ Auto Scan Camera state (used for all non-passport document captures)
+  const [autoScanDocVisible, setAutoScanDocVisible] = useState(false);
+  const [autoScanDocTitle, setAutoScanDocTitle]     = useState("Auto Scan Document");
+  const [autoScanDocMode,  setAutoScanDocMode]      = useState<"card" | "page">("page");
   const scannerSetterRef = useRef<((img: ImageData | null) => void) | null>(null);
 
-  /**
-   * Capture a document photo then immediately show the DocumentScannerModal
-   * so the user can crop, rotate and enhance before accepting.
-   */
+  /** Open the AutoScanCamera for any document field. */
   const captureAndScan = useCallback(
-    async (setter: (img: ImageData | null) => void, docTitle = "Scan Document") => {
-      const asset = await launchDocumentCamera();
-      if (!asset) return;
+    (setter: (img: ImageData | null) => void, docTitle = "Auto Scan Document", docMode: "card" | "page" = "page") => {
       scannerSetterRef.current = setter;
-      setScannerTitle(docTitle);
-      setScannerImgW(asset.width ?? 0);
-      setScannerImgH(asset.height ?? 0);
-      setScannerUri(asset.uri);
-      setScannerVisible(true);
+      setAutoScanDocTitle(docTitle);
+      setAutoScanDocMode(docMode);
+      setAutoScanDocVisible(true);
     },
     [],
   );
@@ -1277,25 +1223,21 @@ export default function CandidateRegisterScreen() {
         onCancel={() => setPendingPhoto(null)}
       />
 
-      {/* Document scanner modal — shown after every non-passport camera capture */}
-      <DocumentScannerModal
-        visible={scannerVisible}
-        imageUri={scannerUri}
-        imageWidth={scannerImgW}
-        imageHeight={scannerImgH}
-        title={scannerTitle}
+      {/* Auto Scan Camera — shown for every non-passport document capture */}
+      <AutoScanCamera
+        visible={autoScanDocVisible}
+        title={autoScanDocTitle}
+        docMode={autoScanDocMode}
         onSave={(img) => {
-          setScannerVisible(false);
+          setAutoScanDocVisible(false);
           if (scannerSetterRef.current) {
-            scannerSetterRef.current(img);
+            scannerSetterRef.current({ uri: img.uri, base64: img.base64, mimeType: img.mimeType });
             scannerSetterRef.current = null;
           }
-          setScannerUri(null);
         }}
         onCancel={() => {
-          setScannerVisible(false);
+          setAutoScanDocVisible(false);
           scannerSetterRef.current = null;
-          setScannerUri(null);
         }}
       />
 
