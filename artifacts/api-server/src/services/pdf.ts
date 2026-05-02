@@ -402,25 +402,16 @@ export async function generateCandidatePdf(
     // Header bottom (no divider line — keep title area clean)
     const sepY = MT + HEADER_H;
 
-    // ── Optional report context strip ─────────────────────────────────────
+    // ── Optional report context strip (stored, rendered at bottom in B&W) ──
     let reportStripH = 0;
-    const rOrg  = reportOpts?.organization?.trim() || c.skillCentreName?.trim() || null;
+    const rOrg   = reportOpts?.organization?.trim() || c.skillCentreName?.trim() || null;
     const rStaff = reportOpts?.staffName?.trim() || null;
     const rDate  = reportOpts?.reportDate?.trim() || null;
-    if (rOrg || rStaff || rDate) {
-      const stripY = sepY;
-      reportStripH = 18;
-      // Light navy band
-      fill(doc, ML, stripY, CW, reportStripH, NAVY + "12");
-      fill(doc, ML, stripY, 3, reportStripH, AMBER);
-      const contentParts: string[] = [];
-      if (rOrg)   contentParts.push(rOrg);
-      if (rStaff) contentParts.push(`Staff: ${rStaff}`);
-      if (rDate)  contentParts.push(`Date: ${rDate}`);
-      const stripText = contentParts.join("   |   ");
-      t(doc, stripText, ML + 6, stripY + 5,
-        { size: 7, color: NAVY, width: CW - 12, align: "center" });
-    }
+    const rStripParts: string[] = [];
+    if (rOrg)   rStripParts.push(rOrg);
+    if (rStaff) rStripParts.push(`Staff: ${rStaff}`);
+    if (rDate)  rStripParts.push(`Date: ${rDate}`);
+    // (strip is rendered at the bottom of the page in B&W — see below)
 
     // ══════════════════════════════════════════════════════════════════════════
     // TITLE AREA  (left of photo box)
@@ -733,6 +724,17 @@ export async function generateCandidatePdf(
          .strokeColor(LGRAY).lineWidth(0.45).stroke();
     }
     y += 20;
+
+    // ── Staff info strip (B&W, bottom of page) ──────────────────────────────
+    if (rStripParts.length > 0) {
+      const bStripH = 16;
+      fill(doc, ML, y, CW, bStripH, "#EEEEEE");
+      fill(doc, ML, y, 3, bStripH, DARK);
+      const bStripText = rStripParts.join("   |   ");
+      t(doc, bStripText, ML + 8, y + 4,
+        { size: 7, color: DARK, width: CW - 16, align: "center" });
+      y += bStripH + 4;
+    }
 
     // ── Centered footer strip ────────────────────────────────────────────────
     hl(doc, ML, y, ML + CW, 0.5, LGRAY);
