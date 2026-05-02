@@ -745,15 +745,13 @@ router.get("/candidates/:id/pdf", async (req, res, next) => {
     const pdfFilePath = path.join(CANDIDATES_DIR, candidate.id, "profile.pdf");
     const branding = await fetchCompanyBranding(candidate.companyId);
     const pdfOpts = buildPdfOpts(candidate, req.query as Record<string, string>, branding);
-    const hasOptsFromQuery = !!(req.query["organization"] || req.query["staffName"]);
-    if (!fs.existsSync(pdfFilePath) || hasOptsFromQuery || branding.companyName) {
-      fs.mkdirSync(path.dirname(pdfFilePath), { recursive: true });
-      try {
-        await generateCandidatePdf(candidate, pdfFilePath, pdfOpts);
-      } catch (pdfErr) {
-        next(pdfErr);
-        return;
-      }
+    // Always regenerate PDF to ensure latest data is reflected
+    fs.mkdirSync(path.dirname(pdfFilePath), { recursive: true });
+    try {
+      await generateCandidatePdf(candidate, pdfFilePath, pdfOpts);
+    } catch (pdfErr) {
+      next(pdfErr);
+      return;
     }
 
     const safeName = candidate.name.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase();

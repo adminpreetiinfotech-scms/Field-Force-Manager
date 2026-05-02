@@ -527,7 +527,20 @@ export async function generateCandidatePdf(
     const sxW = FW * 0.28;
     seg(doc, "लिंग / Sex", c.gender, FX, y, 50, sxW);
     const dobFormatted = c.dob
-      ? (() => { const [y2, m, d] = c.dob!.split("-"); return `${d}-${m}-${y2}`; })()
+      ? (() => {
+          const raw = c.dob!.trim();
+          // Handle YYYY-MM-DD → DD-MM-YYYY
+          if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+            const [y2, m, d] = raw.split("-");
+            return `${d}-${m}-${y2}`;
+          }
+          // Handle DD/MM/YYYY → DD-MM-YYYY
+          if (/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) {
+            return raw.replace(/\//g, "-");
+          }
+          // Already DD-MM-YYYY or unknown — show as-is
+          return raw;
+        })()
       : null;
     seg(doc, "जन्म तिथि / Date of Birth  (On or before 01-01-2004)",
       dobFormatted, FX + sxW + 5, y, 190, FW - sxW - 5);
