@@ -457,4 +457,118 @@ router.post("/super-admin/production-setup", async (req, res, next) => {
   }
 });
 
+// ─── POST /api/super-admin/company-admin ──────────────────────────────────────
+// Super Admin creates a new company admin for an existing company.
+
+router.post("/super-admin/company-admin", requireSuperAdmin, async (req, res, next) => {
+  try {
+    const { name, phone, email, companyId, initialMpin } = req.body as {
+      name?: string;
+      phone?: string;
+      email?: string | null;
+      companyId?: string;
+      initialMpin?: string | null;
+    };
+
+    if (!name?.trim()) {
+      res.status(400).json({ title: "Name is required", status: 400 });
+      return;
+    }
+    if (!phone?.trim() || !/^[6-9]\d{9}$/.test(phone.trim())) {
+      res.status(400).json({ title: "Valid 10-digit Indian mobile number required", status: 400 });
+      return;
+    }
+    if (!companyId?.trim()) {
+      res.status(400).json({ title: "Company is required", status: 400 });
+      return;
+    }
+    if (email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      res.status(400).json({ title: "Invalid email address", status: 400 });
+      return;
+    }
+    if (initialMpin && !/^\d{4,6}$/.test(initialMpin)) {
+      res.status(400).json({ title: "MPIN must be 4–6 digits", status: 400 });
+      return;
+    }
+
+    // Check company exists
+    const [company] = await db
+      .select()
+      .from(companiesTable)
+      .where(eq(companiesTable.id, companyId.trim()))
+      .limit(1);
+    if (!company) {
+      res.status(404).json({ title: "Company not found", status: 404 });
+      return;
+    }
+
+    // Check phone not already registered
+    const [existingStaff] = await db
+      .select({ id: staffTable.id })
+      .from(staffTable)
+      .where(eq(staffTable.phone, phone.trim()))
+      .limit(1);
+    if (existingStaff) {
+      res.status(409).json({
+        title: "Phone already registered",
+        detail: "An account with this mobile number already exists.",
+        status: 409,
+      });
+      return;
+    }
+
+    // Hash MPIN if provided — same scrypt scheme as mpin.ts
+    let mpinHash: string | null = null;
+    if (initialMpin) {
+      const crypto = await import("node:crypto");
+      const salt = crypto.randomBytes(16).toString("hex");
+      const hash = crypto.scryptSync(initialMpin, salt, 64).toString("hex");
+      mpinHash = `${salt}:${hash}`;
+    }
+
+    const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
+    const adminCode = Math.random().toString(36).slice(2, 8).toUpperCase();
+
+    const [admin] = await db
+      .insert(staffTable)
+      .values({
+        companyId: companyId.trim(),
+        empCode: `ADM-${suffix}`,
+        name: name.trim(),
+        phone: phone.trim(),
+        role: "admin",
+        email: email?.trim() || null,
+        organization: company.name,
+        projectName: company.projectName ?? null,
+        state: company.state ?? null,
+        district: company.district ?? null,
+        adminCode,
+        approvalStatus: "approved",
+        mpinHash,
+      })
+      .returning();
+
+    res.status(201).json({
+      message: "Company admin created successfully",
+      admin: {
+        id: admin.id,
+        empCode: admin.empCode,
+        name: admin.name,
+        phone: admin.phone,
+        role: admin.role,
+        companyId: admin.companyId,
+        adminCode: admin.adminCode,
+        email: admin.email,
+        createdAt: admin.createdAt?.toISOString() ?? null,
+      },
+      company: {
+        id: company.id,
+        name: company.name,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

@@ -1,6 +1,6 @@
 import { Link, Redirect, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { LayoutDashboard, Users, UserSquare2, FileText, LogOut, Building2, ShieldCheck, Bell, Map } from "lucide-react";
+import { LayoutDashboard, Users, UserSquare2, FileText, LogOut, Building2, ShieldCheck, Bell, Map, Settings, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const navItems = [
@@ -10,11 +10,13 @@ const navItems = [
   { href: "/live-map", label: "Live Staff Map", icon: Map },
   { href: "/notices", label: "Notices", icon: Bell },
   { href: "/reports", label: "Reports", icon: FileText },
+  { href: "/settings", label: "Company Settings", icon: Settings },
 ];
 
 const superAdminItems = [
   { href: "/super-admin/companies", label: "All Companies", icon: Building2 },
   { href: "/super-admin/staff", label: "All Staff", icon: Users },
+  { href: "/super-admin/create-admin", label: "Create Company Admin", icon: UserPlus },
 ];
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {

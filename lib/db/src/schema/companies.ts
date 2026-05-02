@@ -21,6 +21,7 @@ export const companiesTable = pgTable("companies", {
   subscriptionEndDate: timestamp("subscription_end_date", { withTimezone: true }),
   /** paid | pending | expired */
   paymentStatus: text("payment_status", { enum: ["paid", "pending", "expired"] }).default("paid"),
+  centerName: text("center_name"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
