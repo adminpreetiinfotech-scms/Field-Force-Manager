@@ -12,6 +12,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -691,6 +692,7 @@ type DailyReportModalProps = {
 function DailyReportModal({ visible, onClose, userId, todayKm, trips, myAttendance, organization, centerName, projectName, state, district }: DailyReportModalProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { unsyncedCount } = useApp();
   const [report, setReport] = useState<DailyReport | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -787,6 +789,10 @@ function DailyReportModal({ visible, onClose, userId, todayKm, trips, myAttendan
 
     lines.push(`🚗 Trips Today: ${totalTrips}`);
     lines.push(`📏 Distance Covered: ${totalDist.toFixed(1)} km`);
+    if (unsyncedCount > 0) {
+      lines.push(``);
+      lines.push(`⏳ Pending Sync: ${unsyncedCount} item${unsyncedCount !== 1 ? "s" : ""} (will sync when online)`);
+    }
     lines.push(``);
 
     lines.push(SEP);
@@ -801,20 +807,35 @@ function DailyReportModal({ visible, onClose, userId, todayKm, trips, myAttendan
     return lines.join("\n");
   };
 
-  const shareOnWhatsApp = () => {
+  const shareOnWhatsApp = async () => {
     const text = buildReportText();
     const encoded = encodeURIComponent(text);
-    const url =
-      Platform.OS === "web"
-        ? `https://api.whatsapp.com/send?text=${encoded}`
-        : `whatsapp://send?text=${encoded}`;
 
-    Linking.openURL(url).catch(() => {
-      Alert.alert(
-        "WhatsApp not available",
-        "Please install WhatsApp or copy the report text and share manually.",
-      );
-    });
+    // Web: open WhatsApp Web directly
+    if (Platform.OS === "web") {
+      window.open(`https://api.whatsapp.com/send?text=${encoded}`, "_blank");
+      return;
+    }
+
+    // Native: try WhatsApp deep link first
+    const waUrl = `whatsapp://send?text=${encoded}`;
+    const canOpenWa = await Linking.canOpenURL(waUrl).catch(() => false);
+    if (canOpenWa) {
+      await Linking.openURL(waUrl).catch(() => {});
+      return;
+    }
+
+    // Fallback: system share sheet
+    try {
+      await Share.share({ message: text });
+    } catch (e: any) {
+      if (e?.message !== "The user did not share") {
+        Alert.alert(
+          "Could not share",
+          "WhatsApp is not installed. Please share the report manually.",
+        );
+      }
+    }
   };
 
   return (
