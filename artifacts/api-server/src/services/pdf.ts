@@ -535,8 +535,11 @@ export async function generateCandidatePdf(
     // A6 — Sex + DOB (wider DOB field)
     const sxW = FW * 0.28;
     seg(doc, "लिंग / Sex", c.gender, FX, y, 50, sxW);
+    const dobFormatted = c.dob
+      ? (() => { const [y2, m, d] = c.dob!.split("-"); return `${d}-${m}-${y2}`; })()
+      : null;
     seg(doc, "जन्म तिथि / Date of Birth  (On or before 01-01-2004)",
-      c.dob, FX + sxW + 5, y, 190, FW - sxW - 5);
+      dobFormatted, FX + sxW + 5, y, 190, FW - sxW - 5);
     y += ROW;
 
     // A7 — Religion + Category
