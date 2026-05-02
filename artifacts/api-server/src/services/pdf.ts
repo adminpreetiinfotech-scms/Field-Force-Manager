@@ -330,11 +330,14 @@ export async function generateCandidatePdf(
 
     // Determine branding source: use company override if provided, else JSDMS defaults
     const brandName    = reportOpts?.companyName?.trim()      || "Jharkhand Skill Development Mission Society";
-    const brandHindi   = reportOpts?.companyNameHindi?.trim() || "झारखण्ड कौशल विकास मिशन सोसाइटी";
+    const isCustomBrand = !!(reportOpts?.companyName?.trim());
+    // For custom brands without a Hindi name, fall back to the English company name
+    // (avoids showing JSDMS Hindi name on non-JSDMS company PDFs)
+    const brandHindi   = reportOpts?.companyNameHindi?.trim()
+      || (isCustomBrand ? brandName : "झारखण्ड कौशल विकास मिशन सोसाइटी");
     const brandScheme  = reportOpts?.schemeName?.trim()       || "DDU-KK";
     const brandLogoPath = reportOpts?.companyLogoPath         || LOGO_PATH;
     const brandLogoBuf  = reportOpts?.companyLogoBuffer ?? null;
-    const isCustomBrand = !!(reportOpts?.companyName?.trim());
 
     // ── English left column ────────────────────────────────────────────────
     // Split brandName at midpoint for two lines if long
@@ -629,9 +632,16 @@ export async function generateCandidatePdf(
     // ══════════════════════════════════════════════════════════════════════════
     y = band(doc, "F.  DOCUMENTS ATTACHED  /  संलग्न दस्तावेज", ML, y, CW);
 
+    const casteSelfDecl = c.casteCertAvailable === "no";
     const docs = [
       { n: "1", lbl: "जन्म प्रमाण पत्र / Birth Certificate",       chk: false },
-      { n: "2", lbl: "जाति प्रमाण पत्र / Caste Certificate",        chk: !!(c.casteCertPath && fs.existsSync(c.casteCertPath!)) },
+      {
+        n: "2",
+        lbl: casteSelfDecl
+          ? "स्व-घोषणा पत्र / Self Declaration (Caste)"
+          : "जाति प्रमाण पत्र / Caste Certificate",
+        chk: casteSelfDecl || !!(c.casteCertPath && fs.existsSync(c.casteCertPath!)),
+      },
       { n: "3", lbl: "आधार कार्ड / Aadhaar Card",                   chk: !!(c.aadhaarFrontPath && fs.existsSync(c.aadhaarFrontPath!)) },
       { n: "4", lbl: "शैक्षिक प्रमाण पत्र / Education Certificate", chk: !!(c.educationCertPath && fs.existsSync(c.educationCertPath!)) },
       { n: "5", lbl: "बैंक पासबुक / Bank Passbook",                 chk: !!(c.bankPassbookPath && fs.existsSync(c.bankPassbookPath!)) },
@@ -724,9 +734,12 @@ export async function generateCandidatePdf(
     // ── Centered footer strip ────────────────────────────────────────────────
     hl(doc, ML, y, ML + CW, 0.5, LGRAY);
     y += 6;
+    const footerOrg = isCustomBrand
+      ? `${brandName}${brandScheme && brandScheme !== "DDU-KK" ? " — " + brandScheme : ""}`
+      : "JSDMS / DDU-KK Jharkhand";
     doc.font("DVR").fontSize(6).fillColor(GRAY)
        .text(
-         `Registration ID: ${c.id}   |   Status: ${(c.status ?? "Pending").toUpperCase()}   |   JSDMS / DDU-KK Jharkhand`,
+         `Registration ID: ${c.id}   |   Status: ${(c.status ?? "Pending").toUpperCase()}   |   ${footerOrg}`,
          ML, y, { width: CW, align: "center", lineBreak: false },
        );
 
