@@ -173,13 +173,16 @@ export default function Candidates() {
                         </SelectContent>
                       </Select>
                       
-                      {candidate.pdfUrl && (
-                        <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                          <a href={candidate.pdfUrl} target="_blank" rel="noreferrer" title="Download Profile PDF">
-                            <Download className="h-4 w-4" />
-                          </a>
-                        </Button>
-                      )}
+                      <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                        <a
+                          href={`/api/candidates/${candidate.id}/pdf`}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="Download Profile PDF"
+                        >
+                          <Download className="h-4 w-4" />
+                        </a>
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
