@@ -14,6 +14,7 @@ const navItems = [
 
 const superAdminItems = [
   { href: "/super-admin/companies", label: "All Companies", icon: Building2 },
+  { href: "/super-admin/staff", label: "All Staff", icon: Users },
 ];
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {

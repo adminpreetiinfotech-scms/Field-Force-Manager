@@ -38,7 +38,7 @@ The project is a pnpm monorepo using Node.js 24 and TypeScript 5.9. The backend 
     - **Company Branding:** Stores company logos in Replit GCS object storage. Provides public endpoint for company branding details (name, logo URL, project name, state, district).
     - **Admin Routes:** Comprehensive API for dashboard stats, staff management (deactivate, enable, delete), candidate status updates, and reports. All admin routes protected by `requireAdmin` middleware with `companyId` scoping. Company logo/profile routes require admin auth with own-company verification (403 if wrong company).
     - **Security (v1.0.2):** Fixed previously unprotected `/admin/pending-staff`, `/admin/staff/:id/approve`, `/admin/staff/:id/reject` routes. Added auth + cross-company guards to `/companies/:id/logo` and `/companies/:id/profile`.
-    - **Super Admin:** Dedicated routes for managing companies (list, status, subscription, MPIN reset).
+    - **Super Admin:** Dedicated routes for managing companies (list, status, subscription, MPIN reset) and listing all staff across all companies (GET /api/super-admin/staff — includes email, centerName, projectName, state, district, area, lastLocationAt, isOnShift).
 - **Common Libraries:**
     - **API Client:** Generated using Orval, with custom fetch for injecting `x-admin-phone` header.
     - **State Management:** `AppContext.tsx` handles global state, persisted to AsyncStorage.

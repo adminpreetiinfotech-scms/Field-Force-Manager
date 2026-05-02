@@ -271,6 +271,7 @@ router.get("/super-admin/staff", requireSuperAdmin, async (_req, res, next) => {
         id: staffTable.id,
         name: staffTable.name,
         phone: staffTable.phone,
+        email: staffTable.email,
         role: staffTable.role,
         empCode: staffTable.empCode,
         companyId: staffTable.companyId,
@@ -278,12 +279,42 @@ router.get("/super-admin/staff", requireSuperAdmin, async (_req, res, next) => {
         approvalStatus: staffTable.approvalStatus,
         disabledAt: staffTable.disabledAt,
         createdAt: staffTable.createdAt,
+        centerName: staffTable.centerName,
+        projectName: staffTable.projectName,
+        state: staffTable.state,
+        district: staffTable.district,
+        area: staffTable.area,
+        organization: staffTable.organization,
+        lastLocationAt: staffTable.lastLocationAt,
+        isOnShift: staffTable.isOnShift,
       })
       .from(staffTable)
       .leftJoin(companiesTable, eq(staffTable.companyId, companiesTable.id))
       .where(isNull(staffTable.deletedAt))
       .orderBy(staffTable.createdAt);
-    res.json(rows);
+    res.json(
+      rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        phone: r.phone,
+        email: r.email ?? null,
+        role: r.role,
+        empCode: r.empCode,
+        companyId: r.companyId ?? null,
+        companyName: r.companyName ?? null,
+        approvalStatus: r.approvalStatus,
+        disabledAt: r.disabledAt?.toISOString() ?? null,
+        createdAt: r.createdAt?.toISOString() ?? null,
+        centerName: r.centerName ?? null,
+        projectName: r.projectName ?? null,
+        state: r.state ?? null,
+        district: r.district ?? null,
+        area: r.area ?? null,
+        organization: r.organization ?? null,
+        lastLocationAt: r.lastLocationAt?.toISOString() ?? null,
+        isOnShift: r.isOnShift,
+      })),
+    );
   } catch (err) {
     next(err);
   }

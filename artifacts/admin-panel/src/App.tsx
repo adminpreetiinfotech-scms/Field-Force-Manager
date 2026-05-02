@@ -12,6 +12,7 @@ import Reports from "@/pages/reports";
 import Notices from "@/pages/notices";
 import SuperAdminCompanies from "@/pages/super-admin-companies";
 import SuperAdminCompanyDetail from "@/pages/super-admin-company-detail";
+import SuperAdminStaff from "@/pages/super-admin-staff";
 import LiveMap from "@/pages/live-map";
 import { AdminLayout } from "@/components/admin-layout";
 import { useAuth } from "@/hooks/use-auth";
@@ -87,6 +88,7 @@ function Router() {
         <SuperAdminCompanyDetail companyId={params.id} />
       )} />
       <SuperAdminRoute path="/super-admin/companies" component={SuperAdminCompanies} />
+      <SuperAdminRoute path="/super-admin/staff" component={SuperAdminStaff} />
       <Route component={NotFound} />
     </Switch>
   );
