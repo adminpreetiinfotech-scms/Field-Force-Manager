@@ -93,6 +93,9 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             <LogOut className="h-4 w-4" />
             Logout
           </Button>
+          <p className="mt-3 px-3 text-[10px] text-muted-foreground/60 text-center leading-tight">
+            v1.0.2 · Developed by Anil Yadav
+          </p>
         </div>
       </aside>
 

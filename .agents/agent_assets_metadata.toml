@@ -1,8 +1,13 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "gnQT_uL5tq92xgipVNQXe"
 uri = "file://artifacts/field-staff/assets/images/icon.png"
 type = "image"
 title = "generated_image"
+
+[[outputs]]
+id = "1yeSnHvWtcZSWKo1eODFB"
+uri = "file://artifacts/admin-panel/public/user-guide.md"
+type = "text"
+title = "Nistha Skill — User Guide v1.0.2"

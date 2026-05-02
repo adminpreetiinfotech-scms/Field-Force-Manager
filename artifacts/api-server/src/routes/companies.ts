@@ -2,6 +2,7 @@ import { companiesTable, db, staffTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import { uploadLogoBuffer } from "../lib/logoStorage";
+import { getAdminCompanyId } from "./admin";
 
 const router: IRouter = Router();
 
@@ -238,10 +239,26 @@ router.get("/companies/:id/branding", async (req, res, next) => {
 router.patch("/companies/:id/logo", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { logoBase64, logoMime } = req.body as {
+    const { logoBase64, logoMime, adminPhone } = req.body as {
       logoBase64?: string | null;
       logoMime?: string | null;
+      adminPhone?: string;
     };
+    const phone =
+      (req.headers["x-admin-phone"] as string | undefined) ?? adminPhone;
+    if (!phone) {
+      res.status(401).json({ title: "Unauthorized: admin phone required", status: 401 });
+      return;
+    }
+    const adminInfo = await getAdminCompanyId(phone);
+    if (!adminInfo) {
+      res.status(403).json({ title: "Forbidden: admin access required", status: 403 });
+      return;
+    }
+    if (adminInfo.role !== "super_admin" && adminInfo.companyId !== id) {
+      res.status(403).json({ title: "Forbidden: not your company", status: 403 });
+      return;
+    }
     const [company] = await db
       .select()
       .from(companiesTable)
@@ -269,14 +286,30 @@ router.patch("/companies/:id/logo", async (req, res, next) => {
 router.patch("/companies/:id/profile", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, adminName, email, state, district, projectName } = req.body as {
+    const { name, adminName, email, state, district, projectName, adminPhone } = req.body as {
       name?: string;
       adminName?: string;
       email?: string | null;
       state?: string | null;
       district?: string | null;
       projectName?: string | null;
+      adminPhone?: string;
     };
+    const phone =
+      (req.headers["x-admin-phone"] as string | undefined) ?? adminPhone;
+    if (!phone) {
+      res.status(401).json({ title: "Unauthorized: admin phone required", status: 401 });
+      return;
+    }
+    const adminInfo = await getAdminCompanyId(phone);
+    if (!adminInfo) {
+      res.status(403).json({ title: "Forbidden: admin access required", status: 403 });
+      return;
+    }
+    if (adminInfo.role !== "super_admin" && adminInfo.companyId !== id) {
+      res.status(403).json({ title: "Forbidden: not your company", status: 403 });
+      return;
+    }
     const updates: Partial<typeof companiesTable.$inferInsert> = {};
     if (name !== undefined) updates.name = name.trim();
     if (adminName !== undefined) updates.adminName = adminName.trim();
@@ -284,6 +317,20 @@ router.patch("/companies/:id/profile", async (req, res, next) => {
     if (state !== undefined) updates.state = state?.trim() || null;
     if (district !== undefined) updates.district = district?.trim() || null;
     if (projectName !== undefined) updates.projectName = projectName?.trim() || null;
+
+    if (Object.keys(updates).length === 0) {
+      const [existing] = await db
+        .select()
+        .from(companiesTable)
+        .where(eq(companiesTable.id, id))
+        .limit(1);
+      if (!existing) {
+        res.status(404).json({ title: "Company not found", status: 404 });
+        return;
+      }
+      res.json(toCompanyDTO(existing));
+      return;
+    }
 
     const [updated] = await db
       .update(companiesTable)

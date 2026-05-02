@@ -2,6 +2,7 @@ import { candidatesTable, companiesTable, db, staffTable, activityEventsTable } 
 import { eq, and, gte, lt, isNull, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import crypto from "node:crypto";
+import { requireAdmin } from "./admin";
 
 const router: IRouter = Router();
 
@@ -467,12 +468,17 @@ router.get("/staff/:staffId/profile-stats", async (req, res, next) => {
 
 // ─── Admin approval workflow ───────────────────────────────────────────────────
 
-router.get("/admin/pending-staff", async (_req, res, next) => {
+router.get("/admin/pending-staff", requireAdmin, async (_req, res, next) => {
   try {
+    const companyId = res.locals.companyId as string | null;
     const rows = await db
       .select()
       .from(staffTable)
-      .where(eq(staffTable.approvalStatus, "pending"))
+      .where(
+        companyId
+          ? and(eq(staffTable.approvalStatus, "pending"), eq(staffTable.companyId, companyId))
+          : eq(staffTable.approvalStatus, "pending"),
+      )
       .orderBy(staffTable.createdAt);
     res.json(rows.map(toStaffDTO));
   } catch (err) {
@@ -480,17 +486,22 @@ router.get("/admin/pending-staff", async (_req, res, next) => {
   }
 });
 
-router.patch("/admin/staff/:staffId/approve", async (req, res, next) => {
+router.patch("/admin/staff/:staffId/approve", requireAdmin, async (req, res, next) => {
   try {
-    const { staffId } = req.params;
-    if (!/^[0-9a-fA-F-]{36}$/.test(staffId)) {
+    const rawId = String(req.params.staffId ?? "");
+    const companyId = res.locals.companyId as string | null;
+    if (!/^[0-9a-fA-F-]{36}$/.test(rawId)) {
       res.status(400).json({ title: "Invalid staffId", status: 400 });
       return;
     }
     const [updated] = await db
       .update(staffTable)
       .set({ approvalStatus: "approved" })
-      .where(eq(staffTable.id, staffId))
+      .where(
+        companyId
+          ? and(eq(staffTable.id, rawId), eq(staffTable.companyId, companyId))
+          : eq(staffTable.id, rawId),
+      )
       .returning();
     if (!updated) {
       res.status(404).json({ title: "Staff not found", status: 404 });
@@ -502,17 +513,22 @@ router.patch("/admin/staff/:staffId/approve", async (req, res, next) => {
   }
 });
 
-router.patch("/admin/staff/:staffId/reject", async (req, res, next) => {
+router.patch("/admin/staff/:staffId/reject", requireAdmin, async (req, res, next) => {
   try {
-    const { staffId } = req.params;
-    if (!/^[0-9a-fA-F-]{36}$/.test(staffId)) {
+    const rawId = String(req.params.staffId ?? "");
+    const companyId = res.locals.companyId as string | null;
+    if (!/^[0-9a-fA-F-]{36}$/.test(rawId)) {
       res.status(400).json({ title: "Invalid staffId", status: 400 });
       return;
     }
     const [updated] = await db
       .update(staffTable)
       .set({ approvalStatus: "rejected" })
-      .where(eq(staffTable.id, staffId))
+      .where(
+        companyId
+          ? and(eq(staffTable.id, rawId), eq(staffTable.companyId, companyId))
+          : eq(staffTable.id, rawId),
+      )
       .returning();
     if (!updated) {
       res.status(404).json({ title: "Staff not found", status: 404 });

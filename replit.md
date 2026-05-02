@@ -34,7 +34,8 @@ The project is a pnpm monorepo using Node.js 24 and TypeScript 5.9. The backend 
     - **Database:** PostgreSQL with Drizzle ORM.
     - **Multi-Tenancy:** `companies` table and `company_id` FK in all major data tables. Supports `staff`, `admin`, and `super_admin` roles.
     - **Company Branding:** Stores company logos in Replit GCS object storage. Provides public endpoint for company branding details (name, logo URL, project name, state, district).
-    - **Admin Routes:** Comprehensive API for dashboard stats, staff management (deactivate, enable, delete), candidate status updates, and reports.
+    - **Admin Routes:** Comprehensive API for dashboard stats, staff management (deactivate, enable, delete), candidate status updates, and reports. All admin routes protected by `requireAdmin` middleware with `companyId` scoping. Company logo/profile routes require admin auth with own-company verification (403 if wrong company).
+    - **Security (v1.0.2):** Fixed previously unprotected `/admin/pending-staff`, `/admin/staff/:id/approve`, `/admin/staff/:id/reject` routes. Added auth + cross-company guards to `/companies/:id/logo` and `/companies/:id/profile`.
     - **Super Admin:** Dedicated routes for managing companies (list, status, subscription, MPIN reset).
 - **Common Libraries:**
     - **API Client:** Generated using Orval, with custom fetch for injecting `x-admin-phone` header.
