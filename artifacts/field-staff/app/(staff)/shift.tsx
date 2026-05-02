@@ -36,6 +36,7 @@ import {
   useApp,
 } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
+import { useCandidateNotifCount } from "@/hooks/useCandidateNotifCount";
 import { useNotices } from "@/hooks/useNotices";
 
 function haversine(a: GeoPoint, b: GeoPoint) {
@@ -106,12 +107,18 @@ export default function StaffHome() {
     refresh: refreshNotices,
   } = useNotices({ phone: user?.phone, enabled: !!user?.phone, pollIntervalMs: 30_000 });
 
+  const {
+    unreadCount: candidateNotifCount,
+    refresh: refreshCandidateNotifs,
+  } = useCandidateNotifCount({ phone: user?.phone, enabled: !!user?.phone, pollIntervalMs: 60_000 });
+
   const popupNotice = unreadNotices[0] ?? null;
 
   useFocusEffect(
     useCallback(() => {
       void refreshNotices();
-    }, [refreshNotices]),
+      void refreshCandidateNotifs();
+    }, [refreshNotices, refreshCandidateNotifs]),
   );
 
   const [now, setNow] = useState(Date.now());
@@ -483,7 +490,7 @@ export default function StaffHome() {
                 }
               />
               <Button
-                label={unreadCount > 0 ? `Notifications (${unreadCount} new)` : "Notifications"}
+                label={candidateNotifCount > 0 ? `Candidate Updates (${candidateNotifCount} new)` : "Candidate Updates"}
                 onPress={() => router.push("/notifications")}
                 variant="ghost"
                 size="lg"
@@ -492,7 +499,7 @@ export default function StaffHome() {
                   <Feather
                     name="bell"
                     size={18}
-                    color={unreadCount > 0 ? "#D97706" : colors.foreground}
+                    color={candidateNotifCount > 0 ? "#D97706" : colors.foreground}
                   />
                 }
               />
