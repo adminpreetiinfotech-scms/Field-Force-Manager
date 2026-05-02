@@ -1,18 +1,80 @@
 import { useGetDashboardStats } from "@workspace/api-client-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, UserCheck, Clock, XCircle, UserSquare2, TrendingUp, Calendar, AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import {
+  Users, UserCheck, Clock, XCircle, UserSquare2,
+  TrendingUp, Calendar, AlertCircle, ArrowRight,
+  CheckCircle2, Activity, Award
+} from "lucide-react";
+import { Link } from "wouter";
+import { format } from "date-fns";
+
+function StatCard({
+  title,
+  value,
+  sub,
+  icon: Icon,
+  accent,
+  href,
+}: {
+  title: string;
+  value: number | string;
+  sub?: string;
+  icon: React.ElementType;
+  accent: string;
+  href?: string;
+}) {
+  const inner = (
+    <div className={`relative overflow-hidden rounded-xl border bg-card p-5 shadow-sm hover:shadow-md transition-shadow group`}>
+      <div className={`absolute top-0 right-0 w-24 h-24 rounded-bl-full opacity-[0.07] ${accent}`} />
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight">{value}</p>
+          {sub && <p className="mt-1 text-xs text-muted-foreground">{sub}</p>}
+        </div>
+        <div className={`p-2.5 rounded-lg ${accent} bg-opacity-15`}>
+          <Icon className={`h-5 w-5 ${accent.replace("bg-", "text-")}`} />
+        </div>
+      </div>
+      {href && (
+        <div className="mt-4 flex items-center gap-1 text-xs font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+          View details <ArrowRight className="h-3 w-3" />
+        </div>
+      )}
+    </div>
+  );
+  return href ? <Link href={href}>{inner}</Link> : inner;
+}
+
+function ProgressBar({ value, max, color }: { value: number; max: number; color: string }) {
+  const pct = max > 0 ? Math.round((value / max) * 100) : 0;
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="w-8 text-right text-xs font-medium tabular-nums">{pct}%</span>
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const { data: stats, isLoading, error } = useGetDashboardStats();
+  const today = format(new Date(), "EEEE, MMMM d, yyyy");
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard Overview</h1>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
-            <Card key={i}><CardContent className="p-6"><Skeleton className="h-12 w-full" /></CardContent></Card>
+      <div className="space-y-6 max-w-6xl">
+        <div className="flex items-center justify-between">
+          <div>
+            <Skeleton className="h-7 w-56 mb-2" />
+            <Skeleton className="h-4 w-40" />
+          </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[...Array(8)].map((_, i) => (
+            <Skeleton key={i} className="h-28 rounded-xl" />
           ))}
         </div>
       </div>
@@ -21,100 +83,184 @@ export default function Dashboard() {
 
   if (error || !stats) {
     return (
-      <div className="p-6 border border-destructive/50 bg-destructive/10 text-destructive rounded-lg">
-        Failed to load dashboard statistics.
+      <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
+        <AlertCircle className="h-10 w-10 text-destructive" />
+        <p className="text-muted-foreground">Failed to load dashboard statistics.</p>
+        <Button variant="outline" onClick={() => window.location.reload()}>Try Again</Button>
       </div>
     );
   }
 
+  const totalCandidates = stats.totalCandidates || 0;
+  const enrollmentRate = totalCandidates > 0
+    ? Math.round(((stats.verifiedCandidates + stats.enrolledCandidates) / totalCandidates) * 100)
+    : 0;
+
   return (
-    <div className="space-y-6 max-w-6xl">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard Overview</h1>
+    <div className="space-y-8 max-w-6xl">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Dashboard Overview</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">{today}</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/candidates">
+              <UserSquare2 className="h-4 w-4 mr-1.5" /> Candidates
+            </Link>
+          </Button>
+          <Button size="sm" asChild>
+            <Link href="/staff">
+              <Users className="h-4 w-4 mr-1.5" /> Manage Staff
+            </Link>
+          </Button>
+        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Candidates Row */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Candidates</CardTitle>
-            <UserSquare2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalCandidates}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Verified / Enrolled</CardTitle>
-            <UserCheck className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.verifiedCandidates + stats.enrolledCandidates}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {stats.verifiedCandidates} verified, {stats.enrolledCandidates} enrolled
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Candidates</CardTitle>
-            <Clock className="h-4 w-4 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.pendingCandidates}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Rejected Candidates</CardTitle>
-            <XCircle className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.rejectedCandidates}</div>
-          </CardContent>
-        </Card>
+      {/* Candidate Stats */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <UserSquare2 className="h-4 w-4 text-muted-foreground" />
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Candidates</h2>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            title="Total Candidates"
+            value={stats.totalCandidates}
+            icon={UserSquare2}
+            accent="bg-blue-500"
+            href="/candidates"
+          />
+          <StatCard
+            title="Verified / Enrolled"
+            value={stats.verifiedCandidates + stats.enrolledCandidates}
+            sub={`${stats.verifiedCandidates} verified · ${stats.enrolledCandidates} enrolled`}
+            icon={CheckCircle2}
+            accent="bg-emerald-500"
+            href="/candidates"
+          />
+          <StatCard
+            title="Pending Review"
+            value={stats.pendingCandidates}
+            sub={stats.pendingCandidates > 0 ? "Action required" : "All clear"}
+            icon={Clock}
+            accent="bg-amber-500"
+            href="/candidates"
+          />
+          <StatCard
+            title="Rejected"
+            value={stats.rejectedCandidates}
+            icon={XCircle}
+            accent="bg-red-500"
+            href="/candidates"
+          />
+        </div>
+      </div>
 
-        {/* Staff Row */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Staff</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalStaff}</div>
-            <p className="text-xs text-muted-foreground mt-1">{stats.activeStaff} active</p>
-          </CardContent>
-        </Card>
-        <Card className={stats.pendingApprovals > 0 ? "border-orange-200 bg-orange-50/50 dark:bg-orange-950/20" : ""}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Staff Approvals</CardTitle>
-            <AlertCircle className={`h-4 w-4 ${stats.pendingApprovals > 0 ? "text-orange-500" : "text-muted-foreground"}`} />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.pendingApprovals}</div>
-          </CardContent>
-        </Card>
+      {/* Staff Stats */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <Users className="h-4 w-4 text-muted-foreground" />
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Field Staff</h2>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            title="Total Staff"
+            value={stats.totalStaff}
+            sub={`${stats.activeStaff} active`}
+            icon={Users}
+            accent="bg-violet-500"
+            href="/staff"
+          />
+          <StatCard
+            title="Pending Approvals"
+            value={stats.pendingApprovals}
+            sub={stats.pendingApprovals > 0 ? "Review needed" : "No pending requests"}
+            icon={AlertCircle}
+            accent="bg-orange-500"
+            href="/staff"
+          />
+          <StatCard
+            title="Registered Today"
+            value={stats.todayRegistrations}
+            icon={TrendingUp}
+            accent="bg-sky-500"
+          />
+          <StatCard
+            title="This Month"
+            value={stats.thisMonthRegistrations}
+            sub="New registrations"
+            icon={Calendar}
+            accent="bg-pink-500"
+          />
+        </div>
+      </div>
 
-        {/* Growth Row */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Registrations Today</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.todayRegistrations}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Registrations This Month</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.thisMonthRegistrations}</div>
-          </CardContent>
-        </Card>
+      {/* Bottom row: Candidate funnel + Quick actions */}
+      <div className="grid gap-4 md:grid-cols-2">
+
+        {/* Candidate Funnel */}
+        <div className="rounded-xl border bg-card p-6 shadow-sm">
+          <div className="flex items-center gap-2 mb-5">
+            <Activity className="h-4 w-4 text-primary" />
+            <h3 className="font-semibold text-sm">Candidate Pipeline</h3>
+            {totalCandidates > 0 && (
+              <span className="ml-auto text-xs text-muted-foreground">{enrollmentRate}% conversion rate</span>
+            )}
+          </div>
+          {totalCandidates === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">No candidates yet.</p>
+          ) : (
+            <div className="space-y-4">
+              {[
+                { label: "Enrolled",  value: stats.enrolledCandidates,  color: "bg-emerald-500" },
+                { label: "Verified",  value: stats.verifiedCandidates,  color: "bg-blue-500" },
+                { label: "Pending",   value: stats.pendingCandidates,   color: "bg-amber-400" },
+                { label: "Rejected",  value: stats.rejectedCandidates,  color: "bg-red-400" },
+              ].map(({ label, value, color }) => (
+                <div key={label} className="space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="font-medium">{label}</span>
+                    <span className="tabular-nums text-muted-foreground">{value} / {totalCandidates}</span>
+                  </div>
+                  <ProgressBar value={value} max={totalCandidates} color={color} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Quick Actions */}
+        <div className="rounded-xl border bg-card p-6 shadow-sm">
+          <div className="flex items-center gap-2 mb-5">
+            <Award className="h-4 w-4 text-primary" />
+            <h3 className="font-semibold text-sm">Quick Actions</h3>
+          </div>
+          <div className="space-y-2">
+            {[
+              { href: "/candidates", icon: UserSquare2, label: "Review Pending Candidates", badge: stats.pendingCandidates, color: "text-amber-600" },
+              { href: "/staff",      icon: Users,        label: "Approve Staff Requests",    badge: stats.pendingApprovals,  color: "text-orange-600" },
+              { href: "/reports",    icon: TrendingUp,   label: "Download Ride Reports",     badge: null, color: "text-sky-600" },
+              { href: "/candidates", icon: UserCheck,    label: "View Verified Candidates",  badge: stats.verifiedCandidates, color: "text-emerald-600" },
+            ].map(({ href, icon: Icon, label, badge, color }) => (
+              <Link key={href + label} href={href}>
+                <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors cursor-pointer group">
+                  <div className={`p-2 rounded-md bg-muted group-hover:bg-background ${color}`}>
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <span className="flex-1 text-sm font-medium">{label}</span>
+                  {badge != null && badge > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-primary text-primary-foreground text-xs font-bold">
+                      {badge}
+                    </span>
+                  )}
+                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
