@@ -2,6 +2,7 @@ import { activityEventsTable, companiesTable, db, staffTable } from "@workspace/
 import { and, eq, gte, inArray, isNull, lt } from "drizzle-orm";
 import ExcelJS from "exceljs";
 import { Router } from "express";
+import { requireAdmin } from "./admin";
 
 const router = Router();
 
@@ -41,13 +42,14 @@ function coordStr(p: ActivityPayload | null, field: "origin" | "destination" | "
 
 // ─── GET /api/admin/reports/rides/xlsx ─────────────────────────────────────
 
-router.get("/admin/reports/rides/xlsx", async (req, res, next) => {
+router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => {
   try {
     const rawFrom       = req.query.from         as string | undefined;
     const rawTo         = req.query.to           as string | undefined;
     const rawStaffId    = req.query.staffId      as string | undefined;
     const reportType    = (req.query.reportType  as string | undefined) ?? "daily";
-    const rawCompanyId  = (req.query.companyId   as string | undefined)?.trim() || null;
+    // Use companyId from auth middleware (null = super admin, sees all)
+    const rawCompanyId  = (res.locals.companyId as string | null) ?? null;
     let   organization  = (req.query.organization as string | undefined)?.trim() || null;
     const staffNameHdr  = (req.query.staffName   as string | undefined)?.trim()  || null;
 
