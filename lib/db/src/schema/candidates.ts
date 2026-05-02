@@ -57,6 +57,8 @@ export const candidatesTable = pgTable("candidates", {
   educationCertPath: text("education_cert_path"),
   bankPassbookPath: text("bank_passbook_path"),
   casteCertPath: text("caste_cert_path"),
+  casteCertAvailable: text("caste_cert_available"),
+  casteName: text("caste_name"),
   signaturePath: text("signature_path"),
   pdfPath: text("pdf_path"),
   // Submission

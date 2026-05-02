@@ -28,6 +28,7 @@ type CompanyBranding = {
   companyLogoPath?: string | null;
   companyLogoBuffer?: Buffer | null;
   schemeName?: string | null;
+  tcId?: string | null;
 };
 
 function buildPdfOpts(
@@ -43,6 +44,7 @@ function buildPdfOpts(
     companyLogoPath:   branding?.companyLogoPath   ?? null,
     companyLogoBuffer: branding?.companyLogoBuffer ?? null,
     schemeName:        branding?.schemeName        ?? null,
+    tcId:              branding?.tcId              ?? null,
   };
 }
 
@@ -50,7 +52,7 @@ async function fetchCompanyBranding(companyId: string | null | undefined): Promi
   if (!companyId) return {};
   try {
     const [co] = await db
-      .select({ name: companiesTable.name, logoPath: companiesTable.logoPath, projectName: companiesTable.projectName })
+      .select({ name: companiesTable.name, logoPath: companiesTable.logoPath, projectName: companiesTable.projectName, tcId: companiesTable.tcId })
       .from(companiesTable)
       .where(eq(companiesTable.id, companyId))
       .limit(1);
@@ -64,6 +66,7 @@ async function fetchCompanyBranding(companyId: string | null | undefined): Promi
       companyLogoPath:   co.logoPath ?? null,   // kept as fallback for legacy disk paths
       companyLogoBuffer: logoBuffer,
       schemeName:        co.projectName ?? null,
+      tcId:              co.tcId ?? null,
     };
   } catch {
     return {};
@@ -167,6 +170,8 @@ function toDto(c: typeof candidatesTable.$inferSelect) {
     bankBranch: c.bankBranch ?? null,
     ifsc: c.ifsc ?? null,
     mobilizer: c.mobilizer ?? null,
+    casteCertAvailable: (c as any).casteCertAvailable ?? null,
+    casteName: (c as any).casteName ?? null,
     status: c.status ?? "pending",
     verifiedBy: c.verifiedBy ?? null,
     verifiedAt: c.verifiedAt?.toISOString() ?? null,
@@ -289,6 +294,9 @@ router.post("/candidates", async (req, res, next) => {
       casteCertMime?: string | null;
       signatureBase64?: string | null;
       signatureMime?: string | null;
+      candidateIdCode?: string | null;
+      casteCertAvailable?: string | null;
+      casteName?: string | null;
     };
 
     if (!body.name?.trim() || body.name.trim().length < 2) {
@@ -405,6 +413,9 @@ router.post("/candidates", async (req, res, next) => {
         submittedBy: body.submittedBy?.trim() || null,
         submittedByPhone: body.submittedByPhone?.trim() || null,
         status: "pending",
+        candidateIdCode: body.candidateIdCode?.trim() || null,
+        casteCertAvailable: body.casteCertAvailable?.trim() || null,
+        casteName: body.casteName?.trim() || null,
       })
       .returning();
 

@@ -233,6 +233,7 @@ export type PdfReportOpts = {
   /** Pre-fetched logo Buffer (from GCS) — takes priority over companyLogoPath */
   companyLogoBuffer?: Buffer | null;
   schemeName?: string | null;
+  tcId?: string | null;
 };
 
 export async function generateCandidatePdf(
@@ -260,6 +261,8 @@ export async function generateCandidatePdf(
     candidateIdCode?: string | null;
     signaturePath?: string | null;
     motherName?: string | null;
+    casteCertAvailable?: string | null;
+    casteName?: string | null;
   };
 
   return new Promise((resolve, reject) => {
@@ -470,6 +473,11 @@ export async function generateCandidatePdf(
     doc.font("DVB").fontSize(8).fillColor(INK)
        .text("Training Centre ID :", tciX, y + 2, { width: tciLblW, lineBreak: false });
     hl(doc, tciX + tciLblW + 2, y + UL, FE, 0.4, LGRAY);
+    const tcIdVal = reportOpts?.tcId?.trim() ?? null;
+    if (tcIdVal) {
+      doc.font("DVB").fontSize(8).fillColor(DARK)
+         .text(tcIdVal, tciX + tciLblW + 4, y + 2, { width: FE - tciX - tciLblW - 6, lineBreak: false });
+    }
 
     y += ROW - 2;
     hl(doc, ML, y, ML + CW, 0.9);
@@ -807,13 +815,17 @@ export async function generateCandidatePdf(
     // PAGES 3–5 — Fixed order: Education → Bank Passbook → Caste Certificate
     // Each page is ALWAYS present; missing docs show a "Not Uploaded" placeholder.
     // ══════════════════════════════════════════════════════════════════════════
-    const attached: Array<{ label: string; path: string | null | undefined }> = [
+    const docPages: Array<{ label: string; path: string | null | undefined; selfDecl?: boolean }> = [
       { label: "Education Certificate  /  शैक्षिक प्रमाण पत्र",   path: c.educationCertPath },
       { label: "Bank Passbook  /  बैंक पासबुक",                    path: c.bankPassbookPath  },
-      { label: "Caste Certificate  /  जाति प्रमाण पत्र",           path: c.casteCertPath     },
+      {
+        label: "Caste Certificate  /  जाति प्रमाण पत्र",
+        path: c.casteCertPath,
+        selfDecl: c.casteCertAvailable === "no",
+      },
     ];
 
-    for (const item of attached) {
+    for (const item of docPages) {
       doc.addPage({ size: "A4", margin: 0 });
 
       // Navy header band
@@ -838,6 +850,89 @@ export async function generateCandidatePdf(
 
       const docImgY = 52;
       const docImgH = A4_H - 60;
+
+      // ── Self-declaration page (when caste cert not available) ──────────────
+      if (item.selfDecl) {
+        const PAD   = 30;
+        const bodyW = A4_W - PAD * 2;
+        let dy = docImgY + 16;
+
+        // Bordered declaration box
+        box(doc, PAD - 4, dy - 8, bodyW + 8, 310, 0.8, NAVY);
+
+        // Title (Hindi bold)
+        doc.font("NSB").fontSize(13).fillColor(NAVY)
+           .text("स्व-घोषणा पत्र", PAD, dy, { width: bodyW, align: "center", lineBreak: false });
+        dy += 20;
+        doc.font("DVB").fontSize(9).fillColor(NAVY)
+           .text("SELF DECLARATION", PAD, dy, { width: bodyW, align: "center", lineBreak: false });
+        dy += 18;
+
+        // Divider
+        hl(doc, PAD, dy, A4_W - PAD, 0.7, NAVY);
+        dy += 12;
+
+        // Declaration body
+        const candName   = c.name?.trim() || "___________";
+        const fatherN    = c.fatherName?.trim() || "___________";
+        const villageN   = c.village?.trim() || "___________";
+        const districtN  = c.district?.trim() || "___________";
+        const stateN     = c.state?.trim() || "Jharkhand";
+        const casteVal   = c.casteName?.trim() || c.caste?.trim() || "___________";
+        const casteEng   = c.casteName?.trim() || c.caste?.trim() || "___________";
+
+        const hindiBodies = [
+          `मैं, ${candName}, पुत्र/पुत्री ${fatherN}, ग्राम ${villageN}, जिला ${districtN}, राज्य ${stateN} का/की निवासी हूँ।`,
+          `मैं यह घोषणा करता/करती हूँ कि मेरे पास जाति प्रमाण पत्र उपलब्ध नहीं है।`,
+          `मेरी जाति ${casteVal} है और मैं उपर्युक्त समुदाय से संबंधित हूँ।`,
+          `यह घोषणा मेरी जानकारी एवं विश्वास के अनुसार सत्य है।`,
+        ];
+        const engBodies = [
+          `I, ${candName}, Son/Daughter of ${fatherN}, resident of Village ${villageN}, District ${districtN}, State ${stateN}.`,
+          `I hereby declare that I do not possess a Caste Certificate.`,
+          `My caste is ${casteEng} and I belong to the aforementioned community.`,
+          `This declaration is true to the best of my knowledge and belief.`,
+        ];
+
+        doc.font("NSR").fontSize(9.5).fillColor(DARK);
+        for (const line of hindiBodies) {
+          doc.font("NSR").fontSize(9.5).fillColor(DARK)
+             .text(line, PAD, dy, { width: bodyW, lineBreak: true });
+          dy = doc.y + 4;
+        }
+        dy += 6;
+        doc.font("DVR").fontSize(8).fillColor(GRAY);
+        for (const line of engBodies) {
+          doc.font("DVR").fontSize(8).fillColor(GRAY)
+             .text(line, PAD, dy, { width: bodyW, lineBreak: true });
+          dy = doc.y + 2;
+        }
+
+        // Signature + date row
+        dy += 20;
+        hl(doc, PAD, dy, A4_W - PAD, 0.5, LGRAY);
+        dy += 8;
+
+        const sigZoneX = A4_W - PAD - 160;
+        doc.font("DVR").fontSize(7.5).fillColor(GRAY)
+           .text("Date / दिनांक :", PAD, dy + 2, { lineBreak: false });
+        doc.font("DVR").fontSize(7.5).fillColor(DARK)
+           .text(new Date().toLocaleDateString("en-IN"), PAD + 70, dy + 2, { lineBreak: false });
+        doc.font("DVR").fontSize(7.5).fillColor(GRAY)
+           .text("Signature / हस्ताक्षर :", sigZoneX, dy + 2, { lineBreak: false });
+        hl(doc, sigZoneX + 90, dy + 16, sigZoneX + 160, 0.5, LGRAY);
+
+        dy += 40;
+
+        // Footer note
+        doc.font("NSR").fontSize(7.5).fillColor(GRAY)
+           .text("यह स्व-घोषणा पत्र प्रशिक्षण हेतु अस्थायी आधार पर स्वीकृत है। जाति प्रमाण पत्र यथाशीघ्र प्रस्तुत करें।",
+             PAD, dy, { width: bodyW, lineBreak: true });
+
+        continue;
+      }
+
+      // ── Normal document page ───────────────────────────────────────────────
       const hasImage = !!(item.path && fs.existsSync(item.path));
 
       if (hasImage) {

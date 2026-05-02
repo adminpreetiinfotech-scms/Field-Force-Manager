@@ -18,6 +18,7 @@ interface CompanyProfile {
   district: string | null;
   projectName: string | null;
   centerName: string | null;
+  tcId: string | null;
   logoUrl: string | null;
 }
 
@@ -73,6 +74,7 @@ export default function CompanySettings() {
   const [district, setDistrict] = useState("");
   const [projectName, setProjectName] = useState("");
   const [centerName, setCenterName] = useState("");
+  const [tcId, setTcId] = useState("");
 
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -99,6 +101,7 @@ export default function CompanySettings() {
       setDistrict(data.district ?? "");
       setProjectName(data.projectName ?? "");
       setCenterName(data.centerName ?? "");
+      setTcId(data.tcId ?? "");
       setLogoPreview(data.logoUrl ?? null);
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
@@ -149,6 +152,7 @@ export default function CompanySettings() {
           district: district.trim() || null,
           projectName: projectName.trim() || null,
           centerName: centerName.trim() || null,
+          tcId: tcId.trim() || null,
         }),
       });
       if (!profileRes.ok) throw new Error((await profileRes.json().catch(() => ({}))).title ?? "Profile update failed");
@@ -316,6 +320,18 @@ export default function CompanySettings() {
                   onChange={e => setCenterName(e.target.value)}
                   placeholder="e.g. Ranchi Training Center"
                 />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-1.5">
+                  <GitBranch className="h-3.5 w-3.5 text-muted-foreground" />
+                  Training Centre ID (TC ID)
+                </Label>
+                <Input
+                  value={tcId}
+                  onChange={e => setTcId(e.target.value)}
+                  placeholder="e.g. JH-RAN-001"
+                />
+                <p className="text-xs text-muted-foreground">This ID will be auto-printed on all candidate registration PDFs.</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">

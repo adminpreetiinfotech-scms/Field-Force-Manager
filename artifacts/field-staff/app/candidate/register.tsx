@@ -51,6 +51,8 @@ type CandidateDraft = {
   education: string | null; yearOfPassing: string;
   bankAccount: string; bankName: string; bankBranch: string; ifsc: string;
   mobilizer: string;
+  casteCertAvailable: string | null;
+  casteName: string;
   // images
   photo: ImageData | null;
   aadhaarFront: ImageData | null;
@@ -799,6 +801,10 @@ export default function CandidateRegisterScreen() {
   // ─ Identity
   const [aadhaarNumber, setAadhaarNumber] = useState("");
   const [bpl, setBpl] = useState<string | null>("No");
+
+  // ─ Caste cert availability
+  const [casteCertAvailable, setCasteCertAvailable] = useState<string | null>(null);
+  const [casteName, setCasteName] = useState("");
   const [bplNumber, setBplNumber] = useState("");
 
   // ─ Education
@@ -859,12 +865,13 @@ export default function CandidateRegisterScreen() {
     address, village, policeStation, postOffice, district, state, pin, area,
     course, skillCentreName, aadhaarNumber, bpl, bplNumber,
     education, yearOfPassing, bankAccount, bankName, bankBranch, ifsc, mobilizer,
+    casteCertAvailable, casteName,
     photo, aadhaarFront, aadhaarBack, educationCert, bankPassbook, casteCert, signature,
   }), [name, phone, parentMobile, email, fatherName, motherName, dob, gender, maritalStatus,
     religion, caste, pwd, disabilityType, address, village, policeStation,
     postOffice, district, state, pin, area, course, skillCentreName,
     aadhaarNumber, bpl, bplNumber, education, yearOfPassing, bankAccount,
-    bankName, bankBranch, ifsc, mobilizer,
+    bankName, bankBranch, ifsc, mobilizer, casteCertAvailable, casteName,
     photo, aadhaarFront, aadhaarBack, educationCert, bankPassbook, casteCert, signature]);
 
   const restoreDraft = useCallback((d: CandidateDraft) => {
@@ -888,6 +895,8 @@ export default function CandidateRegisterScreen() {
     setBankAccount(d.bankAccount ?? ""); setBankName(d.bankName ?? "");
     setBankBranch(d.bankBranch ?? ""); setIfsc(d.ifsc ?? "");
     setMobilizer(d.mobilizer ?? user?.name ?? "");
+    setCasteCertAvailable(d.casteCertAvailable ?? null);
+    setCasteName(d.casteName ?? "");
     setPhoto(d.photo ?? null);
     setAadhaarFront(d.aadhaarFront ?? null);
     setAadhaarBack(d.aadhaarBack ?? null);
@@ -927,6 +936,7 @@ export default function CandidateRegisterScreen() {
     setBpl("No"); setBplNumber(""); setEducation(null); setYearOfPassing("");
     setBankAccount(""); setBankName(""); setBankBranch(""); setIfsc("");
     setMobilizer(user?.name ?? "");
+    setCasteCertAvailable(null); setCasteName("");
     setPhoto(null); setAadhaarFront(null); setAadhaarBack(null);
     setEducationCert(null); setBankPassbook(null); setCasteCert(null);
     setSignature(null);
@@ -977,6 +987,7 @@ export default function CandidateRegisterScreen() {
     policeStation, postOffice, district, state, pin, area, course, skillCentreName,
     aadhaarNumber, bpl ?? "", bplNumber, education ?? "", yearOfPassing,
     bankAccount, bankName, bankBranch, ifsc, mobilizer,
+    casteCertAvailable ?? "", casteName,
   ].join("|");
 
   useEffect(() => {
@@ -1119,10 +1130,13 @@ export default function CandidateRegisterScreen() {
         educationCertMime: educationCert?.mimeType ?? null,
         bankPassbookBase64: bankPassbook?.base64 ?? null,
         bankPassbookMime: bankPassbook?.mimeType ?? null,
-        casteCertBase64: casteCert?.base64 ?? null,
-        casteCertMime: casteCert?.mimeType ?? null,
+        casteCertBase64: casteCertAvailable === "no" ? null : (casteCert?.base64 ?? null),
+        casteCertMime: casteCertAvailable === "no" ? null : (casteCert?.mimeType ?? null),
         signatureBase64: signature?.base64 ?? null,
         signatureMime: signature?.mimeType ?? null,
+        candidateIdCode: aadhaarNumber.trim() || null,
+        casteCertAvailable: casteCertAvailable || null,
+        casteName: casteCertAvailable === "no" ? (casteName.trim() || null) : null,
       };
 
       const res = await fetch(`${apiBase}/api/candidates`, {
@@ -1458,7 +1472,70 @@ export default function CandidateRegisterScreen() {
 
               <DocUploadCard label="Education Certificate / शैक्षणिक प्रमाण पत्र" value={educationCert} onPick={() => pickImage(setEducationCert)} onClear={() => setEducationCert(null)} />
               <DocUploadCard label="Bank Passbook / बैंक पासबुक" value={bankPassbook} onPick={() => pickImage(setBankPassbook)} onClear={() => setBankPassbook(null)} />
-              <DocUploadCard label="Caste Certificate / जाति प्रमाण पत्र" value={casteCert} onPick={() => pickImage(setCasteCert)} onClear={() => setCasteCert(null)} />
+              {/* Caste Certificate — conditional on category */}
+              {caste && caste !== "General" ? (
+                <View style={{ gap: 8 }}>
+                  <View style={styles.fieldCell}>
+                    <Text style={styles.fieldLabel}>
+                      Caste Certificate Available? / जाति प्रमाण पत्र उपलब्ध है?
+                    </Text>
+                    <View style={styles.radioRow}>
+                      {(["yes", "no"] as const).map((opt) => (
+                        <TouchableOpacity
+                          key={opt}
+                          style={styles.radioItem}
+                          onPress={() => {
+                            setCasteCertAvailable(opt);
+                            if (opt === "yes") setCasteName("");
+                            else setCasteCert(null);
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <View style={[styles.radioCircle, casteCertAvailable === opt && styles.radioCircleActive]}>
+                            {casteCertAvailable === opt && <View style={styles.radioDot} />}
+                          </View>
+                          <Text style={[styles.radioLabel, casteCertAvailable === opt && styles.radioLabelActive]}>
+                            {opt === "yes" ? "Yes / हाँ" : "No / नहीं"}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+
+                  {casteCertAvailable === "yes" && (
+                    <DocUploadCard
+                      label="Caste Certificate / जाति प्रमाण पत्र"
+                      value={casteCert}
+                      onPick={() => pickImage(setCasteCert)}
+                      onClear={() => setCasteCert(null)}
+                    />
+                  )}
+
+                  {casteCertAvailable === "no" && (
+                    <View style={{ gap: 6 }}>
+                      <View style={[styles.docCard, { backgroundColor: "#FFF7ED", borderColor: "#F59E0B" }]}>
+                        <Feather name="alert-circle" size={16} color="#F59E0B" />
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.docLabelEng, { color: "#92400E" }]}>Self Declaration will be generated</Text>
+                          <Text style={[styles.docLabelHin, { color: "#B45309" }]}>PDF में स्व-घोषणा पत्र जुड़ेगा</Text>
+                        </View>
+                      </View>
+                      <View style={styles.halfCell}>
+                        <Text style={styles.fieldLabel}>Caste / Tribe Name / जाति / जनजाति का नाम</Text>
+                        <TextInput
+                          style={styles.textBox}
+                          value={casteName}
+                          onChangeText={setCasteName}
+                          placeholder="e.g. Oraon, Munda, Chamar..."
+                          placeholderTextColor="#9CA3AF"
+                        />
+                      </View>
+                    </View>
+                  )}
+                </View>
+              ) : (
+                <DocUploadCard label="Caste Certificate / जाति प्रमाण पत्र" value={casteCert} onPick={() => pickImage(setCasteCert)} onClear={() => setCasteCert(null)} />
+              )}
             </View>
           )}
 

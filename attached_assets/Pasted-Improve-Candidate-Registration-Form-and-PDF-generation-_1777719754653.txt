@@ -1,0 +1,101 @@
+Improve Candidate Registration Form and PDF generation.
+
+Main requirements:
+
+1. Training Centre ID / TC ID
+- Add TC ID input option in Company/Center Settings or Candidate Registration Form.
+- TC ID should auto-fill in Registration Form PDF.
+- Show it in the existing “Training Centre ID” field.
+- Keep current PDF design unchanged.
+
+2. Candidate ID Auto Fill
+- Candidate ID should automatically fill with Candidate Aadhaar Number.
+- Candidate ID = Aadhaar Number.
+- Show Aadhaar number digit-by-digit in Candidate ID boxes.
+- Candidate ID should be read-only.
+- If Aadhaar number changes, Candidate ID should update automatically.
+
+3. Caste Certificate Availability Flow
+When candidate selects caste/category:
+- SC
+- ST
+- OBC
+- Other
+
+Show question:
+“Caste Certificate Available?”
+Options:
+- Yes
+- No
+
+If Yes:
+- Continue existing upload process.
+- Staff uploads caste certificate.
+- PDF Page 5 = Uploaded Caste Certificate.
+
+If No:
+- Show option:
+  “स्वघोषणा पत्र / Self Declaration for Caste Certificate”
+- Show OK button.
+- After OK, show input field:
+  “जाति का नाम / Caste Name”
+- Staff enters caste name and clicks OK/Confirm.
+- Then generate Self Declaration page automatically using candidate registration data.
+
+4. Final PDF Structure
+PDF must always be exactly 5 pages:
+
+Page 1 → Registration Form
+Page 2 → Aadhaar Card (Front top, Back bottom on same page)
+Page 3 → Education Certificate
+Page 4 → Bank Passbook
+Page 5 → Conditional:
+   - If Caste Certificate Available = Yes:
+     Show uploaded Caste Certificate
+   - If Caste Certificate Available = No:
+     Generate Self Declaration for Caste Certificate page
+
+5. Self Declaration Page Layout
+Use the provided Hindi layout/reference image.
+
+Title:
+स्वघोषणा पत्र
+
+Subtitle:
+(जाति प्रमाण पत्र हेतु स्व-घोषणा / Self Declaration)
+
+Auto-fill these fields from registration form:
+- Candidate Name
+- Father/Husband Name
+- Village
+- Panchayat
+- Block
+- District
+- State
+- Caste Name
+- Category: SC / ST / OBC
+- Date
+- Place
+- Mobile Number
+
+Checkbox section:
+- अनुसूचित जाति (SC)
+- अनुसूचित जनजाति (ST)
+- अन्य पिछड़ा वर्ग (OBC)
+
+Only selected category should be marked.
+
+Signature section:
+- Applicant Signature line
+- Name
+- Mobile Number
+
+6. Important:
+- Registration Form design must remain unchanged.
+- Only fill TC ID and Candidate ID properly.
+- Aadhaar front and back must be merged into one page.
+- PDF should not become 6 or 7 pages.
+- No blank pages.
+- A4 print-ready layout.
+- Hindi font must render correctly.
+- Keep existing PDF download flow working.

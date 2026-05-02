@@ -68,6 +68,7 @@ function toCompanyDTO(c: typeof companiesTable.$inferSelect) {
     paymentStatus: c.paymentStatus ?? null,
     isSubscriptionExpired: isDateExpired,
     centerName: c.centerName ?? null,
+    tcId: c.tcId ?? null,
     createdAt: c.createdAt?.toISOString() ?? null,
   };
 }
@@ -306,7 +307,7 @@ router.patch("/companies/:id/logo", async (req, res, next) => {
 router.patch("/companies/:id/profile", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, adminName, email, state, district, projectName, centerName, adminPhone } = req.body as {
+    const { name, adminName, email, state, district, projectName, centerName, tcId, adminPhone } = req.body as {
       name?: string;
       adminName?: string;
       email?: string | null;
@@ -314,6 +315,7 @@ router.patch("/companies/:id/profile", async (req, res, next) => {
       district?: string | null;
       projectName?: string | null;
       centerName?: string | null;
+      tcId?: string | null;
       adminPhone?: string;
     };
     const phone =
@@ -339,6 +341,7 @@ router.patch("/companies/:id/profile", async (req, res, next) => {
     if (district !== undefined) updates.district = district?.trim() || null;
     if (projectName !== undefined) updates.projectName = projectName?.trim() || null;
     if (centerName !== undefined) updates.centerName = centerName?.trim() || null;
+    if (tcId !== undefined) updates.tcId = tcId?.trim() || null;
 
     if (Object.keys(updates).length === 0) {
       const [existing] = await db
