@@ -1,12 +1,13 @@
 import { Link, Redirect, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { LayoutDashboard, Users, UserSquare2, FileText, LogOut, Building2, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Users, UserSquare2, FileText, LogOut, Building2, ShieldCheck, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/staff", label: "Staff Management", icon: Users },
   { href: "/candidates", label: "Candidates", icon: UserSquare2 },
+  { href: "/notices", label: "Notices", icon: Bell },
   { href: "/reports", label: "Reports", icon: FileText },
 ];
 

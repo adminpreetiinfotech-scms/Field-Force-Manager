@@ -29,7 +29,7 @@ The project is a pnpm monorepo using Node.js 24 and TypeScript 5.9. The backend 
     - **Permissions:** Camera and location permissions requested with `app.json` configuration.
 - **Admin Panel (`artifacts/admin-panel`):** A React Vite web app for management.
     - **Authentication:** Two-step phone + MPIN login, storing user in `localStorage`. Uses `x-admin-phone` header for API calls.
-    - **Key Features:** Dashboard for live stats, staff list management (approve/reject, disable/enable, soft-delete), candidate list with search/filter, and report downloads (Excel, candidate PDFs).
+    - **Key Features:** Dashboard for live stats, staff list management (approve/reject, disable/enable, soft-delete), candidate list with search/filter, report downloads (Excel, candidate PDFs), and Notices Management (create/view/delete broadcast notices with priority, type, target staff, expiry, and read/unread status tracking).
 - **API Server (`artifacts/api-server`):** Express.js backend.
     - **Database:** PostgreSQL with Drizzle ORM.
     - **Multi-Tenancy:** `companies` table and `company_id` FK in all major data tables. Supports `staff`, `admin`, and `super_admin` roles.

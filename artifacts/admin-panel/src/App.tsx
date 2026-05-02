@@ -9,6 +9,7 @@ import Dashboard from "@/pages/dashboard";
 import StaffManagement from "@/pages/staff";
 import Candidates from "@/pages/candidates";
 import Reports from "@/pages/reports";
+import Notices from "@/pages/notices";
 import SuperAdminCompanies from "@/pages/super-admin-companies";
 import SuperAdminCompanyDetail from "@/pages/super-admin-company-detail";
 import { AdminLayout } from "@/components/admin-layout";
@@ -79,6 +80,7 @@ function Router() {
       <ProtectedRoute path="/staff" component={StaffManagement} />
       <ProtectedRoute path="/candidates" component={Candidates} />
       <ProtectedRoute path="/reports" component={Reports} />
+      <ProtectedRoute path="/notices" component={Notices} />
       <SuperAdminRoute path="/super-admin/companies/:id" component={({ params }: any) => (
         <SuperAdminCompanyDetail companyId={params.id} />
       )} />
