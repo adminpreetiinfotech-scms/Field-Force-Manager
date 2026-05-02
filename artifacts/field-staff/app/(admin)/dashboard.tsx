@@ -26,6 +26,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 
 import { CompanyBrand } from "@/components/CompanyBrand";
+import { LeaderboardSection } from "@/components/admin/LeaderboardSection";
 import { LiveActivityFeed } from "@/components/admin/LiveActivityFeed";
 import { NoticePopup } from "@/components/NoticePopup";
 import { PillarsRow } from "@/components/PillarBadge";
@@ -444,6 +445,9 @@ export default function AdminDashboard() {
               />
             </View>
           </View>
+
+          {/* Staff Leaderboard */}
+          <LeaderboardSection companyId={user?.companyId} />
 
           {/* Live activity */}
           <View

@@ -21,7 +21,7 @@ The project is a pnpm monorepo using Node.js 24 and TypeScript 5.9. The backend 
 
 - **Mobile App (`artifacts/field-staff`):** An Expo mobile app for Android/iOS.
     - **Authentication:** MPIN-based login with phone number, scrypt hashing, and lockout mechanisms. Supports admin and staff roles.
-    - **Key Features:** Selfie + GPS check-in/out, live shift timer with GPS tracking, meter reading capture, trip ledger, and candidate management (registration, duplicate checks, admin approval/rejection, audit logs, PDF generation, notifications).
+    - **Key Features:** Selfie + GPS check-in/out, live shift timer with GPS tracking, meter reading capture, trip ledger, candidate management (registration, duplicate checks, admin approval/rejection, audit logs, PDF generation, notifications), Staff Leaderboard (top 5 by km/trips/candidate count with Today/Week/Month filter), and Candidate Notifications (real-time status alerts to mobilizers).
     - **Offline-first:** Data syncs via AsyncStorage with auto and manual sync options.
     - **Real-time Tracking:** Staff location pinging every 30s, displayed on an admin map with 15s polling.
     - **Reporting:** Daily Outcome Reports for staff with WhatsApp sharing, Admin Ride Reports (CSV export).

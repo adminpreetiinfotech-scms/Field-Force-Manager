@@ -1,5 +1,5 @@
-import { activityEventsTable, companiesTable, db, staffTable } from "@workspace/db";
-import { and, desc, eq, gt, gte, inArray, lt, or, sql } from "drizzle-orm";
+import { activityEventsTable, candidatesTable, companiesTable, db, staffTable } from "@workspace/db";
+import { and, count, desc, eq, gt, gte, inArray, lt, or, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
   CreateActivityBody,
@@ -371,6 +371,9 @@ router.get("/activity/leaderboard", async (req, res, next) => {
       });
     }
 
+    // Optional company filter — scopes leaderboard to a single company.
+    const companyId = (req.query.companyId as string | undefined)?.trim() || null;
+
     // Pull all trip-end events in the window (distanceKm lives here).
     const rows = await db
       .select({
@@ -384,6 +387,7 @@ router.get("/activity/leaderboard", async (req, res, next) => {
           eq(activityEventsTable.kind, "trip-end"),
           gte(activityEventsTable.occurredAt, periodStart),
           lt(activityEventsTable.occurredAt, new Date(now.getTime() + 1)),
+          companyId ? eq(activityEventsTable.companyId, companyId) : undefined,
         ),
       );
 
@@ -412,18 +416,43 @@ router.get("/activity/leaderboard", async (req, res, next) => {
       }
     }
 
-    // Fetch empCodes + notes presence for everyone in the result set.
+    // Fetch empCodes, notes, phone for everyone in the result set.
     const ids = Array.from(staffMap.keys());
     const empMap = new Map<string, string>();
     const notesMap = new Map<string, boolean>();
+    const phoneMap = new Map<string, string>(); // staffId → phone
     if (ids.length > 0) {
       const staffRows = await db
-        .select({ id: staffTable.id, empCode: staffTable.empCode, notes: staffTable.notes })
+        .select({ id: staffTable.id, empCode: staffTable.empCode, notes: staffTable.notes, phone: staffTable.phone })
         .from(staffTable)
         .where(inArray(staffTable.id, ids));
       for (const s of staffRows) {
         empMap.set(s.id, s.empCode);
         notesMap.set(s.id, typeof s.notes === "string" && s.notes.trim().length > 0);
+        phoneMap.set(s.id, s.phone);
+      }
+    }
+
+    // Fetch candidate registration counts per mobilizer phone in the period.
+    const candidateCountMap = new Map<string, number>(); // phone → count
+    const phones = Array.from(phoneMap.values()).filter(Boolean);
+    if (phones.length > 0) {
+      const candRows = await db
+        .select({
+          phone: candidatesTable.submittedByPhone,
+          cnt: count(candidatesTable.id),
+        })
+        .from(candidatesTable)
+        .where(
+          and(
+            inArray(candidatesTable.submittedByPhone, phones),
+            gte(candidatesTable.createdAt, periodStart),
+            lt(candidatesTable.createdAt, new Date(now.getTime() + 1)),
+          ),
+        )
+        .groupBy(candidatesTable.submittedByPhone);
+      for (const row of candRows) {
+        if (row.phone) candidateCountMap.set(row.phone, Number(row.cnt));
       }
     }
 
@@ -431,16 +460,20 @@ router.get("/activity/leaderboard", async (req, res, next) => {
 
     const sorted = Array.from(staffMap.values())
       .sort((a, b) => b.totalKm - a.totalKm || b.tripCount - a.tripCount)
-      .map((s, i) => ({
-        rank: i + 1,
-        staffId: s.staffId,
-        staffName: s.staffName,
-        empCode: empMap.get(s.staffId) ?? "—",
-        totalKm: round1(s.totalKm),
-        tripCount: s.tripCount,
-        periodLabel,
-        hasNotes: notesMap.get(s.staffId) ?? false,
-      }));
+      .map((s, i) => {
+        const phone = phoneMap.get(s.staffId) ?? "";
+        return {
+          rank: i + 1,
+          staffId: s.staffId,
+          staffName: s.staffName,
+          empCode: empMap.get(s.staffId) ?? "—",
+          totalKm: round1(s.totalKm),
+          tripCount: s.tripCount,
+          candidateCount: candidateCountMap.get(phone) ?? 0,
+          periodLabel,
+          hasNotes: notesMap.get(s.staffId) ?? false,
+        };
+      });
 
     res.json(sorted);
   } catch (err) {
