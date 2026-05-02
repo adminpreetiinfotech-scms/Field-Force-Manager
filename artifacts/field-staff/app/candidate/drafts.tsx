@@ -31,7 +31,7 @@ type CandidateDraft = {
   id: string;
   savedAt: string;
   pendingSync: boolean;
-  name: string; phone: string; email: string;
+  name: string; phone: string; parentMobile?: string; email: string;
   fatherName: string; motherName: string; dob: string;
   gender: string | null; maritalStatus: string | null;
   religion: string | null; caste: string | null;
@@ -156,6 +156,7 @@ export default function DraftsScreen() {
       const body = {
         name: draft.name?.trim() || null,
         phone: draft.phone?.trim() || null,
+        parentMobile: draft.parentMobile?.trim() || null,
         email: draft.email?.trim() || null,
         fatherName: draft.fatherName?.trim() || null,
         motherName: draft.motherName?.trim() || null,
@@ -202,6 +203,7 @@ export default function DraftsScreen() {
         casteCertMime: draft.casteCertAvailable === "no" ? null : (draft.casteCert?.mimeType ?? null),
         casteCertAvailable: draft.casteCertAvailable ?? null,
         casteName: draft.casteCertAvailable === "no" ? (draft.casteName?.trim() || null) : null,
+        candidateIdCode: draft.aadhaarNumber?.trim() || null,
         signatureBase64: draft.signature?.base64 ?? null,
         signatureMime: draft.signature?.mimeType ?? null,
       };
