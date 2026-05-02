@@ -39,7 +39,7 @@ type CandidateDraft = {
   savedAt: string;
   pendingSync: boolean;
   // text / radio fields
-  name: string; phone: string; email: string;
+  name: string; phone: string; parentMobile: string; email: string;
   fatherName: string; motherName: string; dob: string;
   gender: string | null; maritalStatus: string | null;
   religion: string | null; caste: string | null;
@@ -862,7 +862,7 @@ export default function CandidateRegisterScreen() {
     id: activeDraftId.current,
     savedAt: new Date().toISOString(),
     pendingSync: pendingSyncRef.current,
-    name, phone, ...(parentMobile ? { parentMobile } : {}), email, fatherName, motherName, dob,
+    name, phone, parentMobile, email, fatherName, motherName, dob,
     gender, maritalStatus, religion, caste, pwd, disabilityType,
     address, village, policeStation, postOffice, district, state, pin, area,
     course, skillCentreName, aadhaarNumber, bpl, bplNumber,
@@ -880,7 +880,7 @@ export default function CandidateRegisterScreen() {
     activeDraftId.current = d.id;
     pendingSyncRef.current = d.pendingSync;
     setPendingSync(d.pendingSync);
-    setName(d.name ?? ""); setPhone(d.phone ?? ""); setParentMobile((d as any).parentMobile ?? ""); setEmail(d.email ?? "");
+    setName(d.name ?? ""); setPhone(d.phone ?? ""); setParentMobile(d.parentMobile ?? ""); setEmail(d.email ?? "");
     setFatherName(d.fatherName ?? ""); setMotherName(d.motherName ?? "");
     setDob(d.dob ?? ""); setGender(d.gender ?? null);
     setMaritalStatus(d.maritalStatus ?? null); setReligion(d.religion ?? null);

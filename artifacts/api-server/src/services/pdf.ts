@@ -925,18 +925,14 @@ export async function generateCandidatePdf(
           `This declaration is true to the best of my knowledge and belief.`,
         ];
 
-        doc.font("NSR").fontSize(9.5).fillColor(DARK);
         for (const line of hindiBodies) {
-          doc.font("NSR").fontSize(9.5).fillColor(DARK)
-             .text(line, PAD, dy, { width: bodyW, lineBreak: true });
-          dy = doc.y + 4;
+          t(doc, line, PAD, dy, { size: 9.5, color: DARK, width: bodyW });
+          dy += 18;
         }
-        dy += 6;
-        doc.font("DVR").fontSize(8).fillColor(GRAY);
+        dy += 4;
         for (const line of engBodies) {
-          doc.font("DVR").fontSize(8).fillColor(GRAY)
-             .text(line, PAD, dy, { width: bodyW, lineBreak: true });
-          dy = doc.y + 2;
+          t(doc, line, PAD, dy, { size: 8, color: GRAY, width: bodyW });
+          dy += 14;
         }
 
         // Signature + date row
