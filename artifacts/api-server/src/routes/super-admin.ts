@@ -571,4 +571,62 @@ router.post("/super-admin/company-admin", requireSuperAdmin, async (req, res, ne
   }
 });
 
+// ─── POST /api/super-admin/wipe-all ───────────────────────────────────────────
+// Deletes ALL companies, staff (except 9999999999), and candidates.
+// Protected by verifying the super admin's MPIN.
+router.post("/super-admin/wipe-all", async (req, res, next) => {
+  try {
+    const { mpin } = req.body as { mpin?: string };
+    if (!mpin) {
+      res.status(400).json({ title: "MPIN required", status: 400 });
+      return;
+    }
+
+    // Verify super admin MPIN
+    const [row] = await db
+      .select()
+      .from(staffTable)
+      .where(eq(staffTable.phone, "9999999999"))
+      .limit(1);
+    if (!row) {
+      res.status(404).json({ title: "Super admin not found", status: 404 });
+      return;
+    }
+
+    const { scryptSync, timingSafeEqual } = await import("node:crypto");
+    let mpinOk = false;
+    if (row.mpinHash) {
+      const [salt, stored] = row.mpinHash.split(":");
+      if (salt && stored) {
+        const derived = scryptSync(mpin, salt, 64).toString("hex");
+        mpinOk = timingSafeEqual(Buffer.from(derived), Buffer.from(stored));
+      }
+    }
+    if (!mpinOk) {
+      res.status(401).json({ title: "Incorrect MPIN", status: 401 });
+      return;
+    }
+
+    // Delete in dependency order
+    await db.delete(candidateAuditLogTable);
+    await db.delete(candidateNotificationsTable);
+    await db.delete(candidatesTable);
+    await db.delete(activityEventsTable);
+    // Delete all staff except super admin
+    await db.delete(staffTable).where(
+      sql`phone != '9999999999'`
+    );
+    // Hard delete super admin's company link but keep the row
+    await db
+      .update(staffTable)
+      .set({ companyId: null })
+      .where(eq(staffTable.phone, "9999999999"));
+    await db.delete(companiesTable);
+
+    res.json({ success: true, message: "All companies, admins, and staff wiped. Super admin preserved." });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;
