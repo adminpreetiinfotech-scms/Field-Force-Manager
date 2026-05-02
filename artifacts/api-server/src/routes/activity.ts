@@ -467,7 +467,7 @@ router.get("/activity/attendance-calendar", async (req, res, next) => {
 
     const attendancePercent =
       totalWorkingDays > 0
-        ? Math.round(((presentCount + partialCount) / totalWorkingDays) * 1000) / 10
+        ? Math.round((presentCount / totalWorkingDays) * 1000) / 10
         : 0;
 
     res.json({
