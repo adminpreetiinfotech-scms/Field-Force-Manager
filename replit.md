@@ -29,7 +29,9 @@ The project is a pnpm monorepo using Node.js 24 and TypeScript 5.9. The backend 
     - **Permissions:** Camera and location permissions requested with `app.json` configuration.
 - **Admin Panel (`artifacts/admin-panel`):** A React Vite web app for management.
     - **Authentication:** Two-step phone + MPIN login, storing user in `localStorage`. Uses `x-admin-phone` header for API calls.
-    - **Key Features:** Dashboard for live stats, staff list management (approve/reject, disable/enable, soft-delete), candidate list with search/filter, report downloads (Excel, candidate PDFs), and Notices Management (create/view/delete broadcast notices with priority, type, target staff, expiry, and read/unread status tracking). Creating a notice automatically triggers SMS delivery to all recipients via Twilio.
+    - **Key Features:** Dashboard for live stats, Staff Management (full lifecycle: approve/reject/disable/enable/soft-delete, Edit Profile dialog, View Profile & Performance dialog with lifetime stats/recent trips), Candidate list with search/filter, Report downloads (Excel, candidate PDFs), Notices Management (create/view/delete broadcast notices with priority, type, target staff, expiry, and read/unread status tracking — triggers Twilio SMS), and Live Staff Map (Leaflet.js + OpenStreetMap, green/amber/gray markers by recency, staff sidebar with search & status filter, auto-refresh every 30s, click-to-popup with GPS coords and last-seen time).
+    - **Staff Management Tabs:** All / Pending / Approved / Disabled / Rejected — contextual action buttons per status. Confirm dialogs for Disable and Delete.
+    - **Live Map library:** react-leaflet + leaflet (installed as devDependencies).
 - **API Server (`artifacts/api-server`):** Express.js backend.
     - **Database:** PostgreSQL with Drizzle ORM.
     - **Multi-Tenancy:** `companies` table and `company_id` FK in all major data tables. Supports `staff`, `admin`, and `super_admin` roles.
