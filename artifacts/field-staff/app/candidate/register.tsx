@@ -23,6 +23,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import DocumentScannerModal from "@/components/DocumentScannerModal";
+
 import { useApp } from "@/contexts/AppContext";
 import { calcAge, DobPickerField } from "@/components/DobPicker";
 
@@ -132,44 +134,39 @@ function formatRelTime(d: Date): string {
 }
 
 /**
- * Camera-only capture. Gallery upload is intentionally disabled.
- * Validates: not blank (base64 length), not > 5 MB.
+ * Raw camera capture helper — returns the picked asset or null.
+ * The caller is responsible for showing the DocumentScannerModal.
  */
-async function captureWithCamera(setter: (img: ImageData | null) => void): Promise<void> {
+async function launchDocumentCamera(): Promise<ImagePicker.ImagePickerAsset | null> {
   const { status } = await ImagePicker.requestCameraPermissionsAsync();
   if (status !== "granted") {
     Alert.alert(
       "Camera Permission Required",
       "Please allow camera access. Gallery upload is disabled — documents must be captured live.",
     );
-    return;
+    return null;
   }
   const result = await ImagePicker.launchCameraAsync({
     mediaTypes: ["images"] as ImagePicker.MediaType[],
     base64: true,
-    quality: 0.75,
-    allowsEditing: true,
+    quality: 0.92,          // higher quality; scanner will crop + compress
+    allowsEditing: false,   // we do our own crop in DocumentScannerModal
   });
-  if (!result.canceled && result.assets[0]) {
-    const a = result.assets[0];
-    // Blank / very dark image guard — genuine captures are always > 2 KB
-    if (!a.base64 || a.base64.length < 2000) {
-      Alert.alert(
-        "Image Appears Blank",
-        "The captured image seems blank or very dark. Please try again in better lighting.",
-      );
-      return;
-    }
-    if (a.fileSize && a.fileSize > 5 * 1024 * 1024) {
-      Alert.alert("File Too Large", "Image must be smaller than 5 MB.");
-      return;
-    }
-    setter({ uri: a.uri, base64: a.base64 ?? "", mimeType: a.mimeType ?? "image/jpeg" });
+  if (result.canceled || !result.assets[0]) return null;
+  const a = result.assets[0];
+  if (!a.base64 || a.base64.length < 2000) {
+    Alert.alert(
+      "Image Appears Blank",
+      "The captured image seems blank or very dark. Please try again in better lighting.",
+    );
+    return null;
   }
+  if (a.fileSize && a.fileSize > 10 * 1024 * 1024) {
+    Alert.alert("File Too Large", "Image must be smaller than 10 MB.");
+    return null;
+  }
+  return a;
 }
-
-// Keep legacy alias so all existing () => pickImage(setState) call-sites work unchanged
-const pickImage = captureWithCamera;
 
 // ─── Passport-photo capture: camera-only, 7:9 crop, 350×450 resize ──────────
 // Returns the processed ImageData or null on cancel / failure.
@@ -544,38 +541,49 @@ function AadhaarCaptureModal({
   const [front, setFront] = useState<ImageData | null>(null);
   const [back, setBack]   = useState<ImageData | null>(null);
 
-  function reset() { setStep("front-prompt"); setFront(null); setBack(null); }
+  // Internal DocumentScanner state for each Aadhaar side
+  const [scannerVisible, setScannerVisible] = useState(false);
+  const [scannerUri, setScannerUri]         = useState<string | null>(null);
+  const [scannerImgW, setScannerImgW]       = useState(0);
+  const [scannerImgH, setScannerImgH]       = useState(0);
+  const [pendingSide, setPendingSide]       = useState<"front" | "back">("front");
+
+  function reset() {
+    setStep("front-prompt"); setFront(null); setBack(null);
+    setScannerVisible(false); setScannerUri(null);
+  }
 
   async function doCapture(side: "front" | "back") {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Camera Permission", "Camera access is required to capture documents.");
-      return;
-    }
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ["images"] as ImagePicker.MediaType[],
-      base64: true,
-      quality: 0.75,
-      allowsEditing: true,
-    });
-    if (!result.canceled && result.assets[0]) {
-      const a = result.assets[0];
-      if (!a.base64 || a.base64.length < 2000) {
-        Alert.alert(
-          "Blank Image",
-          "Image appears blank or too dark. Try again in better lighting.",
-        );
-        return;
-      }
-      const img: ImageData = { uri: a.uri, base64: a.base64 ?? "", mimeType: a.mimeType ?? "image/jpeg" };
-      if (side === "front") { setFront(img); setStep("front-preview"); }
-      else                  { setBack(img);  setStep("back-preview"); }
-    }
+    const asset = await launchDocumentCamera();
+    if (!asset) return;
+    setPendingSide(side);
+    setScannerImgW(asset.width ?? 0);
+    setScannerImgH(asset.height ?? 0);
+    setScannerUri(asset.uri);
+    setScannerVisible(true);
+  }
+
+  function handleScannerSave(img: ImageData) {
+    setScannerVisible(false);
+    setScannerUri(null);
+    if (pendingSide === "front") { setFront(img); setStep("front-preview"); }
+    else                         { setBack(img);  setStep("back-preview");  }
   }
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={() => { reset(); onClose(); }}>
       <View style={{ flex: 1, backgroundColor: "#fff" }}>
+
+        {/* DocumentScanner inside Aadhaar flow */}
+        <DocumentScannerModal
+          visible={scannerVisible}
+          imageUri={scannerUri}
+          imageWidth={scannerImgW}
+          imageHeight={scannerImgH}
+          title={pendingSide === "front" ? "Aadhaar — Front Side" : "Aadhaar — Back Side"}
+          onSave={handleScannerSave}
+          onCancel={() => { setScannerVisible(false); setScannerUri(null); }}
+        />
 
         {/* Header */}
         <View style={styles.camModalHeader}>
@@ -623,7 +631,7 @@ function AadhaarCaptureModal({
 
           {step === "front-preview" && front && (
             <>
-              <Text style={styles.camSideLabel}>Front Side — Preview</Text>
+              <Text style={styles.camSideLabel}>Front Side — Scanned</Text>
               <Image source={{ uri: front.uri }} style={styles.camPreviewImg} resizeMode="contain" />
               <Text style={styles.camHint}>Is the name and Aadhaar number clearly readable?</Text>
               <View style={styles.camPreviewActions}>
@@ -656,7 +664,7 @@ function AadhaarCaptureModal({
 
           {step === "back-preview" && back && (
             <>
-              <Text style={styles.camSideLabel}>Back Side — Preview</Text>
+              <Text style={styles.camSideLabel}>Back Side — Scanned</Text>
               <Image source={{ uri: back.uri }} style={styles.camPreviewImg} resizeMode="contain" />
               <Text style={styles.camHint}>Is the address and QR code clearly visible?</Text>
               <View style={styles.camPreviewActions}>
@@ -837,6 +845,32 @@ export default function CandidateRegisterScreen() {
   const [bankPassbook, setBankPassbook] = useState<ImageData | null>(null);
   const [casteCert, setCasteCert] = useState<ImageData | null>(null);
   const [signature, setSignature] = useState<ImageData | null>(null);
+
+  // ─ Document scanner state (used for all non-passport document captures)
+  const [scannerVisible, setScannerVisible] = useState(false);
+  const [scannerUri, setScannerUri] = useState<string | null>(null);
+  const [scannerImgW, setScannerImgW] = useState(0);
+  const [scannerImgH, setScannerImgH] = useState(0);
+  const [scannerTitle, setScannerTitle] = useState("Scan Document");
+  const scannerSetterRef = useRef<((img: ImageData | null) => void) | null>(null);
+
+  /**
+   * Capture a document photo then immediately show the DocumentScannerModal
+   * so the user can crop, rotate and enhance before accepting.
+   */
+  const captureAndScan = useCallback(
+    async (setter: (img: ImageData | null) => void, docTitle = "Scan Document") => {
+      const asset = await launchDocumentCamera();
+      if (!asset) return;
+      scannerSetterRef.current = setter;
+      setScannerTitle(docTitle);
+      setScannerImgW(asset.width ?? 0);
+      setScannerImgH(asset.height ?? 0);
+      setScannerUri(asset.uri);
+      setScannerVisible(true);
+    },
+    [],
+  );
 
   // ─ UI state
   const [showAadhaarModal, setShowAadhaarModal] = useState(false);
@@ -1238,6 +1272,28 @@ export default function CandidateRegisterScreen() {
         onCancel={() => setPendingPhoto(null)}
       />
 
+      {/* Document scanner modal — shown after every non-passport camera capture */}
+      <DocumentScannerModal
+        visible={scannerVisible}
+        imageUri={scannerUri}
+        imageWidth={scannerImgW}
+        imageHeight={scannerImgH}
+        title={scannerTitle}
+        onSave={(img) => {
+          setScannerVisible(false);
+          if (scannerSetterRef.current) {
+            scannerSetterRef.current(img);
+            scannerSetterRef.current = null;
+          }
+          setScannerUri(null);
+        }}
+        onCancel={() => {
+          setScannerVisible(false);
+          scannerSetterRef.current = null;
+          setScannerUri(null);
+        }}
+      />
+
       {/* Nav header */}
       <View style={[styles.navHeader, { paddingTop: insets.top + webTop }]}>
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
@@ -1486,8 +1542,8 @@ export default function CandidateRegisterScreen() {
                 onSave={(front, back) => { setAadhaarFront(front); setAadhaarBack(back); setShowAadhaarModal(false); }}
               />
 
-              <DocUploadCard label="Education Certificate / शैक्षणिक प्रमाण पत्र" value={educationCert} onPick={() => pickImage(setEducationCert)} onClear={() => setEducationCert(null)} />
-              <DocUploadCard label="Bank Passbook / बैंक पासबुक" value={bankPassbook} onPick={() => pickImage(setBankPassbook)} onClear={() => setBankPassbook(null)} />
+              <DocUploadCard label="Education Certificate / शैक्षणिक प्रमाण पत्र" value={educationCert} onPick={() => captureAndScan(setEducationCert, "Education Certificate")} onClear={() => setEducationCert(null)} />
+              <DocUploadCard label="Bank Passbook / बैंक पासबुक" value={bankPassbook} onPick={() => captureAndScan(setBankPassbook, "Bank Passbook")} onClear={() => setBankPassbook(null)} />
               {/* Caste Certificate — conditional on category */}
               {caste && caste !== "General" ? (
                 <View style={{ gap: 8 }}>
@@ -1522,7 +1578,7 @@ export default function CandidateRegisterScreen() {
                     <DocUploadCard
                       label="Caste Certificate / जाति प्रमाण पत्र"
                       value={casteCert}
-                      onPick={() => pickImage(setCasteCert)}
+                      onPick={() => captureAndScan(setCasteCert, "Caste Certificate")}
                       onClear={() => setCasteCert(null)}
                     />
                   )}
@@ -1550,7 +1606,7 @@ export default function CandidateRegisterScreen() {
                   )}
                 </View>
               ) : (
-                <DocUploadCard label="Caste Certificate / जाति प्रमाण पत्र" value={casteCert} onPick={() => pickImage(setCasteCert)} onClear={() => setCasteCert(null)} />
+                <DocUploadCard label="Caste Certificate / जाति प्रमाण पत्र" value={casteCert} onPick={() => captureAndScan(setCasteCert, "Caste Certificate")} onClear={() => setCasteCert(null)} />
               )}
             </View>
           )}
@@ -1591,7 +1647,7 @@ export default function CandidateRegisterScreen() {
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <TouchableOpacity onPress={() => pickImage(setSignature)} style={styles.sigUploadBtn}>
+                  <TouchableOpacity onPress={() => captureAndScan(setSignature, "Signature")} style={styles.sigUploadBtn}>
                     <Feather name="edit-2" size={18} color={MUTED} />
                     <Text style={styles.sigUploadText}>Upload Signature Photo</Text>
                   </TouchableOpacity>
