@@ -412,8 +412,13 @@ router.get("/activity/attendance-calendar", async (req, res, next) => {
     const todayIST = getISTDate(new Date());
     const [todayY, todayM, todayD] = todayIST.split("-").map(Number);
     const daysInMonth = new Date(year, month, 0).getDate();
-    const lastDay =
-      year === todayY && month === todayM ? todayD : daysInMonth;
+    // Entirely future month → no days to evaluate
+    const isFutureMonth = year > todayY || (year === todayY && month > todayM);
+    const lastDay = isFutureMonth
+      ? 0
+      : year === todayY && month === todayM
+        ? todayD
+        : daysInMonth;
 
     const days = [];
     let presentCount = 0;
