@@ -282,7 +282,9 @@ router.get("/admin/audit-log", requireAdmin, async (req, res, next) => {
 router.get("/admin/staff-list", requireAdmin, async (_req, res, next) => {
   try {
     const companyId = res.locals.companyId as string | null;
-    const companyFilter = companyId ? eq(staffTable.companyId, companyId) : undefined;
+    const companyFilter = companyId
+      ? or(eq(staffTable.companyId, companyId), isNull(staffTable.companyId))
+      : undefined;
 
     const rows = await db
       .select()
@@ -323,7 +325,7 @@ router.patch("/admin/staff/:id/approve", requireAdmin, async (req, res, next) =>
     const { id } = req.params as { id: string };
     const companyId = res.locals.companyId as string | null;
     const filter = companyId
-      ? and(eq(staffTable.id, id), eq(staffTable.companyId, companyId))
+      ? and(eq(staffTable.id, id), or(eq(staffTable.companyId, companyId), isNull(staffTable.companyId)))
       : eq(staffTable.id, id);
 
     const [row] = await db.select({ id: staffTable.id }).from(staffTable).where(filter).limit(1);
@@ -345,7 +347,7 @@ router.patch("/admin/staff/:id/disable", requireAdmin, async (req, res, next) =>
     const { id } = req.params as { id: string };
     const companyId = res.locals.companyId as string | null;
     const filter = companyId
-      ? and(eq(staffTable.id, id), eq(staffTable.companyId, companyId))
+      ? and(eq(staffTable.id, id), or(eq(staffTable.companyId, companyId), isNull(staffTable.companyId)))
       : eq(staffTable.id, id);
 
     const [row] = await db
@@ -382,7 +384,7 @@ router.patch("/admin/staff/:id/enable", requireAdmin, async (req, res, next) => 
     const { id } = req.params as { id: string };
     const companyId = res.locals.companyId as string | null;
     const filter = companyId
-      ? and(eq(staffTable.id, id), eq(staffTable.companyId, companyId))
+      ? and(eq(staffTable.id, id), or(eq(staffTable.companyId, companyId), isNull(staffTable.companyId)))
       : eq(staffTable.id, id);
 
     const [row] = await db.select({ id: staffTable.id }).from(staffTable).where(filter).limit(1);
@@ -410,7 +412,7 @@ router.delete("/admin/staff/:id", requireAdmin, async (req, res, next) => {
     const { id } = req.params as { id: string };
     const companyId = res.locals.companyId as string | null;
     const filter = companyId
-      ? and(eq(staffTable.id, id), eq(staffTable.companyId, companyId))
+      ? and(eq(staffTable.id, id), or(eq(staffTable.companyId, companyId), isNull(staffTable.companyId)))
       : eq(staffTable.id, id);
 
     const [row] = await db
