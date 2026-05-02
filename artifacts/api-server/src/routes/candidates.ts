@@ -6,7 +6,7 @@ import {
   db,
   staffTable,
 } from "@workspace/db";
-import { and, desc, eq, gte, ilike, lt, or } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, isNull, lt, or } from "drizzle-orm";
 import express, { Router } from "express";
 import fs from "fs";
 import path from "path";
@@ -546,7 +546,7 @@ router.get("/admin/candidates", requireAdmin, async (req, res, next) => {
     };
 
     const conditions = [];
-    if (companyId) conditions.push(eq(candidatesTable.companyId, companyId));
+    if (companyId) conditions.push(or(eq(candidatesTable.companyId, companyId), isNull(candidatesTable.companyId)));
     if (search?.trim()) {
       conditions.push(
         or(
@@ -592,7 +592,7 @@ router.get("/admin/candidates/csv", requireAdmin, async (req, res, next) => {
       to?: string;   // YYYY-MM-DD
     };
     const conditions = [];
-    if (companyId) conditions.push(eq(candidatesTable.companyId, companyId));
+    if (companyId) conditions.push(or(eq(candidatesTable.companyId, companyId), isNull(candidatesTable.companyId)));
     if (status?.trim()) conditions.push(eq(candidatesTable.status, status.trim()));
     if (mobilizer?.trim()) conditions.push(ilike(candidatesTable.mobilizer, `%${mobilizer.trim()}%`));
     if (from?.trim()) {

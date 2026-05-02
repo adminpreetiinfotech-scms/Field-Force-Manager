@@ -101,7 +101,9 @@ export function requireAdmin(
 router.get("/admin/candidate-stats", requireAdmin, async (_req, res, next) => {
   try {
     const companyId = res.locals.companyId as string | null;
-    const companyFilter = companyId ? eq(candidatesTable.companyId, companyId) : undefined;
+    const companyFilter = companyId
+      ? or(eq(candidatesTable.companyId, companyId), isNull(candidatesTable.companyId))
+      : undefined;
 
     // Status breakdown
     const statusCounts = await db
