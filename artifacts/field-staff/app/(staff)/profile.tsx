@@ -266,7 +266,7 @@ export default function StaffProfile() {
               colors={colors}
             />
           )}
-          <ContactRow icon="info" label="App Version" value="1.0.2" colors={colors} />
+          <ContactRow icon="info" label="App Version" value="1.0.3" colors={colors} />
         </View>
       </View>
 
@@ -289,7 +289,7 @@ export default function StaffProfile() {
           marginTop: 18,
         }}
       >
-        Field Staff Manager · v1.0.2
+        Field Staff Manager · v1.0.3
       </Text>
     </ScrollView>
   );

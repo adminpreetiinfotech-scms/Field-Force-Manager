@@ -2,7 +2,7 @@
   "expo": {
     "name": "Field Staff Manager",
     "slug": "field-staff",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "field-staff",
@@ -23,7 +23,7 @@
     },
     "android": {
       "package": "com.anilyadav.fieldstaff",
-      "versionCode": 2,
+      "versionCode": 4,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.ACCESS_FINE_LOCATION",
