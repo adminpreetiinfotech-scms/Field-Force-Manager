@@ -73,6 +73,38 @@ async function fetchCompanyBranding(companyId: string | null | undefined): Promi
   }
 }
 
+/**
+ * Resolve the best company ID for branding.
+ * Priority: candidate.companyId → staff lookup via submittedByPhone → first company in DB.
+ * This ensures tcId, logo etc. always appear on PDFs even if candidate.companyId is null.
+ */
+async function resolveCompanyIdForBranding(
+  candidateCompanyId: string | null | undefined,
+  submittedByPhone: string | null | undefined,
+): Promise<string | null> {
+  if (candidateCompanyId) return candidateCompanyId;
+  // Fallback 1: look up staff member's companyId
+  if (submittedByPhone) {
+    try {
+      const [staffRow] = await db
+        .select({ companyId: staffTable.companyId })
+        .from(staffTable)
+        .where(eq(staffTable.phone, submittedByPhone))
+        .limit(1);
+      if (staffRow?.companyId) return staffRow.companyId;
+    } catch { /* ignore */ }
+  }
+  // Fallback 2: if there is exactly one company (single-tenant deploy), use it
+  try {
+    const [only] = await db
+      .select({ id: companiesTable.id })
+      .from(companiesTable)
+      .limit(1);
+    if (only) return only.id;
+  } catch { /* ignore */ }
+  return null;
+}
+
 const router = Router();
 
 // ─── Upload directory ──────────────────────────────────────────────────────────
@@ -446,7 +478,8 @@ router.post("/candidates", async (req, res, next) => {
     };
     const pdfFilePath = path.join(candidateDir, "profile.pdf");
     try {
-      const branding = await fetchCompanyBranding(submitterCompanyId);
+      const resolvedCompanyId = await resolveCompanyIdForBranding(submitterCompanyId, body.submittedByPhone?.trim());
+      const branding = await fetchCompanyBranding(resolvedCompanyId);
       await generateCandidatePdf(
         candidateWithFiles as typeof candidate,
         pdfFilePath,
@@ -747,7 +780,8 @@ router.get("/candidates/:id/pdf", async (req, res, next) => {
     }
 
     const pdfFilePath = path.join(CANDIDATES_DIR, candidate.id, "profile.pdf");
-    const branding = await fetchCompanyBranding(candidate.companyId);
+    const resolvedCompanyId = await resolveCompanyIdForBranding(candidate.companyId, candidate.submittedByPhone);
+    const branding = await fetchCompanyBranding(resolvedCompanyId);
     const pdfOpts = buildPdfOpts(candidate, req.query as Record<string, string>, branding);
     // Always regenerate PDF to ensure latest data is reflected
     fs.mkdirSync(path.dirname(pdfFilePath), { recursive: true });
