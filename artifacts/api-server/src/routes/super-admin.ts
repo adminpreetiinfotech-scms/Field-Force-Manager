@@ -189,13 +189,20 @@ router.get("/super-admin/companies/:id/stats", requireSuperAdmin, async (req, re
 router.patch("/super-admin/companies/:id", requireSuperAdmin, async (req, res, next) => {
   try {
     const id = req.params.id as string;
-    const { status, subscriptionActive, name, projectName, state, district } = req.body as {
+    const {
+      status, subscriptionActive, name, projectName, state, district,
+      plan, subscriptionStartDate, subscriptionEndDate, paymentStatus,
+    } = req.body as {
       status?: "active" | "inactive";
       subscriptionActive?: boolean;
       name?: string;
       projectName?: string | null;
       state?: string | null;
       district?: string | null;
+      plan?: "basic" | "standard" | "premium" | null;
+      subscriptionStartDate?: string | null;
+      subscriptionEndDate?: string | null;
+      paymentStatus?: "paid" | "pending" | "expired" | null;
     };
 
     const updates: Partial<typeof companiesTable.$inferInsert> = {};
@@ -205,6 +212,14 @@ router.patch("/super-admin/companies/:id", requireSuperAdmin, async (req, res, n
     if (projectName !== undefined) updates.projectName = projectName?.trim() || null;
     if (state !== undefined) updates.state = state?.trim() || null;
     if (district !== undefined) updates.district = district?.trim() || null;
+    if (plan !== undefined) updates.plan = plan ?? undefined;
+    if (subscriptionStartDate !== undefined) {
+      updates.subscriptionStartDate = subscriptionStartDate ? new Date(subscriptionStartDate) : null;
+    }
+    if (subscriptionEndDate !== undefined) {
+      updates.subscriptionEndDate = subscriptionEndDate ? new Date(subscriptionEndDate) : null;
+    }
+    if (paymentStatus !== undefined) updates.paymentStatus = paymentStatus ?? undefined;
 
     const [updated] = await db
       .update(companiesTable)

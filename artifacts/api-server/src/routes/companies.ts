@@ -47,6 +47,9 @@ export function toLogoUrl(filePath: string | null | undefined): string | null {
 }
 
 function toCompanyDTO(c: typeof companiesTable.$inferSelect) {
+  const now = new Date();
+  const endDate = c.subscriptionEndDate ? new Date(c.subscriptionEndDate) : null;
+  const isDateExpired = endDate !== null && now > endDate;
   return {
     id: c.id,
     name: c.name,
@@ -59,8 +62,24 @@ function toCompanyDTO(c: typeof companiesTable.$inferSelect) {
     logoUrl: toLogoUrl(c.logoPath),
     status: c.status,
     subscriptionActive: c.subscriptionActive,
+    plan: c.plan ?? null,
+    subscriptionStartDate: c.subscriptionStartDate?.toISOString() ?? null,
+    subscriptionEndDate: c.subscriptionEndDate?.toISOString() ?? null,
+    paymentStatus: c.paymentStatus ?? null,
+    isSubscriptionExpired: isDateExpired,
     createdAt: c.createdAt?.toISOString() ?? null,
   };
+}
+
+export function isCompanySubscriptionBlocked(company: {
+  subscriptionActive: boolean;
+  subscriptionEndDate: Date | null | string | undefined;
+}): boolean {
+  if (!company.subscriptionActive) return true;
+  if (company.subscriptionEndDate) {
+    return new Date() > new Date(company.subscriptionEndDate);
+  }
+  return false;
 }
 
 // ─── POST /api/companies/register ─────────────────────────────────────────────

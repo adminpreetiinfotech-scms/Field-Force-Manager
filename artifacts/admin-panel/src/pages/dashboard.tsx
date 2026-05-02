@@ -4,10 +4,73 @@ import { Button } from "@/components/ui/button";
 import {
   Users, UserCheck, Clock, XCircle, UserSquare2,
   TrendingUp, Calendar, AlertCircle, ArrowRight,
-  CheckCircle2, Activity, Award
+  CheckCircle2, Activity, Award, AlertTriangle,
 } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
+import { useEffect, useState } from "react";
+
+interface SubscriptionInfo {
+  plan: string | null;
+  subscriptionActive: boolean;
+  subscriptionEndDate: string | null;
+  paymentStatus: string | null;
+  isSubscriptionExpired: boolean;
+  daysUntilExpiry: number | null;
+}
+
+function getAdminPhone(): string {
+  try {
+    const raw = localStorage.getItem("admin_user");
+    if (!raw) return "";
+    return (JSON.parse(raw) as { phone?: string }).phone ?? "";
+  } catch { return ""; }
+}
+
+function SubscriptionWarning({ info }: { info: SubscriptionInfo }) {
+  const { isSubscriptionExpired, daysUntilExpiry, subscriptionEndDate } = info;
+  if (!subscriptionEndDate) return null;
+  if (isSubscriptionExpired) {
+    return (
+      <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-5 py-3.5">
+        <XCircle className="h-5 w-5 text-red-600 shrink-0" />
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-red-700">Subscription Expired</p>
+          <p className="text-xs text-red-600 mt-0.5">
+            Staff login and field operations are blocked. Contact your system admin to renew.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  if (daysUntilExpiry !== null && daysUntilExpiry <= 1) {
+    return (
+      <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-5 py-3.5">
+        <AlertTriangle className="h-5 w-5 text-red-500 shrink-0" />
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-red-700">Subscription Expires Tomorrow!</p>
+          <p className="text-xs text-red-600 mt-0.5">
+            Expires on {format(new Date(subscriptionEndDate), "dd MMM yyyy")}. Contact admin immediately to avoid disruption.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  if (daysUntilExpiry !== null && daysUntilExpiry <= 3) {
+    return (
+      <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-5 py-3.5">
+        <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-amber-700">Subscription Expiring in {daysUntilExpiry} days</p>
+          <p className="text-xs text-amber-600 mt-0.5">
+            Expires on {format(new Date(subscriptionEndDate), "dd MMM yyyy")}. Contact admin to extend before operations are disrupted.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  return null;
+}
 
 function StatCard({
   title,
@@ -62,6 +125,16 @@ function ProgressBar({ value, max, color }: { value: number; max: number; color:
 export default function Dashboard() {
   const { data: stats, isLoading, error } = useGetDashboardStats();
   const today = format(new Date(), "EEEE, MMMM d, yyyy");
+  const [subInfo, setSubInfo] = useState<SubscriptionInfo | null>(null);
+
+  useEffect(() => {
+    const phone = getAdminPhone();
+    if (!phone) return;
+    fetch("/api/admin/company/subscription", { headers: { "x-admin-phone": phone } })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setSubInfo(d); })
+      .catch(() => {});
+  }, []);
 
   if (isLoading) {
     return (
@@ -98,6 +171,9 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8 max-w-6xl">
+      {/* Subscription warning — shown only when subscription is expiring/expired */}
+      {subInfo && <SubscriptionWarning info={subInfo} />}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

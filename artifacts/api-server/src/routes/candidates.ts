@@ -345,6 +345,26 @@ router.post("/candidates", async (req, res, next) => {
       submitterCompanyId = staffRow?.companyId ?? null;
     }
 
+    // Block candidate registration if company subscription is expired/inactive
+    if (submitterCompanyId) {
+      const [company] = await db
+        .select({
+          subscriptionActive: companiesTable.subscriptionActive,
+          subscriptionEndDate: companiesTable.subscriptionEndDate,
+        })
+        .from(companiesTable)
+        .where(eq(companiesTable.id, submitterCompanyId))
+        .limit(1);
+      if (company) {
+        const blocked = !company.subscriptionActive ||
+          (company.subscriptionEndDate !== null && new Date() > new Date(company.subscriptionEndDate));
+        if (blocked) {
+          res.status(403).json({ title: "Subscription expired. Contact admin.", status: 403 });
+          return;
+        }
+      }
+    }
+
     const [candidate] = await db
       .insert(candidatesTable)
       .values({

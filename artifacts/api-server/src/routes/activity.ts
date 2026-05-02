@@ -1,4 +1,5 @@
 import { activityEventsTable, candidatesTable, companiesTable, db, staffTable } from "@workspace/db";
+import { isCompanySubscriptionBlocked } from "./companies";
 import { and, count, desc, eq, gt, gte, inArray, lt, or, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
@@ -943,6 +944,22 @@ router.post("/activity", async (req, res, next) => {
       .where(eq(staffTable.id, input.staffId))
       .limit(1);
     const companyId = staffRow?.companyId ?? null;
+
+    // Block check-in if company subscription is expired/inactive
+    if (input.kind === "checkin" && companyId) {
+      const [company] = await db
+        .select({
+          subscriptionActive: companiesTable.subscriptionActive,
+          subscriptionEndDate: companiesTable.subscriptionEndDate,
+        })
+        .from(companiesTable)
+        .where(eq(companiesTable.id, companyId))
+        .limit(1);
+      if (company && isCompanySubscriptionBlocked(company)) {
+        res.status(403).json({ title: "Subscription expired. Contact admin.", status: 403 });
+        return;
+      }
+    }
 
     const [inserted] = await db
       .insert(activityEventsTable)

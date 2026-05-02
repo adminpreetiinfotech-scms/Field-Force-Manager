@@ -15,6 +15,12 @@ export const companiesTable = pgTable("companies", {
     .notNull()
     .default("active"),
   subscriptionActive: boolean("subscription_active").notNull().default(true),
+  /** basic | standard | premium */
+  plan: text("plan", { enum: ["basic", "standard", "premium"] }),
+  subscriptionStartDate: timestamp("subscription_start_date", { withTimezone: true }),
+  subscriptionEndDate: timestamp("subscription_end_date", { withTimezone: true }),
+  /** paid | pending | expired */
+  paymentStatus: text("payment_status", { enum: ["paid", "pending", "expired"] }).default("paid"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

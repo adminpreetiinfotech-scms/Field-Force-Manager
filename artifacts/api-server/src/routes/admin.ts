@@ -2,6 +2,7 @@ import {
   candidateAuditLogTable,
   candidatesTable,
   candidateNotificationsTable,
+  companiesTable,
   db,
   staffTable,
 } from "@workspace/db";
@@ -654,6 +655,63 @@ router.patch("/admin/staff/:id/deactivate", requireAdmin, async (req, res, next)
     await db.update(staffTable).set({ disabledAt: new Date() }).where(eq(staffTable.id, id));
     req.log.info({ staffId: id }, "Staff deactivated by admin");
     res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── GET /api/admin/company/subscription ──────────────────────────────────────
+// Returns subscription details for the company admin's own company.
+// Used by the admin dashboard to show expiry warnings.
+
+router.get("/admin/company/subscription", requireAdmin, async (_req, res, next) => {
+  try {
+    const companyId = res.locals.companyId as string | null;
+    if (!companyId) {
+      res.json({
+        plan: null,
+        subscriptionActive: true,
+        subscriptionStartDate: null,
+        subscriptionEndDate: null,
+        paymentStatus: null,
+        isSubscriptionExpired: false,
+        daysUntilExpiry: null,
+      });
+      return;
+    }
+    const [company] = await db
+      .select({
+        plan: companiesTable.plan,
+        subscriptionActive: companiesTable.subscriptionActive,
+        subscriptionStartDate: companiesTable.subscriptionStartDate,
+        subscriptionEndDate: companiesTable.subscriptionEndDate,
+        paymentStatus: companiesTable.paymentStatus,
+      })
+      .from(companiesTable)
+      .where(eq(companiesTable.id, companyId))
+      .limit(1);
+
+    if (!company) {
+      res.status(404).json({ title: "Company not found", status: 404 });
+      return;
+    }
+
+    const now = new Date();
+    const endDate = company.subscriptionEndDate ? new Date(company.subscriptionEndDate) : null;
+    const isExpired = endDate !== null && now > endDate;
+    const daysUntilExpiry = endDate
+      ? Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+      : null;
+
+    res.json({
+      plan: company.plan ?? null,
+      subscriptionActive: company.subscriptionActive,
+      subscriptionStartDate: company.subscriptionStartDate?.toISOString() ?? null,
+      subscriptionEndDate: company.subscriptionEndDate?.toISOString() ?? null,
+      paymentStatus: company.paymentStatus ?? null,
+      isSubscriptionExpired: isExpired,
+      daysUntilExpiry,
+    });
   } catch (err) {
     next(err);
   }

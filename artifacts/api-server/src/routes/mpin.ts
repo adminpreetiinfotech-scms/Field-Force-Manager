@@ -135,7 +135,11 @@ router.post("/auth/login-mpin", async (req, res, next) => {
     // Check company status (super_admin has no company, skip)
     if (row.companyId) {
       const [company] = await db
-        .select({ status: companiesTable.status, subscriptionActive: companiesTable.subscriptionActive })
+        .select({
+          status: companiesTable.status,
+          subscriptionActive: companiesTable.subscriptionActive,
+          subscriptionEndDate: companiesTable.subscriptionEndDate,
+        })
         .from(companiesTable)
         .where(eq(companiesTable.id, row.companyId))
         .limit(1);
@@ -145,6 +149,10 @@ router.post("/auth/login-mpin", async (req, res, next) => {
       }
       if (company && !company.subscriptionActive) {
         res.status(403).json({ title: "Your organization's subscription is inactive. Please contact your admin.", status: 403 });
+        return;
+      }
+      if (company?.subscriptionEndDate && new Date() > new Date(company.subscriptionEndDate)) {
+        res.status(403).json({ title: "Subscription expired. Contact admin.", status: 403 });
         return;
       }
     }
