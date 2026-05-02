@@ -57,3 +57,29 @@ export async function getTwilioFromPhone(): Promise<string> {
   const { phoneNumber } = await getCredentials();
   return phoneNumber;
 }
+
+function toE164India(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("91") && digits.length === 12) return `+${digits}`;
+  if (digits.length === 10) return `+91${digits}`;
+  return `+${digits}`;
+}
+
+export async function sendSms(to: string, body: string): Promise<void> {
+  const client = await getTwilioClient();
+  const from = await getTwilioFromPhone();
+  await client.messages.create({
+    to: toE164India(to),
+    from,
+    body,
+  });
+}
+
+export async function sendSmsSilent(to: string, body: string, log?: (msg: string) => void): Promise<void> {
+  try {
+    await sendSms(to, body);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (log) log(`SMS to ${to} failed: ${msg}`);
+  }
+}

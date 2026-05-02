@@ -442,6 +442,55 @@ export interface CompanyStats {
   stats: CompanyStatsStats;
 }
 
+/**
+ * present = checkin + checkout; partial = checkin only; absent = no checkin (past days only).
+ */
+export type AttendanceCalendarDayStatus = typeof AttendanceCalendarDayStatus[keyof typeof AttendanceCalendarDayStatus];
+
+
+export const AttendanceCalendarDayStatus = {
+  present: 'present',
+  partial: 'partial',
+  absent: 'absent',
+} as const;
+
+/**
+ * Attendance data for a single calendar day.
+ */
+export interface AttendanceCalendarDay {
+  /** Calendar date (YYYY-MM-DD, IST). */
+  date: string;
+  /** present = checkin + checkout; partial = checkin only; absent = no checkin (past days only). */
+  status: AttendanceCalendarDayStatus;
+  /** ISO timestamp of first check-in, or null. */
+  checkinTime: string | null;
+  /** ISO timestamp of last check-out, or null. */
+  checkoutTime: string | null;
+  /** Total km covered (sum of trip-end events). */
+  totalKm: number;
+  /** Number of completed trips. */
+  tripCount: number;
+}
+
+/**
+ * Full month of attendance calendar data.
+ */
+export interface AttendanceCalendarMonth {
+  year: number;
+  /** Month 1–12. */
+  month: number;
+  /** One entry per day in the month that has activity, or all past days. */
+  days: AttendanceCalendarDay[];
+  /** Number of days with status=present. */
+  presentCount: number;
+  /** Number of days with status=partial. */
+  partialCount: number;
+  /** Number of past days with no check-in. */
+  absentCount: number;
+  /** Total km for the month. */
+  totalKm: number;
+}
+
 export interface ProblemDetails {
   title: string;
   detail?: string;
@@ -466,6 +515,21 @@ month: number;
  * Filter to a single staff member. Omit for all staff.
  */
 staffId?: string;
+};
+
+export type GetAttendanceCalendarParams = {
+/**
+ * UUID of the staff member.
+ */
+staffId: string;
+/**
+ * Four-digit year, e.g. 2026.
+ */
+year: number;
+/**
+ * Month number 1–12.
+ */
+month: number;
 };
 
 export type GetLeaderboardParams = {

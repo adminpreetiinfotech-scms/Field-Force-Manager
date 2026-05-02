@@ -10,6 +10,7 @@ import { and, desc, eq, gte, ilike, lt, or } from "drizzle-orm";
 import express, { Router } from "express";
 import fs from "fs";
 import path from "path";
+import { sendSmsSilent } from "../lib/twilio";
 import { downloadLogoBuffer } from "../lib/logoStorage";
 import { generateCandidatePdf, type PdfReportOpts } from "../services/pdf";
 import { requireAdmin } from "./admin";
@@ -643,7 +644,7 @@ router.patch("/admin/candidates/:id/status", requireAdmin, async (req, res, next
       remarks: remarks?.trim() || null,
     });
 
-    // Create notification for the submitter.
+    // Create in-app notification for the submitter.
     if (candidate.submittedByPhone) {
       const statusLabel =
         status === "verified"
@@ -661,6 +662,12 @@ router.patch("/admin/candidates/:id/status", requireAdmin, async (req, res, next
         candidateName: candidate.name,
         message,
       });
+
+      // Also send SMS (fire-and-forget) for actionable statuses only
+      if (status !== "pending") {
+        const smsBody = `Nistha Skill: ${message}`.slice(0, 320);
+        void sendSmsSilent(candidate.submittedByPhone, smsBody, req.log.warn.bind(req.log));
+      }
     }
 
     res.json(toDto(updated));

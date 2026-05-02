@@ -324,6 +324,154 @@ router.get("/activity/ride-calendar", async (req, res, next) => {
   }
 });
 
+router.get("/activity/attendance-calendar", async (req, res, next) => {
+  try {
+    const rawStaffId = req.query.staffId as string | undefined;
+    const rawYear = req.query.year as string | undefined;
+    const rawMonth = req.query.month as string | undefined;
+
+    if (!rawStaffId || !/^[0-9a-fA-F-]{36}$/.test(rawStaffId)) {
+      res.status(400).json({ title: "Invalid staffId", detail: "staffId must be a UUID", status: 400 });
+      return;
+    }
+    const year = parseInt(rawYear ?? "", 10);
+    const month = parseInt(rawMonth ?? "", 10);
+    if (!rawYear || isNaN(year) || year < 2000 || year > 2100) {
+      res.status(400).json({ title: "Invalid year", detail: "year must be 2000–2100", status: 400 });
+      return;
+    }
+    if (!rawMonth || isNaN(month) || month < 1 || month > 12) {
+      res.status(400).json({ title: "Invalid month", detail: "month must be 1–12", status: 400 });
+      return;
+    }
+
+    // UTC window for the calendar month (IST = UTC+5:30, so we extend the window slightly)
+    const periodStart = new Date(Date.UTC(year, month - 1, 1) - 5.5 * 3600_000);
+    const periodEnd = new Date(Date.UTC(year, month, 1) + 0.5 * 3600_000); // +30 min buffer
+
+    // Fetch checkin, checkout, and trip-end events for the month
+    const rows = await db
+      .select({
+        kind: activityEventsTable.kind,
+        occurredAt: activityEventsTable.occurredAt,
+        payload: activityEventsTable.payload,
+      })
+      .from(activityEventsTable)
+      .where(
+        and(
+          eq(activityEventsTable.staffId, rawStaffId),
+          or(
+            eq(activityEventsTable.kind, "checkin"),
+            eq(activityEventsTable.kind, "checkout"),
+            eq(activityEventsTable.kind, "trip-end"),
+          ),
+          gte(activityEventsTable.occurredAt, periodStart),
+          lt(activityEventsTable.occurredAt, periodEnd),
+        ),
+      );
+
+    // IST offset
+    const IST_MS = 5.5 * 3600_000;
+
+    type DayAcc = {
+      checkinTimes: Date[];
+      checkoutTimes: Date[];
+      totalKm: number;
+      tripCount: number;
+    };
+    const dayMap = new Map<string, DayAcc>();
+
+    function getISTDate(d: Date): string {
+      return new Date(d.getTime() + IST_MS).toISOString().slice(0, 10);
+    }
+
+    for (const row of rows) {
+      const date = getISTDate(row.occurredAt as Date);
+      // Only include dates that belong to the requested month
+      const [y, m] = date.split("-").map(Number);
+      if (y !== year || m !== month) continue;
+
+      if (!dayMap.has(date)) {
+        dayMap.set(date, { checkinTimes: [], checkoutTimes: [], totalKm: 0, tripCount: 0 });
+      }
+      const acc = dayMap.get(date)!;
+      if (row.kind === "checkin") {
+        acc.checkinTimes.push(row.occurredAt as Date);
+      } else if (row.kind === "checkout") {
+        acc.checkoutTimes.push(row.occurredAt as Date);
+      } else if (row.kind === "trip-end") {
+        const p = (row.payload || {}) as ActivityPayload;
+        acc.totalKm += typeof p.distanceKm === "number" ? p.distanceKm : 0;
+        acc.tripCount++;
+      }
+    }
+
+    const round1 = (n: number) => Math.round(n * 10) / 10;
+
+    // Determine which past days to include (all days from 1 to today's date in IST)
+    const todayIST = getISTDate(new Date());
+    const [todayY, todayM, todayD] = todayIST.split("-").map(Number);
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const lastDay =
+      year === todayY && month === todayM ? todayD : daysInMonth;
+
+    const days = [];
+    let presentCount = 0;
+    let partialCount = 0;
+    let absentCount = 0;
+    let totalKmMonth = 0;
+
+    for (let d = 1; d <= lastDay; d++) {
+      const mm = String(month).padStart(2, "0");
+      const dd = String(d).padStart(2, "0");
+      const date = `${year}-${mm}-${dd}`;
+      const acc = dayMap.get(date);
+
+      let status: "present" | "partial" | "absent";
+      let checkinTime: string | null = null;
+      let checkoutTime: string | null = null;
+      let km = 0;
+      let trips = 0;
+
+      if (acc && acc.checkinTimes.length > 0) {
+        // Sort asc → first checkin
+        acc.checkinTimes.sort((a, b) => a.getTime() - b.getTime());
+        checkinTime = acc.checkinTimes[0].toISOString();
+        if (acc.checkoutTimes.length > 0) {
+          // Sort desc → last checkout
+          acc.checkoutTimes.sort((a, b) => b.getTime() - a.getTime());
+          checkoutTime = acc.checkoutTimes[0].toISOString();
+          status = "present";
+          presentCount++;
+        } else {
+          status = "partial";
+          partialCount++;
+        }
+        km = round1(acc.totalKm);
+        trips = acc.tripCount;
+      } else {
+        status = "absent";
+        absentCount++;
+      }
+
+      totalKmMonth += km;
+      days.push({ date, status, checkinTime, checkoutTime, totalKm: km, tripCount: trips });
+    }
+
+    res.json({
+      year,
+      month,
+      days,
+      presentCount,
+      partialCount,
+      absentCount,
+      totalKm: round1(totalKmMonth),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get("/activity/leaderboard", async (req, res, next) => {
   try {
     const rawPeriod = req.query.period as string | undefined;

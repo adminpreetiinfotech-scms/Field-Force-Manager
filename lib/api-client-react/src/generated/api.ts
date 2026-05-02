@@ -23,6 +23,7 @@ import type {
   ActivityDetail,
   ActivityEvent,
   ActivityPage,
+  AttendanceCalendarMonth,
   CandidateDto,
   CheckDuplicateCandidate200,
   CheckDuplicateCandidateBody,
@@ -33,6 +34,7 @@ import type {
   CreateActivityInput,
   DashboardStats,
   DistanceStats,
+  GetAttendanceCalendarParams,
   GetDistanceStatsParams,
   GetLeaderboardParams,
   GetRideCalendarParams,
@@ -736,6 +738,90 @@ export function useGetRideCalendar<TData = Awaited<ReturnType<typeof getRideCale
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetRideCalendarQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+/**
+ * @summary Per-day attendance status for a staff member's calendar month
+ */
+export const getGetAttendanceCalendarUrl = (params: GetAttendanceCalendarParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/activity/attendance-calendar?${stringifiedParams}` : `/api/activity/attendance-calendar`
+}
+
+export const getAttendanceCalendar = async (params: GetAttendanceCalendarParams, options?: RequestInit): Promise<AttendanceCalendarMonth> => {
+
+  return customFetch<AttendanceCalendarMonth>(getGetAttendanceCalendarUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAttendanceCalendarQueryKey = (params?: GetAttendanceCalendarParams,) => {
+    return [
+    `/api/activity/attendance-calendar`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAttendanceCalendarQueryOptions = <TData = Awaited<ReturnType<typeof getAttendanceCalendar>>, TError = ErrorType<ProblemDetails>>(params: GetAttendanceCalendarParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAttendanceCalendar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAttendanceCalendarQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAttendanceCalendar>>> = ({ signal }) => getAttendanceCalendar(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAttendanceCalendar>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAttendanceCalendarQueryResult = NonNullable<Awaited<ReturnType<typeof getAttendanceCalendar>>>
+export type GetAttendanceCalendarQueryError = ErrorType<ProblemDetails>
+
+
+/**
+ * @summary Per-day attendance status for a staff member's calendar month
+ */
+
+export function useGetAttendanceCalendar<TData = Awaited<ReturnType<typeof getAttendanceCalendar>>, TError = ErrorType<ProblemDetails>>(
+ params: GetAttendanceCalendarParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAttendanceCalendar>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAttendanceCalendarQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

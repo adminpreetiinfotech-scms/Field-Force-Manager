@@ -234,6 +234,7 @@ export default function StaffProfile() {
           },
         ]}
       >
+        <Row icon="calendar" label="Attendance Calendar" colors={colors} onPress={() => router.push("/(staff)/attendance" as never)} />
         <Row icon="settings" label="Account Settings" colors={colors} onPress={() => router.push("/account-settings")} />
         <Row icon="bell" label="Notifications" colors={colors} />
         <Row icon="shield" label="Privacy & permissions" colors={colors} />

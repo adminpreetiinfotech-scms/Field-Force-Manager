@@ -216,6 +216,33 @@ export const GetRideCalendarResponse = zod.object({
 
 
 /**
+ * @summary Per-day attendance status for a staff member's calendar month
+ */
+export const GetAttendanceCalendarQueryParams = zod.object({
+  "staffId": zod.coerce.string().uuid(),
+  "year": zod.coerce.number(),
+  "month": zod.coerce.number()
+})
+
+export const GetAttendanceCalendarResponse = zod.object({
+  "year": zod.number(),
+  "month": zod.number().describe('Month 1–12.'),
+  "days": zod.array(zod.object({
+  "date": zod.string().describe('Calendar date (YYYY-MM-DD, IST).'),
+  "status": zod.enum(['present', 'partial', 'absent']).describe('present = checkin + checkout; partial = checkin only; absent = no checkin (past days only).'),
+  "checkinTime": zod.string().nullable().describe('ISO timestamp of first check-in, or null.'),
+  "checkoutTime": zod.string().nullable().describe('ISO timestamp of last check-out, or null.'),
+  "totalKm": zod.number().describe('Total km covered (sum of trip-end events).'),
+  "tripCount": zod.number().describe('Number of completed trips.')
+}).describe('Attendance data for a single calendar day.')).describe('One entry per day in the month that has activity, or all past days.'),
+  "presentCount": zod.number().describe('Number of days with status=present.'),
+  "partialCount": zod.number().describe('Number of days with status=partial.'),
+  "absentCount": zod.number().describe('Number of past days with no check-in.'),
+  "totalKm": zod.number().describe('Total km for the month.')
+}).describe('Full month of attendance calendar data.')
+
+
+/**
  * @summary Top staff ranked by total distance for a given period
  */
 export const GetLeaderboardQueryParams = zod.object({

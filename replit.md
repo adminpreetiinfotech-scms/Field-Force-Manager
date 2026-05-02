@@ -21,7 +21,7 @@ The project is a pnpm monorepo using Node.js 24 and TypeScript 5.9. The backend 
 
 - **Mobile App (`artifacts/field-staff`):** An Expo mobile app for Android/iOS.
     - **Authentication:** MPIN-based login with phone number, scrypt hashing, and lockout mechanisms. Supports admin and staff roles.
-    - **Key Features:** Selfie + GPS check-in/out, live shift timer with GPS tracking, meter reading capture, trip ledger, candidate management (registration, duplicate checks, admin approval/rejection, audit logs, PDF generation, notifications), Staff Leaderboard (top 5 by km/trips/candidate count with Today/Week/Month filter), and Candidate Notifications (real-time status alerts to mobilizers).
+    - **Key Features:** Selfie + GPS check-in/out, live shift timer with GPS tracking, meter reading capture, trip ledger, candidate management (registration, duplicate checks, admin approval/rejection, audit logs, PDF generation, notifications), Staff Leaderboard (top 5 by km/trips/candidate count with Today/Week/Month filter), Candidate Notifications (real-time status alerts to mobilizers), and Attendance Calendar (monthly view with present/partial/absent color-coded days, summary strip, day detail card with check-in/out times, trips, distance, and month navigation).
     - **Offline-first:** Data syncs via AsyncStorage with auto and manual sync options.
     - **Real-time Tracking:** Staff location pinging every 30s, displayed on an admin map with 15s polling.
     - **Reporting:** Daily Outcome Reports for staff with WhatsApp sharing, Admin Ride Reports (CSV export).
@@ -29,7 +29,7 @@ The project is a pnpm monorepo using Node.js 24 and TypeScript 5.9. The backend 
     - **Permissions:** Camera and location permissions requested with `app.json` configuration.
 - **Admin Panel (`artifacts/admin-panel`):** A React Vite web app for management.
     - **Authentication:** Two-step phone + MPIN login, storing user in `localStorage`. Uses `x-admin-phone` header for API calls.
-    - **Key Features:** Dashboard for live stats, staff list management (approve/reject, disable/enable, soft-delete), candidate list with search/filter, report downloads (Excel, candidate PDFs), and Notices Management (create/view/delete broadcast notices with priority, type, target staff, expiry, and read/unread status tracking).
+    - **Key Features:** Dashboard for live stats, staff list management (approve/reject, disable/enable, soft-delete), candidate list with search/filter, report downloads (Excel, candidate PDFs), and Notices Management (create/view/delete broadcast notices with priority, type, target staff, expiry, and read/unread status tracking). Creating a notice automatically triggers SMS delivery to all recipients via Twilio.
 - **API Server (`artifacts/api-server`):** Express.js backend.
     - **Database:** PostgreSQL with Drizzle ORM.
     - **Multi-Tenancy:** `companies` table and `company_id` FK in all major data tables. Supports `staff`, `admin`, and `super_admin` roles.

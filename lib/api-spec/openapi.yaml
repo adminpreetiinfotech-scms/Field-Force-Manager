@@ -253,6 +253,45 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
 
+  /activity/attendance-calendar:
+    get:
+      operationId: getAttendanceCalendar
+      tags: [activity]
+      summary: Per-day attendance status for a staff member's calendar month
+      parameters:
+        - in: query
+          name: staffId
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: UUID of the staff member.
+        - in: query
+          name: year
+          required: true
+          schema:
+            type: integer
+            description: Four-digit year, e.g. 2026.
+        - in: query
+          name: month
+          required: true
+          schema:
+            type: integer
+            description: Month number 1–12.
+      responses:
+        "200":
+          description: Per-day attendance with checkin/checkout times and trip stats.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttendanceCalendarMonth"
+        "400":
+          description: Invalid query parameters.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
   /activity/leaderboard:
     get:
       operationId: getLeaderboard
@@ -1666,6 +1705,61 @@ components:
               type: integer
           required: [staffCount, candidateCount, activityCount]
       required: [company, stats]
+
+    AttendanceCalendarDay:
+      type: object
+      description: Attendance data for a single calendar day.
+      properties:
+        date:
+          type: string
+          description: Calendar date (YYYY-MM-DD, IST).
+        status:
+          type: string
+          enum: [present, partial, absent]
+          description: "present = checkin + checkout; partial = checkin only; absent = no checkin (past days only)."
+        checkinTime:
+          type: string
+          nullable: true
+          description: ISO timestamp of first check-in, or null.
+        checkoutTime:
+          type: string
+          nullable: true
+          description: ISO timestamp of last check-out, or null.
+        totalKm:
+          type: number
+          description: Total km covered (sum of trip-end events).
+        tripCount:
+          type: integer
+          description: Number of completed trips.
+      required: [date, status, checkinTime, checkoutTime, totalKm, tripCount]
+
+    AttendanceCalendarMonth:
+      type: object
+      description: Full month of attendance calendar data.
+      properties:
+        year:
+          type: integer
+        month:
+          type: integer
+          description: Month 1–12.
+        days:
+          type: array
+          items:
+            $ref: "#/components/schemas/AttendanceCalendarDay"
+          description: One entry per day in the month that has activity, or all past days.
+        presentCount:
+          type: integer
+          description: Number of days with status=present.
+        partialCount:
+          type: integer
+          description: Number of days with status=partial.
+        absentCount:
+          type: integer
+          description: Number of past days with no check-in.
+        totalKm:
+          type: number
+          description: Total km for the month.
+      required: [year, month, days, presentCount, partialCount, absentCount, totalKm]
 
     ProblemDetails:
       type: object

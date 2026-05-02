@@ -16,6 +16,7 @@ import {
   gt,
 } from "drizzle-orm";
 import { Router, type IRouter } from "express";
+import { sendSmsSilent } from "../lib/twilio";
 import { requireAdmin } from "./admin";
 
 const router: IRouter = Router();
@@ -119,6 +120,31 @@ router.post("/notices/admin/create", requireAdmin, async (req, res, next) => {
         })),
       );
     }
+
+    // Fire-and-forget SMS to recipients (capped at 50 to control costs)
+    void (async () => {
+      try {
+        const phones = await db
+          .select({ phone: staffTable.phone })
+          .from(staffTable)
+          .where(inArray(staffTable.id, recipientIds.slice(0, 50)));
+
+        const priorityTag =
+          notice.priority === "urgent"
+            ? "[URGENT] "
+            : notice.priority === "important"
+              ? "[IMPORTANT] "
+              : "";
+
+        const smsBody = `${priorityTag}Nistha Skill Notice:\n${notice.title}\n${notice.message}`.slice(0, 320);
+
+        await Promise.allSettled(
+          phones.map(({ phone }) => sendSmsSilent(phone, smsBody, req.log.warn.bind(req.log))),
+        );
+      } catch {
+        // SMS failure must not affect the main response
+      }
+    })();
 
     res.json({ notice, recipientCount: recipientIds.length });
   } catch (e) {
