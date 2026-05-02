@@ -6,20 +6,191 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Download, ExternalLink } from "lucide-react";
+import { Search, Download, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
+import type { CandidateDto } from "@workspace/api-client-react";
+
+type EditFields = {
+  phone: string;
+  parentMobile: string;
+  dob: string;
+  pin: string;
+  fatherName: string;
+  motherName: string;
+  district: string;
+  state: string;
+  village: string;
+  skillCentreName: string;
+};
+
+function EditCandidateModal({
+  candidate,
+  open,
+  onClose,
+  onSaved,
+  adminPhone,
+}: {
+  candidate: CandidateDto;
+  open: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+  adminPhone: string;
+}) {
+  const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
+  const [fields, setFields] = useState<EditFields>({
+    phone: candidate.phone ?? "",
+    parentMobile: (candidate as any).parentMobile ?? "",
+    dob: (candidate as any).dob ?? "",
+    pin: (candidate as any).pin ?? "",
+    fatherName: candidate.fatherName ?? "",
+    motherName: (candidate as any).motherName ?? "",
+    district: (candidate as any).district ?? "",
+    state: (candidate as any).state ?? "",
+    village: candidate.village ?? "",
+    skillCentreName: (candidate as any).skillCentreName ?? "",
+  });
+
+  const set = (key: keyof EditFields) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setFields((prev) => ({ ...prev, [key]: e.target.value }));
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/candidates/${candidate.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-phone": adminPhone,
+        },
+        body: JSON.stringify({
+          phone: fields.phone || null,
+          parentMobile: fields.parentMobile || null,
+          dob: fields.dob || null,
+          pin: fields.pin || null,
+          fatherName: fields.fatherName || null,
+          motherName: fields.motherName || null,
+          district: fields.district || null,
+          state: fields.state || null,
+          village: fields.village || null,
+          skillCentreName: fields.skillCentreName || null,
+        }),
+      });
+      const data = await res.json() as { title?: string };
+      if (!res.ok) throw new Error(data.title ?? "Update failed");
+      toast({ title: "Saved", description: "Candidate details updated. PDF will reflect changes on next download." });
+      onSaved();
+      onClose();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Edit Candidate: {candidate.name}</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 py-2">
+          <p className="text-xs text-muted-foreground bg-amber-50 border border-amber-200 rounded p-2">
+            Update blank/incorrect fields. PDF will show corrected data on next download.
+          </p>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="ed-phone" className="text-xs font-medium">
+                Mobile / मोबाइल <span className="text-red-500">*</span>
+              </Label>
+              <Input id="ed-phone" value={fields.phone} onChange={set("phone")}
+                placeholder="10-digit mobile" maxLength={10} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="ed-parent" className="text-xs font-medium">
+                Parent's Mobile / अभिभावक मोबाइल
+              </Label>
+              <Input id="ed-parent" value={fields.parentMobile} onChange={set("parentMobile")}
+                placeholder="10-digit" maxLength={10} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="ed-dob" className="text-xs font-medium">
+                Date of Birth / जन्म तिथि
+              </Label>
+              <Input id="ed-dob" value={fields.dob} onChange={set("dob")}
+                placeholder="DD-MM-YYYY" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="ed-pin" className="text-xs font-medium">
+                PIN Code / पिन
+              </Label>
+              <Input id="ed-pin" value={fields.pin} onChange={set("pin")}
+                placeholder="6-digit PIN" maxLength={6} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="ed-father" className="text-xs font-medium">Father's Name / पिता का नाम</Label>
+              <Input id="ed-father" value={fields.fatherName} onChange={set("fatherName")} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="ed-mother" className="text-xs font-medium">Mother's Name / माता का नाम</Label>
+              <Input id="ed-mother" value={fields.motherName} onChange={set("motherName")} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="ed-village" className="text-xs font-medium">Village / गाँव</Label>
+              <Input id="ed-village" value={fields.village} onChange={set("village")} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="ed-dist" className="text-xs font-medium">District / जिला</Label>
+              <Input id="ed-dist" value={fields.district} onChange={set("district")} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="ed-state" className="text-xs font-medium">State / राज्य</Label>
+              <Input id="ed-state" value={fields.state} onChange={set("state")} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="ed-tc" className="text-xs font-medium">Training Centre Name</Label>
+              <Input id="ed-tc" value={fields.skillCentreName} onChange={set("skillCentreName")} />
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? "Saving..." : "Save Changes"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function Candidates() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
+
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [mobilizerFilter, setMobilizerFilter] = useState("");
+  const [editCandidate, setEditCandidate] = useState<CandidateDto | null>(null);
 
   const queryParams: any = {};
   if (debouncedSearch) queryParams.search = debouncedSearch;
@@ -31,7 +202,6 @@ export default function Candidates() {
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(e.target.value);
-    // Simple debounce inline for demo purposes
     setTimeout(() => {
       setDebouncedSearch(e.target.value);
     }, 500);
@@ -101,7 +271,7 @@ export default function Candidates() {
             onChange={(e) => {
               setMobilizerFilter(e.target.value);
             }}
-            onBlur={(e) => setMobilizerFilter(e.target.value)} // Re-trigger on blur
+            onBlur={(e) => setMobilizerFilter(e.target.value)}
           />
         </div>
       </div>
@@ -138,7 +308,9 @@ export default function Candidates() {
                     <div className="text-xs text-muted-foreground">{candidate.fatherName || "N/A"}</div>
                   </TableCell>
                   <TableCell>
-                    <div>{candidate.phone}</div>
+                    <div className={!candidate.phone ? "text-red-500 text-xs italic" : ""}>
+                      {candidate.phone || "Missing"}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="max-w-[150px] truncate" title={candidate.village || ""}>{candidate.village || "-"}</div>
@@ -156,9 +328,19 @@ export default function Candidates() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end items-center gap-2">
-                      <Select 
-                        value={candidate.status} 
+                    <div className="flex justify-end items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        title="Edit Candidate Details"
+                        onClick={() => setEditCandidate(candidate)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+
+                      <Select
+                        value={candidate.status}
                         onValueChange={(val) => handleStatusUpdate(candidate.id, val)}
                         disabled={updateStatus.isPending}
                       >
@@ -172,7 +354,7 @@ export default function Candidates() {
                           <SelectItem value="rejected">Rejected</SelectItem>
                         </SelectContent>
                       </Select>
-                      
+
                       <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
                         <a
                           href={`/api/candidates/${candidate.id}/pdf`}
@@ -191,6 +373,18 @@ export default function Candidates() {
           </TableBody>
         </Table>
       </div>
+
+      {editCandidate && user?.phone && (
+        <EditCandidateModal
+          candidate={editCandidate}
+          open={!!editCandidate}
+          onClose={() => setEditCandidate(null)}
+          onSaved={() => {
+            queryClient.invalidateQueries({ queryKey: ["/api/admin/candidates"] });
+          }}
+          adminPhone={user.phone}
+        />
+      )}
     </div>
   );
 }

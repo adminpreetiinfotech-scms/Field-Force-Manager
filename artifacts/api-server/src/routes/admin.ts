@@ -664,6 +664,129 @@ router.patch("/admin/staff/:id/deactivate", requireAdmin, async (req, res, next)
   }
 });
 
+// ─── PATCH /api/admin/candidates/:id ─────────────────────────────────────────
+// Allows admin to update any editable candidate field (phone, dob, parentMobile,
+// pin, etc.) to fix blank / incorrect data from old registrations.
+
+router.patch("/admin/candidates/:id", requireAdmin, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const companyId = res.locals.companyId as string | null;
+
+    const [existing] = await db
+      .select({ id: candidatesTable.id, companyId: candidatesTable.companyId })
+      .from(candidatesTable)
+      .where(eq(candidatesTable.id, id))
+      .limit(1);
+
+    if (!existing) {
+      res.status(404).json({ title: "Candidate not found", status: 404 });
+      return;
+    }
+
+    // Company admin can only edit candidates in their own company (or null companyId).
+    if (companyId && existing.companyId && existing.companyId !== companyId) {
+      res.status(403).json({ title: "Forbidden", status: 403 });
+      return;
+    }
+
+    const body = req.body as {
+      phone?: string | null;
+      parentMobile?: string | null;
+      dob?: string | null;
+      pin?: string | null;
+      email?: string | null;
+      fatherName?: string | null;
+      motherName?: string | null;
+      gender?: string | null;
+      maritalStatus?: string | null;
+      religion?: string | null;
+      caste?: string | null;
+      address?: string | null;
+      village?: string | null;
+      policeStation?: string | null;
+      postOffice?: string | null;
+      district?: string | null;
+      state?: string | null;
+      bankAccount?: string | null;
+      bankName?: string | null;
+      bankBranch?: string | null;
+      ifsc?: string | null;
+      aadhaarNumber?: string | null;
+      education?: string | null;
+      yearOfPassing?: string | null;
+      skillCentreName?: string | null;
+    };
+
+    // Validate phone if provided
+    if (body.phone !== undefined && body.phone !== null && body.phone.trim()) {
+      if (!/^\d{10}$/.test(body.phone.trim())) {
+        res.status(400).json({ title: "Phone must be exactly 10 digits", status: 400 });
+        return;
+      }
+    }
+    // Validate parentMobile if provided
+    if (body.parentMobile !== undefined && body.parentMobile !== null && body.parentMobile.trim()) {
+      if (!/^\d{10}$/.test(body.parentMobile.trim())) {
+        res.status(400).json({ title: "Parent mobile must be exactly 10 digits", status: 400 });
+        return;
+      }
+    }
+    // Validate pin if provided
+    if (body.pin !== undefined && body.pin !== null && body.pin.trim()) {
+      if (!/^\d{6}$/.test(body.pin.trim())) {
+        res.status(400).json({ title: "PIN must be exactly 6 digits", status: 400 });
+        return;
+      }
+    }
+
+    const patch: Record<string, string | null> = {};
+    const str = (v: string | null | undefined) =>
+      v === undefined ? undefined : (v?.trim() || null);
+
+    if (body.phone        !== undefined) { const v = str(body.phone);        if (v !== undefined) patch.phone = v; }
+    if (body.parentMobile !== undefined) { const v = str(body.parentMobile); if (v !== undefined) patch.parentMobile = v; }
+    if (body.dob          !== undefined) { const v = str(body.dob);          if (v !== undefined) patch.dob = v; }
+    if (body.pin          !== undefined) { const v = str(body.pin);          if (v !== undefined) patch.pin = v; }
+    if (body.email        !== undefined) { const v = str(body.email);        if (v !== undefined) patch.email = v; }
+    if (body.fatherName   !== undefined) { const v = str(body.fatherName);   if (v !== undefined) patch.fatherName = v; }
+    if (body.motherName   !== undefined) { const v = str(body.motherName);   if (v !== undefined) patch.motherName = v; }
+    if (body.gender       !== undefined) { const v = str(body.gender);       if (v !== undefined) patch.gender = v; }
+    if (body.maritalStatus!== undefined) { const v = str(body.maritalStatus);if (v !== undefined) patch.maritalStatus = v; }
+    if (body.religion     !== undefined) { const v = str(body.religion);     if (v !== undefined) patch.religion = v; }
+    if (body.caste        !== undefined) { const v = str(body.caste);        if (v !== undefined) patch.caste = v; }
+    if (body.address      !== undefined) { const v = str(body.address);      if (v !== undefined) patch.address = v; }
+    if (body.village      !== undefined) { const v = str(body.village);      if (v !== undefined) patch.village = v; }
+    if (body.policeStation!== undefined) { const v = str(body.policeStation);if (v !== undefined) patch.policeStation = v; }
+    if (body.postOffice   !== undefined) { const v = str(body.postOffice);   if (v !== undefined) patch.postOffice = v; }
+    if (body.district     !== undefined) { const v = str(body.district);     if (v !== undefined) patch.district = v; }
+    if (body.state        !== undefined) { const v = str(body.state);        if (v !== undefined) patch.state = v; }
+    if (body.bankAccount  !== undefined) { const v = str(body.bankAccount);  if (v !== undefined) patch.bankAccount = v; }
+    if (body.bankName     !== undefined) { const v = str(body.bankName);     if (v !== undefined) patch.bankName = v; }
+    if (body.bankBranch   !== undefined) { const v = str(body.bankBranch);   if (v !== undefined) patch.bankBranch = v; }
+    if (body.ifsc         !== undefined) { const v = str(body.ifsc);         if (v !== undefined) patch.ifsc = v; }
+    if (body.aadhaarNumber!== undefined) { const v = str(body.aadhaarNumber);if (v !== undefined) patch.aadhaarNumber = v; }
+    if (body.education    !== undefined) { const v = str(body.education);    if (v !== undefined) patch.education = v; }
+    if (body.yearOfPassing!== undefined) { const v = str(body.yearOfPassing);if (v !== undefined) patch.yearOfPassing = v; }
+    if (body.skillCentreName !== undefined) { const v = str(body.skillCentreName); if (v !== undefined) patch.skillCentreName = v; }
+
+    if (Object.keys(patch).length === 0) {
+      res.status(400).json({ title: "No fields to update", status: 400 });
+      return;
+    }
+
+    const [updated] = await db
+      .update(candidatesTable)
+      .set(patch as Parameters<typeof candidatesTable.$inferInsert>[0])
+      .where(eq(candidatesTable.id, id))
+      .returning();
+
+    res.json({ success: true, id: updated.id });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ─── GET /api/admin/company/subscription ──────────────────────────────────────
 // Returns subscription details for the company admin's own company.
 // Used by the admin dashboard to show expiry warnings.
