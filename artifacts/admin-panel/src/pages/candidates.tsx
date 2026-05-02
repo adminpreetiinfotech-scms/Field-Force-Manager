@@ -25,6 +25,13 @@ type EditFields = {
   state: string;
   village: string;
   skillCentreName: string;
+  yearOfPassing: string;
+  bankAccount: string;
+  bankName: string;
+  bankBranch: string;
+  ifsc: string;
+  aadhaarNumber: string;
+  education: string;
 };
 
 function EditCandidateModal({
@@ -53,6 +60,13 @@ function EditCandidateModal({
     state: (candidate as any).state ?? "",
     village: candidate.village ?? "",
     skillCentreName: (candidate as any).skillCentreName ?? "",
+    yearOfPassing: (candidate as any).yearOfPassing ?? "",
+    bankAccount: (candidate as any).bankAccount ?? "",
+    bankName: (candidate as any).bankName ?? "",
+    bankBranch: (candidate as any).bankBranch ?? "",
+    ifsc: (candidate as any).ifsc ?? "",
+    aadhaarNumber: (candidate as any).aadhaarNumber ?? "",
+    education: (candidate as any).education ?? "",
   });
 
   const set = (key: keyof EditFields) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -78,6 +92,13 @@ function EditCandidateModal({
           state: fields.state || null,
           village: fields.village || null,
           skillCentreName: fields.skillCentreName || null,
+          yearOfPassing: fields.yearOfPassing || null,
+          bankAccount: fields.bankAccount || null,
+          bankName: fields.bankName || null,
+          bankBranch: fields.bankBranch || null,
+          ifsc: fields.ifsc || null,
+          aadhaarNumber: fields.aadhaarNumber || null,
+          education: fields.education || null,
         }),
       });
       const data = await res.json() as { title?: string };
@@ -167,6 +188,63 @@ function EditCandidateModal({
             <div className="space-y-1">
               <Label htmlFor="ed-tc" className="text-xs font-medium">Training Centre Name</Label>
               <Input id="ed-tc" value={fields.skillCentreName} onChange={set("skillCentreName")} />
+            </div>
+          </div>
+
+          <div className="border-t pt-3 mt-1">
+            <p className="text-xs font-semibold text-muted-foreground mb-2">Education & Bank Details</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="ed-edu" className="text-xs font-medium">Qualification / योग्यता</Label>
+              <Input id="ed-edu" value={fields.education} onChange={set("education")}
+                placeholder="e.g. Class 10, Class 12" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="ed-yop" className="text-xs font-medium">
+                Year of Passing / उत्तीर्ण वर्ष
+              </Label>
+              <Input id="ed-yop" value={fields.yearOfPassing} onChange={set("yearOfPassing")}
+                placeholder="e.g. 2020" maxLength={4} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="ed-acc" className="text-xs font-medium">
+                Bank A/C No. / खाता नंबर
+              </Label>
+              <Input id="ed-acc" value={fields.bankAccount} onChange={set("bankAccount")}
+                placeholder="Account number" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="ed-bank" className="text-xs font-medium">Bank Name / बैंक</Label>
+              <Input id="ed-bank" value={fields.bankName} onChange={set("bankName")}
+                placeholder="e.g. SBI" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="ed-ifsc" className="text-xs font-medium">IFSC Code</Label>
+              <Input id="ed-ifsc" value={fields.ifsc} onChange={set("ifsc")}
+                placeholder="e.g. SBIN0001234" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="ed-branch" className="text-xs font-medium">Branch / शाखा</Label>
+              <Input id="ed-branch" value={fields.bankBranch} onChange={set("bankBranch")}
+                placeholder="Branch name" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="ed-aadhar" className="text-xs font-medium">
+                Aadhaar Number / आधार नंबर
+              </Label>
+              <Input id="ed-aadhar" value={fields.aadhaarNumber} onChange={set("aadhaarNumber")}
+                placeholder="12-digit Aadhaar" maxLength={12} />
             </div>
           </div>
         </div>
