@@ -448,8 +448,8 @@ router.post("/candidates", async (req, res, next) => {
         pdfFilePath,
         buildPdfOpts(candidate, undefined, branding),
       );
-    } catch {
-      /* PDF generation failure is non-fatal */
+    } catch (pdfErr) {
+      req.log.error({ err: pdfErr, candidateId: candidate.id }, "PDF generation failed (non-fatal)");
     }
     const pdfExists = fs.existsSync(pdfFilePath);
 

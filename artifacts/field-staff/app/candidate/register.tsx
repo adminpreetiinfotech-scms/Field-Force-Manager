@@ -221,6 +221,8 @@ async function capturePassportPhoto(): Promise<ImageData | null> {
 // ─── Sub-components ─────────────────────────────────────────────────────────
 
 function FormHeader() {
+  const { user } = useApp();
+  const tcId = user?.companyTcId ?? null;
   return (
     <View style={styles.formHeader}>
       {/* ── Three-column letterhead ── */}
@@ -230,7 +232,7 @@ function FormHeader() {
           <Text style={styles.lhEngBold}>Jharkhand Skill Development Mission Society</Text>
           <Text style={styles.lhEngSm}>Labour Employment and skill Development Department</Text>
           <Text style={styles.lhEngSm}>Govt. of Jharkhand</Text>
-          <Text style={styles.lhEngSm}>Training Centre ID :–</Text>
+          <Text style={styles.lhEngSm}>Training Centre ID :– {tcId ?? ""}</Text>
         </View>
         {/* Centre — emblem circle */}
         <View style={styles.letterheadLogo}>
@@ -1344,7 +1346,21 @@ export default function CandidateRegisterScreen() {
                 <HalfField label="Religion / धर्म" value={religion ?? ""} onChangeText={(v) => setReligion(v || null)} />
                 <View style={styles.halfCell} />
               </HalfRow>
-              <RadioRow label="Category / वर्ग" options={CASTES} value={caste} onSelect={setCaste} />
+              <RadioRow
+                label="Category / वर्ग"
+                options={CASTES}
+                value={caste}
+                onSelect={(v) => {
+                  setCaste(v);
+                  if (v === "General") {
+                    setCasteCertAvailable(null);
+                    setCasteCert(null);
+                    setCasteName("");
+                  } else {
+                    setCasteCertAvailable("yes");
+                  }
+                }}
+              />
               <HalfRow>
                 <HalfRadio label="PwD / दिव्यांग" options={PWD_OPTIONS} value={pwd} onSelect={setPwd} />
                 {pwd === "Yes"

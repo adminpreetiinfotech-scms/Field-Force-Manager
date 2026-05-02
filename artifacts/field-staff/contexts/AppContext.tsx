@@ -34,6 +34,7 @@ export type User = {
   companyName?: string | null;
   companyLogoUrl?: string | null;
   companySchemeName?: string | null;
+  companyTcId?: string | null;
 };
 
 export type GeoPoint = {
@@ -662,6 +663,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       companyName: dto.companyName ?? null,
       companyLogoUrl: dto.companyLogoUrl ?? null,
       companySchemeName: dto.companySchemeName ?? null,
+      companyTcId: (dto as any).companyTcId ?? null,
     };
     setState((s) => ({ ...s, user, pendingPhone: null, pendingRegistration: null }));
     return user;
@@ -716,6 +718,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           companyName: dto.companyName ?? null,
           companyLogoUrl: dto.companyLogoUrl ?? null,
           companySchemeName: dto.companySchemeName ?? null,
+          companyTcId: (dto as any).companyTcId ?? null,
         };
     setState((s) => ({ ...s, user, pendingPhone: null, pendingRegistration: null }));
     return user;

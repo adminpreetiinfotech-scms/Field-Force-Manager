@@ -13,21 +13,22 @@ function toLogoUrl(filePath: string | null | undefined): string | null {
 const router = Router();
 
 async function getCompanyBranding(companyId: string | null | undefined) {
-  if (!companyId) return { companyName: null, companyLogoUrl: null, companySchemeName: null };
+  if (!companyId) return { companyName: null, companyLogoUrl: null, companySchemeName: null, companyTcId: null };
   try {
     const [co] = await db
-      .select({ name: companiesTable.name, logoPath: companiesTable.logoPath, projectName: companiesTable.projectName })
+      .select({ name: companiesTable.name, logoPath: companiesTable.logoPath, projectName: companiesTable.projectName, tcId: companiesTable.tcId })
       .from(companiesTable)
       .where(eq(companiesTable.id, companyId))
       .limit(1);
-    if (!co) return { companyName: null, companyLogoUrl: null, companySchemeName: null };
+    if (!co) return { companyName: null, companyLogoUrl: null, companySchemeName: null, companyTcId: null };
     return {
-      companyName:      co.name ?? null,
-      companyLogoUrl:   toLogoUrl(co.logoPath),
+      companyName:       co.name ?? null,
+      companyLogoUrl:    toLogoUrl(co.logoPath),
       companySchemeName: co.projectName ?? null,
+      companyTcId:       co.tcId ?? null,
     };
   } catch {
-    return { companyName: null, companyLogoUrl: null, companySchemeName: null };
+    return { companyName: null, companyLogoUrl: null, companySchemeName: null, companyTcId: null };
   }
 }
 

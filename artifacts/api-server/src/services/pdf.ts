@@ -498,17 +498,17 @@ export async function generateCandidatePdf(
     const cidX = FX + csW + 5;
     doc.font("DVR").fontSize(7.5).fillColor(GRAY)
        .text("Candidate ID", cidX, y + 2, { lineBreak: false });
-    let bx = cidX + 66;
-    const cidCode = (c.candidateIdCode ?? "").substring(0, 10).padEnd(10, " ");
-    for (let i = 0; i < 10; i++) {
-      if (bx + 16 > FE) break;
-      box(doc, bx, y + 1, 16, 13, 0.5);
+    let bx = cidX + 60;
+    const cidCode = (c.candidateIdCode ?? "").substring(0, 12).padEnd(12, " ");
+    for (let i = 0; i < 12; i++) {
+      if (bx + 14 > FE) break;
+      box(doc, bx, y + 1, 14, 13, 0.5);
       const ch2 = cidCode[i];
       if (ch2 && ch2 !== " ") {
         doc.font("DVR").fontSize(7.5).fillColor(DARK)
-           .text(ch2, bx, y + 3.5, { width: 16, align: "center", lineBreak: false });
+           .text(ch2, bx, y + 3.5, { width: 14, align: "center", lineBreak: false });
       }
-      bx += 18;
+      bx += 15;
     }
     y += ROW;
 
