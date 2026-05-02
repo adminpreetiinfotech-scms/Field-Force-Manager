@@ -40,11 +40,13 @@ function buildPdfOpts(
     organization:      query?.["organization"]?.trim() || candidate.skillCentreName?.trim() || null,
     staffName:         query?.["staffName"]?.trim()    || candidate.mobilizer?.trim() || candidate.submittedBy?.trim() || null,
     reportDate:        fmtDMY(candidate.createdAt ? new Date(candidate.createdAt) : new Date()),
-    companyName:       branding?.companyName       ?? null,
-    companyLogoPath:   branding?.companyLogoPath   ?? null,
-    companyLogoBuffer: branding?.companyLogoBuffer ?? null,
-    schemeName:        branding?.schemeName        ?? null,
-    tcId:              branding?.tcId              ?? null,
+    // Do NOT pass companyName — always keep the original JSDMS Jharkhand government header.
+    // Only pass tcId so Training Centre ID shows without overriding the brand design.
+    companyName:       null,
+    companyLogoPath:   null,
+    companyLogoBuffer: null,
+    schemeName:        null,
+    tcId:              branding?.tcId ?? null,
   };
 }
 
