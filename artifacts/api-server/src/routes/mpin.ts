@@ -266,4 +266,37 @@ router.post("/auth/set-mpin", async (req, res, next) => {
   }
 });
 
+// ─── POST /api/auth/promote-super-admin ─────────────────────────────────────
+// Promotes 9999999999 to super_admin. Requires correct MPIN for that account.
+router.post("/auth/promote-super-admin", async (req, res, next) => {
+  try {
+    const { mpin } = req.body as { mpin?: string };
+    if (!mpin) {
+      res.status(400).json({ title: "MPIN required", status: 400 });
+      return;
+    }
+    const [row] = await db
+      .select()
+      .from(staffTable)
+      .where(eq(staffTable.phone, "9999999999"))
+      .limit(1);
+    if (!row) {
+      res.status(404).json({ title: "Account not found", status: 404 });
+      return;
+    }
+    if (!row.mpinHash || !verifyMpin(mpin, row.mpinHash)) {
+      res.status(401).json({ title: "Incorrect MPIN", status: 401 });
+      return;
+    }
+    const [updated] = await db
+      .update(staffTable)
+      .set({ role: "super_admin", approvalStatus: "approved", failedMpinAttempts: 0, mpinBlockedUntil: null })
+      .where(eq(staffTable.phone, "9999999999"))
+      .returning({ phone: staffTable.phone, role: staffTable.role, name: staffTable.name });
+    res.json({ success: true, user: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;
