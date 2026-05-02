@@ -1759,7 +1759,13 @@ components:
         totalKm:
           type: number
           description: Total km for the month.
-      required: [year, month, days, presentCount, partialCount, absentCount, totalKm]
+        totalWorkingDays:
+          type: integer
+          description: Total Mon–Sat working days from day 1 up to today (or end of month for past months).
+        attendancePercent:
+          type: number
+          description: "(presentCount + partialCount) / totalWorkingDays * 100, rounded to 1 decimal."
+      required: [year, month, days, presentCount, partialCount, absentCount, totalKm, totalWorkingDays, attendancePercent]
 
     ProblemDetails:
       type: object

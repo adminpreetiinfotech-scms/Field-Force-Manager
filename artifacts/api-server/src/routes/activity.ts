@@ -421,6 +421,13 @@ router.get("/activity/attendance-calendar", async (req, res, next) => {
     let absentCount = 0;
     let totalKmMonth = 0;
 
+    // Count Mon–Sat working days (exclude Sundays) from day 1 to lastDay
+    let totalWorkingDays = 0;
+    for (let d = 1; d <= lastDay; d++) {
+      const dow = new Date(year, month - 1, d).getDay(); // 0 = Sunday
+      if (dow !== 0) totalWorkingDays++;
+    }
+
     for (let d = 1; d <= lastDay; d++) {
       const mm = String(month).padStart(2, "0");
       const dd = String(d).padStart(2, "0");
@@ -458,6 +465,11 @@ router.get("/activity/attendance-calendar", async (req, res, next) => {
       days.push({ date, status, checkinTime, checkoutTime, totalKm: km, tripCount: trips });
     }
 
+    const attendancePercent =
+      totalWorkingDays > 0
+        ? Math.round(((presentCount + partialCount) / totalWorkingDays) * 1000) / 10
+        : 0;
+
     res.json({
       year,
       month,
@@ -466,6 +478,8 @@ router.get("/activity/attendance-calendar", async (req, res, next) => {
       partialCount,
       absentCount,
       totalKm: round1(totalKmMonth),
+      totalWorkingDays,
+      attendancePercent,
     });
   } catch (err) {
     next(err);

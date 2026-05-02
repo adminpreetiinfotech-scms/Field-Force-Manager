@@ -34,6 +34,8 @@ type AttendanceMonth = {
   partialCount: number;
   absentCount: number;
   totalKm: number;
+  totalWorkingDays: number;
+  attendancePercent: number;
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -194,36 +196,95 @@ export default function AttendanceCalendarScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Summary strip ─────────────────────────────────────────────── */}
+        {/* ── Attendance Summary Card ───────────────────────────────────── */}
         <View
           style={[
-            styles.summaryStrip,
-            { backgroundColor: colors.card, borderBottomColor: colors.border },
+            styles.summaryCard,
+            { backgroundColor: colors.card, borderColor: colors.border },
           ]}
         >
-          <SummaryPill
-            color="#16A34A"
-            label="Present"
-            value={data ? String(data.presentCount) : "—"}
-          />
-          <View style={[styles.pillSep, { backgroundColor: colors.border }]} />
-          <SummaryPill
-            color="#D97706"
-            label="Partial"
-            value={data ? String(data.partialCount) : "—"}
-          />
-          <View style={[styles.pillSep, { backgroundColor: colors.border }]} />
-          <SummaryPill
-            color="#EF4444"
-            label="Absent"
-            value={data ? String(data.absentCount) : "—"}
-          />
-          <View style={[styles.pillSep, { backgroundColor: colors.border }]} />
-          <SummaryPill
-            color="#0D6EAE"
-            label="Km"
-            value={data ? String(data.totalKm) : "—"}
-          />
+          {/* Card title row */}
+          <View style={styles.summaryCardHeader}>
+            <Text style={[styles.summaryCardTitle, { color: colors.foreground }]}>
+              Attendance Summary
+            </Text>
+            <Text style={[styles.summaryCardSub, { color: colors.mutedForeground }]}>
+              {MONTH_NAMES[calMonth - 1]} {calYear}
+            </Text>
+          </View>
+
+          {/* Attendance % hero */}
+          <View style={styles.percentHero}>
+            <View
+              style={[
+                styles.percentCircle,
+                {
+                  borderColor:
+                    !data
+                      ? colors.border
+                      : data.attendancePercent >= 75
+                        ? "#16A34A"
+                        : data.attendancePercent >= 50
+                          ? "#D97706"
+                          : "#EF4444",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.percentValue,
+                  {
+                    color: !data
+                      ? colors.mutedForeground
+                      : data.attendancePercent >= 75
+                        ? "#16A34A"
+                        : data.attendancePercent >= 50
+                          ? "#D97706"
+                          : "#EF4444",
+                  },
+                ]}
+              >
+                {data ? `${data.attendancePercent}%` : "—"}
+              </Text>
+              <Text style={[styles.percentLabel, { color: colors.mutedForeground }]}>
+                Attendance
+              </Text>
+            </View>
+
+            {/* Right-side stats column */}
+            <View style={styles.percentStats}>
+              <SummaryRow
+                dot="#6B7280"
+                label="Working Days"
+                value={data ? String(data.totalWorkingDays) : "—"}
+                colors={colors}
+              />
+              <View style={[styles.summaryRowSep, { backgroundColor: colors.border }]} />
+              <SummaryRow
+                dot="#16A34A"
+                label="Present"
+                value={data ? String(data.presentCount) : "—"}
+                colors={colors}
+                valueColor="#16A34A"
+              />
+              <View style={[styles.summaryRowSep, { backgroundColor: colors.border }]} />
+              <SummaryRow
+                dot="#D97706"
+                label="Partial"
+                value={data ? String(data.partialCount) : "—"}
+                colors={colors}
+                valueColor="#D97706"
+              />
+              <View style={[styles.summaryRowSep, { backgroundColor: colors.border }]} />
+              <SummaryRow
+                dot="#EF4444"
+                label="Absent"
+                value={data ? String(data.absentCount) : "—"}
+                colors={colors}
+                valueColor="#EF4444"
+              />
+            </View>
+          </View>
         </View>
 
         {/* ── Calendar ──────────────────────────────────────────────────── */}
@@ -463,11 +524,24 @@ export default function AttendanceCalendarScreen() {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function SummaryPill({ color, label, value }: { color: string; label: string; value: string }) {
+function SummaryRow({
+  dot, label, value, colors, valueColor,
+}: {
+  dot: string;
+  label: string;
+  value: string;
+  colors: ReturnType<typeof useColors>;
+  valueColor?: string;
+}) {
   return (
-    <View style={styles.summaryPill}>
-      <Text style={[styles.summaryValue, { color }]}>{value}</Text>
-      <Text style={styles.summaryLabel}>{label}</Text>
+    <View style={styles.summaryRow}>
+      <View style={[styles.summaryRowDot, { backgroundColor: dot }]} />
+      <Text style={[styles.summaryRowLabel, { color: colors.mutedForeground }]} numberOfLines={1}>
+        {label}
+      </Text>
+      <Text style={[styles.summaryRowValue, { color: valueColor ?? colors.foreground }]}>
+        {value}
+      </Text>
     </View>
   );
 }
@@ -502,20 +576,40 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: "row", alignItems: "center" },
   headerTitle: { color: "#fff", fontSize: 18, fontFamily: "Inter_700Bold", letterSpacing: -0.3 },
   headerSub: { color: "rgba(255,255,255,0.72)", fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
-  summaryStrip: {
+  summaryCard: {
+    margin: 16,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 16,
+  },
+  summaryCardHeader: {
     flexDirection: "row",
+    alignItems: "baseline",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+  summaryCardTitle: { fontSize: 15, fontFamily: "Inter_700Bold", letterSpacing: -0.3 },
+  summaryCardSub: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  percentHero: { flexDirection: "row", alignItems: "center", gap: 16 },
+  percentCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    borderWidth: 5,
     alignItems: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    justifyContent: "center",
+    flexShrink: 0,
   },
-  summaryPill: { flex: 1, alignItems: "center" },
-  summaryValue: { fontSize: 20, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
-  summaryLabel: {
-    fontSize: 10, fontFamily: "Inter_500Medium", color: "#9CA3AF",
-    marginTop: 2, textTransform: "uppercase", letterSpacing: 0.4,
-  },
-  pillSep: { width: StyleSheet.hairlineWidth, height: 30 },
+  percentValue: { fontSize: 22, fontFamily: "Inter_700Bold", letterSpacing: -1 },
+  percentLabel: { fontSize: 10, fontFamily: "Inter_500Medium", textTransform: "uppercase", letterSpacing: 0.4, marginTop: 1 },
+  percentStats: { flex: 1, gap: 4 },
+  summaryRow: { flexDirection: "row", alignItems: "center", gap: 7, paddingVertical: 3 },
+  summaryRowDot: { width: 7, height: 7, borderRadius: 3.5, flexShrink: 0 },
+  summaryRowLabel: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular" },
+  summaryRowValue: { fontSize: 15, fontFamily: "Inter_700Bold", letterSpacing: -0.3 },
+  summaryRowSep: { height: StyleSheet.hairlineWidth, marginLeft: 14 },
   calSection: { paddingHorizontal: 16 },
   calNavRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 },
   calNavBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
