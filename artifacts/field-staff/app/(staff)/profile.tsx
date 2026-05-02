@@ -242,6 +242,34 @@ export default function StaffProfile() {
         <Row icon="file-text" label="Field operations policy" colors={colors} last />
       </View>
 
+      {/* ── Contact & Support ─────────────────────────────────────── */}
+      <View
+        style={[
+          styles.section,
+          {
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+            borderRadius: colors.radius + 4,
+          },
+        ]}
+      >
+        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+          Contact &amp; Support
+        </Text>
+        <View style={{ marginTop: 12, gap: 10 }}>
+          <ContactRow icon="code" label="Developed by" value="Preeti Infotech" colors={colors} />
+          {!!(user?.companyName || user?.organization) && (
+            <ContactRow
+              icon="briefcase"
+              label="Company"
+              value={(user?.companyName || user?.organization) as string}
+              colors={colors}
+            />
+          )}
+          <ContactRow icon="info" label="App Version" value="1.0.2" colors={colors} />
+        </View>
+      </View>
+
       <Button
         label="Sign out"
         onPress={onSignOut}
@@ -261,9 +289,37 @@ export default function StaffProfile() {
           marginTop: 18,
         }}
       >
-        Field Staff Manager · v1.0
+        Field Staff Manager · v1.0.2
       </Text>
     </ScrollView>
+  );
+}
+
+function ContactRow({
+  icon,
+  label,
+  value,
+  colors,
+}: {
+  icon: keyof typeof Feather.glyphMap;
+  label: string;
+  value: string;
+  colors: ReturnType<typeof useColors>;
+}) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
+      <View style={{ width: 22, alignItems: "center", paddingTop: 1 }}>
+        <Feather name={icon} size={14} color={colors.primary} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: colors.mutedForeground, fontSize: 11, fontFamily: "Inter_500Medium", letterSpacing: 0.4 }}>
+          {label}
+        </Text>
+        <Text style={{ color: colors.foreground, fontSize: 13, fontFamily: "Inter_600SemiBold", marginTop: 2 }}>
+          {value}
+        </Text>
+      </View>
+    </View>
   );
 }
 
