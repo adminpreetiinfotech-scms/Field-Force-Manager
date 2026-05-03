@@ -49,6 +49,7 @@ function ClickHandler({ onLocationChange }: { onLocationChange: (lat: number, ln
 function DraggablePin({
   lat,
   lng,
+  radiusMeters,
   showDragHint,
   hintTimerRef,
   setShowDragHint,
@@ -56,6 +57,7 @@ function DraggablePin({
 }: {
   lat: number;
   lng: number;
+  radiusMeters: number;
   showDragHint: boolean;
   hintTimerRef: RefObject<ReturnType<typeof setTimeout> | null>;
   setShowDragHint: (v: boolean) => void;
@@ -74,7 +76,13 @@ function DraggablePin({
         },
         drag(e) {
           const pos = (e.target as L.Marker).getLatLng();
-          map.panTo(pos, { animate: true, duration: 0.1 });
+          const circleBounds = L.circle(pos, radiusMeters).getBounds();
+          map.fitBounds(circleBounds, {
+            animate: true,
+            duration: 0.1,
+            maxZoom: map.getZoom(),
+            padding: [24, 24],
+          });
         },
         dragend(e) {
           const pos = (e.target as L.Marker).getLatLng();
@@ -158,6 +166,7 @@ export default function GeoFenceMapPicker({
             <DraggablePin
               lat={lat}
               lng={lng}
+              radiusMeters={radiusMeters}
               showDragHint={showDragHint}
               hintTimerRef={hintTimerRef}
               setShowDragHint={setShowDragHint}
