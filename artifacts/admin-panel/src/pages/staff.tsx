@@ -37,6 +37,8 @@ import {
   User,
   Camera,
   X as XIcon,
+  Home,
+  Users,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
@@ -864,7 +866,14 @@ function StaffTable({
             <TableRow key={staff.id} className={getEffectiveStatus(staff) === "disabled" ? "opacity-60" : ""}>
               <TableCell className="font-mono text-xs">{staff.empCode}</TableCell>
               <TableCell>
-                <div className="font-medium">{staff.name}</div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-medium">{staff.name}</span>
+                  {staff.staffCategory === "center" && (
+                    <span title="Center Staff" className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 flex-shrink-0">
+                      <Home className="h-3 w-3" />
+                    </span>
+                  )}
+                </div>
                 {staff.organization && (
                   <div className="text-xs text-muted-foreground truncate max-w-[150px]">{staff.organization}</div>
                 )}
@@ -895,6 +904,7 @@ function StaffTable({
 export default function StaffManagement() {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState<"all" | "field" | "center">("all");
   const [allStaff, setAllStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -926,6 +936,8 @@ export default function StaffManagement() {
         !(s.empCode ?? "").toLowerCase().includes(q)
       ) return false;
     }
+    if (categoryFilter === "field" && s.staffCategory !== "field") return false;
+    if (categoryFilter === "center" && s.staffCategory !== "center") return false;
     if (tab === "pending") return s.approvalStatus === "pending";
     if (tab === "approved") return s.approvalStatus === "approved" && !s.disabledAt;
     if (tab === "disabled") return s.approvalStatus === "approved" && !!s.disabledAt;
@@ -945,14 +957,35 @@ export default function StaffManagement() {
     <div className="space-y-6 max-w-7xl">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight">Staff Management</h1>
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by name, phone or code..."
-            className="pl-9"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          {/* Category filter toggle */}
+          <div className="flex items-center rounded-lg border bg-muted p-1 gap-0.5 text-sm">
+            {(["all", "field", "center"] as const).map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setCategoryFilter(cat)}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-colors ${
+                  categoryFilter === cat
+                    ? "bg-background shadow-sm text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {cat === "all" && <Users className="h-3.5 w-3.5" />}
+                {cat === "field" && <MapPin className="h-3.5 w-3.5" />}
+                {cat === "center" && <Home className="h-3.5 w-3.5" />}
+                {cat.charAt(0).toUpperCase() + cat.slice(1)}
+              </button>
+            ))}
+          </div>
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, phone or code..."
+              className="pl-9"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
         </div>
       </div>
 

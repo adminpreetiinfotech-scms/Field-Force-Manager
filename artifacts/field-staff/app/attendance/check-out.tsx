@@ -3,7 +3,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -20,6 +20,14 @@ import { Button } from "@/components/Button";
 import { GeoPoint, useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
 
+function haversineM(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 export default function CheckOutScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -30,7 +38,18 @@ export default function CheckOutScreen() {
   const [meterPhotoUri, setMeterPhotoUri] = useState<string | null>(null);
   const [phase, setPhase] = useState<"input" | "camera">("input");
   const [submitting, setSubmitting] = useState(false);
+  const [currentLoc, setCurrentLoc] = useState<GeoPoint | null>(null);
   const cameraRef = useRef<CameraView>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        if (Platform.OS === "web") return;
+        const cur = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        setCurrentLoc({ latitude: cur.coords.latitude, longitude: cur.coords.longitude });
+      } catch { /* ignore */ }
+    })();
+  }, []);
 
   const gpsKmNum = parseFloat(gpsKm || "0") || 0;
 
@@ -116,6 +135,13 @@ export default function CheckOutScreen() {
   }
 
   const isCenterStaff = user?.staffCategory === "center";
+
+  const centerGeofenceWarning: { outside: boolean; distanceM: number } | null = (() => {
+    if (!isCenterStaff) return null;
+    if (!currentLoc || !user?.companyCenterLat || !user?.companyCenterLng || !user?.companyCenterRadiusMeters) return null;
+    const d = haversineM(currentLoc.latitude, currentLoc.longitude, user.companyCenterLat, user.companyCenterLng);
+    return { outside: d > user.companyCenterRadiusMeters, distanceM: Math.round(d) };
+  })();
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -239,6 +265,24 @@ export default function CheckOutScreen() {
 
           <View style={{ flex: 1 }} />
 
+          {/* Geo-fence warning for center staff */}
+          {isCenterStaff && centerGeofenceWarning && centerGeofenceWarning.outside && (
+            <View style={[styles.geofenceWarning, { backgroundColor: "#7C3AED18", borderColor: "#7C3AED" }]}>
+              <Feather name="alert-triangle" size={14} color="#A78BFA" />
+              <Text style={{ color: "#A78BFA", fontSize: 12, fontFamily: "Inter_500Medium", flex: 1 }}>
+                You are {centerGeofenceWarning.distanceM} m from center. Check-out will be flagged outside geo-fence.
+              </Text>
+            </View>
+          )}
+          {isCenterStaff && centerGeofenceWarning && !centerGeofenceWarning.outside && (
+            <View style={[styles.geofenceWarning, { backgroundColor: "#34D39918", borderColor: "#34D399" }]}>
+              <Feather name="check-circle" size={14} color="#34D399" />
+              <Text style={{ color: "#34D399", fontSize: 12, fontFamily: "Inter_500Medium", flex: 1 }}>
+                Inside geo-fence ({centerGeofenceWarning.distanceM} m from center)
+              </Text>
+            </View>
+          )}
+
           <Button
             label="End shift"
             onPress={submit}
@@ -324,4 +368,5 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
   },
+  geofenceWarning: { flexDirection: "row", alignItems: "center", gap: 8, padding: 10, borderRadius: 10, borderWidth: 1 },
 });

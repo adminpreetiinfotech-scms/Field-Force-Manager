@@ -950,6 +950,16 @@ router.post("/activity", async (req, res, next) => {
     const input = parsed.data;
     const occurredAt = input.occurredAt ?? new Date();
 
+    // Read odometer/photo fields directly from raw body (not in Zod schema yet — to be added via codegen)
+    const rawBody = req.body as {
+      startOdometerKm?: unknown;
+      endOdometerKm?: unknown;
+      vehicleMeterPhotoUri?: unknown;
+    };
+    const startOdometerKm = typeof rawBody.startOdometerKm === "number" ? rawBody.startOdometerKm : null;
+    const endOdometerKm = typeof rawBody.endOdometerKm === "number" ? rawBody.endOdometerKm : null;
+    const vehicleMeterPhotoUri = typeof rawBody.vehicleMeterPhotoUri === "string" ? rawBody.vehicleMeterPhotoUri : null;
+
     const payload: ActivityPayload = {
       location: input.location ?? null,
       consumerNo: input.consumerNo ?? null,
@@ -961,9 +971,9 @@ router.post("/activity", async (req, res, next) => {
       durationSec: input.durationSec ?? null,
       origin: input.origin ?? null,
       destination: input.destination ?? null,
-      startOdometerKm: (input as any).startOdometerKm ?? null,
-      endOdometerKm: (input as any).endOdometerKm ?? null,
-      vehicleMeterPhotoUri: (input as any).vehicleMeterPhotoUri ?? null,
+      startOdometerKm,
+      endOdometerKm,
+      vehicleMeterPhotoUri,
     };
 
     // Look up the staff's company_id and staffCategory

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -158,30 +159,29 @@ export default function CenterAttendance() {
   useEffect(() => { loadStaff(); }, []);
   useEffect(() => { if (!staffLoading) loadAttendance(); }, [staffLoading, loadAttendance]);
 
-  const exportCsv = () => {
+  const exportExcel = () => {
     if (!rows.length) return;
-    const headers = ["Date","Staff Name","Emp Code","Role","Status","Check-in","Check-out","Check-in Geofence","Check-in Distance (m)","Check-out Geofence","Check-out Distance (m)"];
-    const dataRows = rows.map((r) => [
-      r.date,
-      r.staffName,
-      r.empCode,
-      roleFmt(r.centerStaffRole),
-      r.status,
-      toIst(r.checkInTime),
-      toIst(r.checkOutTime),
-      r.checkInOutsideGeofence === null ? "N/A" : r.checkInOutsideGeofence ? "Outside" : "Inside",
-      r.checkInDistanceM ?? "N/A",
-      r.checkOutOutsideGeofence === null ? "N/A" : r.checkOutOutsideGeofence ? "Outside" : "Inside",
-      r.checkOutDistanceM ?? "N/A",
-    ]);
-    const csv = [headers, ...dataRows].map((r) => r.join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `center-attendance-${dateFrom}-to-${dateTo}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const sheetData = [
+      ["Date", "Staff Name", "Emp Code", "Role", "Status", "Check-in (IST)", "Check-out (IST)", "Check-in Geofence", "Check-in Distance (m)", "Check-out Geofence", "Check-out Distance (m)"],
+      ...rows.map((r) => [
+        r.date,
+        r.staffName,
+        r.empCode,
+        roleFmt(r.centerStaffRole),
+        r.status,
+        toIst(r.checkInTime),
+        toIst(r.checkOutTime),
+        r.checkInOutsideGeofence === null ? "N/A" : r.checkInOutsideGeofence ? "Outside" : "Inside",
+        r.checkInDistanceM ?? "N/A",
+        r.checkOutOutsideGeofence === null ? "N/A" : r.checkOutOutsideGeofence ? "Outside" : "Inside",
+        r.checkOutDistanceM ?? "N/A",
+      ]),
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+    ws["!cols"] = [9, 22, 10, 18, 10, 16, 16, 16, 14, 16, 14].map((w) => ({ wch: w }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Attendance");
+    XLSX.writeFile(wb, `center-attendance-${dateFrom}-to-${dateTo}.xlsx`);
   };
 
   const outsideCount = rows.filter((r) => r.checkInOutsideGeofence === true || r.checkOutOutsideGeofence === true).length;
@@ -203,9 +203,9 @@ export default function CenterAttendance() {
             <RefreshCw className={`h-4 w-4 mr-1.5 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </Button>
-          <Button variant="outline" size="sm" onClick={exportCsv} disabled={!rows.length}>
+          <Button variant="outline" size="sm" onClick={exportExcel} disabled={!rows.length}>
             <Download className="h-4 w-4 mr-1.5" />
-            Export CSV
+            Export Excel
           </Button>
         </div>
       </div>

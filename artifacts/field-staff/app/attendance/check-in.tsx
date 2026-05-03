@@ -22,6 +22,14 @@ import { Button } from "@/components/Button";
 import { GeoPoint, useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
 
+function haversineM(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 type Phase = "selfie" | "odometer" | "meter-capture";
 
 export default function CheckInScreen() {
@@ -73,6 +81,13 @@ export default function CheckInScreen() {
       Alert.alert("Camera error", "Could not capture photo. Please try again.");
     }
   };
+
+  const centerGeofenceWarning: { outside: boolean; distanceM: number } | null = (() => {
+    if (user?.staffCategory !== "center") return null;
+    if (!loc || !user.companyCenterLat || !user.companyCenterLng || !user.companyCenterRadiusMeters) return null;
+    const d = haversineM(loc.latitude, loc.longitude, user.companyCenterLat, user.companyCenterLng);
+    return { outside: d > user.companyCenterRadiusMeters, distanceM: Math.round(d) };
+  })();
 
   const confirmSelfie = () => {
     if (!photo) return;
@@ -305,6 +320,22 @@ export default function CheckInScreen() {
           {!!user?.vehicleType && <Check ok={false} label="Odometer reading (Step 2)" />}
         </View>
 
+        {photo && centerGeofenceWarning && centerGeofenceWarning.outside && (
+          <View style={[styles.geofenceWarning, { backgroundColor: "#7C3AED18", borderColor: "#7C3AED" }]}>
+            <Feather name="alert-triangle" size={14} color="#A78BFA" />
+            <Text style={{ color: "#A78BFA", fontSize: 12, fontFamily: "Inter_500Medium", flex: 1 }}>
+              You are {centerGeofenceWarning.distanceM} m from center. Check-in will be flagged outside geo-fence.
+            </Text>
+          </View>
+        )}
+        {photo && centerGeofenceWarning && !centerGeofenceWarning.outside && (
+          <View style={[styles.geofenceWarning, { backgroundColor: "#34D39918", borderColor: "#34D399" }]}>
+            <Feather name="check-circle" size={14} color="#34D399" />
+            <Text style={{ color: "#34D399", fontSize: 12, fontFamily: "Inter_500Medium", flex: 1 }}>
+              Inside geo-fence ({centerGeofenceWarning.distanceM} m from center)
+            </Text>
+          </View>
+        )}
         {photo ? (
           <View style={styles.actions}>
             <Pressable
@@ -388,4 +419,5 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   photoRow: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: 12, borderWidth: 1 },
+  geofenceWarning: { flexDirection: "row", alignItems: "center", gap: 8, padding: 10, borderRadius: 10, borderWidth: 1 },
 });
