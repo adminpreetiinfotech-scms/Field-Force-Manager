@@ -163,6 +163,11 @@ function rowToDetail(row: {
     durationSec: p.durationSec ?? null,
     origin: p.origin ?? null,
     destination: p.destination ?? null,
+    startOdometerKm: p.startOdometerKm ?? null,
+    endOdometerKm: p.endOdometerKm ?? null,
+    vehicleMeterPhotoUri: p.vehicleMeterPhotoUri ?? null,
+    outsideGeofence: p.outsideGeofence ?? null,
+    distanceFromCenterM: p.distanceFromCenterM ?? null,
   };
 }
 
