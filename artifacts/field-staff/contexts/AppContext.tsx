@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { listStaff, registerStaff } from "@workspace/api-client-react";
+import { listStaff, registerStaff, setAdminPhoneGetter } from "@workspace/api-client-react";
 import React, {
   createContext,
   useCallback,
@@ -422,6 +422,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     state.activeTripId,
     state.staffLocations,
   ]);
+
+  // Register admin phone getter so generated API client includes x-admin-phone header.
+  useEffect(() => {
+    setAdminPhoneGetter(() => state.user?.phone ?? null);
+  }, [state.user]);
 
   // Initialise the offline activity queue on mount.
   useEffect(() => {

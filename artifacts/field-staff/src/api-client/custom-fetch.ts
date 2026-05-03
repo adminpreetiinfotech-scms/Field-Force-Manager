@@ -17,6 +17,7 @@ const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 
 let _baseUrl: string | null = null;
 let _authTokenGetter: AuthTokenGetter | null = null;
+let _adminPhoneGetter: (() => string | null) | null = null;
 
 /**
  * Set a base URL that is prepended to every relative request URL
@@ -42,6 +43,15 @@ export function setBaseUrl(url: string | null): void {
  */
 export function setAuthTokenGetter(getter: AuthTokenGetter | null): void {
   _authTokenGetter = getter;
+}
+
+/**
+ * Register a getter that supplies the x-admin-phone header value.
+ * The getter is invoked before every fetch; when it returns a non-null string,
+ * an `x-admin-phone` header is attached to the request.
+ */
+export function setAdminPhoneGetter(getter: (() => string | null) | null): void {
+  _adminPhoneGetter = getter;
 }
 
 function isRequest(input: RequestInfo | URL): input is Request {
@@ -355,6 +365,14 @@ export async function customFetch<T = unknown>(
     const token = await _authTokenGetter();
     if (token) {
       headers.set("authorization", `Bearer ${token}`);
+    }
+  }
+
+  // Attach x-admin-phone header when a getter is configured.
+  if (_adminPhoneGetter && !headers.has("x-admin-phone")) {
+    const phone = _adminPhoneGetter();
+    if (phone) {
+      headers.set("x-admin-phone", phone);
     }
   }
 

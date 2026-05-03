@@ -64,6 +64,24 @@ export default function AdminTabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="candidates"
+        options={{
+          title: "Candidates",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="users" size={size - 2} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="staff"
+        options={{
+          title: "Staff",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="user-check" size={size - 2} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="records"
         options={{
           title: "Records",
