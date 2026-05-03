@@ -312,7 +312,7 @@ export default function Dashboard() {
             sub="Checked in at center"
             icon={UserCheck}
             accent="bg-emerald-500"
-            href={`/center-attendance?dateFrom=${todayIST}&dateTo=${todayIST}`}
+            href={`/center-attendance?dateFrom=${todayIST}&dateTo=${todayIST}&status=present`}
           />
           <StatCard
             title="Absent Today"
@@ -320,7 +320,7 @@ export default function Dashboard() {
             sub={stats.centerAbsentToday > 0 ? "No check-in recorded" : "All present"}
             icon={UserX}
             accent="bg-red-500"
-            href={`/center-attendance?dateFrom=${todayIST}&dateTo=${todayIST}`}
+            href={`/center-attendance?dateFrom=${todayIST}&dateTo=${todayIST}&status=absent`}
           />
           <StatCard
             title="Geofence Violations"
@@ -328,7 +328,7 @@ export default function Dashboard() {
             sub={stats.centerViolationsToday > 0 ? "Checked in outside zone" : "No violations"}
             icon={ShieldAlert}
             accent="bg-amber-500"
-            href={`/center-attendance?dateFrom=${todayIST}&dateTo=${todayIST}`}
+            href={`/center-attendance?dateFrom=${todayIST}&dateTo=${todayIST}&status=violations`}
           />
         </div>
       </div>

@@ -127,10 +127,12 @@ export default function CenterAttendance() {
   const urlParams = new URLSearchParams(window.location.search);
   const initDateFrom = urlParams.get("dateFrom") ?? monthStartIst();
   const initDateTo = urlParams.get("dateTo") ?? todayIst();
+  const initStatus = urlParams.get("status") ?? "";
 
   const [dateFrom, setDateFrom] = useState(initDateFrom);
   const [dateTo, setDateTo] = useState(initDateTo);
   const [selectedStaffId, setSelectedStaffId] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>(initStatus);
 
   const loadStaff = useCallback(async () => {
     setStaffLoading(true);
@@ -189,6 +191,12 @@ export default function CenterAttendance() {
     XLSX.utils.book_append_sheet(wb, ws, "Attendance");
     XLSX.writeFile(wb, `center-attendance-${dateFrom}-to-${dateTo}.xlsx`);
   };
+
+  const filteredRows = rows.filter((r) => {
+    if (!statusFilter) return true;
+    if (statusFilter === "violations") return r.checkInOutsideGeofence === true || r.checkOutOutsideGeofence === true;
+    return r.status === statusFilter;
+  });
 
   const outsideCount = rows.filter((r) => r.checkInOutsideGeofence === true || r.checkOutOutsideGeofence === true).length;
   const presentCount = rows.filter((r) => r.status === "present").length;
@@ -252,6 +260,23 @@ export default function CenterAttendance() {
             <ChevronDown className="h-4 w-4 absolute right-2 top-2.5 text-muted-foreground pointer-events-none" />
           </div>
         </div>
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Status</label>
+          <div className="relative">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="border rounded-lg pl-3 pr-8 py-2 text-sm bg-background appearance-none focus:outline-none focus:ring-2 focus:ring-primary min-w-[150px]"
+            >
+              <option value="">All Statuses</option>
+              <option value="present">Present</option>
+              <option value="partial">Partial</option>
+              <option value="absent">Absent</option>
+              <option value="violations">Violations</option>
+            </select>
+            <ChevronDown className="h-4 w-4 absolute right-2 top-2.5 text-muted-foreground pointer-events-none" />
+          </div>
+        </div>
         <Button onClick={loadAttendance} disabled={loading} size="sm">
           Apply Filter
         </Button>
@@ -294,13 +319,15 @@ export default function CenterAttendance() {
         <div className="space-y-2">
           {[1,2,3,4,5].map(i => <Skeleton key={i} className="h-14 rounded-xl" />)}
         </div>
-      ) : rows.length === 0 ? (
+      ) : filteredRows.length === 0 ? (
         <div className="border rounded-xl p-12 text-center bg-muted/20 text-muted-foreground">
           <UserCheck className="h-10 w-10 mx-auto mb-3 opacity-30" />
           <p className="font-medium">No attendance records found</p>
           <p className="text-sm mt-1">
             {staffList.length === 0
               ? "No center staff found. Add staff with category 'Center' to see attendance here."
+              : statusFilter
+              ? "No records match the selected status filter. Try changing or clearing the status."
               : "Try adjusting the date range or staff filter."}
           </p>
         </div>
@@ -325,7 +352,7 @@ export default function CenterAttendance() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row, idx) => {
+                {filteredRows.map((row, idx) => {
                   const violation = row.checkInOutsideGeofence === true || row.checkOutOutsideGeofence === true;
                   return (
                     <tr
