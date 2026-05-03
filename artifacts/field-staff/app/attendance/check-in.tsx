@@ -321,9 +321,9 @@ export default function CheckInScreen() {
         </View>
 
         {photo && centerGeofenceWarning && centerGeofenceWarning.outside && (
-          <View style={[styles.geofenceWarning, { backgroundColor: "#7C3AED18", borderColor: "#7C3AED" }]}>
-            <Feather name="alert-triangle" size={14} color="#A78BFA" />
-            <Text style={{ color: "#A78BFA", fontSize: 12, fontFamily: "Inter_500Medium", flex: 1 }}>
+          <View style={[styles.geofenceWarning, { backgroundColor: "#FEF3C718", borderColor: "#D97706" }]}>
+            <Feather name="alert-triangle" size={14} color="#D97706" />
+            <Text style={{ color: "#92400E", fontSize: 12, fontFamily: "Inter_500Medium", flex: 1 }}>
               You are {centerGeofenceWarning.distanceM} m from center. Check-in will be flagged outside geo-fence.
             </Text>
           </View>
