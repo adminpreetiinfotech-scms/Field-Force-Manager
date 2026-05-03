@@ -926,13 +926,13 @@ router.get("/admin/center-attendance", requireAdmin, async (req, res, next) => {
       staffId?: string;
     };
 
-    if (!dateFrom || !dateTo) {
-      res.status(400).json({ title: "dateFrom and dateTo are required (YYYY-MM-DD)", status: 400 });
-      return;
-    }
+    // Default to today in IST when not provided (matches OpenAPI optional contract)
+    const todayIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const resolvedDateFrom = dateFrom || todayIST;
+    const resolvedDateTo = dateTo || todayIST;
 
     // Validate date format
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateFrom) || !/^\d{4}-\d{2}-\d{2}$/.test(dateTo)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(resolvedDateFrom) || !/^\d{4}-\d{2}-\d{2}$/.test(resolvedDateTo)) {
       res.status(400).json({ title: "Dates must be in YYYY-MM-DD format", status: 400 });
       return;
     }
@@ -961,9 +961,9 @@ router.get("/admin/center-attendance", requireAdmin, async (req, res, next) => {
     }
 
     // IST = UTC + 5:30 = UTC + 19800 seconds
-    // dateFrom 00:00 IST = dateFrom 00:00:00 - 5h30m UTC = datFrom-1 18:30 UTC
-    const fromUtc = new Date(dateFrom + "T00:00:00+05:30");
-    const toUtc = new Date(dateTo + "T23:59:59+05:30");
+    // resolvedDateFrom 00:00 IST = resolvedDateFrom 00:00:00 - 5h30m UTC = resolvedDateFrom-1 18:30 UTC
+    const fromUtc = new Date(resolvedDateFrom + "T00:00:00+05:30");
+    const toUtc = new Date(resolvedDateTo + "T23:59:59+05:30");
 
     const staffIds = centerStaff.map((s) => s.id);
 
@@ -991,8 +991,8 @@ router.get("/admin/center-attendance", requireAdmin, async (req, res, next) => {
 
     // Generate all dates in range
     const dates: string[] = [];
-    const cur = new Date(dateFrom + "T00:00:00");
-    const end = new Date(dateTo + "T00:00:00");
+    const cur = new Date(resolvedDateFrom + "T00:00:00");
+    const end = new Date(resolvedDateTo + "T00:00:00");
     while (cur <= end) {
       dates.push(cur.toISOString().slice(0, 10));
       cur.setDate(cur.getDate() + 1);

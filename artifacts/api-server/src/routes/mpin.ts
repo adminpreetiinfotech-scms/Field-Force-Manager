@@ -37,7 +37,7 @@ async function getCompanyBranding(companyId: string | null | undefined) {
       companyTcId:             co.tcId ?? null,
       companyCenterLat:        co.centerLat ?? null,
       companyCenterLng:        co.centerLng ?? null,
-      companyCenterRadiusMeters: co.centerRadiusMeters ?? null,
+      companyCenterRadiusMeters: co.centerRadiusMeters ?? 200,
     };
   } catch {
     return empty;

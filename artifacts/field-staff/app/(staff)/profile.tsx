@@ -21,6 +21,21 @@ import { VehicleType, useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { useGetStaffKmHistory } from "@workspace/api-client-react";
 
+const CENTER_STAFF_ROLE_LABELS: Record<string, string> = {
+  centerHead: "Center Head",
+  misExecutive: "MIS Executive",
+  placementIncharge: "Placement Incharge",
+  trainer: "Trainer",
+  itTrainer: "IT Trainer",
+  softSkillsTrainer: "Soft Skills Trainer",
+  receptionist: "Receptionist",
+  counselor: "Counselor",
+  officeboy: "Office Boy",
+  securityGuard: "Security Guard",
+  cook: "Cook",
+  cleaningStaff: "Cleaning Staff",
+};
+
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 function fmtDate(dateStr: string) {
   const d = new Date(dateStr + "T00:00:00");
@@ -317,7 +332,9 @@ export default function StaffProfile() {
           {!!user?.centerStaffRole && (
             <View style={{ marginTop: 12, padding: 10, borderRadius: 10, backgroundColor: colors.primary + "10", borderWidth: StyleSheet.hairlineWidth, borderColor: colors.primary + "30" }}>
               <Text style={{ color: colors.mutedForeground, fontSize: 10, fontFamily: "Inter_500Medium", letterSpacing: 0.4 }}>DESIGNATED ROLE</Text>
-              <Text style={{ color: colors.primary, fontSize: 14, fontFamily: "Inter_700Bold", marginTop: 2 }}>{user.centerStaffRole}</Text>
+              <Text style={{ color: colors.primary, fontSize: 14, fontFamily: "Inter_700Bold", marginTop: 2 }}>
+                {CENTER_STAFF_ROLE_LABELS[user.centerStaffRole] ?? user.centerStaffRole}
+              </Text>
             </View>
           )}
         </View>
