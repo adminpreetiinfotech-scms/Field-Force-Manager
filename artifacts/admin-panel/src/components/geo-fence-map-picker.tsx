@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import { MapContainer, TileLayer, Marker, Circle, useMapEvents, useMap } from "react-leaflet";
+import { useEffect, useRef, useState } from "react";
+import { MapContainer, TileLayer, Marker, Circle, Tooltip, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -67,6 +67,17 @@ export default function GeoFenceMapPicker({
 }: Props) {
   const hasCoords = lat != null && lng != null;
   const center: [number, number] = hasCoords ? [lat, lng] : DEFAULT_CENTER;
+  const [showDragHint, setShowDragHint] = useState(true);
+  const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (hasCoords && showDragHint) {
+      hintTimerRef.current = setTimeout(() => setShowDragHint(false), 4000);
+    }
+    return () => {
+      if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+    };
+  }, [hasCoords]);
 
   return (
     <div
@@ -93,12 +104,22 @@ export default function GeoFenceMapPicker({
               icon={PIN_ICON}
               draggable={true}
               eventHandlers={{
+                dragstart() {
+                  if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+                  setShowDragHint(false);
+                },
                 dragend(e) {
                   const pos = (e.target as L.Marker).getLatLng();
                   onLocationChange(pos.lat, pos.lng);
                 },
               }}
-            />
+            >
+              {showDragHint && (
+                <Tooltip permanent direction="top" offset={[0, -42]}>
+                  Drag to reposition
+                </Tooltip>
+              )}
+            </Marker>
             {/* Radius circle */}
             <Circle
               center={[lat, lng]}
