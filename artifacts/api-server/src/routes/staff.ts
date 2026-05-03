@@ -505,6 +505,108 @@ router.get("/staff/:staffId/profile-stats", async (req, res, next) => {
   }
 });
 
+// ─── GET /api/staff/km-history ────────────────────────────────────────────────
+// Returns last N days of daily vehicle KM vs GPS KM for a staff member.
+// Query: staffId (uuid, required), days (integer, default 30)
+
+router.get("/staff/km-history", async (req, res, next) => {
+  try {
+    const rawStaffId = req.query.staffId as string | undefined;
+    const rawDays    = req.query.days    as string | undefined;
+
+    if (!rawStaffId || !/^[0-9a-fA-F-]{36}$/.test(rawStaffId)) {
+      res.status(400).json({ title: "Invalid staffId", status: 400 });
+      return;
+    }
+
+    const days = Math.min(90, Math.max(1, parseInt(rawDays ?? "30", 10) || 30));
+    const since = new Date(Date.now() - days * 86_400_000);
+    const IST_MS = 5.5 * 60 * 60 * 1000;
+
+    // Fetch checkin/checkout events in window
+    const attendRows = await db
+      .select({ kind: activityEventsTable.kind, occurredAt: activityEventsTable.occurredAt, payload: activityEventsTable.payload })
+      .from(activityEventsTable)
+      .where(
+        and(
+          eq(activityEventsTable.staffId, rawStaffId),
+          inArray(activityEventsTable.kind, ["checkin", "checkout"]),
+          gte(activityEventsTable.occurredAt, since),
+        ),
+      );
+
+    // Fetch trip-end events for GPS KM
+    const tripRows = await db
+      .select({ occurredAt: activityEventsTable.occurredAt, payload: activityEventsTable.payload })
+      .from(activityEventsTable)
+      .where(
+        and(
+          eq(activityEventsTable.staffId, rawStaffId),
+          eq(activityEventsTable.kind, "trip-end"),
+          gte(activityEventsTable.occurredAt, since),
+        ),
+      );
+
+    // Build per-day odometer map
+    type OdoDay = { startOdometerKm: number | null; endOdometerKm: number | null };
+    const odoMap = new Map<string, OdoDay>();
+    for (const row of attendRows) {
+      const dateStr = new Date((row.occurredAt as Date).getTime() + IST_MS).toISOString().slice(0, 10);
+      const p = (row.payload || {}) as { startOdometerKm?: number | null; endOdometerKm?: number | null };
+      const existing = odoMap.get(dateStr) ?? { startOdometerKm: null, endOdometerKm: null };
+      if (row.kind === "checkin"  && p.startOdometerKm != null) existing.startOdometerKm = p.startOdometerKm;
+      if (row.kind === "checkout" && p.endOdometerKm   != null) existing.endOdometerKm   = p.endOdometerKm;
+      odoMap.set(dateStr, existing);
+    }
+
+    // Build per-day GPS KM map
+    type GpsDay = { gpsKm: number; tripCount: number };
+    const gpsMap = new Map<string, GpsDay>();
+    for (const row of tripRows) {
+      const dateStr = new Date((row.occurredAt as Date).getTime() + IST_MS).toISOString().slice(0, 10);
+      const p = (row.payload || {}) as { distanceKm?: number | null };
+      const km = typeof p.distanceKm === "number" ? p.distanceKm : 0;
+      const acc = gpsMap.get(dateStr) ?? { gpsKm: 0, tripCount: 0 };
+      acc.gpsKm += km;
+      acc.tripCount++;
+      gpsMap.set(dateStr, acc);
+    }
+
+    // Merge into entries (all dates that have any data)
+    const allDates = new Set([...odoMap.keys(), ...gpsMap.keys()]);
+    const round1 = (n: number) => Math.round(n * 10) / 10;
+
+    const entries = Array.from(allDates).sort((a, b) => b.localeCompare(a)).map((date) => {
+      const odo = odoMap.get(date) ?? { startOdometerKm: null, endOdometerKm: null };
+      const gps = gpsMap.get(date) ?? { gpsKm: 0, tripCount: 0 };
+
+      let vehicleKm: number | null = null;
+      if (odo.startOdometerKm != null && odo.endOdometerKm != null && odo.endOdometerKm >= odo.startOdometerKm) {
+        vehicleKm = round1(odo.endOdometerKm - odo.startOdometerKm);
+      }
+
+      let variancePct: number | null = null;
+      if (vehicleKm != null && gps.gpsKm > 0) {
+        variancePct = round1(Math.abs(vehicleKm - gps.gpsKm) / vehicleKm * 100);
+      }
+
+      return {
+        date,
+        startOdometerKm: odo.startOdometerKm,
+        endOdometerKm:   odo.endOdometerKm,
+        vehicleKm,
+        tripCount: gps.tripCount,
+        gpsKm:     round1(gps.gpsKm),
+        variancePct,
+      };
+    });
+
+    res.json({ entries });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ─── Admin approval workflow ───────────────────────────────────────────────────
 
 router.get("/admin/pending-staff", requireAdmin, async (_req, res, next) => {

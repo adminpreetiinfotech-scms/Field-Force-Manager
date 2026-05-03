@@ -437,7 +437,143 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
     gtKm.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: NAVY } };
     gtKm.alignment = { horizontal: "center" };
 
-    // ── 8. Stream response ────────────────────────────────────────────────────
+    // ── 8. Build "Daily Vehicle KM" sheet ────────────────────────────────────
+
+    // Aggregate GPS KM per staffId+date from completed trips
+    type DayKm = { gpsKm: number; tripCount: number; staffName: string; empCode: string; mobile: string };
+    const gpsPerDay = new Map<string, DayKm>();
+    for (const { start, end } of completed) {
+      const endP = (end.payload || {}) as ActivityPayload;
+      const gpsKm = typeof endP.distanceKm === "number" ? endP.distanceKm : 0;
+      const dateStr = toIST(new Date(start.occurredAt as Date));
+      const key = `${start.staffId}::${dateStr}`;
+      const staff = staffMap.get(start.staffId);
+      const acc = gpsPerDay.get(key) ?? { gpsKm: 0, tripCount: 0, staffName: start.staffName, empCode: staff?.empCode ?? "", mobile: staff?.phone ?? "" };
+      acc.gpsKm   += gpsKm;
+      acc.tripCount++;
+      gpsPerDay.set(key, acc);
+    }
+
+    // Merge odometerMap + gpsPerDay into per-day rows
+    type DayRow = {
+      staffName: string; empCode: string; mobile: string; date: string;
+      startOdometer: number | null; endOdometer: number | null;
+      vehicleKm: number | null; gpsKm: number; tripCount: number; variancePct: number | null;
+    };
+
+    const dayRows: DayRow[] = [];
+    // Include all dates that have either odometer data or GPS trips
+    const allDayKeys = new Set([...odometerMap.keys(), ...gpsPerDay.keys()]);
+    for (const key of allDayKeys) {
+      const [staffId, date] = key.split("::");
+      if (!staffId || !date) continue;
+      const odo   = odometerMap.get(key) ?? { startOdometerKm: null, endOdometerKm: null };
+      const gps   = gpsPerDay.get(key) ?? { gpsKm: 0, tripCount: 0, staffName: "", empCode: "", mobile: "" };
+      const staff = staffMap.get(staffId);
+      const staffName = gps.staffName || staff?.name || staffId;
+      const empCode   = (gps.empCode   || staff?.empCode) ?? "";
+      const mobile    = (gps.mobile    || staff?.phone)   ?? "";
+
+      let vehicleKm: number | null = null;
+      if (odo.startOdometerKm != null && odo.endOdometerKm != null && odo.endOdometerKm >= odo.startOdometerKm) {
+        vehicleKm = Math.round((odo.endOdometerKm - odo.startOdometerKm) * 10) / 10;
+      }
+
+      let variancePct: number | null = null;
+      if (vehicleKm != null && gps.gpsKm > 0) {
+        variancePct = Math.round(Math.abs(vehicleKm - gps.gpsKm) / vehicleKm * 100 * 10) / 10;
+      }
+
+      dayRows.push({ staffName, empCode, mobile, date, startOdometer: odo.startOdometerKm, endOdometer: odo.endOdometerKm, vehicleKm, gpsKm: Math.round(gps.gpsKm * 10) / 10, tripCount: gps.tripCount, variancePct });
+    }
+    dayRows.sort((a, b) => a.date.localeCompare(b.date) || a.staffName.localeCompare(b.staffName));
+
+    const ws2 = wb.addWorksheet("Daily Vehicle KM", { properties: { tabColor: { argb: "FF059669" } } });
+    const D_COLS = 9;
+    ws2.columns = [
+      { width: 22 }, // Staff Name
+      { width: 13 }, // EMP ID
+      { width: 14 }, // Mobile
+      { width: 12 }, // Date
+      { width: 16 }, // Start Odometer
+      { width: 16 }, // End Odometer
+      { width: 12 }, // Vehicle KM
+      { width: 10 }, // GPS KM
+      { width: 12 }, // Variance %
+    ];
+
+    // Header rows for sheet 2
+    ws2.mergeCells(1, 1, 1, D_COLS);
+    const d1 = ws2.getCell(1, 1);
+    d1.value = organization ?? "Jharkhand Skill Development Mission Society (JSDMS) / DDU-KK";
+    d1.font  = { bold: true, size: 13, color: { argb: WHITE }, name: "Calibri" };
+    d1.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: "FF059669" } };
+    d1.alignment = { horizontal: "center", vertical: "middle" };
+    ws2.getRow(1).height = 26;
+
+    ws2.mergeCells(2, 1, 2, D_COLS);
+    const d2 = ws2.getCell(2, 1);
+    d2.value = "DAILY VEHICLE KM vs GPS KM REPORT";
+    d2.font  = { bold: true, size: 14, color: { argb: AMBER }, name: "Calibri" };
+    d2.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: "FF059669" } };
+    d2.alignment = { horizontal: "center", vertical: "middle" };
+    ws2.getRow(2).height = 26;
+
+    ws2.mergeCells(3, 1, 3, D_COLS);
+    const d3 = ws2.getCell(3, 1);
+    d3.value = `${staffPart}Period: ${rawFrom}  →  ${rawTo}   |   Rows highlighted in orange = variance > 20%`;
+    d3.font  = { bold: true, size: 10, color: { argb: WHITE }, name: "Calibri" };
+    d3.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: "FF047857" } };
+    d3.alignment = { horizontal: "center", vertical: "middle" };
+    ws2.getRow(3).height = 18;
+
+    // Column headers row 5
+    ws2.getRow(4).height = 8;
+    const D_HDRS = [
+      "Staff Name", "EMP ID", "Mobile No.", "Date",
+      "Start Odometer\n(km)", "End Odometer\n(km)", "Vehicle KM",
+      "GPS KM\n(sum trips)", "Variance %",
+    ];
+    const dhRow = ws2.getRow(5);
+    dhRow.height = 32;
+    D_HDRS.forEach((h, ci) => {
+      const cell = dhRow.getCell(ci + 1);
+      cell.value = h;
+      cell.font  = { bold: true, size: 9, color: { argb: WHITE }, name: "Calibri" };
+      cell.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: "FF059669" } };
+      cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+      cell.border = { bottom: { style: "thin", color: { argb: AMBER } } };
+    });
+
+    // Data rows
+    const dAltFill: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: LGRAY } };
+    const dVarFill: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFDE68A" } };
+    let dRowNum = 6;
+    for (const [idx, r] of dayRows.entries()) {
+      const dr = ws2.getRow(dRowNum);
+      dr.height = 16;
+      const highVar = r.variancePct !== null && r.variancePct > 20;
+      const fill = highVar ? dVarFill : idx % 2 === 1 ? dAltFill : undefined;
+      const cells = [
+        r.staffName, r.empCode, r.mobile, r.date,
+        r.startOdometer ?? "",
+        r.endOdometer   ?? "",
+        r.vehicleKm     !== null ? r.vehicleKm : "",
+        r.gpsKm         > 0     ? r.gpsKm : "",
+        r.variancePct   !== null ? `${r.variancePct}%` : "",
+      ];
+      cells.forEach((val, ci) => {
+        const cell = dr.getCell(ci + 1);
+        cell.value = val;
+        cell.font  = { size: 9, name: "Calibri", color: { argb: highVar && ci === 8 ? "FFB45309" : "FF111827" } };
+        cell.alignment = { horizontal: ci >= 4 ? "center" : "left", vertical: "middle" };
+        if (fill) cell.fill = fill;
+        cell.border = { bottom: { style: "hair", color: { argb: "FFD1D5DB" } } };
+      });
+      dRowNum++;
+    }
+
+    // ── 9. Stream response ────────────────────────────────────────────────────
     const fname = `ride-report-${rawFrom}-to-${rawTo}.xlsx`;
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename="${fname}"`);

@@ -41,6 +41,8 @@ import type {
   GetDistanceStatsParams,
   GetLeaderboardParams,
   GetRideCalendarParams,
+  GetStaffKmHistory200,
+  GetStaffKmHistoryParams,
   GetTripReportParams,
   HealthStatus,
   LeaderboardEntry,
@@ -593,6 +595,90 @@ export const useRejectStaff = <TError = ErrorType<ProblemDetails>,
       > => {
       return useMutation(getRejectStaffMutationOptions(options));
     }
+
+/**
+ * @summary Last N days of daily vehicle KM vs GPS KM for a staff member
+ */
+export const getGetStaffKmHistoryUrl = (params: GetStaffKmHistoryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/staff/km-history?${stringifiedParams}` : `/api/staff/km-history`
+}
+
+export const getStaffKmHistory = async (params: GetStaffKmHistoryParams, options?: RequestInit): Promise<GetStaffKmHistory200> => {
+
+  return customFetch<GetStaffKmHistory200>(getGetStaffKmHistoryUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStaffKmHistoryQueryKey = (params?: GetStaffKmHistoryParams,) => {
+    return [
+    `/api/staff/km-history`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetStaffKmHistoryQueryOptions = <TData = Awaited<ReturnType<typeof getStaffKmHistory>>, TError = ErrorType<ProblemDetails>>(params: GetStaffKmHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStaffKmHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStaffKmHistoryQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStaffKmHistory>>> = ({ signal }) => getStaffKmHistory(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStaffKmHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetStaffKmHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof getStaffKmHistory>>>
+export type GetStaffKmHistoryQueryError = ErrorType<ProblemDetails>
+
+
+/**
+ * @summary Last N days of daily vehicle KM vs GPS KM for a staff member
+ */
+
+export function useGetStaffKmHistory<TData = Awaited<ReturnType<typeof getStaffKmHistory>>, TError = ErrorType<ProblemDetails>>(
+ params: GetStaffKmHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStaffKmHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetStaffKmHistoryQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 /**
  * @summary Detailed stats for a single mobilizer (rides, km, periods, monthly, recent trips)

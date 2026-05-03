@@ -229,6 +229,24 @@ export interface BestDay {
 }
 
 /**
+ * Per-day vehicle KM vs GPS KM summary for a staff member.
+ */
+export interface KmHistoryEntry {
+  /** IST date (YYYY-MM-DD). */
+  date: string;
+  startOdometerKm?: number | null;
+  endOdometerKm?: number | null;
+  /** endOdometerKm - startOdometerKm. Null if either reading is missing. */
+  vehicleKm?: number | null;
+  /** Number of GPS trips recorded that day. */
+  tripCount: number;
+  /** Sum of GPS KM across all trips that day. */
+  gpsKm: number;
+  /** Absolute variance between vehicleKm and gpsKm as a percentage of vehicleKm. */
+  variancePct?: number | null;
+}
+
+/**
  * A single completed trip for the profile recent-trips list.
  */
 export interface RecentTrip {
@@ -547,6 +565,15 @@ export interface ProblemDetails {
 export type UpdateStaffNotes200 = {
   staffId: string;
   notes: string | null;
+};
+
+export type GetStaffKmHistoryParams = {
+staffId: string;
+days?: number;
+};
+
+export type GetStaffKmHistory200 = {
+  entries: KmHistoryEntry[];
 };
 
 export type GetRideCalendarParams = {

@@ -19,6 +19,13 @@ import { PillarsRow } from "@/components/PillarBadge";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
 import { VehicleType, useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
+import { useGetStaffKmHistory } from "@workspace/api-client-react";
+
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function fmtDate(dateStr: string) {
+  const d = new Date(dateStr + "T00:00:00");
+  return `${String(d.getDate()).padStart(2, "0")} ${MONTHS[d.getMonth()]}`;
+}
 
 export default function StaffProfile() {
   const colors = useColors();
@@ -33,6 +40,12 @@ export default function StaffProfile() {
   const [vehicleType, setVehicleType] = useState<VehicleType | null>(user?.vehicleType ?? null);
   const [vehicleNumber, setVehicleNumber] = useState(user?.vehicleNumber ?? "");
   const [savingVehicle, setSavingVehicle] = useState(false);
+
+  const { data: kmHistoryData } = useGetStaffKmHistory(
+    { staffId: user?.id ?? "", days: 14 },
+    { query: { enabled: !!user?.id } },
+  );
+  const kmHistory = kmHistoryData?.entries ?? [];
 
   const onSignOut = () => {
     Alert.alert("Sign out", "End your session on this device?", [
@@ -276,6 +289,74 @@ export default function StaffProfile() {
           }}
         />
       </View>
+
+      {/* ── KM History ────────────────────────────────────────────── */}
+      {user?.vehicleType && kmHistory.length > 0 && (
+        <View
+          style={[
+            styles.section,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              borderRadius: colors.radius + 4,
+            },
+          ]}
+        >
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+            My KM History (Last 14 Days)
+          </Text>
+          <Text style={{ color: colors.mutedForeground, fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 3 }}>
+            Vehicle KM vs GPS KM per day
+          </Text>
+
+          {/* Column headers */}
+          <View style={{ flexDirection: "row", marginTop: 12, paddingBottom: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }}>
+            <Text style={{ flex: 1.2, fontSize: 10, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground }}>DATE</Text>
+            <Text style={{ flex: 1, fontSize: 10, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textAlign: "center" }}>VEHICLE KM</Text>
+            <Text style={{ flex: 1, fontSize: 10, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textAlign: "center" }}>GPS KM</Text>
+            <Text style={{ flex: 1, fontSize: 10, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textAlign: "right" }}>VARIANCE</Text>
+          </View>
+
+          {kmHistory.slice(0, 10).map((entry) => {
+            const highVar = entry.variancePct != null && entry.variancePct > 20;
+            return (
+              <View
+                key={entry.date}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingVertical: 8,
+                  borderBottomWidth: StyleSheet.hairlineWidth,
+                  borderBottomColor: colors.border,
+                  backgroundColor: highVar ? "#FEF3C7" : "transparent",
+                  marginHorizontal: -4,
+                  paddingHorizontal: 4,
+                  borderRadius: 4,
+                }}
+              >
+                <Text style={{ flex: 1.2, fontSize: 12, fontFamily: "Inter_500Medium", color: colors.foreground }}>
+                  {fmtDate(entry.date)}
+                </Text>
+                <Text style={{ flex: 1, fontSize: 12, fontFamily: "Inter_600SemiBold", color: colors.primary, textAlign: "center" }}>
+                  {entry.vehicleKm != null ? `${entry.vehicleKm} km` : "—"}
+                </Text>
+                <Text style={{ flex: 1, fontSize: 12, fontFamily: "Inter_500Medium", color: colors.foreground, textAlign: "center" }}>
+                  {entry.gpsKm > 0 ? `${entry.gpsKm} km` : "—"}
+                </Text>
+                <Text style={{
+                  flex: 1,
+                  fontSize: 11,
+                  fontFamily: "Inter_600SemiBold",
+                  textAlign: "right",
+                  color: highVar ? "#B45309" : entry.variancePct != null ? colors.success : colors.mutedForeground,
+                }}>
+                  {entry.variancePct != null ? `${entry.variancePct}%` : "—"}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      )}
 
       {/* Account Details */}
       {(user?.email || user?.centerName || user?.projectName || user?.state || user?.district) && (

@@ -135,6 +135,29 @@ export const RejectStaffResponse = zod.object({
 
 
 /**
+ * @summary Last N days of daily vehicle KM vs GPS KM for a staff member
+ */
+export const getStaffKmHistoryQueryDaysDefault = 30;
+
+export const GetStaffKmHistoryQueryParams = zod.object({
+  "staffId": zod.coerce.string().uuid(),
+  "days": zod.coerce.number().default(getStaffKmHistoryQueryDaysDefault)
+})
+
+export const GetStaffKmHistoryResponse = zod.object({
+  "entries": zod.array(zod.object({
+  "date": zod.string().describe('IST date (YYYY-MM-DD).'),
+  "startOdometerKm": zod.number().nullish(),
+  "endOdometerKm": zod.number().nullish(),
+  "vehicleKm": zod.number().nullish().describe('endOdometerKm - startOdometerKm. Null if either reading is missing.'),
+  "tripCount": zod.number().describe('Number of GPS trips recorded that day.'),
+  "gpsKm": zod.number().describe('Sum of GPS KM across all trips that day.'),
+  "variancePct": zod.number().nullish().describe('Absolute variance between vehicleKm and gpsKm as a percentage of vehicleKm.')
+}).describe('Per-day vehicle KM vs GPS KM summary for a staff member.'))
+})
+
+
+/**
  * @summary Detailed stats for a single mobilizer (rides, km, periods, monthly, recent trips)
  */
 export const GetStaffProfileStatsParams = zod.object({

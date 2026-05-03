@@ -188,6 +188,44 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
 
+  /staff/km-history:
+    get:
+      operationId: getStaffKmHistory
+      tags: [staff]
+      summary: Last N days of daily vehicle KM vs GPS KM for a staff member
+      parameters:
+        - in: query
+          name: staffId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: days
+          required: false
+          schema:
+            type: integer
+            default: 30
+      responses:
+        "200":
+          description: Daily KM history entries, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/KmHistoryEntry"
+                required: [entries]
+        "400":
+          description: Invalid staffId.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
   /staff/{staffId}/profile-stats:
     get:
       operationId: getStaffProfileStats
@@ -1475,6 +1513,35 @@ components:
         totalKm:
           type: number
       required: [date, rideCount, totalKm]
+
+    KmHistoryEntry:
+      type: object
+      description: Per-day vehicle KM vs GPS KM summary for a staff member.
+      properties:
+        date:
+          type: string
+          description: IST date (YYYY-MM-DD).
+        startOdometerKm:
+          type: number
+          nullable: true
+        endOdometerKm:
+          type: number
+          nullable: true
+        vehicleKm:
+          type: number
+          nullable: true
+          description: endOdometerKm - startOdometerKm. Null if either reading is missing.
+        tripCount:
+          type: integer
+          description: Number of GPS trips recorded that day.
+        gpsKm:
+          type: number
+          description: Sum of GPS KM across all trips that day.
+        variancePct:
+          type: number
+          nullable: true
+          description: Absolute variance between vehicleKm and gpsKm as a percentage of vehicleKm.
+      required: [date, tripCount, gpsKm]
 
     RecentTrip:
       type: object
