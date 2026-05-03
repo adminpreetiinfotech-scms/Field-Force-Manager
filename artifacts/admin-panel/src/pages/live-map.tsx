@@ -2,11 +2,12 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { useLocation } from "wouter";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, RefreshCw, MapPin, Clock, Wifi, WifiOff, Users, AlertTriangle } from "lucide-react";
+import { Search, RefreshCw, MapPin, Clock, Wifi, WifiOff, Users, AlertTriangle, Pencil } from "lucide-react";
 import { format, formatDistanceToNow, differenceInMinutes } from "date-fns";
 
 // ─── Fix leaflet default icon issue with Vite ─────────────────────────────────
@@ -255,12 +256,18 @@ function StaffCard({
 
 // ─── Geo-fence popup content ──────────────────────────────────────────────────
 
-function GeoFencePopupContent({ geoFence }: { geoFence: GeoFence }) {
+function GeoFencePopupContent({
+  geoFence,
+  onEdit,
+}: {
+  geoFence: GeoFence;
+  onEdit: () => void;
+}) {
   const radiusKm = (geoFence.centerRadiusMeters / 1000).toFixed(2);
   const showKm = geoFence.centerRadiusMeters >= 1000;
 
   return (
-    <div className="min-w-[180px] text-sm space-y-1.5">
+    <div className="min-w-[200px] text-sm space-y-1.5">
       <div className="flex items-center justify-between gap-3">
         <p className="font-semibold text-base leading-tight">Geo-fence</p>
         <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-indigo-100 text-indigo-800">
@@ -278,6 +285,16 @@ function GeoFencePopupContent({ geoFence }: { geoFence: GeoFence }) {
         {showKm
           ? `${radiusKm} km`
           : `${geoFence.centerRadiusMeters.toLocaleString()} m`}
+      </div>
+
+      <div className="pt-1 border-t border-gray-100">
+        <button
+          onClick={onEdit}
+          className="flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+        >
+          <Pencil className="h-3 w-3 shrink-0" />
+          Edit geo-fence
+        </button>
       </div>
     </div>
   );
@@ -341,6 +358,7 @@ const DEFAULT_CENTER: [number, number] = [23.6102, 85.2799];
 const DEFAULT_ZOOM = 8;
 
 export default function LiveMapPage() {
+  const [, navigate] = useLocation();
   const [staffList, setStaffList] = useState<LiveStaff[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
@@ -591,7 +609,10 @@ export default function LiveMapPage() {
                 }}
               >
                 <Popup>
-                  <GeoFencePopupContent geoFence={geoFence} />
+                  <GeoFencePopupContent
+                    geoFence={geoFence}
+                    onEdit={() => navigate("/settings")}
+                  />
                 </Popup>
               </Circle>
             )}
