@@ -693,9 +693,12 @@ router.delete("/admin/candidates/:id", requireAdmin, async (req, res, next) => {
       res.status(404).json({ title: "Candidate not found", status: 404 });
       return;
     }
-    // Company admins can only delete candidates in their own company. Records
-    // with NULL company_id are treated as visible (legacy data).
-    if (companyId && existing.companyId && existing.companyId !== companyId) {
+    // Company admins can only delete candidates that EXPLICITLY belong to
+    // their own company. Orphan rows (company_id = NULL) are reserved for
+    // super-admin cleanup — a tenant admin should not be able to wipe records
+    // they cannot prove ownership of. (Stricter than the PATCH endpoint on
+    // purpose: this is a destructive, irreversible operation.)
+    if (companyId && existing.companyId !== companyId) {
       res.status(403).json({ title: "Forbidden", status: 403 });
       return;
     }
