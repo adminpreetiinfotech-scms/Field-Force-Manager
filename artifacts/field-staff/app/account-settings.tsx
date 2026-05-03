@@ -479,10 +479,10 @@ export default function AccountSettingsScreen() {
   );
 }
 
-function InfoRow({ icon, label, value, last }: { icon: string; label: string; value: string; last?: boolean }) {
+function InfoRow({ icon, label, value, last }: { icon: keyof typeof Feather.glyphMap; label: string; value: string; last?: boolean }) {
   return (
     <View style={[styles.infoRow, last && { borderBottomWidth: 0 }]}>
-      <Feather name={icon as any} size={15} color={MUTED} style={{ width: 20 }} />
+      <Feather name={icon} size={15} color={MUTED} style={{ width: 20 }} />
       <Text style={styles.infoLabel}>{label}</Text>
       <Text style={styles.infoValue} numberOfLines={1}>{value}</Text>
     </View>

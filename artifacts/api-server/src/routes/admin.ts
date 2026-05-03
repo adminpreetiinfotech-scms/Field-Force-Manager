@@ -721,7 +721,7 @@ router.get("/admin/dashboard/stats", requireAdmin, async (_req, res, next) => {
 
 router.patch("/admin/staff/:id/deactivate", requireAdmin, async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const companyId = res.locals.companyId as string | null;
 
     const filter = companyId
@@ -806,7 +806,7 @@ router.delete("/admin/candidates/:id", requireAdmin, async (req, res, next) => {
 
 router.patch("/admin/candidates/:id", requireAdmin, async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const companyId = res.locals.companyId as string | null;
 
     const [existing] = await db
@@ -913,7 +913,7 @@ router.patch("/admin/candidates/:id", requireAdmin, async (req, res, next) => {
 
     const [updated] = await db
       .update(candidatesTable)
-      .set(patch as Parameters<typeof candidatesTable.$inferInsert>[0])
+      .set(patch as Partial<typeof candidatesTable.$inferInsert>)
       .where(eq(candidatesTable.id, id))
       .returning();
 

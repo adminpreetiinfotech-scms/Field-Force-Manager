@@ -104,7 +104,7 @@ export default function NotificationsScreen() {
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
-  const getNotifIcon = (message: string) => {
+  const getNotifIcon = (message: string): keyof typeof Feather.glyphMap => {
     if (message.includes("approved") || message.includes("verified")) return "check-circle";
     if (message.includes("rejected")) return "x-circle";
     if (message.includes("enrolled")) return "award";
@@ -180,7 +180,7 @@ export default function NotificationsScreen() {
                   }]}
                 >
                   <View style={[ss.notifIcon, { backgroundColor: iconColor + "18", borderRadius: 20 }]}>
-                    <Feather name={iconName as "check-circle"} size={20} color={iconColor} />
+                    <Feather name={iconName} size={20} color={iconColor} />
                   </View>
                   <View style={{ flex: 1, gap: 4 }}>
                     <Text style={[ss.notifCandidate, { color: n.isRead ? colors.mutedForeground : colors.foreground }]}>

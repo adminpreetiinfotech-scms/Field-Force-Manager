@@ -951,7 +951,7 @@ function StaffDetailRow({
   value,
   colors,
 }: {
-  icon: string;
+  icon: keyof typeof Feather.glyphMap;
   label: string;
   value: string;
   colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
@@ -959,7 +959,7 @@ function StaffDetailRow({
   return (
     <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10, paddingHorizontal: 4 }}>
       <View style={{ width: 20, alignItems: "center", paddingTop: 1 }}>
-        <Feather name={icon as any} size={13} color={colors.mutedForeground} />
+        <Feather name={icon} size={13} color={colors.mutedForeground} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={{ color: colors.mutedForeground, fontSize: 10, fontFamily: "Inter_500Medium", letterSpacing: 0.4 }}>
@@ -1021,14 +1021,14 @@ function SectionHeader({
   sub,
   colors,
 }: {
-  icon: string;
+  icon: keyof typeof Feather.glyphMap;
   title: string;
   sub?: string;
   colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
 }) {
   return (
     <View style={styles.sectionHeaderRow}>
-      <Feather name={icon as any} size={15} color={colors.primary} />
+      <Feather name={icon} size={15} color={colors.primary} />
       <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
         {title}
       </Text>
@@ -1048,7 +1048,7 @@ function InfoChip({
   bgColor,
   colors,
 }: {
-  icon: string;
+  icon: keyof typeof Feather.glyphMap;
   label: string;
   color: string;
   bgColor: string;
@@ -1061,7 +1061,7 @@ function InfoChip({
         { backgroundColor: bgColor, borderRadius: 999 },
       ]}
     >
-      <Feather name={icon as any} size={11} color={color} />
+      <Feather name={icon} size={11} color={color} />
       <Text style={[styles.chipText, { color }]}>{label}</Text>
     </View>
   );
