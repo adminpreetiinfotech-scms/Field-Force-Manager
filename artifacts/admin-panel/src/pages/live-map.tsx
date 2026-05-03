@@ -221,6 +221,36 @@ function StaffCard({
   );
 }
 
+// ─── Geo-fence popup content ──────────────────────────────────────────────────
+
+function GeoFencePopupContent({ geoFence }: { geoFence: GeoFence }) {
+  const radiusKm = (geoFence.centerRadiusMeters / 1000).toFixed(2);
+  const showKm = geoFence.centerRadiusMeters >= 1000;
+
+  return (
+    <div className="min-w-[180px] text-sm space-y-1.5">
+      <div className="flex items-center justify-between gap-3">
+        <p className="font-semibold text-base leading-tight">Geo-fence</p>
+        <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-indigo-100 text-indigo-800">
+          Boundary
+        </span>
+      </div>
+
+      <div className="text-xs text-gray-500 font-mono">
+        {geoFence.centerLat.toFixed(5)}, {geoFence.centerLng.toFixed(5)}
+      </div>
+
+      <div className="flex items-center gap-1 text-xs text-gray-600">
+        <MapPin className="h-3 w-3 shrink-0 text-indigo-500" />
+        Radius:{" "}
+        {showKm
+          ? `${radiusKm} km`
+          : `${geoFence.centerRadiusMeters.toLocaleString()} m`}
+      </div>
+    </div>
+  );
+}
+
 // ─── Map popup content ────────────────────────────────────────────────────────
 
 function PopupContent({ staff }: { staff: LiveStaff }) {
@@ -520,7 +550,11 @@ export default function LiveMapPage() {
                   weight: 2,
                   dashArray: "6 4",
                 }}
-              />
+              >
+                <Popup>
+                  <GeoFencePopupContent geoFence={geoFence} />
+                </Popup>
+              </Circle>
             )}
 
             {locatedStaff.map((staff) => {
