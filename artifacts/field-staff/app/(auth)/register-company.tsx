@@ -317,7 +317,7 @@ export default function RegisterCompanyScreen() {
           </View>
 
           <Button
-            title="Register Company"
+            label="Register Company"
             onPress={onRegister}
             loading={loading}
             disabled={!valid}

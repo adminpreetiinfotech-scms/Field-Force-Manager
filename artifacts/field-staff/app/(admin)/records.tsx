@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { EmptyState } from "@/components/EmptyState";
 import { SyncBanner } from "@/components/SyncBanner";
-import { useApp } from "@/contexts/AppContext";
+import { AttendanceRecord, MeterReading, useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
 
 type Tab = "attendance" | "meter";
@@ -23,7 +23,7 @@ export default function AdminRecords() {
   const { attendance, meterReadings } = useApp();
   const [tab, setTab] = useState<Tab>("attendance");
 
-  const data = useMemo(() => {
+  const data = useMemo<(AttendanceRecord | MeterReading)[]>(() => {
     if (tab === "attendance") {
       return [...attendance].sort((a, b) => b.timestamp - a.timestamp);
     }

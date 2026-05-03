@@ -390,6 +390,25 @@ export type UpdateStaffNotes200 = {
   notes: string | null;
 };
 
+export interface KmHistoryEntry {
+  date: string;
+  startOdometerKm?: number | null;
+  endOdometerKm?: number | null;
+  vehicleKm?: number | null;
+  tripCount: number;
+  gpsKm: number;
+  variancePct?: number | null;
+}
+
+export type GetStaffKmHistoryParams = {
+  staffId: string;
+  days?: number;
+};
+
+export type GetStaffKmHistory200 = {
+  entries: KmHistoryEntry[];
+};
+
 export type GetRideCalendarParams = {
   /**
    * Four-digit year, e.g. 2026.
