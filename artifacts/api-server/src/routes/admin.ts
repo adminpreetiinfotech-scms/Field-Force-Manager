@@ -1045,9 +1045,9 @@ router.get("/admin/center-attendance", requireAdmin, async (req, res, next) => {
         let status: "present" | "partial" | "absent" = "absent";
         if (checkInTime && checkOutTime) status = "present";
         else if (checkInTime) status = "partial";
-        else if (!isPast && date === today) continue; // skip future/today absent
 
-        if (status === "absent" && !isPast) continue;
+        // Skip future dates (after today) with no activity; include today and past dates
+        if (status === "absent" && date > today) continue;
 
         rows.push({
           staffId: staff.id,

@@ -376,7 +376,7 @@ export default function StaffHome() {
           {(() => {
             if (user?.staffCategory !== "center") return null;
             if (!isCheckedIn) return null;
-            if (!user?.companyCenterLat || !user?.companyCenterLng) return null;
+            if (user?.companyCenterLat == null || user?.companyCenterLng == null) return null;
             if (!currentGpsPos) return null;
             const R = 6371000;
             const dLat = ((currentGpsPos.latitude - user.companyCenterLat) * Math.PI) / 180;
