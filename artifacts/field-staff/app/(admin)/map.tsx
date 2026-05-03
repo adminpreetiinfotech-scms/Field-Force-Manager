@@ -216,7 +216,7 @@ export default function AdminMap() {
           <MapErrorBoundary
             fallback={
               <View style={[StyleSheet.absoluteFill, { alignItems: "center", justifyContent: "center", backgroundColor: "#DEE7F2" }]}>
-                <Feather name="map-off" size={40} color="#94A3B8" />
+                <Feather name="map" size={40} color="#94A3B8" />
                 <Text style={{ color: "#64748B", fontSize: 14, fontFamily: "Inter_600SemiBold", marginTop: 12, textAlign: "center" }}>
                   Map load nahi hua{"\n"}Google Maps API key required hai
                 </Text>
