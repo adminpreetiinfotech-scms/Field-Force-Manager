@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { MapContainer, TileLayer, Marker, Circle, Tooltip, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -44,6 +44,51 @@ function ClickHandler({ onLocationChange }: { onLocationChange: (lat: number, ln
     },
   });
   return null;
+}
+
+function DraggablePin({
+  lat,
+  lng,
+  showDragHint,
+  hintTimerRef,
+  setShowDragHint,
+  onLocationChange,
+}: {
+  lat: number;
+  lng: number;
+  showDragHint: boolean;
+  hintTimerRef: RefObject<ReturnType<typeof setTimeout> | null>;
+  setShowDragHint: (v: boolean) => void;
+  onLocationChange: (lat: number, lng: number) => void;
+}) {
+  const map = useMap();
+  return (
+    <Marker
+      position={[lat, lng]}
+      icon={PIN_ICON}
+      draggable={true}
+      eventHandlers={{
+        dragstart() {
+          if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+          setShowDragHint(false);
+        },
+        drag(e) {
+          const pos = (e.target as L.Marker).getLatLng();
+          map.panTo(pos, { animate: true, duration: 0.1 });
+        },
+        dragend(e) {
+          const pos = (e.target as L.Marker).getLatLng();
+          onLocationChange(pos.lat, pos.lng);
+        },
+      }}
+    >
+      {showDragHint && (
+        <Tooltip permanent direction="top" offset={[0, -42]}>
+          Drag to reposition
+        </Tooltip>
+      )}
+    </Marker>
+  );
 }
 
 function MapRecenter({ lat, lng }: { lat: number; lng: number }) {
@@ -99,27 +144,14 @@ export default function GeoFenceMapPicker({
           <>
             <MapRecenter lat={lat} lng={lng} />
             {/* Center marker — drag to reposition */}
-            <Marker
-              position={[lat, lng]}
-              icon={PIN_ICON}
-              draggable={true}
-              eventHandlers={{
-                dragstart() {
-                  if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
-                  setShowDragHint(false);
-                },
-                dragend(e) {
-                  const pos = (e.target as L.Marker).getLatLng();
-                  onLocationChange(pos.lat, pos.lng);
-                },
-              }}
-            >
-              {showDragHint && (
-                <Tooltip permanent direction="top" offset={[0, -42]}>
-                  Drag to reposition
-                </Tooltip>
-              )}
-            </Marker>
+            <DraggablePin
+              lat={lat}
+              lng={lng}
+              showDragHint={showDragHint}
+              hintTimerRef={hintTimerRef}
+              setShowDragHint={setShowDragHint}
+              onLocationChange={onLocationChange}
+            />
             {/* Radius circle */}
             <Circle
               center={[lat, lng]}
