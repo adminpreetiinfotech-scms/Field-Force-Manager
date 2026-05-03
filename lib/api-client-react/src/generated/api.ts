@@ -24,6 +24,7 @@ import type {
   ActivityEvent,
   ActivityPage,
   AttendanceCalendarMonth,
+  BackfillOrphanRecords200,
   CandidateDto,
   CheckDuplicateCandidate200,
   CheckDuplicateCandidateBody,
@@ -2444,6 +2445,80 @@ export const useResetCompanyAdmin = <TError = ErrorType<ProblemDetails>,
         TContext
       > => {
       return useMutation(getResetCompanyAdminMutationOptions(options));
+    }
+
+/**
+ * One-time migration helper. Updates every candidate and every non-super-admin
+staff record that currently has `company_id = NULL` to belong to the given
+company. Super-admins are intentionally excluded (they remain cross-company).
+
+ * @summary Assign all orphan (NULL company_id) candidates and staff to a company
+ */
+export const getBackfillOrphanRecordsUrl = (companyId: string,) => {
+
+
+
+
+  return `/api/super-admin/companies/${companyId}/backfill-orphans`
+}
+
+export const backfillOrphanRecords = async (companyId: string, options?: RequestInit): Promise<BackfillOrphanRecords200> => {
+
+  return customFetch<BackfillOrphanRecords200>(getBackfillOrphanRecordsUrl(companyId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getBackfillOrphanRecordsMutationOptions = <TError = ErrorType<ProblemDetails>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof backfillOrphanRecords>>, TError,{companyId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof backfillOrphanRecords>>, TError,{companyId: string}, TContext> => {
+
+const mutationKey = ['backfillOrphanRecords'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof backfillOrphanRecords>>, {companyId: string}> = (props) => {
+          const {companyId} = props ?? {};
+
+          return  backfillOrphanRecords(companyId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BackfillOrphanRecordsMutationResult = NonNullable<Awaited<ReturnType<typeof backfillOrphanRecords>>>
+
+    export type BackfillOrphanRecordsMutationError = ErrorType<ProblemDetails>
+
+    /**
+ * @summary Assign all orphan (NULL company_id) candidates and staff to a company
+ */
+export const useBackfillOrphanRecords = <TError = ErrorType<ProblemDetails>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof backfillOrphanRecords>>, TError,{companyId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof backfillOrphanRecords>>,
+        TError,
+        {companyId: string},
+        TContext
+      > => {
+      return useMutation(getBackfillOrphanRecordsMutationOptions(options));
     }
 
 /**

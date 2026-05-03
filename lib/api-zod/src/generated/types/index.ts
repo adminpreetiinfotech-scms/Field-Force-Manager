@@ -13,6 +13,7 @@ export * from './activityPage';
 export * from './attendanceCalendarDay';
 export * from './attendanceCalendarDayStatus';
 export * from './attendanceCalendarMonth';
+export * from './backfillOrphanRecords200';
 export * from './bestDay';
 export * from './candidateDto';
 export * from './candidateDtoStatus';

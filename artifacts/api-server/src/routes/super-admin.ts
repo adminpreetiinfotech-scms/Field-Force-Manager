@@ -7,7 +7,7 @@ import {
   db,
   staffTable,
 } from "@workspace/db";
-import { and, count, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, count, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import crypto from "node:crypto";
 import { toCompanyDTO } from "./companies";
@@ -628,5 +628,85 @@ router.post("/super-admin/wipe-all", async (req, res, next) => {
     next(err);
   }
 });
+
+// ─── POST /api/super-admin/companies/:id/backfill-orphans ─────────────────────
+// Assigns all candidates and staff (excluding super_admin) that currently have
+// company_id = NULL to this company. Used to recover legacy data created before
+// the multi-tenant migration was rolled out.
+
+router.post(
+  "/super-admin/companies/:id/backfill-orphans",
+  requireSuperAdmin,
+  async (req, res, next) => {
+    try {
+      const id = req.params.id as string;
+
+      const [company] = await db
+        .select({ id: companiesTable.id, name: companiesTable.name })
+        .from(companiesTable)
+        .where(eq(companiesTable.id, id))
+        .limit(1);
+      if (!company) {
+        res.status(404).json({ title: "Company not found", status: 404 });
+        return;
+      }
+
+      // Run both UPDATEs in a single transaction so the operation is atomic —
+      // either both candidate and staff backfills succeed, or neither does.
+      const { candidatesUpdated, staffUpdated } = await db.transaction(
+        async (tx) => {
+          // Backfill candidates with NULL company_id.
+          const candRes = await tx
+            .update(candidatesTable)
+            .set({ companyId: id })
+            .where(isNull(candidatesTable.companyId));
+
+          // Backfill staff with NULL company_id, using an EXPLICIT ALLOWLIST
+          // of tenant-scoped roles. Super-admins are intentionally
+          // cross-company; any future role we add must be opted in here.
+          const staffRes = await tx
+            .update(staffTable)
+            .set({ companyId: id })
+            .where(
+              and(
+                isNull(staffTable.companyId),
+                or(eq(staffTable.role, "staff"), eq(staffTable.role, "admin")),
+              ),
+            );
+
+          return {
+            candidatesUpdated: Number(
+              (candRes as { rowCount?: number }).rowCount ?? 0,
+            ),
+            staffUpdated: Number(
+              (staffRes as { rowCount?: number }).rowCount ?? 0,
+            ),
+          };
+        },
+      );
+
+      req.log.info(
+        {
+          actorPhone: req.headers["x-admin-phone"],
+          targetCompanyId: id,
+          targetCompanyName: company.name,
+          candidatesUpdated,
+          staffUpdated,
+        },
+        "super-admin backfilled orphan records",
+      );
+
+      res.json({
+        message: "Orphan records backfilled",
+        companyId: id,
+        companyName: company.name,
+        candidatesUpdated,
+        staffUpdated,
+      });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 export default router;

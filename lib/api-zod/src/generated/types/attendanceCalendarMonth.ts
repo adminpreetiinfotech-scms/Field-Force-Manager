@@ -24,4 +24,8 @@ export interface AttendanceCalendarMonth {
   absentCount: number;
   /** Total km for the month. */
   totalKm: number;
+  /** Total Mon–Sat working days from day 1 up to today (or end of month for past months). */
+  totalWorkingDays: number;
+  /** (presentCount + partialCount) / totalWorkingDays * 100, rounded to 1 decimal. */
+  attendancePercent: number;
 }

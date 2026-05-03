@@ -238,7 +238,9 @@ export const GetAttendanceCalendarResponse = zod.object({
   "presentCount": zod.number().describe('Number of days with status=present.'),
   "partialCount": zod.number().describe('Number of days with status=partial.'),
   "absentCount": zod.number().describe('Number of past days with no check-in.'),
-  "totalKm": zod.number().describe('Total km for the month.')
+  "totalKm": zod.number().describe('Total km for the month.'),
+  "totalWorkingDays": zod.number().describe('Total Mon–Sat working days from day 1 up to today (or end of month for past months).'),
+  "attendancePercent": zod.number().describe('(presentCount + partialCount) \/ totalWorkingDays \* 100, rounded to 1 decimal.')
 }).describe('Full month of attendance calendar data.')
 
 
@@ -787,6 +789,26 @@ export const ResetCompanyAdminResponse = zod.object({
   "message": zod.string(),
   "adminId": zod.string(),
   "phone": zod.string()
+})
+
+
+/**
+ * One-time migration helper. Updates every candidate and every non-super-admin
+staff record that currently has `company_id = NULL` to belong to the given
+company. Super-admins are intentionally excluded (they remain cross-company).
+
+ * @summary Assign all orphan (NULL company_id) candidates and staff to a company
+ */
+export const BackfillOrphanRecordsParams = zod.object({
+  "companyId": zod.coerce.string().uuid()
+})
+
+export const BackfillOrphanRecordsResponse = zod.object({
+  "message": zod.string(),
+  "companyId": zod.string().uuid(),
+  "companyName": zod.string(),
+  "candidatesUpdated": zod.number(),
+  "staffUpdated": zod.number()
 })
 
 

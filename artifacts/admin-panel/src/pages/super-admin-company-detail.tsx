@@ -39,7 +39,7 @@ import {
   ArrowLeft, RefreshCw, Users, UserSquare2, Activity,
   KeyRound, MapPin, User, CalendarDays, Mail,
   Building2, CreditCard, ShieldOff, CheckCircle2,
-  AlertTriangle, XCircle, Zap, CalendarClock, Plus,
+  AlertTriangle, XCircle, Zap, CalendarClock, Plus, Wand2,
 } from "lucide-react";
 import { format, addDays, differenceInDays, isPast } from "date-fns";
 
@@ -317,6 +317,38 @@ export default function SuperAdminCompanyDetail({ companyId }: Props) {
     }
   };
 
+  const [backfilling, setBackfilling] = useState(false);
+  const handleBackfillOrphans = async () => {
+    setBackfilling(true);
+    try {
+      const res = await adminFetch(
+        `/api/super-admin/companies/${companyId}/backfill-orphans`,
+        { method: "POST" },
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.title || "Backfill failed");
+      }
+      const result = (await res.json()) as {
+        candidatesUpdated: number;
+        staffUpdated: number;
+      };
+      toast({
+        title: "Orphan records adopted",
+        description: `${result.candidatesUpdated} candidate(s) and ${result.staffUpdated} staff member(s) assigned to this company.`,
+      });
+      invalidate();
+    } catch (e) {
+      toast({
+        title: "Backfill failed",
+        description: e instanceof Error ? e.message : "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setBackfilling(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-4 max-w-3xl">
@@ -582,6 +614,47 @@ export default function SuperAdminCompanyDetail({ companyId }: Props) {
                 {hasSub ? "Active" : "Off"}
               </span>
             </div>
+          </div>
+
+          {/* Adopt orphan records */}
+          <div className="flex items-center justify-between px-6 py-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-indigo-100 text-indigo-600">
+                <Wand2 className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Adopt Orphan Records</p>
+                <p className="text-xs text-muted-foreground">
+                  Assigns every candidate and field staff with no company to <strong>{company.name}</strong>. Use only if legacy records are missing from the dashboard.
+                </p>
+              </div>
+            </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="shrink-0 border-indigo-200 text-indigo-600 hover:bg-indigo-50" disabled={backfilling}>
+                  <Wand2 className="h-4 w-4 mr-2" />
+                  {backfilling ? "Working..." : "Adopt Orphans"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Adopt all orphan records?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    All candidates and field staff currently with no company will be reassigned to <strong>{company.name}</strong>. Super admins are excluded. This cannot be undone automatically — only run this if you are sure those records belong to this company.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleBackfillOrphans}
+                    disabled={backfilling}
+                    className="bg-indigo-600 hover:bg-indigo-700"
+                  >
+                    {backfilling ? "Working..." : "Yes, Adopt All"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
 
           {/* Reset MPIN */}

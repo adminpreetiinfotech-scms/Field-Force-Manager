@@ -489,6 +489,10 @@ export interface AttendanceCalendarMonth {
   absentCount: number;
   /** Total km for the month. */
   totalKm: number;
+  /** Total Mon–Sat working days from day 1 up to today (or end of month for past months). */
+  totalWorkingDays: number;
+  /** (presentCount + partialCount) / totalWorkingDays * 100, rounded to 1 decimal. */
+  attendancePercent: number;
 }
 
 export interface ProblemDetails {
@@ -688,5 +692,13 @@ export type ResetCompanyAdmin200 = {
   message: string;
   adminId: string;
   phone: string;
+};
+
+export type BackfillOrphanRecords200 = {
+  message: string;
+  companyId: string;
+  companyName: string;
+  candidatesUpdated: number;
+  staffUpdated: number;
 };
 
