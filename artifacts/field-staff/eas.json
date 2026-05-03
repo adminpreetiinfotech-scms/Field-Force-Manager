@@ -19,6 +19,14 @@
       "env": {
         "EXPO_PUBLIC_DOMAIN": "field-force-manager-Mobilization.replit.app"
       }
+    },
+    "production-apk": {
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_DOMAIN": "field-force-manager-Mobilization.replit.app"
+      }
     }
   },
   "submit": {
