@@ -772,49 +772,27 @@ export async function generateCandidatePdf(
 
     doc.addPage({ size: "A4", margin: 0 });
 
-    // Header — navy band with amber accent
-    fill(doc, 0, 0, A4_W, 44, NAVY);
-    fill(doc, 0, 0, 4,    44, AMBER);
+    // Page number — bottom-right corner
+    doc.font("DVR").fontSize(8).fillColor(LGRAY)
+       .text("2", A4_W - 30, A4_H - 18, { width: 20, align: "right", lineBreak: false });
 
-    // Title (mixed Hindi + English)
-    const aadhaarTitle = "Aadhaar Card  /  आधार कार्ड";
-    const aadhaarSegs  = splitScript(aadhaarTitle);
+    // Layout: split full page into two equal halves (front + back)
     {
-      let lx = 14;
-      for (const s of aadhaarSegs) {
-        doc.font(fk(s.dev, true)).fontSize(11).fillColor("#FFFFFF");
-        const sw = doc.widthOfString(s.text);
-        doc.text(s.text, lx, 10, { lineBreak: false });
-        lx += sw;
-      }
-    }
-
-    // Candidate name (top-right, faded)
-    if (c.name) {
-      doc.font("NSR").fontSize(8).fillColor("rgba(255,255,255,0.65)")
-         .text(c.name, 0, 30, { width: A4_W - 14, align: "right", lineBreak: false });
-    }
-
-    // Layout: split usable area below header into two equal halves
-    {
-      const PAD    = 20;
-      const imgW   = A4_W - PAD * 2;   // equal width for both front and back
-      const startY = 52;
-      const totalH = A4_H - startY - PAD;
-      const halfH  = Math.floor(totalH / 2) - 6;
+      const PAD    = 14;
+      const imgW   = A4_W - PAD * 2;
+      const startY = PAD;
+      const totalH = A4_H - startY - PAD - 20;
+      const halfH  = Math.floor(totalH / 2) - 4;
 
       // ── Front (top half) ──
-      doc.font("DVB").fontSize(8).fillColor(NAVY)
-         .text("FRONT  /  आगे", PAD, startY + 4, { lineBreak: false });
-      box(doc, PAD, startY + 16, imgW, halfH - 20, 0.5, LGRAY);
+      box(doc, PAD, startY, imgW, halfH, 0.5, LGRAY);
       if (hasFront) {
-        safeImg(doc, c.aadhaarFrontPath!, PAD + 4, startY + 20, {
-          width: imgW - 8, height: halfH - 28,
-          fit: [imgW - 8, halfH - 28], align: "center", valign: "center",
+        safeImg(doc, c.aadhaarFrontPath!, PAD + 4, startY + 4, {
+          width: imgW - 8, height: halfH - 8,
+          fit: [imgW - 8, halfH - 8], align: "center", valign: "center",
         });
       } else {
-        // Placeholder when image not uploaded
-        const midBoxY = startY + 16 + (halfH - 20) / 2 - 8;
+        const midBoxY = startY + halfH / 2 - 8;
         doc.font("DVR").fontSize(9).fillColor(LGRAY)
            .text("Aadhaar Front — Not Uploaded", PAD, midBoxY,
              { width: imgW, align: "center", lineBreak: false });
@@ -822,20 +800,17 @@ export async function generateCandidatePdf(
 
       // ── Divider ──
       const midY = startY + halfH + 4;
-      hl(doc, PAD, midY, A4_W - PAD, 1.0, LGRAY);
+      hl(doc, PAD, midY, A4_W - PAD, 0.5, LGRAY);
 
       // ── Back (bottom half) ──
-      doc.font("DVB").fontSize(8).fillColor(NAVY)
-         .text("BACK  /  पीछे", PAD, midY + 6, { lineBreak: false });
-      box(doc, PAD, midY + 18, imgW, halfH - 20, 0.5, LGRAY);
+      box(doc, PAD, midY + 4, imgW, halfH, 0.5, LGRAY);
       if (hasBack) {
-        safeImg(doc, c.aadhaarBackPath!, PAD + 4, midY + 22, {
-          width: imgW - 8, height: halfH - 28,
-          fit: [imgW - 8, halfH - 28], align: "center", valign: "center",
+        safeImg(doc, c.aadhaarBackPath!, PAD + 4, midY + 8, {
+          width: imgW - 8, height: halfH - 8,
+          fit: [imgW - 8, halfH - 8], align: "center", valign: "center",
         });
       } else {
-        // Placeholder when image not uploaded
-        const midBoxY2 = midY + 18 + (halfH - 20) / 2 - 8;
+        const midBoxY2 = midY + 4 + halfH / 2 - 8;
         doc.font("DVR").fontSize(9).fillColor(LGRAY)
            .text("Aadhaar Back — Not Uploaded", PAD, midBoxY2,
              { width: imgW, align: "center", lineBreak: false });
@@ -856,31 +831,17 @@ export async function generateCandidatePdf(
       },
     ];
 
-    for (const item of docPages) {
+    for (let pi = 0; pi < docPages.length; pi++) {
+      const item = docPages[pi]!;
+      const pageNum = pi + 3;
       doc.addPage({ size: "A4", margin: 0 });
 
-      // Navy header band
-      fill(doc, 0, 0, A4_W, 44, NAVY);
-      fill(doc, 0, 0, 4,    44, AMBER);
+      // Page number — bottom-right corner only
+      doc.font("DVR").fontSize(8).fillColor(LGRAY)
+         .text(String(pageNum), A4_W - 30, A4_H - 18, { width: 20, align: "right", lineBreak: false });
 
-      // Label (mixed-script safe)
-      const lblSegs = splitScript(item.label);
-      {
-        let lx = 14;
-        for (const s of lblSegs) {
-          doc.font(fk(s.dev, true)).fontSize(11).fillColor("#FFFFFF");
-          const sw = doc.widthOfString(s.text);
-          doc.text(s.text, lx, 10, { lineBreak: false });
-          lx += sw;
-        }
-      }
-      if (c.name) {
-        doc.font("NSR").fontSize(8).fillColor("rgba(255,255,255,0.65)")
-           .text(c.name, 0, 30, { width: A4_W - 14, align: "right", lineBreak: false });
-      }
-
-      const docImgY = 52;
-      const docImgH = A4_H - 60;
+      const docImgY = 10;
+      const docImgH = A4_H - 28;
 
       // ── Self-declaration page (when caste cert not available) ──────────────
       if (item.selfDecl) {
