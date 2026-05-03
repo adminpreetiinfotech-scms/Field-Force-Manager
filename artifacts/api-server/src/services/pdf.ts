@@ -898,8 +898,8 @@ export async function generateCandidatePdf(
            .text("मैं,", PAD, dy, { lineBreak: false });
         const r1n0 = PAD + 23; const r1n1 = PAD + 190;
         if (sdName) {
-          doc.font("NSB").fontSize(FSIZE).fillColor(DARK)
-             .text(sdName, r1n0 + 2, dy, { width: r1n1 - r1n0 - 4, lineBreak: false });
+          t(doc, sdName, r1n0 + 2, dy,
+            { size: FSIZE, color: DARK, bold: true, width: r1n1 - r1n0 - 4 });
         }
         hl(doc, r1n0, dy + 14, r1n1, 0.7, "#333");
         doc.font("NSR").fontSize(8).fillColor(GRAY)
@@ -908,8 +908,8 @@ export async function generateCandidatePdf(
            .text("पिता/पति का नाम", r1n1 + 5, dy, { lineBreak: false });
         const r1f0 = r1n1 + 112; const r1f1 = PAD + BW - 2;
         if (sdFather) {
-          doc.font("NSB").fontSize(FSIZE).fillColor(DARK)
-             .text(sdFather, r1f0 + 2, dy, { width: r1f1 - r1f0 - 4, lineBreak: false });
+          t(doc, sdFather, r1f0 + 2, dy,
+            { size: FSIZE, color: DARK, bold: true, width: r1f1 - r1f0 - 4 });
         }
         hl(doc, r1f0, dy + 14, r1f1, 0.7, "#333");
         doc.font("NSR").fontSize(FSIZE).fillColor(DARK)
@@ -930,16 +930,16 @@ export async function generateCandidatePdf(
            .text("ग्राम/मोहल्ला", PAD, dy, { lineBreak: false });
         const r3g0 = PAD + 82; const r3g1 = PAD + 240;
         if (sdVillage) {
-          doc.font("NSB").fontSize(FSIZE).fillColor(DARK)
-             .text(sdVillage, r3g0 + 2, dy, { width: r3g1 - r3g0 - 4, lineBreak: false });
+          t(doc, sdVillage, r3g0 + 2, dy,
+            { size: FSIZE, color: DARK, bold: true, width: r3g1 - r3g0 - 4 });
         }
         hl(doc, r3g0, dy + 14, r3g1, 0.7, "#333");
         doc.font("NSR").fontSize(FSIZE).fillColor(DARK)
            .text(", पोस्ट", r3g1 + 2, dy, { lineBreak: false });
         const r3p0 = r3g1 + 46; const r3p1 = PAD + BW - 2;
         if (sdPanch) {
-          doc.font("NSB").fontSize(FSIZE).fillColor(DARK)
-             .text(sdPanch, r3p0 + 2, dy, { width: r3p1 - r3p0 - 4, lineBreak: false });
+          t(doc, sdPanch, r3p0 + 2, dy,
+            { size: FSIZE, color: DARK, bold: true, width: r3p1 - r3p0 - 4 });
         }
         hl(doc, r3p0, dy + 14, r3p1, 0.7, "#333");
         doc.font("NSR").fontSize(FSIZE).fillColor(DARK)
@@ -951,24 +951,24 @@ export async function generateCandidatePdf(
            .text("तहसील/प्रखंड", PAD, dy, { lineBreak: false });
         const r4t0 = PAD + 86; const r4t1 = PAD + 194;
         if (sdBlock) {
-          doc.font("NSB").fontSize(FSIZE).fillColor(DARK)
-             .text(sdBlock, r4t0 + 2, dy, { width: r4t1 - r4t0 - 4, lineBreak: false });
+          t(doc, sdBlock, r4t0 + 2, dy,
+            { size: FSIZE, color: DARK, bold: true, width: r4t1 - r4t0 - 4 });
         }
         hl(doc, r4t0, dy + 14, r4t1, 0.7, "#333");
         doc.font("NSR").fontSize(FSIZE).fillColor(DARK)
            .text(", जिला", r4t1 + 2, dy, { lineBreak: false });
         const r4j0 = r4t1 + 42; const r4j1 = r4t1 + 152;
         if (sdDist) {
-          doc.font("NSB").fontSize(FSIZE).fillColor(DARK)
-             .text(sdDist, r4j0 + 2, dy, { width: r4j1 - r4j0 - 4, lineBreak: false });
+          t(doc, sdDist, r4j0 + 2, dy,
+            { size: FSIZE, color: DARK, bold: true, width: r4j1 - r4j0 - 4 });
         }
         hl(doc, r4j0, dy + 14, r4j1, 0.7, "#333");
         doc.font("NSR").fontSize(FSIZE).fillColor(DARK)
            .text(", राज्य", r4j1 + 2, dy, { lineBreak: false });
         const r4r0 = r4j1 + 42; const r4r1 = PAD + BW - 2;
         if (sdState) {
-          doc.font("NSB").fontSize(FSIZE).fillColor(DARK)
-             .text(sdState, r4r0 + 2, dy, { width: r4r1 - r4r0 - 4, lineBreak: false });
+          t(doc, sdState, r4r0 + 2, dy,
+            { size: FSIZE, color: DARK, bold: true, width: r4r1 - r4r0 - 4 });
         }
         hl(doc, r4r0, dy + 14, r4r1, 0.7, "#333");
         doc.font("NSR").fontSize(FSIZE).fillColor(DARK)
@@ -981,8 +981,8 @@ export async function generateCandidatePdf(
            .text("यह स्वघोषणा करता/करती हूँ कि मैं", PAD, dy, { lineBreak: false });
         const cd1s = PAD + 222; const cd1e = PAD + BW - 82;
         if (sdCasteName) {
-          doc.font("NSB").fontSize(FSIZE).fillColor(DARK)
-             .text(sdCasteName, cd1s + 2, dy, { width: cd1e - cd1s - 4, lineBreak: false });
+          t(doc, sdCasteName, cd1s + 2, dy,
+            { size: FSIZE, color: DARK, bold: true, width: cd1e - cd1s - 4 });
         }
         hl(doc, cd1s, dy + 14, cd1e, 0.7, "#333");
         doc.font("NSR").fontSize(8).fillColor(GRAY)
@@ -1050,15 +1050,14 @@ export async function generateCandidatePdf(
         doc.font("NSR").fontSize(FSIZE).fillColor(DARK)
            .text("स्थान:", PAD, dy, { lineBreak: false });
         if (sdPlace) {
-          doc.font("NSR").fontSize(FSIZE).fillColor(DARK)
-             .text(sdPlace, PAD + 46, dy, { width: 130, lineBreak: false });
+          t(doc, sdPlace, PAD + 46, dy, { size: FSIZE, color: DARK, width: 130 });
         }
         hl(doc, PAD + 44, dy + 14, PAD + 200, 0.7, "#333");
         doc.font("NSR").fontSize(FSIZE).fillColor(DARK)
            .text("नाम:", rColX, dy, { lineBreak: false });
         if (sdName) {
-          doc.font("NSR").fontSize(FSIZE).fillColor(DARK)
-             .text(sdName, rColX + 36, dy, { width: PAD + BW - rColX - 38, lineBreak: false });
+          t(doc, sdName, rColX + 36, dy,
+            { size: FSIZE, color: DARK, width: PAD + BW - rColX - 38 });
         }
         hl(doc, rColX + 34, dy + 14, PAD + BW, 0.7, "#333");
         dy += 28;
