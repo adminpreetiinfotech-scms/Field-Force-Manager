@@ -351,8 +351,20 @@ router.patch("/companies/:id/profile", async (req, res, next) => {
     if (projectName !== undefined) updates.projectName = projectName?.trim() || null;
     if (centerName !== undefined) updates.centerName = centerName?.trim() || null;
     if (tcId !== undefined) updates.tcId = tcId?.trim() || null;
-    if (centerLat !== undefined) updates.centerLat = typeof centerLat === "number" ? centerLat : null;
-    if (centerLng !== undefined) updates.centerLng = typeof centerLng === "number" ? centerLng : null;
+    if (centerLat !== undefined) {
+      if (typeof centerLat === "number" && (centerLat < -90 || centerLat > 90)) {
+        res.status(400).json({ title: "centerLat must be between -90 and 90", status: 400 });
+        return;
+      }
+      updates.centerLat = typeof centerLat === "number" ? centerLat : null;
+    }
+    if (centerLng !== undefined) {
+      if (typeof centerLng === "number" && (centerLng < -180 || centerLng > 180)) {
+        res.status(400).json({ title: "centerLng must be between -180 and 180", status: 400 });
+        return;
+      }
+      updates.centerLng = typeof centerLng === "number" ? centerLng : null;
+    }
     if (centerRadiusMeters !== undefined) updates.centerRadiusMeters = typeof centerRadiusMeters === "number" ? Math.max(50, Math.round(centerRadiusMeters)) : 200;
 
     if (Object.keys(updates).length === 0) {

@@ -496,6 +496,15 @@ router.patch("/admin/staff/:id/profile", requireAdmin, async (req, res, next) =>
       updates.staffCategory = staffCategory;
     }
     if (centerStaffRole !== undefined) updates.centerStaffRole = centerStaffRole?.trim() || null;
+    // Enforce: center staff must have a role set
+    const finalCategory = updates.staffCategory ?? undefined;
+    if (finalCategory === "center" && !updates.centerStaffRole) {
+      // Only error if role is being explicitly cleared; allow if it was already set
+      if (centerStaffRole !== undefined && !centerStaffRole?.trim()) {
+        res.status(400).json({ title: "centerStaffRole is required when staffCategory is center", status: 400 });
+        return;
+      }
+    }
 
     if (Object.keys(updates).length === 0) {
       res.status(400).json({ title: "No fields to update", status: 400 });
@@ -1000,7 +1009,7 @@ router.get("/admin/center-attendance", requireAdmin, async (req, res, next) => {
 
     const IST_OFFSET = 5.5 * 60 * 60 * 1000;
 
-    // Group events by staffId + IST date
+    // Group events by staffId + IST date — first check-in, last check-out per day
     type EventEntry = { occurredAt: Date; payload: Record<string, unknown> };
     const eventMap = new Map<string, { checkin?: EventEntry; checkout?: EventEntry }>();
     for (const ev of events) {
@@ -1009,9 +1018,11 @@ router.get("/admin/center-attendance", requireAdmin, async (req, res, next) => {
       if (!eventMap.has(key)) eventMap.set(key, {});
       const entry = eventMap.get(key)!;
       const payload = (ev.payload ?? {}) as Record<string, unknown>;
-      if (ev.kind === "checkin" && !entry.checkin) {
-        entry.checkin = { occurredAt: ev.occurredAt, payload };
-      } else if (ev.kind === "checkout" && !entry.checkout) {
+      if (ev.kind === "checkin") {
+        // Keep first check-in of the day
+        if (!entry.checkin) entry.checkin = { occurredAt: ev.occurredAt, payload };
+      } else if (ev.kind === "checkout") {
+        // Keep last check-out of the day (overwrite on each occurrence)
         entry.checkout = { occurredAt: ev.occurredAt, payload };
       }
     }
