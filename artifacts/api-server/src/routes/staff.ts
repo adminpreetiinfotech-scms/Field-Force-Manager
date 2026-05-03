@@ -743,7 +743,7 @@ router.patch("/staff/profile", async (req, res, next) => {
     }
 
     const [existing] = await db
-      .select({ id: staffTable.id })
+      .select({ id: staffTable.id, staffCategory: staffTable.staffCategory, centerStaffRole: staffTable.centerStaffRole })
       .from(staffTable)
       .where(and(eq(staffTable.phone, phone.trim()), isNull(staffTable.deletedAt)))
       .limit(1);
@@ -772,6 +772,14 @@ router.patch("/staff/profile", async (req, res, next) => {
       updates.staffCategory = staffCategory;
     }
     if (centerStaffRole !== undefined) updates.centerStaffRole = centerStaffRole?.trim() || null;
+    // Enforce: center staff must have a role — reject explicit role clear when category is center
+    if ((updates.staffCategory ?? existing.staffCategory) === "center") {
+      const finalRole = updates.centerStaffRole ?? existing.centerStaffRole;
+      if (!finalRole?.trim()) {
+        res.status(400).json({ title: "centerStaffRole is required when staffCategory is center", status: 400 });
+        return;
+      }
+    }
 
     const [updated] = await db
       .update(staffTable)

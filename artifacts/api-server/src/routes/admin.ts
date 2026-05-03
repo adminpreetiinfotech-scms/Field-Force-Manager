@@ -998,10 +998,10 @@ router.get("/admin/center-attendance", requireAdmin, async (req, res, next) => {
       )
       .orderBy(activityEventsTable.occurredAt);
 
-    // Generate all dates in range
+    // Generate all dates in range — use explicit UTC midnight to avoid locale drift
     const dates: string[] = [];
-    const cur = new Date(resolvedDateFrom + "T00:00:00");
-    const end = new Date(resolvedDateTo + "T00:00:00");
+    const cur = new Date(resolvedDateFrom + "T00:00:00Z");
+    const end = new Date(resolvedDateTo + "T00:00:00Z");
     while (cur <= end) {
       dates.push(cur.toISOString().slice(0, 10));
       cur.setDate(cur.getDate() + 1);
