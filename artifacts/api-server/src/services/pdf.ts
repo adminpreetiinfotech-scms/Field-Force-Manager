@@ -76,7 +76,7 @@ function splitScript(text: string): Seg[] {
     }
   }
 
-  if (cur.trim() && curDev !== null) out.push({ text: cur, dev: curDev });
+  if (cur.trim()) out.push({ text: cur, dev: curDev ?? false });
   return out;
 }
 
