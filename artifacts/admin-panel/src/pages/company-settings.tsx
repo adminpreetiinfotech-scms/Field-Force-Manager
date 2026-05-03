@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import {
   Building2, Save, Loader2, Upload, X, ImageIcon,
-  MapPin, Layers, GitBranch, RefreshCw, AlertTriangle, Navigation,
+  MapPin, Layers, GitBranch, RefreshCw, AlertTriangle, Navigation, RotateCcw, SlidersHorizontal,
 } from "lucide-react";
 import GeoFenceMapPicker from "@/components/geo-fence-map-picker";
 
@@ -71,6 +71,15 @@ export default function CompanySettings() {
   const [profile, setProfile] = useState<CompanyProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [centerHintDismissed, setCenterHintDismissed] = useState(
+    () => localStorage.getItem("center_hint_dismissed") === "true"
+  );
+
+  const handleResetHints = () => {
+    localStorage.removeItem("center_hint_dismissed");
+    setCenterHintDismissed(false);
+    toast({ title: "Dashboard hints restored", description: "The dashboard hint will reappear on your next visit." });
+  };
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -497,6 +506,35 @@ export default function CompanySettings() {
                 ✓ Geo-fence set at {parseFloat(centerLat).toFixed(5)}, {parseFloat(centerLng).toFixed(5)} — radius {centerRadius || 200}m
               </p>
             )}
+          </div>
+
+          {/* Preferences */}
+          <div className="border rounded-xl p-6 bg-card space-y-4">
+            <div className="flex items-center gap-2 mb-1">
+              <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+              <h2 className="text-sm font-semibold">Preferences</h2>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-medium">Dashboard hints</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {centerHintDismissed
+                    ? "The \"No center staff set up yet\" hint has been dismissed."
+                    : "The dashboard hint is currently visible."}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!centerHintDismissed}
+                onClick={handleResetHints}
+                className="gap-1.5 shrink-0"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Reset hints
+              </Button>
+            </div>
           </div>
 
           {/* Save Button */}
