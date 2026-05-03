@@ -17,4 +17,8 @@ export interface RecentTrip {
   distanceKm?: number | null;
   startLocation?: string | null;
   endLocation?: string | null;
+  /** URI of the odometer photo taken at check-in on this day. */
+  checkinMeterPhotoUri?: string | null;
+  /** URI of the odometer photo taken at check-out on this day. */
+  checkoutMeterPhotoUri?: string | null;
 }

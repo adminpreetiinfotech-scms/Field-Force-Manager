@@ -35,6 +35,8 @@ import {
   MapPin,
   Phone,
   User,
+  Camera,
+  X as XIcon,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
@@ -274,8 +276,31 @@ function EditProfileDialog({
 
 // ─── View Profile Dialog ──────────────────────────────────────────────────────
 
+function PhotoLightbox({ uri, onClose }: { uri: string; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center"
+      onClick={onClose}
+    >
+      <button
+        className="absolute top-4 right-4 text-white hover:text-gray-300"
+        onClick={onClose}
+      >
+        <XIcon className="h-6 w-6" />
+      </button>
+      <img
+        src={uri}
+        alt="Odometer photo"
+        className="max-w-[90vw] max-h-[90vh] rounded-lg shadow-2xl object-contain"
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>
+  );
+}
+
 function ViewProfileDialog({ staff, onClose }: { staff: StaffMember; onClose: () => void }) {
   const { data: stats, isLoading } = useGetStaffProfileStats(staff.id);
+  const [lightboxUri, setLightboxUri] = useState<string | null>(null);
 
   const StatCard = ({ label, value, sub }: { label: string; value: string | number; sub?: string }) => (
     <div className="bg-muted/40 rounded-lg p-3 text-center">
@@ -393,11 +418,36 @@ function ViewProfileDialog({ staff, onClose }: { staff: StaffMember; onClose: ()
                 {stats.recentTrips.length > 0 && (
                   <div className="mt-3">
                     <p className="text-xs font-semibold text-muted-foreground mb-1.5">Recent Trips</p>
-                    <div className="border rounded-md divide-y text-xs max-h-36 overflow-y-auto">
-                      {stats.recentTrips.slice(0, 5).map((t) => (
-                        <div key={t.tripRef} className="flex justify-between items-center px-3 py-2">
-                          <span className="text-muted-foreground">{format(new Date(t.rideDate), "dd MMM")}</span>
-                          <span>{t.distanceKm != null ? `${t.distanceKm.toFixed(1)} km` : "—"}</span>
+                    <div className="border rounded-md divide-y text-xs max-h-48 overflow-y-auto">
+                      {stats.recentTrips.slice(0, 10).map((t) => (
+                        <div key={t.tripRef} className="flex items-center gap-2 px-3 py-2">
+                          <span className="text-muted-foreground w-14 shrink-0">{format(new Date(t.rideDate), "dd MMM")}</span>
+                          <span className="flex-1 font-medium">{t.distanceKm != null ? `${t.distanceKm.toFixed(1)} km` : "—"}</span>
+                          <div className="flex items-center gap-1.5">
+                            {t.checkinMeterPhotoUri ? (
+                              <button
+                                title="Check-in odometer photo"
+                                onClick={() => setLightboxUri(t.checkinMeterPhotoUri!)}
+                                className="flex items-center gap-0.5 text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded px-1.5 py-0.5 transition-colors"
+                              >
+                                <Camera className="h-3 w-3" />
+                                <span className="text-[10px]">In</span>
+                              </button>
+                            ) : null}
+                            {t.checkoutMeterPhotoUri ? (
+                              <button
+                                title="Check-out odometer photo"
+                                onClick={() => setLightboxUri(t.checkoutMeterPhotoUri!)}
+                                className="flex items-center gap-0.5 text-green-600 hover:text-green-800 bg-green-50 hover:bg-green-100 rounded px-1.5 py-0.5 transition-colors"
+                              >
+                                <Camera className="h-3 w-3" />
+                                <span className="text-[10px]">Out</span>
+                              </button>
+                            ) : null}
+                            {!t.checkinMeterPhotoUri && !t.checkoutMeterPhotoUri && (
+                              <span className="text-muted-foreground text-[10px]">No photos</span>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -414,6 +464,7 @@ function ViewProfileDialog({ staff, onClose }: { staff: StaffMember; onClose: ()
           <Button variant="outline" onClick={onClose}>Close</Button>
         </DialogFooter>
       </DialogContent>
+      {lightboxUri && <PhotoLightbox uri={lightboxUri} onClose={() => setLightboxUri(null)} />}
     </Dialog>
   );
 }

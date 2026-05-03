@@ -1,5 +1,5 @@
 import { candidatesTable, companiesTable, db, staffTable, activityEventsTable } from "@workspace/db";
-import { eq, and, gte, lt, isNull, sql } from "drizzle-orm";
+import { eq, and, gte, lt, isNull, sql, inArray } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import crypto from "node:crypto";
 import { requireAdmin } from "./admin";
@@ -301,11 +301,43 @@ router.get("/staff/:staffId/profile-stats", async (req, res, next) => {
         ),
       );
 
+    // Fetch checkin/checkout events to get odometer photo URIs (keyed by date)
+    const attendEvents = await db
+      .select({
+        kind: activityEventsTable.kind,
+        occurredAt: activityEventsTable.occurredAt,
+        payload: activityEventsTable.payload,
+      })
+      .from(activityEventsTable)
+      .where(
+        and(
+          eq(activityEventsTable.staffId, staffId),
+          inArray(activityEventsTable.kind, ["checkin", "checkout"]),
+        ),
+      );
+
+    // Build: dateStr (IST) → { checkinPhotoUri, checkoutPhotoUri }
+    const IST_MS = 5.5 * 60 * 60 * 1000;
+    type DayPhotos = { checkinPhotoUri: string | null; checkoutPhotoUri: string | null };
+    const photoByDate = new Map<string, DayPhotos>();
+    for (const ev of attendEvents) {
+      const dateStr = new Date((ev.occurredAt as Date).getTime() + IST_MS).toISOString().slice(0, 10);
+      const p = (ev.payload || {}) as { vehicleMeterPhotoUri?: string | null };
+      const existing = photoByDate.get(dateStr) ?? { checkinPhotoUri: null, checkoutPhotoUri: null };
+      if (ev.kind === "checkin" && p.vehicleMeterPhotoUri) {
+        existing.checkinPhotoUri = p.vehicleMeterPhotoUri;
+      }
+      if (ev.kind === "checkout" && p.vehicleMeterPhotoUri) {
+        existing.checkoutPhotoUri = p.vehicleMeterPhotoUri;
+      }
+      photoByDate.set(dateStr, existing);
+    }
+
     const startByRef = new Map(
       startEvents.map((e) => [e.tripRef, e]),
     );
 
-    const IST = 5.5 * 60 * 60 * 1000;
+    const IST = IST_MS;
     const now = Date.now();
     const nowIST = new Date(now + IST);
 
@@ -416,6 +448,7 @@ router.get("/staff/:staffId/profile-stats", async (req, res, next) => {
         : null;
       const fmtLoc = (loc?: { latitude: number; longitude: number } | null) =>
         loc ? `${loc.latitude.toFixed(3)}, ${loc.longitude.toFixed(3)}` : null;
+      const photos = photoByDate.get(dateStr) ?? { checkinPhotoUri: null, checkoutPhotoUri: null };
       return {
         tripRef: ev.tripRef ?? "",
         rideDate: dateStr,
@@ -427,6 +460,8 @@ router.get("/staff/:staffId/profile-stats", async (req, res, next) => {
           typeof endP.distanceKm === "number" ? endP.distanceKm : null,
         startLocation: fmtLoc(startP?.location),
         endLocation: fmtLoc(endP.location),
+        checkinMeterPhotoUri: photos.checkinPhotoUri,
+        checkoutMeterPhotoUri: photos.checkoutPhotoUri,
       };
     });
 

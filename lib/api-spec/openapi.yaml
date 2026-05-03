@@ -1499,6 +1499,14 @@ components:
         endLocation:
           type: string
           nullable: true
+        checkinMeterPhotoUri:
+          type: string
+          nullable: true
+          description: URI of the odometer photo taken at check-in on this day.
+        checkoutMeterPhotoUri:
+          type: string
+          nullable: true
+          description: URI of the odometer photo taken at check-out on this day.
       required: [tripRef, rideDate, startTime, endTime]
 
     StaffProfileStats:
