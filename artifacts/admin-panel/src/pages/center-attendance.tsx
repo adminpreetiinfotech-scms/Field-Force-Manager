@@ -168,10 +168,10 @@ export default function CenterAttendance() {
   useEffect(() => { if (!staffLoading) loadAttendance(); }, [staffLoading, loadAttendance]);
 
   const exportExcel = () => {
-    if (!rows.length) return;
+    if (!filteredRows.length) return;
     const sheetData = [
       ["Date", "Staff Name", "Emp Code", "Role", "Status", "Check-in (IST)", "Check-out (IST)", "Check-in Geofence", "Check-in Distance (m)", "Check-out Geofence", "Check-out Distance (m)"],
-      ...rows.map((r) => [
+      ...filteredRows.map((r) => [
         r.date,
         r.staffName,
         r.empCode,
@@ -189,7 +189,8 @@ export default function CenterAttendance() {
     ws["!cols"] = [9, 22, 10, 18, 10, 16, 16, 16, 14, 16, 14].map((w) => ({ wch: w }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Attendance");
-    XLSX.writeFile(wb, `center-attendance-${dateFrom}-to-${dateTo}.xlsx`);
+    const filterSuffix = statusFilter ? `-${statusFilter}` : "";
+    XLSX.writeFile(wb, `center-attendance${filterSuffix}-${dateFrom}-to-${dateTo}.xlsx`);
   };
 
   const filteredRows = rows.filter((r) => {
@@ -217,7 +218,7 @@ export default function CenterAttendance() {
             <RefreshCw className={`h-4 w-4 mr-1.5 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </Button>
-          <Button variant="outline" size="sm" onClick={exportExcel} disabled={!rows.length}>
+          <Button variant="outline" size="sm" onClick={exportExcel} disabled={!filteredRows.length}>
             <Download className="h-4 w-4 mr-1.5" />
             Export Excel
           </Button>
