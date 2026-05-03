@@ -353,9 +353,14 @@ function enhance(ctx, w, h, brightness, contrast, sharpness) {
   if (sharpness > 1.0) {
     var amount = Math.min((sharpness - 1.0) * 1.5, 1.0);
     var blurred = new Uint8Array(n);
-    var yi, xi, base;
+    var yi, xi, base, kb;
 
-    // 3×3 box blur into blurred[]
+    // BUG FIX: pre-fill blurred with original values so border pixels (which
+    // the box blur skips) have blurred[i] == data[i] → zero sharpening at borders,
+    // avoiding white-fringe / contrast-blow-out artifacts on the image edges.
+    for (kb = 0; kb < n; kb++) blurred[kb] = data[kb];
+
+    // 3×3 box blur into blurred[] — interior pixels only
     for (yi = 1; yi < h - 1; yi++) {
       for (xi = 1; xi < w - 1; xi++) {
         base = (yi * w + xi) << 2;
@@ -397,15 +402,45 @@ var DOC_SIZES = {
   page:           { w: 1240, h: 1754 }
 };
 
-// ── Main processing handler ───────────────────────────────────────────────────
+// ── Concurrency guard — one request at a time, last-in-wins queue ────────────
+// If a second request arrives while the first is still running, we queue it
+// and discard any previously-queued (but not yet started) request.
+
+var _busy   = false;
+var _queued = null;
+
+function _onDone() {
+  _busy = false;
+  if (_queued) {
+    var next = _queued;
+    _queued = null;
+    _runProcess(next);
+  }
+}
 
 function processDoc(msg) {
-  var id          = msg.id;
-  var docType     = msg.docType     || 'page';
-  var brightness  = msg.brightness  != null ? msg.brightness  : 1.08;
-  var contrast    = msg.contrast    != null ? msg.contrast    : 1.12;
-  var sharpness   = msg.sharpness   != null ? msg.sharpness   : 1.35;
-  var doEnhance   = msg.enhance     !== false;
+  if (_busy) {
+    // Supersede any previously queued (not-yet-started) request
+    if (_queued) {
+      post({ id: _queued.id, type: 'error', error: 'Superseded by newer request' });
+    }
+    _queued = msg;
+    return;
+  }
+  _runProcess(msg);
+}
+
+// ── Core processing (called by processDoc, serialised via _busy flag) ─────────
+
+function _runProcess(msg) {
+  _busy = true;
+
+  var id           = msg.id;
+  var docType      = msg.docType      || 'page';
+  var brightness   = msg.brightness   != null ? msg.brightness  : 1.08;
+  var contrast     = msg.contrast     != null ? msg.contrast    : 1.12;
+  var sharpness    = msg.sharpness    != null ? msg.sharpness   : 1.35;
+  var doEnhance    = msg.enhance      !== false;
   var guideCorners = msg.guideCorners || null;
 
   loadImage(msg.imageBase64).then(function (img) {
@@ -421,12 +456,12 @@ function processDoc(msg) {
     canvas.height = dH;
     ctx.drawImage(img, 0, 0, dW, dH);
 
-    var dImgData  = ctx.getImageData(0, 0, dW, dH);
-    var gray      = toGray(dImgData.data, dW * dH);
-    var blurred   = gaussBlur(gray, dW, dH);
-    var sm        = sobelMag(blurred, dW, dH);
-    var edges     = threshDilate(sm.mag, sm.maxMag, dW, dH);
-    var quad      = detectQuad(edges, dW, dH);
+    var dImgData     = ctx.getImageData(0, 0, dW, dH);
+    var gray         = toGray(dImgData.data, dW * dH);
+    var blurredGray  = gaussBlur(gray, dW, dH);
+    var sm           = sobelMag(blurredGray, dW, dH);
+    var edges        = threshDilate(sm.mag, sm.maxMag, dW, dH);
+    var quad         = detectQuad(edges, dW, dH);
     var autoDetected = !!quad;
 
     // ── Step 2: Source corners in full-resolution image space ─────────────────
@@ -465,6 +500,7 @@ function processDoc(msg) {
     var warped = warpPerspective(fullData.data, fullW, fullH, srcCorners, wW, wH);
     if (!warped) {
       post({ id: id, type: 'error', error: 'Perspective transform failed — singular matrix' });
+      _onDone();
       return;
     }
 
@@ -487,9 +523,11 @@ function processDoc(msg) {
       autoDetected: autoDetected,
       corners:      srcCorners
     });
+    _onDone();
 
   }).catch(function (err) {
     post({ id: id, type: 'error', error: err.message || 'Unknown processing error' });
+    _onDone();
   });
 }
 

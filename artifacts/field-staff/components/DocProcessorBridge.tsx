@@ -69,15 +69,15 @@ const DocProcessorBridge = React.forwardRef<DocProcessorHandle, Props>(
   function DocProcessorBridge({ onReady }, ref) {
     const wvRef        = useRef<WebView>(null);
     const readyRef     = useRef(false);
-    const readyWaiters = useRef<Array<() => void>>([]);
+    const readyWaiters = useRef<Array<{ resolve: () => void; reject: (e: Error) => void }>>([]);
     const pending      = useRef<Map<string, PendingEntry>>(new Map());
 
     // Wait until the WebView has posted its 'ready' message
     const waitReady = useCallback(
       () =>
-        new Promise<void>((resolve) => {
+        new Promise<void>((resolve, reject) => {
           if (readyRef.current) { resolve(); return; }
-          readyWaiters.current.push(resolve);
+          readyWaiters.current.push({ resolve, reject });
         }),
       [],
     );
@@ -132,7 +132,7 @@ const DocProcessorBridge = React.forwardRef<DocProcessorHandle, Props>(
         // ── Ready signal ─────────────────────────────────────────────────────
         if (msg.type === "ready") {
           readyRef.current = true;
-          readyWaiters.current.forEach((r) => r());
+          readyWaiters.current.forEach((w) => w.resolve());
           readyWaiters.current = [];
           onReady?.();
           return;
@@ -160,13 +160,18 @@ const DocProcessorBridge = React.forwardRef<DocProcessorHandle, Props>(
       [onReady],
     );
 
-    // Cleanup on unmount
+    // Cleanup on unmount: reject all in-flight and waiting operations
     useEffect(() => {
       return () => {
+        const unmountErr = new Error("DocProcessorBridge unmounted");
         pending.current.forEach(({ timer, reject }) => {
           clearTimeout(timer);
-          reject(new Error("DocProcessorBridge unmounted"));
+          reject(unmountErr);
         });
+        pending.current.clear();
+        // Also reject any callers still waiting for the bridge to be ready
+        readyWaiters.current.forEach((w) => w.reject(unmountErr));
+        readyWaiters.current = [];
       };
     }, []);
 

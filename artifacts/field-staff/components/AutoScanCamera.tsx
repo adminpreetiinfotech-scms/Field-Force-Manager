@@ -146,6 +146,8 @@ export default function AutoScanCamera({
   const [permission, requestPermission]     = useCameraPermissions();
   const cameraRef    = useRef<CameraView>(null);
   const processorRef = useRef<DocProcessorHandle>(null);
+  // cancelledRef lets handleCapture know the user cancelled mid-processing
+  const cancelledRef = useRef(false);
 
   const [phase,         setPhase]        = useState<Phase>("camera");
   const [stepIdx,       setStepIdx]      = useState(0);
@@ -199,9 +201,10 @@ export default function AutoScanCamera({
   const TOP_BAR_H  = Platform.OS === "ios" ? 110 : 76;
   const BOT_AREA_H = Platform.OS === "ios" ? 180 : 158;
   const GUIDE_W    = screenW * 0.87;
-  const GUIDE_H    = GUIDE_W * spec.ratio;
-  const GUIDE_X    = (screenW - GUIDE_W) / 2;
   const avail      = screenH - TOP_BAR_H - BOT_AREA_H;
+  // Clamp height so the guide frame never overflows the available vertical space
+  const GUIDE_H    = Math.min(GUIDE_W * spec.ratio, Math.max(60, avail - 16));
+  const GUIDE_X    = (screenW - GUIDE_W) / 2;
   const GUIDE_Y    = TOP_BAR_H + Math.max(8, (avail - GUIDE_H) / 2);
 
   // ── Compute guide-frame corners in image space ────────────────────────────
@@ -222,9 +225,18 @@ export default function AutoScanCamera({
     [screenW, screenH, GUIDE_X, GUIDE_Y, GUIDE_W, GUIDE_H],
   );
 
+  // ── Cancel during processing ──────────────────────────────────────────────
+  const handleCancelProcessing = useCallback(() => {
+    // Signal to handleCapture that it should not commit results to state
+    cancelledRef.current = true;
+    setPhase("camera");
+    setError(null);
+  }, []);
+
   // ── Capture & process ─────────────────────────────────────────────────────
   const handleCapture = useCallback(async () => {
     if (!cameraRef.current) return;
+    cancelledRef.current = false; // reset cancellation flag for this capture
     setPhase("processing");
     setTorchOn(false);
     setError(null);
@@ -265,12 +277,18 @@ export default function AutoScanCamera({
         sharpness:  1.35,
       });
 
-      // 5 — Save data URI to temp file so we have a real file URI
+      // 5 — If user cancelled while we were waiting, discard the result
+      if (cancelledRef.current) return;
+
+      // 6 — Save data URI to temp file so we have a real file URI
       const b64     = result.imageDataUri.replace(/^data:image\/\w+;base64,/, "");
       const tmpPath = `${cacheDirectory ?? ""}scan_${Date.now()}.jpg`;
       await writeAsStringAsync(tmpPath, b64, {
         encoding: EncodingType.Base64,
       });
+
+      // 7 — One final cancellation check before committing state
+      if (cancelledRef.current) return;
 
       setAutoDetected(result.autoDetected);
       setProcessedImg({ uri: tmpPath, base64: b64, mimeType: "image/jpeg" });
@@ -443,6 +461,13 @@ export default function AutoScanCamera({
               <Text style={styles.processingHint}>
                 Detecting edges · Correcting perspective · Enhancing quality
               </Text>
+              <TouchableOpacity
+                style={styles.cancelProcBtn}
+                onPress={handleCancelProcessing}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.cancelProcTxt}>Cancel</Text>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -465,7 +490,7 @@ export default function AutoScanCamera({
               {/* Detection badge */}
               <View style={[styles.statusBadge, !autoDetected && styles.statusBadgeWarn]}>
                 {autoDetected
-                  ? <Text style={styles.statusTxt}>✓  Document edges auto-detected &amp; corrected</Text>
+                  ? <Text style={styles.statusTxt}>✓  Document edges auto-detected & corrected</Text>
                   : <Text style={[styles.statusTxt, { color: "#FCD34D" }]}>⚠  Guide frame used — tap "Adjust Manually" if crop is off</Text>
                 }
               </View>
@@ -562,6 +587,8 @@ const styles = StyleSheet.create({
   stepDot:          { width: 8, height: 8, borderRadius: 4, backgroundColor: "#374151" },
   stepDotActive:    { backgroundColor: "#4ade80", width: 24, borderRadius: 4 },
   stepDotDone:      { backgroundColor: "#065F46" },
+  cancelProcBtn:    { marginTop: 18, paddingVertical: 11, paddingHorizontal: 36, borderRadius: 10, borderWidth: 1, borderColor: "#374151" },
+  cancelProcTxt:    { color: "#9CA3AF", fontSize: 13, textAlign: "center" },
 
   previewRoot:   { flex: 1, backgroundColor: "#060612" },
   previewHeader: {
