@@ -78,5 +78,6 @@ export * from './updateCandidateStatusBody';
 export * from './updateCandidateStatusBodyStatus';
 export * from './updateCompanyBody';
 export * from './updateCompanyBodyStatus';
+export * from './updateCompanyProfileBody';
 export * from './updateNotesInput';
 export * from './updateStaffNotes200';

@@ -804,13 +804,13 @@ paths:
       summary: Get center staff attendance records with geo-fence violation data
       parameters:
         - in: query
-          name: from
+          name: dateFrom
           required: false
           schema:
             type: string
             description: Start date in YYYY-MM-DD format (IST). Defaults to today.
         - in: query
-          name: to
+          name: dateTo
           required: false
           schema:
             type: string
@@ -831,6 +831,83 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/CenterAttendanceRow"
+
+  /companies/{id}/profile:
+    patch:
+      operationId: updateCompanyProfile
+      tags: [admin]
+      summary: Update company profile including geo-fence settings
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                adminName:
+                  type: string
+                email:
+                  type: string
+                  nullable: true
+                state:
+                  type: string
+                  nullable: true
+                district:
+                  type: string
+                  nullable: true
+                projectName:
+                  type: string
+                  nullable: true
+                centerName:
+                  type: string
+                  nullable: true
+                tcId:
+                  type: string
+                  nullable: true
+                centerLat:
+                  type: number
+                  format: double
+                  nullable: true
+                  description: Training center latitude for geo-fence
+                centerLng:
+                  type: number
+                  format: double
+                  nullable: true
+                  description: Training center longitude for geo-fence
+                centerRadiusMeters:
+                  type: integer
+                  minimum: 50
+                  maximum: 1000
+                  nullable: true
+                  description: Geo-fence radius in metres (50–1000)
+      responses:
+        "200":
+          description: Updated company
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Company"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Company not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
 
   /admin/staff/{staffId}/deactivate:
     patch:

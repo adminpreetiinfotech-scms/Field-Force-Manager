@@ -10,11 +10,11 @@ export type GetCenterAttendanceParams = {
 /**
  * Start date in YYYY-MM-DD format (IST). Defaults to today.
  */
-from?: string;
+dateFrom?: string;
 /**
  * End date in YYYY-MM-DD format (IST). Defaults to today.
  */
-to?: string;
+dateTo?: string;
 /**
  * Filter by a specific staff member.
  */

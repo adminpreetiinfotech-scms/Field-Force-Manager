@@ -749,8 +749,8 @@ export const GetDashboardStatsResponse = zod.object({
  * @summary Get center staff attendance records with geo-fence violation data
  */
 export const GetCenterAttendanceQueryParams = zod.object({
-  "from": zod.coerce.string().optional(),
-  "to": zod.coerce.string().optional(),
+  "dateFrom": zod.coerce.string().optional(),
+  "dateTo": zod.coerce.string().optional(),
   "staffId": zod.coerce.string().uuid().optional()
 })
 
@@ -769,6 +769,51 @@ export const GetCenterAttendanceResponseItem = zod.object({
   "checkOutDistanceM": zod.number().nullish().describe('Distance from training center at check-out, in metres.')
 }).describe('One row of center staff attendance data covering a single calendar date.')
 export const GetCenterAttendanceResponse = zod.array(GetCenterAttendanceResponseItem)
+
+
+/**
+ * @summary Update company profile including geo-fence settings
+ */
+export const UpdateCompanyProfileParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const updateCompanyProfileBodyCenterRadiusMetersMin = 50;
+export const updateCompanyProfileBodyCenterRadiusMetersMax = 1000;
+
+
+
+export const UpdateCompanyProfileBody = zod.object({
+  "name": zod.string().optional(),
+  "adminName": zod.string().optional(),
+  "email": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "district": zod.string().nullish(),
+  "projectName": zod.string().nullish(),
+  "centerName": zod.string().nullish(),
+  "tcId": zod.string().nullish(),
+  "centerLat": zod.number().nullish().describe('Training center latitude for geo-fence'),
+  "centerLng": zod.number().nullish().describe('Training center longitude for geo-fence'),
+  "centerRadiusMeters": zod.number().min(updateCompanyProfileBodyCenterRadiusMetersMin).max(updateCompanyProfileBodyCenterRadiusMetersMax).nullish().describe('Geo-fence radius in metres (50–1000)')
+})
+
+export const UpdateCompanyProfileResponse = zod.object({
+  "id": zod.string().uuid(),
+  "name": zod.string(),
+  "adminName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "district": zod.string().nullish(),
+  "projectName": zod.string().nullish(),
+  "logoUrl": zod.string().nullish(),
+  "status": zod.enum(['active', 'inactive']),
+  "subscriptionActive": zod.boolean(),
+  "createdAt": zod.coerce.date().nullish(),
+  "centerLat": zod.number().nullish().describe('Latitude of the training center geo-fence origin.'),
+  "centerLng": zod.number().nullish().describe('Longitude of the training center geo-fence origin.'),
+  "centerRadiusMeters": zod.number().nullish().describe('Geo-fence radius in metres.')
+})
 
 
 /**

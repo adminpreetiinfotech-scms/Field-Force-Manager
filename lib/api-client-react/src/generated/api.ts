@@ -67,6 +67,7 @@ import type {
   TripReportRow,
   UpdateCandidateStatusBody,
   UpdateCompanyBody,
+  UpdateCompanyProfileBody,
   UpdateNotesInput,
   UpdateStaffNotes200
 } from './api.schemas';
@@ -2256,6 +2257,78 @@ export function useGetCenterAttendance<TData = Awaited<ReturnType<typeof getCent
 
 
 
+
+/**
+ * @summary Update company profile including geo-fence settings
+ */
+export const getUpdateCompanyProfileUrl = (id: string,) => {
+
+
+
+
+  return `/api/companies/${id}/profile`
+}
+
+export const updateCompanyProfile = async (id: string,
+    updateCompanyProfileBody: UpdateCompanyProfileBody, options?: RequestInit): Promise<Company> => {
+
+  return customFetch<Company>(getUpdateCompanyProfileUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      updateCompanyProfileBody,)
+  }
+);}
+
+
+
+
+export const getUpdateCompanyProfileMutationOptions = <TError = ErrorType<ProblemDetails>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCompanyProfile>>, TError,{id: string;data: BodyType<UpdateCompanyProfileBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCompanyProfile>>, TError,{id: string;data: BodyType<UpdateCompanyProfileBody>}, TContext> => {
+
+const mutationKey = ['updateCompanyProfile'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCompanyProfile>>, {id: string;data: BodyType<UpdateCompanyProfileBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateCompanyProfile(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCompanyProfileMutationResult = NonNullable<Awaited<ReturnType<typeof updateCompanyProfile>>>
+    export type UpdateCompanyProfileMutationBody = BodyType<UpdateCompanyProfileBody>
+    export type UpdateCompanyProfileMutationError = ErrorType<ProblemDetails>
+
+    /**
+ * @summary Update company profile including geo-fence settings
+ */
+export const useUpdateCompanyProfile = <TError = ErrorType<ProblemDetails>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCompanyProfile>>, TError,{id: string;data: BodyType<UpdateCompanyProfileBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCompanyProfile>>,
+        TError,
+        {id: string;data: BodyType<UpdateCompanyProfileBody>},
+        TContext
+      > => {
+      return useMutation(getUpdateCompanyProfileMutationOptions(options));
+    }
 
 /**
  * @summary Deactivate (soft-delete) a staff member

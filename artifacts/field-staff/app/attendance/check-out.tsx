@@ -6,6 +6,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -36,7 +37,11 @@ export default function CheckOutScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [odometerKm, setOdometerKm] = useState("");
   const [meterPhotoUri, setMeterPhotoUri] = useState<string | null>(null);
-  const [phase, setPhase] = useState<"input" | "camera">("input");
+  const [selfieUri, setSelfieUri] = useState<string | null>(null);
+  const isCenterStaff = user?.staffCategory === "center";
+  const [phase, setPhase] = useState<"selfie" | "input" | "camera">(
+    () => (isCenterStaff ? "selfie" : "input")
+  );
   const [submitting, setSubmitting] = useState(false);
   const [currentLoc, setCurrentLoc] = useState<GeoPoint | null>(null);
   const cameraRef = useRef<CameraView>(null);
@@ -52,6 +57,20 @@ export default function CheckOutScreen() {
   }, []);
 
   const gpsKmNum = parseFloat(gpsKm || "0") || 0;
+
+  const captureSelfie = async () => {
+    if (!cameraRef.current) return;
+    try {
+      if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
+      const result = await cameraRef.current.takePictureAsync({ quality: 0.55, skipProcessing: true });
+      if (result?.uri) {
+        setSelfieUri(result.uri);
+        setPhase("input");
+      }
+    } catch {
+      Alert.alert("Camera error", "Could not capture selfie.");
+    }
+  };
 
   const capturePhoto = async () => {
     if (!cameraRef.current) return;
@@ -71,7 +90,7 @@ export default function CheckOutScreen() {
     if (!user) return;
     setSubmitting(true);
     try {
-      let loc: GeoPoint | null = null;
+      let loc: GeoPoint | null = currentLoc;
       try {
         if (Platform.OS !== "web") {
           const cur = await Location.getCurrentPositionAsync({});
@@ -86,9 +105,9 @@ export default function CheckOutScreen() {
         type: "out",
         timestamp: Date.now(),
         location: loc,
-        selfieUri: null,
-        endOdometerKm: Number.isFinite(kmVal as number) ? (kmVal as number) : null,
-        vehicleMeterPhotoUri: meterPhotoUri,
+        selfieUri: isCenterStaff ? selfieUri : null,
+        endOdometerKm: !isCenterStaff && Number.isFinite(kmVal as number) ? (kmVal as number) : null,
+        vehicleMeterPhotoUri: !isCenterStaff ? meterPhotoUri : null,
       });
       await endTrip(gpsKmNum, loc);
       if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -99,6 +118,69 @@ export default function CheckOutScreen() {
   };
 
   const webPad = Platform.OS === "web" ? 67 : 0;
+
+  const centerGeofenceWarning: { outside: boolean; distanceM: number } | null = (() => {
+    if (!isCenterStaff) return null;
+    if (!currentLoc || !user?.companyCenterLat || !user?.companyCenterLng || !user?.companyCenterRadiusMeters) return null;
+    const d = haversineM(currentLoc.latitude, currentLoc.longitude, user.companyCenterLat, user.companyCenterLng);
+    return { outside: d > user.companyCenterRadiusMeters, distanceM: Math.round(d) };
+  })();
+
+  if (phase === "selfie") {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#000" }}>
+        <View style={[styles.topBar, { paddingTop: insets.top + 8 + webPad }]}>
+          <Pressable
+            onPress={() => router.back()}
+            style={({ pressed }) => [styles.iconBtn, { opacity: pressed ? 0.7 : 1 }]}
+            hitSlop={6}
+          >
+            <Feather name="x" size={20} color="#fff" />
+          </Pressable>
+          <Text style={{ color: "#fff", fontFamily: "Inter_600SemiBold", fontSize: 13 }}>Check-Out Selfie</Text>
+          <View style={styles.iconBtn} />
+        </View>
+        {permission?.granted ? (
+          <CameraView ref={cameraRef} style={{ flex: 1 }} facing="front" />
+        ) : (
+          <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 16, paddingHorizontal: 32 }}>
+            <Feather name="camera-off" size={40} color="rgba(255,255,255,0.5)" />
+            <Text style={{ color: "rgba(255,255,255,0.7)", textAlign: "center", fontFamily: "Inter_400Regular" }}>
+              Camera permission is required to capture your check-out selfie.
+            </Text>
+            <Pressable
+              onPress={requestPermission}
+              style={({ pressed }) => ({
+                backgroundColor: "#fff",
+                paddingHorizontal: 24,
+                paddingVertical: 12,
+                borderRadius: 10,
+                opacity: pressed ? 0.85 : 1,
+              })}
+            >
+              <Text style={{ color: "#000", fontFamily: "Inter_600SemiBold" }}>Grant Permission</Text>
+            </Pressable>
+          </View>
+        )}
+        <View style={[styles.bottomBarDark, { paddingBottom: insets.bottom + 24 + (Platform.OS === "web" ? 34 : 0) }]}>
+          <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, fontFamily: "Inter_400Regular", textAlign: "center" }}>
+            Look at the camera and take a selfie to confirm your check-out
+          </Text>
+          <View style={{ alignItems: "center" }}>
+            <Pressable
+              onPress={captureSelfie}
+              style={({ pressed }) => [styles.shutter, { opacity: pressed ? 0.85 : 1 }]}
+              hitSlop={10}
+              disabled={!permission?.granted}
+            >
+              <View style={styles.shutterInner} />
+            </Pressable>
+            <Text style={styles.shutterHint}>Tap to capture</Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   if (phase === "camera") {
     return (
@@ -133,15 +215,6 @@ export default function CheckOutScreen() {
       </View>
     );
   }
-
-  const isCenterStaff = user?.staffCategory === "center";
-
-  const centerGeofenceWarning: { outside: boolean; distanceM: number } | null = (() => {
-    if (!isCenterStaff) return null;
-    if (!currentLoc || !user?.companyCenterLat || !user?.companyCenterLng || !user?.companyCenterRadiusMeters) return null;
-    const d = haversineM(currentLoc.latitude, currentLoc.longitude, user.companyCenterLat, user.companyCenterLng);
-    return { outside: d > user.companyCenterRadiusMeters, distanceM: Math.round(d) };
-  })();
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -179,6 +252,19 @@ export default function CheckOutScreen() {
                   </Text>
                 )}
               </View>
+            </View>
+          )}
+
+          {/* Selfie preview — center staff */}
+          {isCenterStaff && selfieUri && (
+            <View style={{ alignItems: "center", gap: 10 }}>
+              <Image
+                source={{ uri: selfieUri }}
+                style={{ width: 90, height: 90, borderRadius: 45, borderWidth: 3, borderColor: colors.primary }}
+              />
+              <Pressable onPress={() => setPhase("selfie")} hitSlop={6}>
+                <Text style={{ color: colors.primary, fontSize: 12, fontFamily: "Inter_500Medium" }}>Retake selfie</Text>
+              </Pressable>
             </View>
           )}
 

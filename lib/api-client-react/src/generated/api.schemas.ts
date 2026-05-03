@@ -810,15 +810,36 @@ export type GetCenterAttendanceParams = {
 /**
  * Start date in YYYY-MM-DD format (IST). Defaults to today.
  */
-from?: string;
+dateFrom?: string;
 /**
  * End date in YYYY-MM-DD format (IST). Defaults to today.
  */
-to?: string;
+dateTo?: string;
 /**
  * Filter by a specific staff member.
  */
 staffId?: string;
+};
+
+export type UpdateCompanyProfileBody = {
+  name?: string;
+  adminName?: string;
+  email?: string | null;
+  state?: string | null;
+  district?: string | null;
+  projectName?: string | null;
+  centerName?: string | null;
+  tcId?: string | null;
+  /** Training center latitude for geo-fence */
+  centerLat?: number | null;
+  /** Training center longitude for geo-fence */
+  centerLng?: number | null;
+  /**
+     * Geo-fence radius in metres (50–1000)
+     * @minimum 50
+     * @maximum 1000
+     */
+  centerRadiusMeters?: number | null;
 };
 
 export type UpdateCompanyBodyStatus = typeof UpdateCompanyBodyStatus[keyof typeof UpdateCompanyBodyStatus];
