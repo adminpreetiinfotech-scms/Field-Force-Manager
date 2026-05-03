@@ -852,7 +852,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         staffName: record.staffName,
         occurredAt: new Date(record.timestamp).toISOString(),
         location: record.location,
-        selfieUri: record.type === "in" ? record.selfieUri : null,
+        selfieUri: record.selfieUri ?? null,
         ...(record.startOdometerKm != null ? { startOdometerKm: record.startOdometerKm } : {}),
         ...(record.endOdometerKm != null ? { endOdometerKm: record.endOdometerKm } : {}),
         ...(record.vehicleMeterPhotoUri != null ? { vehicleMeterPhotoUri: record.vehicleMeterPhotoUri } : {}),
