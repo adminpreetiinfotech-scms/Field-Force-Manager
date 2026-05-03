@@ -56,6 +56,8 @@ import type {
   RegisterInput,
   ResetCompanyAdmin200,
   RideCalendarMonth,
+  SelfRegisterCandidate201,
+  SelfRegisterCandidateBody,
   Staff,
   StaffProfileStats,
   TripReportRow,
@@ -2447,6 +2449,82 @@ export const useResetCompanyAdmin = <TError = ErrorType<ProblemDetails>,
         TContext
       > => {
       return useMutation(getResetCompanyAdminMutationOptions(options));
+    }
+
+/**
+ * Lets a candidate sign up directly from the browser without a field
+staff mobilizer. The record is created with `company_id = NULL` and
+`status = pending`; a super admin assigns the right company via the
+existing "Adopt Orphans" action and approves it.
+
+ * @summary Public candidate self-registration (no auth)
+ */
+export const getSelfRegisterCandidateUrl = () => {
+
+
+
+
+  return `/api/public/candidates/register`
+}
+
+export const selfRegisterCandidate = async (selfRegisterCandidateBody: SelfRegisterCandidateBody, options?: RequestInit): Promise<SelfRegisterCandidate201> => {
+
+  return customFetch<SelfRegisterCandidate201>(getSelfRegisterCandidateUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      selfRegisterCandidateBody,)
+  }
+);}
+
+
+
+
+export const getSelfRegisterCandidateMutationOptions = <TError = ErrorType<ProblemDetails>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof selfRegisterCandidate>>, TError,{data: BodyType<SelfRegisterCandidateBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof selfRegisterCandidate>>, TError,{data: BodyType<SelfRegisterCandidateBody>}, TContext> => {
+
+const mutationKey = ['selfRegisterCandidate'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof selfRegisterCandidate>>, {data: BodyType<SelfRegisterCandidateBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  selfRegisterCandidate(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SelfRegisterCandidateMutationResult = NonNullable<Awaited<ReturnType<typeof selfRegisterCandidate>>>
+    export type SelfRegisterCandidateMutationBody = BodyType<SelfRegisterCandidateBody>
+    export type SelfRegisterCandidateMutationError = ErrorType<ProblemDetails>
+
+    /**
+ * @summary Public candidate self-registration (no auth)
+ */
+export const useSelfRegisterCandidate = <TError = ErrorType<ProblemDetails>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof selfRegisterCandidate>>, TError,{data: BodyType<SelfRegisterCandidateBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof selfRegisterCandidate>>,
+        TError,
+        {data: BodyType<SelfRegisterCandidateBody>},
+        TContext
+      > => {
+      return useMutation(getSelfRegisterCandidateMutationOptions(options));
     }
 
 /**

@@ -793,6 +793,44 @@ export const ResetCompanyAdminResponse = zod.object({
 
 
 /**
+ * Lets a candidate sign up directly from the browser without a field
+staff mobilizer. The record is created with `company_id = NULL` and
+`status = pending`; a super admin assigns the right company via the
+existing "Adopt Orphans" action and approves it.
+
+ * @summary Public candidate self-registration (no auth)
+ */
+export const selfRegisterCandidateBodyNameMin = 2;
+
+export const selfRegisterCandidateBodyPhoneRegExp = new RegExp('^[0-9]{10}$');
+export const selfRegisterCandidateBodyParentMobileRegExp = new RegExp('^[0-9]{10}$');
+export const selfRegisterCandidateBodyPinRegExp = new RegExp('^[0-9]{6}$');
+export const selfRegisterCandidateBodyAadhaarNumberRegExp = new RegExp('^[0-9]{12}$');
+
+
+export const SelfRegisterCandidateBody = zod.object({
+  "name": zod.string().min(selfRegisterCandidateBodyNameMin),
+  "phone": zod.string().regex(selfRegisterCandidateBodyPhoneRegExp),
+  "parentMobile": zod.string().regex(selfRegisterCandidateBodyParentMobileRegExp),
+  "dob": zod.string(),
+  "email": zod.string().nullish(),
+  "fatherName": zod.string().nullish(),
+  "motherName": zod.string().nullish(),
+  "gender": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "village": zod.string().nullish(),
+  "district": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "pin": zod.string().regex(selfRegisterCandidateBodyPinRegExp).nullish(),
+  "course": zod.string().nullish(),
+  "skillCentreName": zod.string().nullish(),
+  "aadhaarNumber": zod.string().regex(selfRegisterCandidateBodyAadhaarNumberRegExp).nullish(),
+  "education": zod.string().nullish(),
+  "yearOfPassing": zod.string().nullish()
+})
+
+
+/**
  * Permanently deletes the company along with its candidates, candidate
 audit log entries, candidate notifications, activity events, and all
 non-super-admin staff. Notices are cascaded via the database FK.

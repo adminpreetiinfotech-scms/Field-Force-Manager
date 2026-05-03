@@ -274,6 +274,141 @@ router.post("/candidates/check-duplicate", async (req, res, next) => {
   }
 });
 
+// ─── POST /api/public/candidates/register ─────────────────────────────────────
+//
+// PUBLIC self-registration endpoint. No auth, no submitter staff check.
+// Used by the browser /register page so prospective candidates can sign up
+// themselves without going through a field-staff mobilizer. The record is
+// created as an orphan (company_id = NULL) with status = "pending"; a super
+// admin then adopts it into the right company via the existing
+// "Adopt Orphans" action and approves it from the candidates list.
+router.post("/public/candidates/register", async (req, res, next) => {
+  try {
+    const body = req.body as {
+      name?: string;
+      phone?: string;
+      parentMobile?: string | null;
+      email?: string | null;
+      fatherName?: string | null;
+      motherName?: string | null;
+      dob?: string | null;
+      gender?: string | null;
+      address?: string | null;
+      village?: string | null;
+      district?: string | null;
+      state?: string | null;
+      pin?: string | null;
+      course?: string | null;
+      skillCentreName?: string | null;
+      aadhaarNumber?: string | null;
+      education?: string | null;
+      yearOfPassing?: string | null;
+    };
+
+    // Validation — same rules as the staff-driven endpoint.
+    if (!body.name?.trim() || body.name.trim().length < 2) {
+      res.status(400).json({ title: "Name required (min 2 chars)", status: 400 });
+      return;
+    }
+    if (!body.phone?.trim() || !/^\d{10}$/.test(body.phone.trim())) {
+      res.status(400).json({ title: "Valid 10-digit phone required", status: 400 });
+      return;
+    }
+    if (!body.parentMobile?.trim() || !/^\d{10}$/.test(body.parentMobile.trim())) {
+      res.status(400).json({ title: "Parent's mobile number (10 digits) is required", status: 400 });
+      return;
+    }
+    if (!body.dob?.trim()) {
+      res.status(400).json({ title: "Date of birth is required", status: 400 });
+      return;
+    }
+    if (body.aadhaarNumber?.trim() && !/^\d{12}$/.test(body.aadhaarNumber.trim())) {
+      res.status(400).json({ title: "Aadhaar number must be exactly 12 digits", status: 400 });
+      return;
+    }
+    if (body.pin?.trim() && !/^\d{6}$/.test(body.pin.trim())) {
+      res.status(400).json({ title: "PIN code must be 6 digits", status: 400 });
+      return;
+    }
+
+    // Duplicate phone guard — application-level uniqueness on phone.
+    const phone = body.phone.trim();
+    const [dupPhone] = await db
+      .select({ id: candidatesTable.id })
+      .from(candidatesTable)
+      .where(eq(candidatesTable.phone, phone))
+      .limit(1);
+    if (dupPhone) {
+      res.status(409).json({
+        title: "A candidate with this phone number is already registered",
+        status: 409,
+      });
+      return;
+    }
+    if (body.aadhaarNumber?.trim()) {
+      const [dupAadhaar] = await db
+        .select({ id: candidatesTable.id })
+        .from(candidatesTable)
+        .where(eq(candidatesTable.aadhaarNumber, body.aadhaarNumber.trim()))
+        .limit(1);
+      if (dupAadhaar) {
+        res.status(409).json({
+          title: "A candidate with this Aadhaar number is already registered",
+          status: 409,
+        });
+        return;
+      }
+    }
+
+    const [candidate] = await db
+      .insert(candidatesTable)
+      .values({
+        companyId: null,
+        name: body.name.trim(),
+        phone,
+        parentMobile: body.parentMobile.trim(),
+        email: body.email?.trim() || null,
+        fatherName: body.fatherName?.trim() || null,
+        motherName: body.motherName?.trim() || null,
+        dob: body.dob.trim(),
+        gender: body.gender?.trim() || null,
+        address: body.address?.trim() || null,
+        village: body.village?.trim() || null,
+        district: body.district?.trim() || null,
+        state: body.state?.trim() || null,
+        pin: body.pin?.trim() || null,
+        course: body.course?.trim() || null,
+        skillCentreName: body.skillCentreName?.trim() || null,
+        aadhaarNumber: body.aadhaarNumber?.trim() || null,
+        education: body.education?.trim() || null,
+        yearOfPassing: body.yearOfPassing?.trim() || null,
+        submittedBy: "Self Registration",
+        submittedByPhone: phone,
+        status: "pending",
+      })
+      .returning({
+        id: candidatesTable.id,
+        name: candidatesTable.name,
+        status: candidatesTable.status,
+      });
+
+    req.log.info(
+      { candidateId: candidate.id, candidateName: candidate.name, phone },
+      "Self-registered candidate created",
+    );
+
+    res.status(201).json({
+      id: candidate.id,
+      name: candidate.name,
+      status: candidate.status,
+      message:
+        "Registration received. An admin will review your details and contact you shortly.",
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ─── POST /api/candidates ──────────────────────────────────────────────────────
 
 router.post("/candidates", async (req, res, next) => {

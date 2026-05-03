@@ -57,6 +57,8 @@ export * from './registerInputKind';
 export * from './resetCompanyAdmin200';
 export * from './rideCalendarDay';
 export * from './rideCalendarMonth';
+export * from './selfRegisterCandidate201';
+export * from './selfRegisterCandidateBody';
 export * from './staff';
 export * from './staffApprovalStatus';
 export * from './staffDistance';

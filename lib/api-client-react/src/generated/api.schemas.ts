@@ -694,6 +694,39 @@ export type ResetCompanyAdmin200 = {
   phone: string;
 };
 
+export type SelfRegisterCandidateBody = {
+  /** @minLength 2 */
+  name: string;
+  /** @pattern ^[0-9]{10}$ */
+  phone: string;
+  /** @pattern ^[0-9]{10}$ */
+  parentMobile: string;
+  dob: string;
+  email?: string | null;
+  fatherName?: string | null;
+  motherName?: string | null;
+  gender?: string | null;
+  address?: string | null;
+  village?: string | null;
+  district?: string | null;
+  state?: string | null;
+  /** @pattern ^[0-9]{6}$ */
+  pin?: string | null;
+  course?: string | null;
+  skillCentreName?: string | null;
+  /** @pattern ^[0-9]{12}$ */
+  aadhaarNumber?: string | null;
+  education?: string | null;
+  yearOfPassing?: string | null;
+};
+
+export type SelfRegisterCandidate201 = {
+  id: string;
+  name: string;
+  status: string;
+  message: string;
+};
+
 export type DeleteCompany200 = {
   message: string;
   companyId: string;

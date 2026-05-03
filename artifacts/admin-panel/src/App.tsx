@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import { setAdminPhoneGetter } from "@workspace/api-client-react";
 import Login from "@/pages/login";
+import CandidateRegister from "@/pages/register";
 import Dashboard from "@/pages/dashboard";
 import StaffManagement from "@/pages/staff";
 import Candidates from "@/pages/candidates";
@@ -80,6 +81,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
+      <Route path="/register" component={CandidateRegister} />
       <Route path="/" component={() => <Redirect to="/dashboard" />} />
       <ProtectedRoute path="/dashboard" component={Dashboard} />
       <ProtectedRoute path="/staff" component={StaffManagement} />
