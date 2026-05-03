@@ -9,6 +9,7 @@ import {
   MapPin, Layers, GitBranch, RefreshCw, AlertTriangle, Navigation, RotateCcw, SlidersHorizontal,
 } from "lucide-react";
 import GeoFenceMapPicker from "@/components/geo-fence-map-picker";
+import { DASHBOARD_HINT_PREFIX } from "@/lib/dashboard-hints";
 
 interface CompanyProfile {
   id: string;
@@ -24,6 +25,10 @@ interface CompanyProfile {
   centerLat: number | null;
   centerLng: number | null;
   centerRadiusMeters: number | null;
+}
+
+function countDismissedHints(): number {
+  return Object.keys(localStorage).filter(k => k.startsWith(DASHBOARD_HINT_PREFIX)).length;
 }
 
 function getAdminPhone(): string {
@@ -71,14 +76,13 @@ export default function CompanySettings() {
   const [profile, setProfile] = useState<CompanyProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [centerHintDismissed, setCenterHintDismissed] = useState(
-    () => localStorage.getItem("center_hint_dismissed") === "true"
-  );
+  const [dismissedHintCount, setDismissedHintCount] = useState(() => countDismissedHints());
 
   const handleResetHints = () => {
-    localStorage.removeItem("center_hint_dismissed");
-    setCenterHintDismissed(false);
-    toast({ title: "Dashboard hints restored", description: "The dashboard hint will reappear on your next visit." });
+    const keys = Object.keys(localStorage).filter(k => k.startsWith(DASHBOARD_HINT_PREFIX));
+    keys.forEach(k => localStorage.removeItem(k));
+    setDismissedHintCount(0);
+    toast({ title: "Dashboard hints restored", description: "All dashboard hints will reappear on your next visit." });
   };
 
   const [name, setName] = useState("");
@@ -518,21 +522,21 @@ export default function CompanySettings() {
               <div className="min-w-0">
                 <p className="text-sm font-medium">Dashboard hints</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {centerHintDismissed
-                    ? "The \"No center staff set up yet\" hint has been dismissed."
-                    : "The dashboard hint is currently visible."}
+                  {dismissedHintCount > 0
+                    ? `${dismissedHintCount} hint${dismissedHintCount === 1 ? "" : "s"} currently dismissed.`
+                    : "All dashboard hints are visible."}
                 </p>
               </div>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={!centerHintDismissed}
+                disabled={dismissedHintCount === 0}
                 onClick={handleResetHints}
                 className="gap-1.5 shrink-0"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
-                Reset hints
+                Reset all hints
               </Button>
             </div>
           </div>

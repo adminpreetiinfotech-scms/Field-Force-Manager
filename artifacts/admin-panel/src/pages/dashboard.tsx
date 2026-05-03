@@ -10,6 +10,7 @@ import {
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { useEffect, useState, useCallback } from "react";
+import { DASHBOARD_HINT_KEYS } from "@/lib/dashboard-hints";
 
 interface SubscriptionInfo {
   plan: string | null;
@@ -130,10 +131,10 @@ export default function Dashboard() {
   const todayIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const [subInfo, setSubInfo] = useState<SubscriptionInfo | null>(null);
   const [centerHintDismissed, setCenterHintDismissed] = useState(
-    () => localStorage.getItem("center_hint_dismissed") === "true"
+    () => localStorage.getItem(DASHBOARD_HINT_KEYS.centerStaff) === "true"
   );
   const dismissCenterHint = useCallback(() => {
-    localStorage.setItem("center_hint_dismissed", "true");
+    localStorage.setItem(DASHBOARD_HINT_KEYS.centerStaff, "true");
     setCenterHintDismissed(true);
   }, []);
 
