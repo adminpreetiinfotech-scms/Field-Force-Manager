@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Input } from "@/components/ui/input";
@@ -41,6 +41,24 @@ function getAdminPhone(): string {
   } catch {
     return "";
   }
+}
+
+function getAdminCompanyId(): string | null {
+  try {
+    const raw = localStorage.getItem("admin_user");
+    if (!raw) return null;
+    return (JSON.parse(raw) as { companyId?: string }).companyId ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// ─── Geo-fence types ──────────────────────────────────────────────────────────
+
+interface GeoFence {
+  centerLat: number;
+  centerLng: number;
+  centerRadiusMeters: number;
 }
 
 // ─── Status helpers ───────────────────────────────────────────────────────────
@@ -106,22 +124,39 @@ function createMarkerIcon(status: "active" | "idle" | "offline", isOnShift: bool
 
 // ─── Map fit bounds helper ────────────────────────────────────────────────────
 
-function FitBounds({ staff }: { staff: LiveStaff[] }) {
+function FitBounds({ staff, geoFence }: { staff: LiveStaff[]; geoFence: GeoFence | null }) {
   const map = useMap();
   const didFit = useRef(false);
 
   useEffect(() => {
     if (didFit.current) return;
     const located = staff.filter(s => s.lastLat && s.lastLng);
-    if (located.length === 0) return;
-    if (located.length === 1) {
-      map.setView([located[0].lastLat!, located[0].lastLng!], 13);
+
+    // Collect all points to include in bounds: staff positions + geo-fence center
+    const points: L.LatLngTuple[] = located.map(s => [s.lastLat!, s.lastLng!]);
+    if (geoFence) {
+      points.push([geoFence.centerLat, geoFence.centerLng]);
+    }
+
+    if (points.length === 0) return;
+
+    if (points.length === 1 && !geoFence) {
+      map.setView(points[0], 13);
+    } else if (geoFence && points.length === 1) {
+      // Only geo-fence, no staff — zoom to show the circle
+      const circle = L.circle([geoFence.centerLat, geoFence.centerLng], { radius: geoFence.centerRadiusMeters });
+      map.fitBounds(circle.getBounds(), { padding: [40, 40], maxZoom: 16 });
     } else {
-      const bounds = L.latLngBounds(located.map(s => [s.lastLat!, s.lastLng!] as L.LatLngTuple));
+      const bounds = L.latLngBounds(points);
+      // Expand bounds to also encompass the geo-fence circle if present
+      if (geoFence) {
+        const circle = L.circle([geoFence.centerLat, geoFence.centerLng], { radius: geoFence.centerRadiusMeters });
+        bounds.extend(circle.getBounds());
+      }
       map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
     }
     didFit.current = true;
-  }, [staff, map]);
+  }, [staff, geoFence, map]);
 
   return null;
 }
@@ -250,7 +285,32 @@ export default function LiveMapPage() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "offline">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [geoFence, setGeoFence] = useState<GeoFence | null>(null);
   const markerRefs = useRef<Record<string, L.Marker>>({});
+
+  // Fetch geo-fence config once on mount
+  useEffect(() => {
+    const companyId = getAdminCompanyId();
+    if (!companyId) return;
+    fetch(`/api/companies/${companyId}/branding`, {
+      headers: { "x-admin-phone": getAdminPhone() },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (
+          data &&
+          typeof data.centerLat === "number" &&
+          typeof data.centerLng === "number"
+        ) {
+          setGeoFence({
+            centerLat: data.centerLat,
+            centerLng: data.centerLng,
+            centerRadiusMeters: typeof data.centerRadiusMeters === "number" ? data.centerRadiusMeters : 200,
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const fetchLocations = useCallback(async () => {
     try {
@@ -416,6 +476,12 @@ export default function LiveMapPage() {
                 <span className="w-2.5 h-2.5 rounded-full shrink-0 bg-blue-500" />
                 Blue dot = On Shift
               </div>
+              {geoFence && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                  <span className="w-2.5 h-2.5 shrink-0 rounded-full border-2 border-dashed border-indigo-500" />
+                  Geo-fence boundary
+                </div>
+              )}
             </div>
           </div>
         </aside>
@@ -441,7 +507,21 @@ export default function LiveMapPage() {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
 
-            <FitBounds staff={locatedStaff} />
+            <FitBounds staff={locatedStaff} geoFence={geoFence} />
+
+            {geoFence && (
+              <Circle
+                center={[geoFence.centerLat, geoFence.centerLng]}
+                radius={geoFence.centerRadiusMeters}
+                pathOptions={{
+                  color: "#6366f1",
+                  fillColor: "#6366f1",
+                  fillOpacity: 0.08,
+                  weight: 2,
+                  dashArray: "6 4",
+                }}
+              />
+            )}
 
             {locatedStaff.map((staff) => {
               const status = getStatusLabel(staff);
