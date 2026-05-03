@@ -69,7 +69,7 @@ function toUserDTO(row: typeof staffTable.$inferSelect) {
 }
 
 // ─── POST /api/auth/check-phone ─────────────────────────────────────────────
-// Returns whether the phone is registered and whether an MPIN is set.
+// Returns whether the phone is registered, whether an MPIN is set, and the approvalStatus.
 router.post("/auth/check-phone", async (req, res, next) => {
   try {
     const { phone } = req.body as { phone?: string };
@@ -78,16 +78,16 @@ router.post("/auth/check-phone", async (req, res, next) => {
       return;
     }
     const rows = await db
-      .select({ id: staffTable.id, mpinHash: staffTable.mpinHash })
+      .select({ id: staffTable.id, mpinHash: staffTable.mpinHash, approvalStatus: staffTable.approvalStatus })
       .from(staffTable)
       .where(eq(staffTable.phone, phone.trim()))
       .limit(1);
 
     if (rows.length === 0) {
-      res.json({ exists: false, hasMpin: false });
+      res.json({ exists: false, hasMpin: false, approvalStatus: null });
       return;
     }
-    res.json({ exists: true, hasMpin: !!rows[0]!.mpinHash });
+    res.json({ exists: true, hasMpin: !!rows[0]!.mpinHash, approvalStatus: rows[0]!.approvalStatus });
   } catch (err) {
     next(err);
   }

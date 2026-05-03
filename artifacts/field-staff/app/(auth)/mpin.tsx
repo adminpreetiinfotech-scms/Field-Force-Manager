@@ -58,12 +58,20 @@ export default function MpinScreen() {
         }
         setLoading(true);
         try {
-          const user = await setupMpin(pendingPhone!, pin);
+          const { user, approvalStatus } = await setupMpin(pendingPhone!, pin);
           if (Platform.OS !== "web") {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
           }
-          if (user.role === "admin") router.replace("/(admin)/dashboard");
-          else router.replace("/(staff)/shift");
+          if (approvalStatus !== "approved") {
+            router.replace({
+              pathname: "/(auth)/pending-approval",
+              params: { name: user.name, phone: user.phone, role: user.role },
+            });
+          } else if (user.role === "admin") {
+            router.replace("/(admin)/dashboard");
+          } else {
+            router.replace("/(staff)/shift");
+          }
         } catch (e: unknown) {
           const msg = e instanceof Error ? e.message : "Failed to set MPIN.";
           setError(msg);

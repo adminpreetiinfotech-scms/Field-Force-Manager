@@ -195,7 +195,7 @@ router.post("/staff/register", async (req, res, next) => {
         district: district?.trim() || null,
         area: area?.trim() || null,
         adminCode: resolvedAdminCode,
-        approvalStatus: kind === "admin" ? "approved" : "pending",
+        approvalStatus: "pending",
       })
       .returning();
 
@@ -471,13 +471,23 @@ router.get("/staff/:staffId/profile-stats", async (req, res, next) => {
 router.get("/admin/pending-staff", requireAdmin, async (_req, res, next) => {
   try {
     const companyId = res.locals.companyId as string | null;
+    const adminRole = res.locals.adminRole as string;
+    // Regular admin: see pending staff (role="staff") in their company only
+    // Super admin: see pending admins (role="admin") across all companies
     const rows = await db
       .select()
       .from(staffTable)
       .where(
         companyId
-          ? and(eq(staffTable.approvalStatus, "pending"), eq(staffTable.companyId, companyId))
-          : eq(staffTable.approvalStatus, "pending"),
+          ? and(
+              eq(staffTable.approvalStatus, "pending"),
+              eq(staffTable.companyId, companyId),
+              eq(staffTable.role, "staff"),
+            )
+          : and(
+              eq(staffTable.approvalStatus, "pending"),
+              eq(staffTable.role, adminRole === "super_admin" ? "admin" : "staff"),
+            ),
       )
       .orderBy(staffTable.createdAt);
     res.json(rows.map(toStaffDTO));

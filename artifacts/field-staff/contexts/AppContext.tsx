@@ -148,8 +148,8 @@ type AppActions = {
   checkPhone: (phone: string) => Promise<{ exists: boolean; hasMpin: boolean }>;
   /** Log in an existing user with their MPIN. */
   loginWithMpin: (phone: string, mpin: string) => Promise<User>;
-  /** Set the MPIN for a registered user (first-time or after registration). */
-  setupMpin: (phone: string, mpin: string) => Promise<User>;
+  /** Set the MPIN for a registered user (first-time or after registration). Returns user + approvalStatus. */
+  setupMpin: (phone: string, mpin: string) => Promise<{ user: User; approvalStatus: string }>;
   signOut: () => Promise<void>;
   addAttendance: (
     record: Omit<AttendanceRecord, "id" | "synced">,
@@ -674,7 +674,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return user;
   }, []);
 
-  const setupMpin = useCallback(async (phone: string, mpin: string) => {
+  const setupMpin = useCallback(async (phone: string, mpin: string): Promise<{ user: User; approvalStatus: string }> => {
     const res = await fetch(`${API_BASE}/api/auth/set-mpin`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -703,8 +703,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         companySchemeName?: string | null;
       };
     };
-    // For the registration flow: if pendingRegistration is set, use that user
+    // For the registration flow: if pendingRegistration is set, use that user + approval status
     const pending = stateRef.current.pendingRegistration;
+    const approvalStatus = pending?.approvalStatus ?? "approved";
     const user: User = pending
       ? pending.user
       : {
@@ -725,8 +726,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           companySchemeName: dto.companySchemeName ?? null,
           companyTcId: (dto as any).companyTcId ?? null,
         };
-    setState((s) => ({ ...s, user, pendingPhone: null, pendingRegistration: null }));
-    return user;
+    // Only log in if account is approved; pending users must wait for approval
+    if (approvalStatus === "approved") {
+      setState((s) => ({ ...s, user, pendingPhone: null, pendingRegistration: null }));
+    } else {
+      // Clear pendingRegistration but do NOT set user — keep them logged out
+      setState((s) => ({ ...s, pendingPhone: null, pendingRegistration: null }));
+    }
+    return { user, approvalStatus };
   }, []);
 
   // ── Legacy demo login fallback (offline) ─────────────────────────────────────

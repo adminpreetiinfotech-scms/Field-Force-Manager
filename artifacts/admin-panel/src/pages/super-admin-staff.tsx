@@ -23,8 +23,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import {
   Search, Download, Eye, UserX, UserCheck, ChevronLeft,
-  ChevronRight, Loader2, Activity, MapPin, Phone, Mail,
-  Building2, RefreshCw, Filter,
+  ChevronRight, Loader2, Activity, Phone, Mail,
+  Building2, RefreshCw, Filter, ShieldCheck, ShieldOff,
 } from "lucide-react";
 import { format, formatDistanceToNow, differenceInMinutes } from "date-fns";
 
@@ -274,6 +274,7 @@ function RowActions({ staff, onRefresh }: { staff: SuperStaff; onRefresh: () => 
   const { toast } = useToast();
   const [showProfile, setShowProfile] = useState(false);
   const [confirmDisable, setConfirmDisable] = useState(false);
+  const [confirmReject, setConfirmReject] = useState(false);
   const [loading, setLoading] = useState(false);
   const status = getEffectiveStatus(staff);
 
@@ -302,12 +303,47 @@ function RowActions({ staff, onRefresh }: { staff: SuperStaff; onRefresh: () => 
     } finally { setLoading(false); }
   };
 
+  const handleApproveAdmin = async () => {
+    setLoading(true);
+    try {
+      const res = await adminFetch(`/api/admin/staff/${staff.id}/approve`, { method: "PATCH" });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).title ?? "Failed");
+      toast({ title: "Admin Approved", description: `${staff.name} can now log in as admin.` });
+      onRefresh();
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    } finally { setLoading(false); }
+  };
+
+  const handleRejectAdmin = async () => {
+    setLoading(true);
+    try {
+      const res = await adminFetch(`/api/admin/staff/${staff.id}/reject`, { method: "PATCH" });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).title ?? "Failed");
+      toast({ title: "Admin Rejected", description: `${staff.name}'s admin account has been rejected.` });
+      setConfirmReject(false);
+      onRefresh();
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    } finally { setLoading(false); }
+  };
+
   return (
     <>
       <div className="flex justify-end gap-1">
         <Button size="sm" variant="ghost" className="h-7 px-2 text-muted-foreground hover:text-foreground" onClick={() => setShowProfile(true)} title="View Profile">
           <Eye className="h-3.5 w-3.5" />
         </Button>
+        {status === "pending" && staff.role === "admin" && (
+          <>
+            <Button size="sm" variant="ghost" className="h-7 px-2 text-green-600 hover:bg-green-50" onClick={handleApproveAdmin} disabled={loading} title="Approve Admin">
+              {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 px-2 text-red-600 hover:bg-red-50" onClick={() => setConfirmReject(true)} disabled={loading} title="Reject Admin">
+              <ShieldOff className="h-3.5 w-3.5" />
+            </Button>
+          </>
+        )}
         {status === "approved" && (
           <Button size="sm" variant="ghost" className="h-7 px-2 text-amber-600 hover:bg-amber-50" onClick={() => setConfirmDisable(true)} disabled={loading} title="Disable">
             <UserX className="h-3.5 w-3.5" />
@@ -329,6 +365,15 @@ function RowActions({ staff, onRefresh }: { staff: SuperStaff; onRefresh: () => 
         loading={loading}
         onConfirm={handleDisable}
         onCancel={() => setConfirmDisable(false)}
+      />
+      <ConfirmDialog
+        open={confirmReject}
+        title="Reject Admin Account?"
+        description={`${staff.name}'s admin registration will be rejected. They will not be able to log in.`}
+        confirmLabel="Reject"
+        loading={loading}
+        onConfirm={handleRejectAdmin}
+        onCancel={() => setConfirmReject(false)}
       />
     </>
   );
@@ -406,6 +451,8 @@ export default function SuperAdminStaff() {
   };
   const hasFilters = search || filterCompany !== "all" || filterStatus !== "all" || filterState !== "all";
 
+  const pendingAdmins = useMemo(() => allStaff.filter(s => s.approvalStatus === "pending" && s.role === "admin"), [allStaff]);
+
   return (
     <div className="space-y-5 max-w-[1400px]">
       {/* Header */}
@@ -427,6 +474,69 @@ export default function SuperAdminStaff() {
           </Button>
         </div>
       </div>
+
+      {/* Pending Admins Alert */}
+      {!loading && pendingAdmins.length > 0 && (
+        <div className="border border-amber-300 bg-amber-50 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <ShieldCheck className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <p className="font-semibold text-amber-900 text-sm">
+                {pendingAdmins.length} Admin Account{pendingAdmins.length > 1 ? "s" : ""} Pending Approval
+              </p>
+              <p className="text-amber-700 text-xs mt-0.5">
+                The following admin{pendingAdmins.length > 1 ? "s" : ""} have registered and need your approval before they can log in.
+              </p>
+              <div className="mt-3 space-y-2">
+                {pendingAdmins.map(a => (
+                  <div key={a.id} className="flex items-center justify-between bg-white border border-amber-200 rounded-md px-3 py-2">
+                    <div>
+                      <span className="font-medium text-sm text-amber-900">{a.name}</span>
+                      <span className="text-amber-600 text-xs ml-2">{a.phone}</span>
+                      {a.companyName && <span className="text-amber-500 text-xs ml-2">· {a.companyName}</span>}
+                    </div>
+                    <div className="flex gap-1.5">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2.5 text-xs border-green-300 text-green-700 hover:bg-green-50"
+                        onClick={async () => {
+                          try {
+                            const res = await adminFetch(`/api/admin/staff/${a.id}/approve`, { method: "PATCH" });
+                            if (!res.ok) throw new Error((await res.json().catch(() => ({}))).title ?? "Failed");
+                            fetchStaff();
+                          } catch (e: any) {
+                            alert(e.message);
+                          }
+                        }}
+                      >
+                        <ShieldCheck className="h-3 w-3 mr-1" /> Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2.5 text-xs border-red-300 text-red-700 hover:bg-red-50"
+                        onClick={async () => {
+                          if (!confirm(`Reject ${a.name}'s admin account?`)) return;
+                          try {
+                            const res = await adminFetch(`/api/admin/staff/${a.id}/reject`, { method: "PATCH" });
+                            if (!res.ok) throw new Error((await res.json().catch(() => ({}))).title ?? "Failed");
+                            fetchStaff();
+                          } catch (e: any) {
+                            alert(e.message);
+                          }
+                        }}
+                      >
+                        <ShieldOff className="h-3 w-3 mr-1" /> Reject
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">

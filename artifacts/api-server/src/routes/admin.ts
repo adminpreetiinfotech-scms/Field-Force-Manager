@@ -55,12 +55,13 @@ export async function getAdminCompanyId(phone: string): Promise<{
 } | null> {
   if (!phone?.trim()) return null;
   const [row] = await db
-    .select({ role: staffTable.role, companyId: staffTable.companyId })
+    .select({ role: staffTable.role, companyId: staffTable.companyId, approvalStatus: staffTable.approvalStatus })
     .from(staffTable)
     .where(eq(staffTable.phone, phone.trim()))
     .limit(1);
   if (!row) return null;
   if (row.role !== "admin" && row.role !== "super_admin") return null;
+  if (row.approvalStatus !== "approved") return null;
   return { companyId: row.companyId ?? null, role: row.role };
 }
 

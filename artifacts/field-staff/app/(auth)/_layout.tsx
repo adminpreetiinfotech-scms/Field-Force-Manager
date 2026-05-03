@@ -6,6 +6,7 @@ export default function AuthLayout() {
     <Stack screenOptions={{ headerShown: false, animation: "slide_from_right" }}>
       <Stack.Screen name="phone" />
       <Stack.Screen name="mpin" />
+      <Stack.Screen name="pending-approval" />
     </Stack>
   );
 }
