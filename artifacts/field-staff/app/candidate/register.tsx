@@ -23,7 +23,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import AutoScanCamera from "@/components/AutoScanCamera";
+import AutoScanCamera, { type DocType } from "@/components/AutoScanCamera";
 import type { ScannedImage } from "@/components/DocumentScannerModal";
 
 import { useApp } from "@/contexts/AppContext";
@@ -536,7 +536,7 @@ function AadhaarCaptureModal({
         <AutoScanCamera
           visible={autoScanVisible}
           title={pendingSide === "front" ? "Aadhaar — Front Side" : "Aadhaar — Back Side"}
-          docMode="card"
+          docType={pendingSide === "front" ? "aadhaar_front" : "aadhaar_back"}
           onSave={handleScannerSave}
           onCancel={() => setAutoScanVisible(false)}
         />
@@ -811,15 +811,15 @@ export default function CandidateRegisterScreen() {
   // ─ Auto Scan Camera state (used for all non-passport document captures)
   const [autoScanDocVisible, setAutoScanDocVisible] = useState(false);
   const [autoScanDocTitle, setAutoScanDocTitle]     = useState("Auto Scan Document");
-  const [autoScanDocMode,  setAutoScanDocMode]      = useState<"card" | "page">("page");
+  const [autoScanDocType,  setAutoScanDocType]       = useState<DocType>("page");
   const scannerSetterRef = useRef<((img: ImageData | null) => void) | null>(null);
 
   /** Open the AutoScanCamera for any document field. */
   const captureAndScan = useCallback(
-    (setter: (img: ImageData | null) => void, docTitle = "Auto Scan Document", docMode: "card" | "page" = "page") => {
+    (setter: (img: ImageData | null) => void, docTitle = "Auto Scan Document", docType: DocType = "page") => {
       scannerSetterRef.current = setter;
       setAutoScanDocTitle(docTitle);
-      setAutoScanDocMode(docMode);
+      setAutoScanDocType(docType);
       setAutoScanDocVisible(true);
     },
     [],
@@ -1232,7 +1232,7 @@ export default function CandidateRegisterScreen() {
       <AutoScanCamera
         visible={autoScanDocVisible}
         title={autoScanDocTitle}
-        docMode={autoScanDocMode}
+        docType={autoScanDocType}
         onSave={(img) => {
           setAutoScanDocVisible(false);
           if (scannerSetterRef.current) {
@@ -1503,8 +1503,8 @@ export default function CandidateRegisterScreen() {
                 onSave={(front, back) => { setAadhaarFront(front); setAadhaarBack(back); setShowAadhaarModal(false); }}
               />
 
-              <DocUploadCard label="Education Certificate / शैक्षणिक प्रमाण पत्र" value={educationCert} onPick={() => captureAndScan(setEducationCert, "Education Certificate / शैक्षणिक प्रमाण पत्र")} onClear={() => setEducationCert(null)} />
-              <DocUploadCard label="Bank Passbook / बैंक पासबुक" value={bankPassbook} onPick={() => captureAndScan(setBankPassbook, "Bank Passbook / बैंक पासबुक")} onClear={() => setBankPassbook(null)} />
+              <DocUploadCard label="Education Certificate / शैक्षणिक प्रमाण पत्र" value={educationCert} onPick={() => captureAndScan(setEducationCert, "Education Certificate / शैक्षणिक प्रमाण पत्र", "education_cert")} onClear={() => setEducationCert(null)} />
+              <DocUploadCard label="Bank Passbook / बैंक पासबुक" value={bankPassbook} onPick={() => captureAndScan(setBankPassbook, "Bank Passbook / बैंक पासबुक", "bank_passbook")} onClear={() => setBankPassbook(null)} />
               {/* Caste Certificate — conditional on category */}
               {caste && caste !== "General" ? (
                 <View style={{ gap: 8 }}>
@@ -1539,7 +1539,7 @@ export default function CandidateRegisterScreen() {
                     <DocUploadCard
                       label="Caste Certificate / जाति प्रमाण पत्र"
                       value={casteCert}
-                      onPick={() => captureAndScan(setCasteCert, "Caste Certificate / जाति प्रमाण पत्र")}
+                      onPick={() => captureAndScan(setCasteCert, "Caste Certificate / जाति प्रमाण पत्र", "caste_cert")}
                       onClear={() => setCasteCert(null)}
                     />
                   )}
@@ -1567,14 +1567,14 @@ export default function CandidateRegisterScreen() {
                   )}
                 </View>
               ) : (
-                <DocUploadCard label="Caste Certificate / जाति प्रमाण पत्र" value={casteCert} onPick={() => captureAndScan(setCasteCert, "Caste Certificate / जाति प्रमाण पत्र")} onClear={() => setCasteCert(null)} />
+                <DocUploadCard label="Caste Certificate / जाति प्रमाण पत्र" value={casteCert} onPick={() => captureAndScan(setCasteCert, "Caste Certificate / जाति प्रमाण पत्र", "caste_cert")} onClear={() => setCasteCert(null)} />
               )}
 
               {/* ── Other Document (optional) ────────────────────────── */}
               <DocUploadCard
                 label="Other Document / अन्य दस्तावेज (Optional)"
                 value={otherDoc}
-                onPick={() => captureAndScan(setOtherDoc, "Other Document")}
+                onPick={() => captureAndScan(setOtherDoc, "Other Document", "other")}
                 onClear={() => setOtherDoc(null)}
               />
             </View>
@@ -1616,7 +1616,7 @@ export default function CandidateRegisterScreen() {
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <TouchableOpacity onPress={() => captureAndScan(setSignature, "Signature")} style={styles.sigUploadBtn}>
+                  <TouchableOpacity onPress={() => captureAndScan(setSignature, "Signature", "other")} style={styles.sigUploadBtn}>
                     <Feather name="edit-2" size={18} color={MUTED} />
                     <Text style={styles.sigUploadText}>Upload Signature Photo</Text>
                   </TouchableOpacity>
