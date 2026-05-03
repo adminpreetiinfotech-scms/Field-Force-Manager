@@ -432,6 +432,9 @@ export default function LiveMapPage() {
   const locatedStaff = filtered.filter(s => s.lastLat && s.lastLng);
   const activeCount = staffList.filter(isActive).length;
   const offlineCount = staffList.length - activeCount;
+  const outsideFenceCount = geoFence
+    ? staffList.filter(s => isOutsideFence(s, geoFence)).length
+    : 0;
 
   const handleSidebarClick = (staff: LiveStaff) => {
     setSelectedId(staff.staffId);
@@ -464,6 +467,15 @@ export default function LiveMapPage() {
               <Users className="h-3.5 w-3.5" />
               {staffList.length} total
             </span>
+            {outsideFenceCount > 0 && (
+              <>
+                <span className="text-muted-foreground">·</span>
+                <span className="flex items-center gap-1 text-amber-600 font-medium">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  {outsideFenceCount} outside fence
+                </span>
+              </>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
