@@ -317,7 +317,7 @@ export default function CheckInScreen() {
           <Check ok={!!photo} label="Live selfie captured" />
           <Check ok={locStatus === "ok"} label="GPS location locked" />
           <Check ok={true} label="Timestamp signed" />
-          {!!user?.vehicleType && <Check ok={false} label="Odometer reading (Step 2)" />}
+          {user?.staffCategory !== "center" && !!user?.vehicleType && <Check ok={false} label="Odometer reading (Step 2)" />}
         </View>
 
         {photo && centerGeofenceWarning && centerGeofenceWarning.outside && (
@@ -346,12 +346,12 @@ export default function CheckInScreen() {
               <Text style={styles.retakeText}>Retake</Text>
             </Pressable>
             <Button
-              label={user?.vehicleType ? "Next: Odometer" : "Confirm check-in"}
+              label={user?.staffCategory !== "center" && user?.vehicleType ? "Next: Odometer" : "Confirm check-in"}
               onPress={confirmSelfie}
               loading={submitting}
               size="lg"
               style={{ flex: 1 }}
-              icon={<Feather name={user?.vehicleType ? "arrow-right" : "check"} size={18} color="#fff" />}
+              icon={<Feather name={user?.staffCategory !== "center" && user?.vehicleType ? "arrow-right" : "check"} size={18} color="#fff" />}
             />
           </View>
         ) : (
