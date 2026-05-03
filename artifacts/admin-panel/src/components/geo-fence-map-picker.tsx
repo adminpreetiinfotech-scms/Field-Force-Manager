@@ -114,15 +114,26 @@ export default function GeoFenceMapPicker({
   const center: [number, number] = hasCoords ? [lat, lng] : DEFAULT_CENTER;
   const [showDragHint, setShowDragHint] = useState(true);
   const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevLatRef = useRef<number | null>(null);
+  const prevLngRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (hasCoords && showDragHint) {
+    const wasNull = prevLatRef.current == null || prevLngRef.current == null;
+    const isNowSet = lat != null && lng != null;
+
+    prevLatRef.current = lat;
+    prevLngRef.current = lng;
+
+    if (wasNull && isNowSet) {
+      if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+      setShowDragHint(true);
       hintTimerRef.current = setTimeout(() => setShowDragHint(false), 4000);
     }
+
     return () => {
       if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
     };
-  }, [hasCoords]);
+  }, [lat, lng]);
 
   return (
     <div
