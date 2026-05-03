@@ -63,6 +63,7 @@ type CandidateDraft = {
   educationCert: ImageData | null;
   bankPassbook: ImageData | null;
   casteCert: ImageData | null;
+  otherDoc: ImageData | null;
   signature: ImageData | null;
 };
 
@@ -804,6 +805,7 @@ export default function CandidateRegisterScreen() {
   const [educationCert, setEducationCert] = useState<ImageData | null>(null);
   const [bankPassbook, setBankPassbook] = useState<ImageData | null>(null);
   const [casteCert, setCasteCert] = useState<ImageData | null>(null);
+  const [otherDoc, setOtherDoc] = useState<ImageData | null>(null);
   const [signature, setSignature] = useState<ImageData | null>(null);
 
   // ─ Auto Scan Camera state (used for all non-passport document captures)
@@ -853,13 +855,13 @@ export default function CandidateRegisterScreen() {
     course, skillCentreName, aadhaarNumber, bpl, bplNumber,
     education, yearOfPassing, bankAccount, bankName, bankBranch, ifsc, mobilizer,
     casteCertAvailable, casteName,
-    photo, aadhaarFront, aadhaarBack, educationCert, bankPassbook, casteCert, signature,
+    photo, aadhaarFront, aadhaarBack, educationCert, bankPassbook, casteCert, otherDoc, signature,
   }), [name, phone, parentMobile, email, fatherName, motherName, dob, gender, maritalStatus,
     religion, caste, pwd, disabilityType, address, village, policeStation,
     postOffice, district, state, pin, area, course, skillCentreName,
     aadhaarNumber, bpl, bplNumber, education, yearOfPassing, bankAccount,
     bankName, bankBranch, ifsc, mobilizer, casteCertAvailable, casteName,
-    photo, aadhaarFront, aadhaarBack, educationCert, bankPassbook, casteCert, signature]);
+    photo, aadhaarFront, aadhaarBack, educationCert, bankPassbook, casteCert, otherDoc, signature]);
 
   const restoreDraft = useCallback((d: CandidateDraft) => {
     activeDraftId.current = d.id;
@@ -890,6 +892,7 @@ export default function CandidateRegisterScreen() {
     setEducationCert(d.educationCert ?? null);
     setBankPassbook(d.bankPassbook ?? null);
     setCasteCert(d.casteCert ?? null);
+    setOtherDoc(d.otherDoc ?? null);
     setSignature(d.signature ?? null);
     setLastSavedAt(new Date(d.savedAt));
   }, [user?.name]);
@@ -926,7 +929,7 @@ export default function CandidateRegisterScreen() {
     setCasteCertAvailable(null); setCasteName("");
     setPhoto(null); setAadhaarFront(null); setAadhaarBack(null);
     setEducationCert(null); setBankPassbook(null); setCasteCert(null);
-    setSignature(null);
+    setOtherDoc(null); setSignature(null);
     await removeDraftById(activeDraftId.current);
     activeDraftId.current = makeDraftId();
     setPendingSync(false); pendingSyncRef.current = false;
@@ -990,7 +993,7 @@ export default function CandidateRegisterScreen() {
     if (!name.trim() && !phone.trim()) return;
     void saveDraftNow();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [photo, aadhaarFront, aadhaarBack, educationCert, bankPassbook, casteCert, signature]);
+  }, [photo, aadhaarFront, aadhaarBack, educationCert, bankPassbook, casteCert, otherDoc, signature]);
 
   // ── Save on app going to background (prevent data loss) ───────────────────
 
@@ -1119,6 +1122,8 @@ export default function CandidateRegisterScreen() {
         bankPassbookMime: bankPassbook?.mimeType ?? null,
         casteCertBase64: casteCertAvailable === "no" ? null : (casteCert?.base64 ?? null),
         casteCertMime: casteCertAvailable === "no" ? null : (casteCert?.mimeType ?? null),
+        otherDocBase64: otherDoc?.base64 ?? null,
+        otherDocMime: otherDoc?.mimeType ?? null,
         signatureBase64: signature?.base64 ?? null,
         signatureMime: signature?.mimeType ?? null,
         candidateIdCode: aadhaarNumber.trim() || null,
@@ -1437,9 +1442,17 @@ export default function CandidateRegisterScreen() {
           <SectionBand title="F.  DOCUMENTS  /  दस्तावेज अपलोड करें" onToggle={() => setSecF(!secF)} expanded={secF} />
           {secF && (
             <View style={styles.sectionBody}>
-              <Text style={styles.docInstructions}>
-                Capture all documents using camera only. Gallery upload is disabled.
-              </Text>
+              {/* Scanner tip banner */}
+              <View style={styles.scanTipBox}>
+                <Text style={styles.scanTipIcon}>📷</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.scanTipTitle}>Auto Document Scanner</Text>
+                  <Text style={styles.scanTipText}>
+                    Align document inside the frame — app will auto-detect, crop {"&"} enhance.
+                    Gallery upload disabled for security.
+                  </Text>
+                </View>
+              </View>
 
               {/* ── Aadhaar: special two-step modal card ──────────────── */}
               <TouchableOpacity
@@ -1490,8 +1503,8 @@ export default function CandidateRegisterScreen() {
                 onSave={(front, back) => { setAadhaarFront(front); setAadhaarBack(back); setShowAadhaarModal(false); }}
               />
 
-              <DocUploadCard label="Education Certificate / शैक्षणिक प्रमाण पत्र" value={educationCert} onPick={() => captureAndScan(setEducationCert, "Education Certificate")} onClear={() => setEducationCert(null)} />
-              <DocUploadCard label="Bank Passbook / बैंक पासबुक" value={bankPassbook} onPick={() => captureAndScan(setBankPassbook, "Bank Passbook")} onClear={() => setBankPassbook(null)} />
+              <DocUploadCard label="Education Certificate / शैक्षणिक प्रमाण पत्र" value={educationCert} onPick={() => captureAndScan(setEducationCert, "Education Certificate / शैक्षणिक प्रमाण पत्र")} onClear={() => setEducationCert(null)} />
+              <DocUploadCard label="Bank Passbook / बैंक पासबुक" value={bankPassbook} onPick={() => captureAndScan(setBankPassbook, "Bank Passbook / बैंक पासबुक")} onClear={() => setBankPassbook(null)} />
               {/* Caste Certificate — conditional on category */}
               {caste && caste !== "General" ? (
                 <View style={{ gap: 8 }}>
@@ -1526,7 +1539,7 @@ export default function CandidateRegisterScreen() {
                     <DocUploadCard
                       label="Caste Certificate / जाति प्रमाण पत्र"
                       value={casteCert}
-                      onPick={() => captureAndScan(setCasteCert, "Caste Certificate")}
+                      onPick={() => captureAndScan(setCasteCert, "Caste Certificate / जाति प्रमाण पत्र")}
                       onClear={() => setCasteCert(null)}
                     />
                   )}
@@ -1554,8 +1567,16 @@ export default function CandidateRegisterScreen() {
                   )}
                 </View>
               ) : (
-                <DocUploadCard label="Caste Certificate / जाति प्रमाण पत्र" value={casteCert} onPick={() => captureAndScan(setCasteCert, "Caste Certificate")} onClear={() => setCasteCert(null)} />
+                <DocUploadCard label="Caste Certificate / जाति प्रमाण पत्र" value={casteCert} onPick={() => captureAndScan(setCasteCert, "Caste Certificate / जाति प्रमाण पत्र")} onClear={() => setCasteCert(null)} />
               )}
+
+              {/* ── Other Document (optional) ────────────────────────── */}
+              <DocUploadCard
+                label="Other Document / अन्य दस्तावेज (Optional)"
+                value={otherDoc}
+                onPick={() => captureAndScan(setOtherDoc, "Other Document")}
+                onClear={() => setOtherDoc(null)}
+              />
             </View>
           )}
 
@@ -2175,6 +2196,32 @@ const styles = StyleSheet.create({
     color: MUTED,
     fontFamily: "Inter_400Regular",
     textDecorationLine: "underline" as const,
+  },
+
+  // ── Scanner tip banner ────────────────────────────────────────
+  scanTipBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    backgroundColor: "#EFF6FF",
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+    borderRadius: 10,
+    padding: 12,
+    gap: 10,
+  },
+  scanTipIcon: { fontSize: 22, marginTop: 1 },
+  scanTipTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#1D4ED8",
+    fontFamily: "Inter_700Bold",
+    marginBottom: 2,
+  },
+  scanTipText: {
+    fontSize: 11.5,
+    color: "#3B4A6B",
+    fontFamily: "Inter_400Regular",
+    lineHeight: 16,
   },
 
   // ── Document cards ────────────────────────────────────────────
