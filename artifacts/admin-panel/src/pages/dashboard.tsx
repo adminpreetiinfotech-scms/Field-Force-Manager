@@ -129,8 +129,13 @@ export default function Dashboard() {
   // Use IST date for links to match backend stats day boundaries (IST = UTC+5:30)
   const todayIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const [subInfo, setSubInfo] = useState<SubscriptionInfo | null>(null);
-  const [centerHintDismissed, setCenterHintDismissed] = useState(false);
-  const dismissCenterHint = useCallback(() => setCenterHintDismissed(true), []);
+  const [centerHintDismissed, setCenterHintDismissed] = useState(
+    () => localStorage.getItem("center_hint_dismissed") === "true"
+  );
+  const dismissCenterHint = useCallback(() => {
+    localStorage.setItem("center_hint_dismissed", "true");
+    setCenterHintDismissed(true);
+  }, []);
 
   useEffect(() => {
     const phone = getAdminPhone();
