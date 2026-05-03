@@ -8,6 +8,7 @@ import {
   Building2, Save, Loader2, Upload, X, ImageIcon,
   MapPin, Layers, GitBranch, RefreshCw, AlertTriangle, Navigation,
 } from "lucide-react";
+import GeoFenceMapPicker from "@/components/geo-fence-map-picker";
 
 interface CompanyProfile {
   id: string;
@@ -395,8 +396,24 @@ export default function CompanySettings() {
               <h2 className="text-sm font-semibold">Geo-fence (Center Staff Attendance)</h2>
             </div>
             <p className="text-xs text-muted-foreground -mt-2">
-              Set the latitude, longitude and radius of your training center. Center staff check-ins outside this radius will be flagged in the attendance report.
+              Click anywhere on the map to set the center point. Adjust the radius slider to define the geo-fence area. Center staff check-ins outside this radius will be flagged.
             </p>
+
+            {/* Map picker */}
+            <GeoFenceMapPicker
+              lat={(() => { const v = parseFloat(centerLat); return Number.isFinite(v) ? v : null; })()}
+              lng={(() => { const v = parseFloat(centerLng); return Number.isFinite(v) ? v : null; })()}
+              radiusMeters={(() => { const r = parseInt(centerRadius || "200", 10); return Number.isFinite(r) && r > 0 ? r : 200; })()}
+              onLocationChange={(lat, lng) => {
+                setCenterLat(lat.toFixed(6));
+                setCenterLng(lng.toFixed(6));
+              }}
+              onRadiusChange={(r) => setCenterRadius(String(r))}
+            />
+            <p className="text-xs text-muted-foreground -mt-1">
+              Click the map to drop a pin. The shaded circle shows the geo-fence radius.
+            </p>
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="flex items-center gap-1.5">
