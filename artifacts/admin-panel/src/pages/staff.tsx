@@ -43,6 +43,21 @@ import { useQueryClient } from "@tanstack/react-query";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+const CENTER_STAFF_ROLES = [
+  { value: "centerHead", label: "Center Head" },
+  { value: "misExecutive", label: "MIS Executive" },
+  { value: "placementIncharge", label: "Placement Incharge" },
+  { value: "trainer", label: "Trainer" },
+  { value: "itTrainer", label: "IT Trainer" },
+  { value: "softSkillsTrainer", label: "Soft Skills Trainer" },
+  { value: "receptionist", label: "Receptionist" },
+  { value: "counselor", label: "Counselor" },
+  { value: "officeboy", label: "Office Boy" },
+  { value: "securityGuard", label: "Security Guard" },
+  { value: "cook", label: "Cook" },
+  { value: "cleaningStaff", label: "Cleaning Staff" },
+];
+
 interface StaffMember {
   id: string;
   empCode: string;
@@ -61,6 +76,8 @@ interface StaffMember {
   createdAt: string | null;
   vehicleType?: "2-wheeler" | "4-wheeler" | null;
   vehicleNumber?: string | null;
+  staffCategory?: "field" | "center" | null;
+  centerStaffRole?: string | null;
 }
 
 // ─── Auth helper ──────────────────────────────────────────────────────────────
@@ -180,6 +197,8 @@ function EditProfileDialog({
     state: staff.state ?? "",
     district: staff.district ?? "",
     area: staff.area ?? "",
+    staffCategory: (staff.staffCategory ?? "field") as "field" | "center",
+    centerStaffRole: staff.centerStaffRole ?? "",
   });
   const [saving, setSaving] = useState(false);
 
@@ -201,6 +220,8 @@ function EditProfileDialog({
           state: form.state.trim() || null,
           district: form.district.trim() || null,
           area: form.area.trim() || null,
+          staffCategory: form.staffCategory,
+          centerStaffRole: form.staffCategory === "center" ? (form.centerStaffRole || null) : null,
         }),
       });
       if (!res.ok) {
@@ -259,6 +280,39 @@ function EditProfileDialog({
             <Field id="area" label="Area / Territory" value={form.area} onChange={(v) => setForm(f => ({ ...f, area: v }))} />
             <Field id="state" label="State" value={form.state} onChange={(v) => setForm(f => ({ ...f, state: v }))} />
             <Field id="district" label="District" value={form.district} onChange={(v) => setForm(f => ({ ...f, district: v }))} />
+            {/* Staff Category */}
+            <div className="col-span-2 space-y-1.5">
+              <Label>Staff Category</Label>
+              <div className="flex gap-2">
+                {(["field", "center"] as const).map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, staffCategory: cat, centerStaffRole: "" }))}
+                    className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${form.staffCategory === cat ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border text-muted-foreground hover:bg-muted"}`}
+                  >
+                    {cat === "field" ? "Field Staff" : "Center Staff"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* Center staff role */}
+            {form.staffCategory === "center" && (
+              <div className="col-span-2 space-y-1.5">
+                <Label htmlFor="centerRole">Center Role</Label>
+                <select
+                  id="centerRole"
+                  value={form.centerStaffRole}
+                  onChange={(e) => setForm(f => ({ ...f, centerStaffRole: e.target.value }))}
+                  className="w-full border rounded-md px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="">— Select role —</option>
+                  {CENTER_STAFF_ROLES.map((r) => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         </div>
 
@@ -366,6 +420,14 @@ function ViewProfileDialog({ staff, onClose }: { staff: StaffMember; onClose: ()
                   <span className="font-medium text-foreground">
                     {staff.vehicleType === "2-wheeler" ? "2-Wheeler" : staff.vehicleType === "4-wheeler" ? "4-Wheeler" : ""}
                     {staff.vehicleNumber ? ` · ${staff.vehicleNumber}` : ""}
+                  </span>
+                </div>
+              )}
+              {staff.staffCategory === "center" && (
+                <div className="flex items-center gap-2 col-span-2 pt-1">
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full">
+                    Center Staff
+                    {staff.centerStaffRole ? ` · ${CENTER_STAFF_ROLES.find(r => r.value === staff.centerStaffRole)?.label ?? staff.centerStaffRole}` : ""}
                   </span>
                 </div>
               )}

@@ -44,7 +44,27 @@ type ActivityPayload = {
   endOdometerKm?: number | null;
   /** Photo of vehicle odometer meter. */
   vehicleMeterPhotoUri?: string | null;
+  /** True if center staff checked in/out outside the company geo-fence radius. */
+  outsideGeofence?: boolean | null;
+  /** Straight-line distance in meters from the center geo-fence origin. */
+  distanceFromCenterM?: number | null;
 };
+
+/** Haversine distance in meters between two lat/lng points. */
+function haversineMeters(
+  lat1: number, lon1: number,
+  lat2: number, lon2: number,
+): number {
+  const R = 6_371_000;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
 
 function encodeCursor(occurredAt: Date, id: string): string {
   return Buffer.from(`${occurredAt.toISOString()}|${id}`, "utf8").toString(
@@ -941,15 +961,19 @@ router.post("/activity", async (req, res, next) => {
       durationSec: input.durationSec ?? null,
       origin: input.origin ?? null,
       destination: input.destination ?? null,
+      startOdometerKm: (input as any).startOdometerKm ?? null,
+      endOdometerKm: (input as any).endOdometerKm ?? null,
+      vehicleMeterPhotoUri: (input as any).vehicleMeterPhotoUri ?? null,
     };
 
-    // Look up the staff's company_id to associate the event with the right company
+    // Look up the staff's company_id and staffCategory
     const [staffRow] = await db
-      .select({ companyId: staffTable.companyId })
+      .select({ companyId: staffTable.companyId, staffCategory: staffTable.staffCategory })
       .from(staffTable)
       .where(eq(staffTable.id, input.staffId))
       .limit(1);
     const companyId = staffRow?.companyId ?? null;
+    const staffCategory = staffRow?.staffCategory ?? "field";
 
     // Block check-in if company subscription is expired/inactive
     if (input.kind === "checkin" && companyId) {
@@ -957,6 +981,9 @@ router.post("/activity", async (req, res, next) => {
         .select({
           subscriptionActive: companiesTable.subscriptionActive,
           subscriptionEndDate: companiesTable.subscriptionEndDate,
+          centerLat: companiesTable.centerLat,
+          centerLng: companiesTable.centerLng,
+          centerRadiusMeters: companiesTable.centerRadiusMeters,
         })
         .from(companiesTable)
         .where(eq(companiesTable.id, companyId))
@@ -964,6 +991,38 @@ router.post("/activity", async (req, res, next) => {
       if (company && isCompanySubscriptionBlocked(company)) {
         res.status(403).json({ title: "Subscription expired. Contact admin.", status: 403 });
         return;
+      }
+      // Geo-fence check for center staff
+      if (staffCategory === "center" && company?.centerLat != null && company?.centerLng != null) {
+        const loc = input.location;
+        if (loc) {
+          const distM = haversineMeters(loc.latitude, loc.longitude, company.centerLat, company.centerLng);
+          const radius = company.centerRadiusMeters ?? 200;
+          payload.distanceFromCenterM = Math.round(distM);
+          payload.outsideGeofence = distM > radius;
+        }
+      }
+    }
+
+    // Geo-fence check for center staff on checkout too
+    if (input.kind === "checkout" && companyId && staffCategory === "center") {
+      const [company] = await db
+        .select({
+          centerLat: companiesTable.centerLat,
+          centerLng: companiesTable.centerLng,
+          centerRadiusMeters: companiesTable.centerRadiusMeters,
+        })
+        .from(companiesTable)
+        .where(eq(companiesTable.id, companyId))
+        .limit(1);
+      if (company?.centerLat != null && company?.centerLng != null) {
+        const loc = input.location;
+        if (loc) {
+          const distM = haversineMeters(loc.latitude, loc.longitude, company.centerLat, company.centerLng);
+          const radius = company.centerRadiusMeters ?? 200;
+          payload.distanceFromCenterM = Math.round(distM);
+          payload.outsideGeofence = distM > radius;
+        }
       }
     }
 

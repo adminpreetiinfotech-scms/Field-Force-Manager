@@ -47,6 +47,10 @@ export const staffTable = pgTable("staff", {
   vehicleType: text("vehicle_type", { enum: ["2-wheeler", "4-wheeler"] }),
   /** Vehicle registration number or identifier. */
   vehicleNumber: text("vehicle_number"),
+  /** Staff category: field staff do field visits; center staff work at the training center. */
+  staffCategory: text("staff_category", { enum: ["field", "center"] }).notNull().default("field"),
+  /** Role label for center staff (e.g. trainer, centerHead, cook, securityGuard). */
+  centerStaffRole: text("center_staff_role"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

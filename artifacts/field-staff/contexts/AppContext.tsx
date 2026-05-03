@@ -38,6 +38,14 @@ export type User = {
   /** Vehicle info — set once in profile, auto-fills check-in/out */
   vehicleType?: "2-wheeler" | "4-wheeler" | null;
   vehicleNumber?: string | null;
+  /** Staff category: field (default) or center (training-center staff) */
+  staffCategory?: "field" | "center" | null;
+  /** Specific role label for center staff (e.g. trainer, centerHead, cook) */
+  centerStaffRole?: string | null;
+  /** Company geo-fence origin — used for center staff attendance validation */
+  companyCenterLat?: number | null;
+  companyCenterLng?: number | null;
+  companyCenterRadiusMeters?: number | null;
 };
 
 export type VehicleType = "2-wheeler" | "4-wheeler";
@@ -663,8 +671,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         companyName?: string | null;
         companyLogoUrl?: string | null;
         companySchemeName?: string | null;
+        companyTcId?: string | null;
         vehicleType?: "2-wheeler" | "4-wheeler" | null;
         vehicleNumber?: string | null;
+        staffCategory?: "field" | "center" | null;
+        centerStaffRole?: string | null;
+        companyCenterLat?: number | null;
+        companyCenterLng?: number | null;
+        companyCenterRadiusMeters?: number | null;
       };
     };
     const user: User = {
@@ -683,9 +697,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       companyName: dto.companyName ?? null,
       companyLogoUrl: dto.companyLogoUrl ?? null,
       companySchemeName: dto.companySchemeName ?? null,
-      companyTcId: (dto as any).companyTcId ?? null,
+      companyTcId: dto.companyTcId ?? null,
       vehicleType: dto.vehicleType ?? null,
       vehicleNumber: dto.vehicleNumber ?? null,
+      staffCategory: dto.staffCategory ?? "field",
+      centerStaffRole: dto.centerStaffRole ?? null,
+      companyCenterLat: dto.companyCenterLat ?? null,
+      companyCenterLng: dto.companyCenterLng ?? null,
+      companyCenterRadiusMeters: dto.companyCenterRadiusMeters ?? null,
     };
     setState((s) => ({ ...s, user, pendingPhone: null, pendingRegistration: null }));
     return user;

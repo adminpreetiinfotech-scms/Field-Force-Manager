@@ -115,6 +115,8 @@ export default function CheckOutScreen() {
     );
   }
 
+  const isCenterStaff = user?.staffCategory === "center";
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View
@@ -136,83 +138,104 @@ export default function CheckOutScreen() {
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <View style={{ flex: 1, padding: 22, gap: 18 }}>
-          {/* Vehicle info pill */}
-          <View style={[styles.infoPill, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Feather name="truck" size={16} color={colors.primary} />
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>
-                {user?.vehicleType === "2-wheeler" ? "2-Wheeler" : "4-Wheeler"}
-                {user?.vehicleNumber ? `  ·  ${user.vehicleNumber}` : ""}
-              </Text>
-              {gpsKmNum > 0 && (
-                <Text style={{ color: colors.mutedForeground, fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 }}>
-                  GPS tracked: {gpsKmNum.toFixed(1)} km today
+          {/* Vehicle info pill — field staff only */}
+          {!isCenterStaff && (
+            <View style={[styles.infoPill, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Feather name="truck" size={16} color={colors.primary} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>
+                  {user?.vehicleType === "2-wheeler" ? "2-Wheeler" : "4-Wheeler"}
+                  {user?.vehicleNumber ? `  ·  ${user.vehicleNumber}` : ""}
                 </Text>
-              )}
+                {gpsKmNum > 0 && (
+                  <Text style={{ color: colors.mutedForeground, fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 }}>
+                    GPS tracked: {gpsKmNum.toFixed(1)} km today
+                  </Text>
+                )}
+              </View>
             </View>
-          </View>
+          )}
 
-          {/* Odometer input */}
-          <View>
-            <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold", fontSize: 14, marginBottom: 8 }}>
-              End Odometer Reading (km)
-            </Text>
-            <TextInput
-              value={odometerKm}
-              onChangeText={setOdometerKm}
-              placeholder="e.g. 23520"
-              placeholderTextColor={colors.mutedForeground}
-              keyboardType="numeric"
-              style={[
-                styles.odoInput,
+          {/* Center staff info pill */}
+          {isCenterStaff && (
+            <View style={[styles.infoPill, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Feather name="home" size={16} color={colors.primary} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>
+                  Center Staff Check-Out
+                </Text>
+                <Text style={{ color: colors.mutedForeground, fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 }}>
+                  Your GPS location will be recorded for geo-fence verification
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Odometer input — field staff only */}
+          {!isCenterStaff && (
+            <View>
+              <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold", fontSize: 14, marginBottom: 8 }}>
+                End Odometer Reading (km)
+              </Text>
+              <TextInput
+                value={odometerKm}
+                onChangeText={setOdometerKm}
+                placeholder="e.g. 23520"
+                placeholderTextColor={colors.mutedForeground}
+                keyboardType="numeric"
+                style={[
+                  styles.odoInput,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                    color: colors.foreground,
+                  },
+                ]}
+              />
+            </View>
+          )}
+
+          {/* Meter photo — field staff only */}
+          {!isCenterStaff && (
+            <Pressable
+              onPress={() => {
+                if (!permission?.granted) {
+                  requestPermission();
+                  return;
+                }
+                setPhase("camera");
+              }}
+              style={({ pressed }) => [
+                styles.photoBtn,
                 {
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
-                  color: colors.foreground,
+                  borderColor: meterPhotoUri ? colors.success : colors.border,
+                  backgroundColor: meterPhotoUri ? colors.success + "12" : colors.card,
+                  opacity: pressed ? 0.8 : 1,
                 },
               ]}
-            />
-          </View>
-
-          {/* Meter photo */}
-          <Pressable
-            onPress={() => {
-              if (!permission?.granted) {
-                requestPermission();
-                return;
-              }
-              setPhase("camera");
-            }}
-            style={({ pressed }) => [
-              styles.photoBtn,
-              {
-                borderColor: meterPhotoUri ? colors.success : colors.border,
-                backgroundColor: meterPhotoUri ? colors.success + "12" : colors.card,
-                opacity: pressed ? 0.8 : 1,
-              },
-            ]}
-          >
-            <Feather
-              name={meterPhotoUri ? "check-circle" : "camera"}
-              size={18}
-              color={meterPhotoUri ? colors.success : colors.mutedForeground}
-            />
-            <Text
-              style={{
-                color: meterPhotoUri ? colors.success : colors.mutedForeground,
-                fontSize: 14,
-                fontFamily: "Inter_500Medium",
-                flex: 1,
-              }}
             >
-              {meterPhotoUri ? "Odometer photo captured" : "Capture odometer photo (optional)"}
-            </Text>
-            {meterPhotoUri && (
-              <Pressable onPress={() => setMeterPhotoUri(null)} hitSlop={8}>
-                <Feather name="x" size={16} color={colors.mutedForeground} />
-              </Pressable>
-            )}
-          </Pressable>
+              <Feather
+                name={meterPhotoUri ? "check-circle" : "camera"}
+                size={18}
+                color={meterPhotoUri ? colors.success : colors.mutedForeground}
+              />
+              <Text
+                style={{
+                  color: meterPhotoUri ? colors.success : colors.mutedForeground,
+                  fontSize: 14,
+                  fontFamily: "Inter_500Medium",
+                  flex: 1,
+                }}
+              >
+                {meterPhotoUri ? "Odometer photo captured" : "Capture odometer photo (optional)"}
+              </Text>
+              {meterPhotoUri && (
+                <Pressable onPress={() => setMeterPhotoUri(null)} hitSlop={8}>
+                  <Feather name="x" size={16} color={colors.mutedForeground} />
+                </Pressable>
+              )}
+            </Pressable>
+          )}
 
           <View style={{ flex: 1 }} />
 

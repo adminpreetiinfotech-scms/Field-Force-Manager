@@ -6,7 +6,7 @@ import { requireAdmin } from "./admin";
 
 const router: IRouter = Router();
 
-function toStaffDTO(r: typeof staffTable.$inferSelect) {
+export function toStaffDTO(r: typeof staffTable.$inferSelect) {
   return {
     id: r.id,
     companyId: r.companyId ?? null,
@@ -26,6 +26,9 @@ function toStaffDTO(r: typeof staffTable.$inferSelect) {
     createdAt: r.createdAt?.toISOString() ?? null,
     vehicleType: r.vehicleType ?? null,
     vehicleNumber: r.vehicleNumber ?? null,
+    disabledAt: r.disabledAt?.toISOString() ?? null,
+    staffCategory: r.staffCategory ?? "field",
+    centerStaffRole: r.centerStaffRole ?? null,
   };
 }
 
@@ -750,6 +753,11 @@ router.patch("/staff/profile", async (req, res, next) => {
       return;
     }
 
+    const { staffCategory, centerStaffRole } = req.body as {
+      staffCategory?: "field" | "center" | null;
+      centerStaffRole?: string | null;
+    };
+
     const updates: Partial<typeof staffTable.$inferInsert> = {};
     if (name !== undefined) updates.name = name.trim();
     if (email !== undefined) updates.email = email?.trim() || null;
@@ -760,6 +768,10 @@ router.patch("/staff/profile", async (req, res, next) => {
     if (district !== undefined) updates.district = district?.trim() || null;
     if (vehicleType !== undefined) updates.vehicleType = vehicleType ?? null;
     if (vehicleNumber !== undefined) updates.vehicleNumber = vehicleNumber?.trim() || null;
+    if (staffCategory !== undefined && (staffCategory === "field" || staffCategory === "center")) {
+      updates.staffCategory = staffCategory;
+    }
+    if (centerStaffRole !== undefined) updates.centerStaffRole = centerStaffRole?.trim() || null;
 
     const [updated] = await db
       .update(staffTable)

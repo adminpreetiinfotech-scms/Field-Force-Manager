@@ -76,6 +76,11 @@ export default function CheckInScreen() {
 
   const confirmSelfie = () => {
     if (!photo) return;
+    // Center staff do not have an odometer phase — skip directly to submit
+    if (user?.staffCategory === "center") {
+      submitFinal();
+      return;
+    }
     if (user?.vehicleType) {
       setPhase("odometer");
     } else {

@@ -127,6 +127,9 @@ export default function StaffHome() {
     return () => clearInterval(t);
   }, []);
 
+  // Track current GPS position for center-staff geo-fence banner
+  const [currentGpsPos, setCurrentGpsPos] = useState<GeoPoint | null>(null);
+
   const activeTrip = trips.find((t) => t.id === activeTripId) || null;
   const lastPosRef = useRef<GeoPoint | null>(null);
   const totalKmRef = useRef(0);
@@ -164,6 +167,7 @@ export default function StaffHome() {
               }
             }
             lastPosRef.current = p;
+            setCurrentGpsPos(p);
             // Ping server every 30 s so admin map shows real-time location
             const nowMs = Date.now();
             if (user && nowMs - lastPingRef.current >= 30_000) {
@@ -192,7 +196,8 @@ export default function StaffHome() {
   };
 
   const onCheckOut = async () => {
-    if (user?.vehicleType) {
+    // Center staff and field staff with a vehicle both go through the check-out screen
+    if (user?.vehicleType || user?.staffCategory === "center") {
       router.push(`/attendance/check-out?gpsKm=${totalKmRef.current.toFixed(2)}` as never);
       return;
     }
@@ -367,6 +372,38 @@ export default function StaffHome() {
 
         <View style={{ padding: 18, gap: 14 }}>
           <SyncBanner />
+          {/* Geo-fence live banner for center staff */}
+          {(() => {
+            if (user?.staffCategory !== "center") return null;
+            if (!isCheckedIn) return null;
+            if (!user?.companyCenterLat || !user?.companyCenterLng) return null;
+            if (!currentGpsPos) return null;
+            const R = 6371000;
+            const dLat = ((currentGpsPos.latitude - user.companyCenterLat) * Math.PI) / 180;
+            const dLon = ((currentGpsPos.longitude - user.companyCenterLng) * Math.PI) / 180;
+            const a = Math.sin(dLat / 2) ** 2 + Math.cos((user.companyCenterLat * Math.PI) / 180) * Math.cos((currentGpsPos.latitude * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+            const distM = Math.round(2 * R * Math.asin(Math.sqrt(a)));
+            const radius = user.companyCenterRadiusMeters ?? 200;
+            const outside = distM > radius;
+            return (
+              <View style={{
+                flexDirection: "row", alignItems: "center", gap: 10,
+                backgroundColor: outside ? "#FEF2F2" : "#F0FDF4",
+                borderWidth: 1, borderColor: outside ? "#FECACA" : "#BBF7D0",
+                borderRadius: 12, padding: 12,
+              }}>
+                <Feather name={outside ? "alert-triangle" : "check-circle"} size={16} color={outside ? "#DC2626" : "#16A34A"} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: "Inter_600SemiBold", fontSize: 13, color: outside ? "#DC2626" : "#15803D" }}>
+                    {outside ? `Outside geo-fence (${distM}m from center)` : `Inside geo-fence (${distM}m from center)`}
+                  </Text>
+                  <Text style={{ fontFamily: "Inter_400Regular", fontSize: 11, color: outside ? "#B91C1C" : "#166534", marginTop: 1 }}>
+                    {outside ? `You are ${distM - radius}m beyond the ${radius}m allowed radius` : `Within the allowed ${radius}m radius`}
+                  </Text>
+                </View>
+              </View>
+            );
+          })()}
 
           {/* Today's stats */}
           <View style={styles.row}>

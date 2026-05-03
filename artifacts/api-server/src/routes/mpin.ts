@@ -13,22 +13,34 @@ function toLogoUrl(filePath: string | null | undefined): string | null {
 const router = Router();
 
 async function getCompanyBranding(companyId: string | null | undefined) {
-  if (!companyId) return { companyName: null, companyLogoUrl: null, companySchemeName: null, companyTcId: null };
+  const empty = { companyName: null, companyLogoUrl: null, companySchemeName: null, companyTcId: null, companyCenterLat: null, companyCenterLng: null, companyCenterRadiusMeters: null as number | null };
+  if (!companyId) return empty;
   try {
     const [co] = await db
-      .select({ name: companiesTable.name, logoPath: companiesTable.logoPath, projectName: companiesTable.projectName, tcId: companiesTable.tcId })
+      .select({
+        name: companiesTable.name,
+        logoPath: companiesTable.logoPath,
+        projectName: companiesTable.projectName,
+        tcId: companiesTable.tcId,
+        centerLat: companiesTable.centerLat,
+        centerLng: companiesTable.centerLng,
+        centerRadiusMeters: companiesTable.centerRadiusMeters,
+      })
       .from(companiesTable)
       .where(eq(companiesTable.id, companyId))
       .limit(1);
-    if (!co) return { companyName: null, companyLogoUrl: null, companySchemeName: null, companyTcId: null };
+    if (!co) return empty;
     return {
-      companyName:       co.name ?? null,
-      companyLogoUrl:    toLogoUrl(co.logoPath),
-      companySchemeName: co.projectName ?? null,
-      companyTcId:       co.tcId ?? null,
+      companyName:             co.name ?? null,
+      companyLogoUrl:          toLogoUrl(co.logoPath),
+      companySchemeName:       co.projectName ?? null,
+      companyTcId:             co.tcId ?? null,
+      companyCenterLat:        co.centerLat ?? null,
+      companyCenterLng:        co.centerLng ?? null,
+      companyCenterRadiusMeters: co.centerRadiusMeters ?? null,
     };
   } catch {
-    return { companyName: null, companyLogoUrl: null, companySchemeName: null, companyTcId: null };
+    return empty;
   }
 }
 
@@ -67,6 +79,8 @@ function toUserDTO(row: typeof staffTable.$inferSelect) {
     approvalStatus: row.approvalStatus,
     vehicleType: row.vehicleType ?? null,
     vehicleNumber: row.vehicleNumber ?? null,
+    staffCategory: row.staffCategory ?? "field",
+    centerStaffRole: row.centerStaffRole ?? null,
   };
 }
 

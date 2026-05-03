@@ -1,4 +1,5 @@
 import {
+  activityEventsTable,
   candidateAuditLogTable,
   candidatesTable,
   candidateNotificationsTable,
@@ -312,6 +313,8 @@ router.get("/admin/staff-list", requireAdmin, async (_req, res, next) => {
           approvalStatus: r.approvalStatus,
           disabledAt: r.disabledAt?.toISOString() ?? null,
           createdAt: r.createdAt?.toISOString() ?? null,
+          staffCategory: r.staffCategory ?? "field",
+          centerStaffRole: r.centerStaffRole ?? null,
         })),
     );
   } catch (err) {
@@ -449,7 +452,7 @@ router.patch("/admin/staff/:id/profile", requireAdmin, async (req, res, next) =>
   try {
     const { id } = req.params as { id: string };
     const companyId = res.locals.companyId as string | null;
-    const { name, email, organization, centerName, projectName, state, district, area } = req.body as {
+    const { name, email, organization, centerName, projectName, state, district, area, staffCategory, centerStaffRole } = req.body as {
       name?: string;
       email?: string | null;
       organization?: string | null;
@@ -458,6 +461,8 @@ router.patch("/admin/staff/:id/profile", requireAdmin, async (req, res, next) =>
       state?: string | null;
       district?: string | null;
       area?: string | null;
+      staffCategory?: "field" | "center" | null;
+      centerStaffRole?: string | null;
     };
 
     const filter = companyId
@@ -487,6 +492,10 @@ router.patch("/admin/staff/:id/profile", requireAdmin, async (req, res, next) =>
     if (state !== undefined) updates.state = state?.trim() || null;
     if (district !== undefined) updates.district = district?.trim() || null;
     if (area !== undefined) updates.area = area?.trim() || null;
+    if (staffCategory !== undefined && (staffCategory === "field" || staffCategory === "center")) {
+      updates.staffCategory = staffCategory;
+    }
+    if (centerStaffRole !== undefined) updates.centerStaffRole = centerStaffRole?.trim() || null;
 
     if (Object.keys(updates).length === 0) {
       res.status(400).json({ title: "No fields to update", status: 400 });
@@ -510,6 +519,8 @@ router.patch("/admin/staff/:id/profile", requireAdmin, async (req, res, next) =>
       state: updated.state ?? null,
       district: updated.district ?? null,
       area: updated.area ?? null,
+      staffCategory: updated.staffCategory ?? "field",
+      centerStaffRole: updated.centerStaffRole ?? null,
     });
   } catch (err) {
     next(err);
@@ -903,5 +914,151 @@ router.get("/admin/company/subscription", requireAdmin, async (_req, res, next) 
   }
 });
 
-export default router;
+// ─── GET /api/admin/center-attendance ─────────────────────────────────────────
+// Returns per-staff, per-day attendance rows for center staff in a date range.
 
+router.get("/admin/center-attendance", requireAdmin, async (req, res, next) => {
+  try {
+    const companyId = res.locals.companyId as string | null;
+    const { dateFrom, dateTo, staffId } = req.query as {
+      dateFrom?: string;
+      dateTo?: string;
+      staffId?: string;
+    };
+
+    if (!dateFrom || !dateTo) {
+      res.status(400).json({ title: "dateFrom and dateTo are required (YYYY-MM-DD)", status: 400 });
+      return;
+    }
+
+    // Validate date format
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateFrom) || !/^\d{4}-\d{2}-\d{2}$/.test(dateTo)) {
+      res.status(400).json({ title: "Dates must be in YYYY-MM-DD format", status: 400 });
+      return;
+    }
+
+    // Fetch center staff
+    const companyFilter = companyId
+      ? and(eq(staffTable.companyId, companyId), eq(staffTable.staffCategory, "center"))
+      : eq(staffTable.staffCategory, "center");
+    const staffFilter = staffId
+      ? and(companyFilter, eq(staffTable.id, staffId))
+      : companyFilter;
+
+    const centerStaff = await db
+      .select({
+        id: staffTable.id,
+        name: staffTable.name,
+        empCode: staffTable.empCode,
+        centerStaffRole: staffTable.centerStaffRole,
+      })
+      .from(staffTable)
+      .where(and(staffFilter, isNull(staffTable.deletedAt)));
+
+    if (centerStaff.length === 0) {
+      res.json([]);
+      return;
+    }
+
+    // IST = UTC + 5:30 = UTC + 19800 seconds
+    // dateFrom 00:00 IST = dateFrom 00:00:00 - 5h30m UTC = datFrom-1 18:30 UTC
+    const fromUtc = new Date(dateFrom + "T00:00:00+05:30");
+    const toUtc = new Date(dateTo + "T23:59:59+05:30");
+
+    const staffIds = centerStaff.map((s) => s.id);
+
+    // Fetch all checkin/checkout events for center staff in the date range
+    const events = await db
+      .select({
+        staffId: activityEventsTable.staffId,
+        kind: activityEventsTable.kind,
+        occurredAt: activityEventsTable.occurredAt,
+        payload: activityEventsTable.payload,
+      })
+      .from(activityEventsTable)
+      .where(
+        and(
+          inArray(activityEventsTable.staffId, staffIds),
+          or(
+            eq(activityEventsTable.kind, "checkin"),
+            eq(activityEventsTable.kind, "checkout"),
+          ),
+          gte(activityEventsTable.occurredAt, fromUtc),
+          lt(activityEventsTable.occurredAt, new Date(toUtc.getTime() + 1000)),
+        ),
+      )
+      .orderBy(activityEventsTable.occurredAt);
+
+    // Generate all dates in range
+    const dates: string[] = [];
+    const cur = new Date(dateFrom + "T00:00:00");
+    const end = new Date(dateTo + "T00:00:00");
+    while (cur <= end) {
+      dates.push(cur.toISOString().slice(0, 10));
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    const IST_OFFSET = 5.5 * 60 * 60 * 1000;
+
+    // Group events by staffId + IST date
+    type EventEntry = { occurredAt: Date; payload: Record<string, unknown> };
+    const eventMap = new Map<string, { checkin?: EventEntry; checkout?: EventEntry }>();
+    for (const ev of events) {
+      const istDate = new Date(ev.occurredAt.getTime() + IST_OFFSET).toISOString().slice(0, 10);
+      const key = `${ev.staffId}|${istDate}`;
+      if (!eventMap.has(key)) eventMap.set(key, {});
+      const entry = eventMap.get(key)!;
+      const payload = (ev.payload ?? {}) as Record<string, unknown>;
+      if (ev.kind === "checkin" && !entry.checkin) {
+        entry.checkin = { occurredAt: ev.occurredAt, payload };
+      } else if (ev.kind === "checkout" && !entry.checkout) {
+        entry.checkout = { occurredAt: ev.occurredAt, payload };
+      }
+    }
+
+    // Build result rows
+    const today = new Date(new Date().getTime() + IST_OFFSET).toISOString().slice(0, 10);
+    const rows: object[] = [];
+
+    for (const staff of centerStaff) {
+      for (const date of dates) {
+        const key = `${staff.id}|${date}`;
+        const entry = eventMap.get(key);
+        const isPast = date < today;
+
+        const checkInTime = entry?.checkin?.occurredAt?.toISOString() ?? null;
+        const checkOutTime = entry?.checkout?.occurredAt?.toISOString() ?? null;
+        const ciPayload = entry?.checkin?.payload ?? {};
+        const coPayload = entry?.checkout?.payload ?? {};
+
+        let status: "present" | "partial" | "absent" = "absent";
+        if (checkInTime && checkOutTime) status = "present";
+        else if (checkInTime) status = "partial";
+        else if (!isPast && date === today) continue; // skip future/today absent
+
+        if (status === "absent" && !isPast) continue;
+
+        rows.push({
+          staffId: staff.id,
+          staffName: staff.name,
+          empCode: staff.empCode,
+          centerStaffRole: staff.centerStaffRole ?? null,
+          date,
+          checkInTime,
+          checkOutTime,
+          status,
+          checkInOutsideGeofence: (ciPayload.outsideGeofence as boolean | null) ?? null,
+          checkOutOutsideGeofence: (coPayload.outsideGeofence as boolean | null) ?? null,
+          checkInDistanceM: (ciPayload.distanceFromCenterM as number | null) ?? null,
+          checkOutDistanceM: (coPayload.distanceFromCenterM as number | null) ?? null,
+        });
+      }
+    }
+
+    res.json(rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+export default router;

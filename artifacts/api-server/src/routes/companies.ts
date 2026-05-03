@@ -69,6 +69,9 @@ function toCompanyDTO(c: typeof companiesTable.$inferSelect) {
     isSubscriptionExpired: isDateExpired,
     centerName: c.centerName ?? null,
     tcId: c.tcId ?? null,
+    centerLat: c.centerLat ?? null,
+    centerLng: c.centerLng ?? null,
+    centerRadiusMeters: c.centerRadiusMeters ?? 200,
     createdAt: c.createdAt?.toISOString() ?? null,
   };
 }
@@ -333,6 +336,12 @@ router.patch("/companies/:id/profile", async (req, res, next) => {
       res.status(403).json({ title: "Forbidden: not your company", status: 403 });
       return;
     }
+    const { centerLat, centerLng, centerRadiusMeters } = req.body as {
+      centerLat?: number | null;
+      centerLng?: number | null;
+      centerRadiusMeters?: number | null;
+    };
+
     const updates: Partial<typeof companiesTable.$inferInsert> = {};
     if (name !== undefined) updates.name = name.trim();
     if (adminName !== undefined) updates.adminName = adminName.trim();
@@ -342,6 +351,9 @@ router.patch("/companies/:id/profile", async (req, res, next) => {
     if (projectName !== undefined) updates.projectName = projectName?.trim() || null;
     if (centerName !== undefined) updates.centerName = centerName?.trim() || null;
     if (tcId !== undefined) updates.tcId = tcId?.trim() || null;
+    if (centerLat !== undefined) updates.centerLat = typeof centerLat === "number" ? centerLat : null;
+    if (centerLng !== undefined) updates.centerLng = typeof centerLng === "number" ? centerLng : null;
+    if (centerRadiusMeters !== undefined) updates.centerRadiusMeters = typeof centerRadiusMeters === "number" ? Math.max(50, Math.round(centerRadiusMeters)) : 200;
 
     if (Object.keys(updates).length === 0) {
       const [existing] = await db

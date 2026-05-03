@@ -186,7 +186,8 @@ export default function StaffProfile() {
         </View>
       </View>
 
-      {/* ── Vehicle Setup ─────────────────────────────────────────── */}
+      {/* ── Vehicle Setup — field staff only ─────────────────────── */}
+      {user?.staffCategory !== "center" && (
       <View
         style={[
           styles.section,
@@ -289,9 +290,41 @@ export default function StaffProfile() {
           }}
         />
       </View>
+      )}
 
-      {/* ── KM History ────────────────────────────────────────────── */}
-      {user?.vehicleType && kmHistory.length > 0 && (
+      {/* ── Center Staff Role Badge ────────────────────────────────── */}
+      {user?.staffCategory === "center" && (
+        <View
+          style={[
+            styles.section,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              borderRadius: colors.radius + 4,
+              marginTop: 14,
+            },
+          ]}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <View style={{ width: 36, height: 36, borderRadius: 999, backgroundColor: colors.primary + "20", alignItems: "center", justifyContent: "center" }}>
+              <Feather name="home" size={16} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.mutedForeground, fontSize: 11, fontFamily: "Inter_500Medium", letterSpacing: 0.4 }}>STAFF CATEGORY</Text>
+              <Text style={{ color: colors.foreground, fontSize: 14, fontFamily: "Inter_700Bold", marginTop: 1 }}>Center Staff</Text>
+            </View>
+          </View>
+          {!!user?.centerStaffRole && (
+            <View style={{ marginTop: 12, padding: 10, borderRadius: 10, backgroundColor: colors.primary + "10", borderWidth: StyleSheet.hairlineWidth, borderColor: colors.primary + "30" }}>
+              <Text style={{ color: colors.mutedForeground, fontSize: 10, fontFamily: "Inter_500Medium", letterSpacing: 0.4 }}>DESIGNATED ROLE</Text>
+              <Text style={{ color: colors.primary, fontSize: 14, fontFamily: "Inter_700Bold", marginTop: 2 }}>{user.centerStaffRole}</Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* ── KM History — field staff only ────────────────────────── */}
+      {user?.staffCategory !== "center" && user?.vehicleType && kmHistory.length > 0 && (
         <View
           style={[
             styles.section,

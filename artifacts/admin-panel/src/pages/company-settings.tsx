@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import {
   Building2, Save, Loader2, Upload, X, ImageIcon,
-  MapPin, Layers, GitBranch, RefreshCw, AlertTriangle,
+  MapPin, Layers, GitBranch, RefreshCw, AlertTriangle, Navigation,
 } from "lucide-react";
 
 interface CompanyProfile {
@@ -20,6 +20,9 @@ interface CompanyProfile {
   centerName: string | null;
   tcId: string | null;
   logoUrl: string | null;
+  centerLat: number | null;
+  centerLng: number | null;
+  centerRadiusMeters: number | null;
 }
 
 function getAdminPhone(): string {
@@ -75,6 +78,10 @@ export default function CompanySettings() {
   const [projectName, setProjectName] = useState("");
   const [centerName, setCenterName] = useState("");
   const [tcId, setTcId] = useState("");
+  const [centerLat, setCenterLat] = useState("");
+  const [centerLng, setCenterLng] = useState("");
+  const [centerRadius, setCenterRadius] = useState("200");
+  const [locatingGeo, setLocatingGeo] = useState(false);
 
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -103,6 +110,9 @@ export default function CompanySettings() {
       setCenterName(data.centerName ?? "");
       setTcId(data.tcId ?? "");
       setLogoPreview(data.logoUrl ?? null);
+      setCenterLat(data.centerLat != null ? String(data.centerLat) : "");
+      setCenterLng(data.centerLng != null ? String(data.centerLng) : "");
+      setCenterRadius(data.centerRadiusMeters != null ? String(data.centerRadiusMeters) : "200");
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
     } finally {
@@ -143,6 +153,9 @@ export default function CompanySettings() {
     }
     setSaving(true);
     try {
+      const latNum = centerLat.trim() ? parseFloat(centerLat.trim()) : null;
+      const lngNum = centerLng.trim() ? parseFloat(centerLng.trim()) : null;
+      const radiusNum = centerRadius.trim() ? parseInt(centerRadius.trim(), 10) : 200;
       const profileRes = await adminFetch(`/api/companies/${companyId}/profile`, {
         method: "PATCH",
         body: JSON.stringify({
@@ -153,6 +166,9 @@ export default function CompanySettings() {
           projectName: projectName.trim() || null,
           centerName: centerName.trim() || null,
           tcId: tcId.trim() || null,
+          centerLat: Number.isFinite(latNum) ? latNum : null,
+          centerLng: Number.isFinite(lngNum) ? lngNum : null,
+          centerRadiusMeters: Number.isFinite(radiusNum) && radiusNum >= 50 ? radiusNum : 200,
         }),
       });
       if (!profileRes.ok) throw new Error((await profileRes.json().catch(() => ({}))).title ?? "Profile update failed");
@@ -370,6 +386,92 @@ export default function CompanySettings() {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Geo-fence */}
+          <div className="border rounded-xl p-6 bg-card space-y-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Navigation className="h-4 w-4 text-muted-foreground" />
+              <h2 className="text-sm font-semibold">Geo-fence (Center Staff Attendance)</h2>
+            </div>
+            <p className="text-xs text-muted-foreground -mt-2">
+              Set the latitude, longitude and radius of your training center. Center staff check-ins outside this radius will be flagged in the attendance report.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                  Center Latitude
+                </Label>
+                <Input
+                  type="number"
+                  step="any"
+                  value={centerLat}
+                  onChange={e => setCenterLat(e.target.value)}
+                  placeholder="e.g. 23.3565"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                  Center Longitude
+                </Label>
+                <Input
+                  type="number"
+                  step="any"
+                  value={centerLng}
+                  onChange={e => setCenterLng(e.target.value)}
+                  placeholder="e.g. 85.3095"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Geo-fence Radius (meters)</Label>
+              <Input
+                type="number"
+                min={50}
+                max={5000}
+                value={centerRadius}
+                onChange={e => setCenterRadius(e.target.value)}
+                placeholder="Default: 200"
+              />
+              <p className="text-xs text-muted-foreground">Minimum 50 meters. Staff outside this radius at check-in/out will be flagged.</p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={locatingGeo}
+              className="gap-1.5"
+              onClick={() => {
+                if (!navigator.geolocation) {
+                  toast({ title: "Geolocation not supported by this browser", variant: "destructive" });
+                  return;
+                }
+                setLocatingGeo(true);
+                navigator.geolocation.getCurrentPosition(
+                  (pos) => {
+                    setCenterLat(pos.coords.latitude.toFixed(6));
+                    setCenterLng(pos.coords.longitude.toFixed(6));
+                    setLocatingGeo(false);
+                    toast({ title: "Location captured", description: `Lat: ${pos.coords.latitude.toFixed(6)}, Lng: ${pos.coords.longitude.toFixed(6)}` });
+                  },
+                  () => {
+                    setLocatingGeo(false);
+                    toast({ title: "Could not get location", description: "Please allow location access or enter coordinates manually.", variant: "destructive" });
+                  },
+                  { timeout: 10000 },
+                );
+              }}
+            >
+              {locatingGeo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Navigation className="h-3.5 w-3.5" />}
+              {locatingGeo ? "Locating…" : "Use My Current Location"}
+            </Button>
+            {centerLat && centerLng && (
+              <p className="text-xs text-emerald-600 font-medium">
+                ✓ Geo-fence set at {parseFloat(centerLat).toFixed(5)}, {parseFloat(centerLng).toFixed(5)} — radius {centerRadius || 200}m
+              </p>
+            )}
           </div>
 
           {/* Save Button */}

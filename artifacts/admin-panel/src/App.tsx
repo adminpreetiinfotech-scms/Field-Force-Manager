@@ -17,6 +17,7 @@ import SuperAdminStaff from "@/pages/super-admin-staff";
 import SuperAdminCreateAdmin from "@/pages/super-admin-create-admin";
 import CompanySettings from "@/pages/company-settings";
 import LiveMap from "@/pages/live-map";
+import CenterAttendance from "@/pages/center-attendance";
 import { AdminLayout } from "@/components/admin-layout";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -89,6 +90,7 @@ function Router() {
       <ProtectedRoute path="/reports" component={Reports} />
       <ProtectedRoute path="/notices" component={Notices} />
       <ProtectedRoute path="/live-map" component={LiveMap} />
+      <ProtectedRoute path="/center-attendance" component={CenterAttendance} />
       <SuperAdminRoute path="/super-admin/companies/:id" component={({ params }: any) => (
         <SuperAdminCompanyDetail companyId={params.id} />
       )} />

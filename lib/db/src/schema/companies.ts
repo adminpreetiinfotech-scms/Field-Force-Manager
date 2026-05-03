@@ -1,4 +1,4 @@
-import { boolean, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, doublePrecision, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 export const companiesTable = pgTable("companies", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -23,6 +23,12 @@ export const companiesTable = pgTable("companies", {
   paymentStatus: text("payment_status", { enum: ["paid", "pending", "expired"] }).default("paid"),
   centerName: text("center_name"),
   tcId: text("tc_id"),
+  /** Geo-fence: latitude of training center (for center staff attendance). */
+  centerLat: doublePrecision("center_lat"),
+  /** Geo-fence: longitude of training center (for center staff attendance). */
+  centerLng: doublePrecision("center_lng"),
+  /** Geo-fence: radius in meters within which center staff check-in is valid (default 200m). */
+  centerRadiusMeters: integer("center_radius_meters").default(200),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
