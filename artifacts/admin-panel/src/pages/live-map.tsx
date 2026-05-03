@@ -522,6 +522,9 @@ export default function LiveMapPage() {
             ) : (
               filtered
                 .sort((a, b) => {
+                  const aOutside = isOutsideFence(a, geoFence) ? 0 : 1;
+                  const bOutside = isOutsideFence(b, geoFence) ? 0 : 1;
+                  if (aOutside !== bOutside) return aOutside - bOutside;
                   const sa = getStatusLabel(a);
                   const sb = getStatusLabel(b);
                   const order = { active: 0, idle: 1, offline: 2 };
