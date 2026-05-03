@@ -845,160 +845,266 @@ export async function generateCandidatePdf(
 
       // ── Self-declaration page (when caste cert not available) ──────────────
       if (item.selfDecl) {
-        const PAD  = 28;
-        const BW   = A4_W - PAD * 2;   // body width
-        let   dy   = docImgY + 6;
+        const PAD = 25;                   // left/right margin
+        const BW  = A4_W - PAD * 2;      // usable body width  (545 pt)
+        let   dy  = 12;
 
-        // ── Outer border ──────────────────────────────────────────────────────
-        box(doc, PAD - 6, dy - 4, BW + 12, 720, 1.0, NAVY);
+        // ════════════════════════════════════════════════════════════════════
+        // OUTER DECORATIVE BORDER  (double-line government style)
+        // ════════════════════════════════════════════════════════════════════
+        box(doc, 8,  8,  A4_W - 16, A4_H - 16, 2.0, "#4A235A");
+        box(doc, 13, 13, A4_W - 26, A4_H - 26, 0.6, "#4A235A");
 
-        // ── Top reference line ────────────────────────────────────────────────
-        doc.font("DVR").fontSize(7).fillColor(GRAY)
-           .text("DDU-GKY / JSDMS — Jharkhand Skill Development Mission Society",
-             PAD, dy + 2, { width: BW, align: "center", lineBreak: false });
-        dy += 14;
-        hl(doc, PAD - 6, dy, PAD + BW + 6, 0.5, LGRAY);
+        // ════════════════════════════════════════════════════════════════════
+        // HEADER  — emblem left | government text centre | logo right
+        // ════════════════════════════════════════════════════════════════════
+        const HDR_Y   = dy + 4;
+        const EMB_R   = 22;              // emblem circle radius
+        const EMB_CX  = PAD + EMB_R;    // left emblem centre-x
+        const LOGO_CX = A4_W - PAD - EMB_R; // right logo centre-x
+        const EMB_CY  = HDR_Y + EMB_R + 2;
+
+        // Left emblem (Ashoka — circular placeholder)
+        doc.circle(EMB_CX, EMB_CY, EMB_R).strokeColor("#4A235A").lineWidth(1.0).stroke();
+        doc.circle(EMB_CX, EMB_CY, EMB_R - 4).strokeColor("#4A235A").lineWidth(0.4).stroke();
+        doc.font("DVR").fontSize(5).fillColor("#4A235A")
+           .text("सत्यमेव", EMB_CX - EMB_R, EMB_CY + EMB_R - 2,
+             { width: EMB_R * 2, align: "center", lineBreak: false });
+
+        // Right logo (Lok Seva — circular placeholder)
+        doc.circle(LOGO_CX, EMB_CY, EMB_R).strokeColor("#1565C0").lineWidth(1.0).stroke();
+        doc.circle(LOGO_CX, EMB_CY, EMB_R - 4).strokeColor("#1565C0").lineWidth(0.4).stroke();
+        doc.font("NSR").fontSize(4.5).fillColor("#1565C0")
+           .text("लोक सेवा", LOGO_CX - EMB_R, EMB_CY - 5,
+             { width: EMB_R * 2, align: "center", lineBreak: false });
+        doc.font("NSR").fontSize(4.5).fillColor("#1565C0")
+           .text("हमारा संकल्प", LOGO_CX - EMB_R, EMB_CY + 1,
+             { width: EMB_R * 2, align: "center", lineBreak: false });
+
+        // Centre government text
+        const govCX = PAD + EMB_R * 2 + 8;
+        const govCW = A4_W - (PAD + EMB_R * 2 + 8) * 2;
+        doc.font("NSB").fontSize(11).fillColor(DARK)
+           .text("भारत सरकार", govCX, HDR_Y + 4,
+             { width: govCW, align: "center", lineBreak: false });
+        doc.font("NSB").fontSize(11).fillColor(DARK)
+           .text("राज्य सरकार", govCX, HDR_Y + 18,
+             { width: govCW, align: "center", lineBreak: false });
+        doc.font("NSR").fontSize(8.5).fillColor(DARK)
+           .text("(राजस्व एवं भूमि सुधार विभाग)", govCX, HDR_Y + 33,
+             { width: govCW, align: "center", lineBreak: false });
+
+        dy = HDR_Y + EMB_R * 2 + 8;    // below emblem circles
+
+        // ── Ornamental divider ──────────────────────────────────────────────
+        hl(doc, PAD, dy, A4_W - PAD, 1.0, "#4A235A");
+        // diamond ornament at centre
+        const dmx = A4_W / 2;
+        doc.moveTo(dmx, dy - 4).lineTo(dmx + 5, dy).lineTo(dmx, dy + 4)
+           .lineTo(dmx - 5, dy).closePath().fill("#4A235A");
         dy += 10;
 
-        // ── Title block ───────────────────────────────────────────────────────
-        doc.font("NSB").fontSize(16).fillColor(NAVY)
-           .text("स्व-घोषणा पत्र", PAD, dy, { width: BW, align: "center", lineBreak: false });
+        // ════════════════════════════════════════════════════════════════════
+        // TITLE BOX  — navy rounded rectangle, white bold Hindi text
+        // ════════════════════════════════════════════════════════════════════
+        const TBH = 32; const TBW = 260; const TBX = (A4_W - TBW) / 2;
+        doc.roundedRect(TBX, dy, TBW, TBH, 5).fill(NAVY);
+        doc.font("NSB").fontSize(20).fillColor("#FFFFFF")
+           .text("स्वघोषणा पत्र", TBX, dy + 6,
+             { width: TBW, align: "center", lineBreak: false });
+        dy += TBH + 8;
+
+        // Subtitle
+        doc.font("NSR").fontSize(9).fillColor(DARK)
+           .text("(जाति प्रमाण पत्र हेतु स्व-घोषणा / Self Declaration)",
+             PAD, dy, { width: BW, align: "center", lineBreak: false });
+        dy += 18;
+
+        // ════════════════════════════════════════════════════════════════════
+        // FIELD DATA
+        // ════════════════════════════════════════════════════════════════════
+        const sdName     = c.name?.trim()            || "";
+        const sdFather   = c.fatherName?.trim()      || "";
+        const sdVillage  = (c as any).village?.trim()   || "";
+        const sdPanch    = (c as any).panchayat?.trim() || "";
+        const sdBlock    = (c as any).block?.trim() || (c as any).tehsil?.trim() || "";
+        const sdDist     = (c as any).district?.trim()  || "";
+        const sdState    = (c as any).state?.trim()     || "Jharkhand";
+        const sdCasteName = c.casteName?.trim()        || "";
+        const sdCatRaw   = ((c as any).caste?.trim() || "").toUpperCase();  // SC / ST / OBC
+        const sdPhone    = (c as any).phone?.trim()     || "";
+        const sdPlace    = (c as any).area?.trim() || sdDist;
+
+        // Helper: draw a full-width underlined field line and fill value
+        const fRow = (labelHi: string, value: string, y: number, labelPts: number) => {
+          t(doc, labelHi, PAD, y, { size: 9.5, color: DARK });
+          const ulStart = PAD + labelPts;
+          if (value) {
+            t(doc, value, ulStart + 3, y, { size: 9.5, bold: false, color: DARK,
+              width: PAD + BW - ulStart - 4 });
+          }
+          hl(doc, ulStart, y + 14, PAD + BW, 0.7, "#333333");
+        };
+
+        // मैं, श्री/श्रीमती/कुमारी
+        fRow("मैं,  श्री/श्रीमती/कुमारी", sdName, dy, 147);
         dy += 22;
-        doc.font("DVB").fontSize(10).fillColor(NAVY)
-           .text("SELF DECLARATION", PAD, dy, { width: BW, align: "center", lineBreak: false });
-        dy += 16;
 
-        hl(doc, PAD - 6, dy, PAD + BW + 6, 1.0, NAVY);
-        dy += 12;
+        // पुत्र/पुत्री/पत्नी श्री
+        fRow("पुत्र/पुत्री/पत्नी  श्री", sdFather, dy, 133);
+        dy += 22;
 
-        // ── Candidate info table ──────────────────────────────────────────────
-        const candName  = c.name?.trim()       || "—";
-        const fatherN   = c.fatherName?.trim() || "—";
-        const motherN   = c.motherName?.trim() || "—";
-        const mobileV   = (c as any).phone?.trim()        || "—";
-        const parentMob = (c as any).parentMobile?.trim() || "—";
-        const villageN  = (c as any).village?.trim()      || "—";
-        const districtN = (c as any).district?.trim()     || "—";
-        const stateN    = (c as any).state?.trim()        || "Jharkhand";
-        const casteVal  = c.casteName?.trim() || (c as any).caste?.trim() || "—";
-        const addrLine  = [villageN !== "—" ? villageN : null,
-                           districtN !== "—" ? districtN : null,
-                           stateN].filter(Boolean).join(", ");
+        // निवासी :-
+        doc.font("NSR").fontSize(9.5).fillColor(DARK)
+           .text("निवासी  :-", PAD, dy, { lineBreak: false });
+        dy += 17;
 
-        // Aadhaar — mask all but last 4 digits
-        const rawAadh   = (c as any).aadhaarNumber?.replace(/\s/g, "") ?? "";
-        const aadhMask  = rawAadh.length >= 4
-          ? "XXXX-XXXX-" + rawAadh.slice(-4)
-          : rawAadh || "—";
-
-        // Info table background
-        fill(doc, PAD - 6, dy - 4, BW + 12, 160, "#F0F4FA");
-        hl(doc, PAD - 6, dy - 4, PAD + BW + 6, 0.5, "#C8D4E8");
-
-        const LBL = 150;  // label column width
-        const infoRows: Array<[string, string, string]> = [
-          ["नाम",                  "Name",            candName],
-          ["पिता / पति का नाम",   "Father / Husband", fatherN],
-          ["माता का नाम",         "Mother's Name",    motherN],
-          ["मोबाइल",              "Mobile",           mobileV],
-          ["अभिभावक का मोबाइल",  "Parent Mobile",    parentMob],
-          ["आधार संख्या",         "Aadhaar No.",      aadhMask],
-          ["पता",                  "Address",          addrLine],
-          ["जाति",                 "Caste",            casteVal],
+        // Address sub-fields (indented)
+        const IND = PAD + 18;
+        const IW  = BW - 18;
+        const addrFields: Array<[string, string, number]> = [
+          ["ग्राम",              sdVillage, 42],
+          ["पंचायत",             sdPanch,   57],
+          ["प्रखंड / तहसील",    sdBlock,   95],
+          ["जिला",               sdDist,    42],
+          ["राज्य",              sdState,   42],
         ];
-
-        for (const [hi, en, val] of infoRows) {
-          // Hindi label
-          doc.font("NSR").fontSize(8).fillColor(GRAY)
-             .text(hi + " /", PAD, dy, { width: LBL - 10, lineBreak: false });
-          // English label (lighter)
-          doc.font("DVR").fontSize(7.5).fillColor(LGRAY)
-             .text(en + "  :", PAD, dy + 9, { width: LBL - 10, lineBreak: false });
-          // Vertical separator
-          vl(doc, PAD + LBL, dy - 2, dy + 18, 0.5);
-          // Value
-          doc.font("DVR").fontSize(8.5).fillColor(DARK)
-             .text(val, PAD + LBL + 8, dy + 4, { width: BW - LBL - 8, lineBreak: false });
+        for (const [lbl, val, lw] of addrFields) {
+          t(doc, lbl, IND, dy, { size: 9.5, color: DARK });
+          if (val) {
+            t(doc, val, IND + lw + 4, dy, { size: 9.5, color: DARK, width: IW - lw - 6 });
+          }
+          hl(doc, IND + lw + 2, dy + 14, IND + IW, 0.7, "#333333");
           dy += 20;
-          hl(doc, PAD - 6, dy - 2, PAD + BW + 6, 0.3, "#C8D4E8");
         }
 
-        hl(doc, PAD - 6, dy, PAD + BW + 6, 0.5, NAVY);
+        dy += 8;
+
+        // ── Caste declaration sentence line 1 ────────────────────────────
+        // "यह स्वघोषणा करता/करती हूँ कि मैं ............... (अपनी जाति का नाम लिखें)"
+        const kw1 = 220;   // width of label phrase
+        t(doc, "यह स्वघोषणा करता/करती हूँ कि मैं", PAD, dy,
+          { size: 9.5, color: DARK });
+        if (sdCasteName) {
+          t(doc, sdCasteName, PAD + kw1 + 3, dy,
+            { size: 9.5, bold: true, color: DARK, width: BW - kw1 - 130 });
+        }
+        // underline from after label to end gap
+        hl(doc, PAD + kw1, dy + 14, PAD + BW - 126, 0.7, "#333333");
+        // parenthetical note at end
+        doc.font("NSR").fontSize(7.5).fillColor(GRAY)
+           .text("(अपनी जाति का नाम लिखें)", PAD + BW - 124, dy + 2,
+             { width: 124, lineBreak: false });
+        dy += 20;
+
+        // Line 2
+        doc.font("NSR").fontSize(9.5).fillColor(DARK)
+           .text(
+             "जाति से संबंधित हूँ, जो भारत सरकार / राज्य सरकार की अधिसूचित सूची के अनुसार निम्न वर्ग में आती है  :-",
+             PAD, dy, { width: BW, lineBreak: false });
+        dy += 20;
+
+        // ── Checkboxes ───────────────────────────────────────────────────
+        const cbItems2: Array<[string, boolean]> = [
+          ["अनुसूचित जाति (SC)",    sdCatRaw === "SC"],
+          ["अनुसूचित जनजाति (ST)", sdCatRaw === "ST"],
+          ["अन्य पिछड़ा वर्ग (OBC)", sdCatRaw === "OBC"],
+        ];
+        const cbSZ2 = 13;
+        const cbIndent = PAD + 12;
+        for (const [lbl2, checked2] of cbItems2) {
+          box(doc, cbIndent, dy + 1, cbSZ2, cbSZ2, 0.9, DARK);
+          if (checked2) {
+            fill(doc, cbIndent + 1, dy + 2, cbSZ2 - 2, cbSZ2 - 2, NAVY);
+            doc.font("DVB").fontSize(8).fillColor("#FFFFFF")
+               .text("\u2713", cbIndent, dy + 2,
+                 { width: cbSZ2, align: "center", lineBreak: false });
+          }
+          t(doc, lbl2, cbIndent + cbSZ2 + 8, dy + 2, { size: 9.5, color: DARK });
+          dy += 24;
+        }
+
+        dy += 6;
+
+        // ── Declaration paragraph (multi-line wrapped) ───────────────────
+        const declPara =
+          "मैं यह भी घोषणा करता/करती हूँ कि मेरे द्वारा दी गई उपर्युक्त सभी जानकारी मेरे " +
+          "ज्ञान एवं विश्वास के अनुसार सत्य एवं सही है। यदि भविष्य में यह जानकारी असत्य " +
+          "पाई जाती है, तो इसके लिए मैं स्वयं जिम्मेदार रहूँगा/रहूँगी तथा विधि अनुसार दंड " +
+          "का भागीदार बनूँगा/बनूँगी।";
+        doc.font("NSR").fontSize(9.5).fillColor(DARK)
+           .text(declPara, PAD, dy,
+             { width: BW, align: "justify", lineBreak: true });
+        dy = doc.y + 18;
+
+        // ── Divider with diamond ─────────────────────────────────────────
+        hl(doc, PAD, dy, A4_W - PAD, 0.8, "#4A235A");
+        const dm2x = A4_W / 2;
+        doc.moveTo(dm2x, dy - 4).lineTo(dm2x + 4, dy).lineTo(dm2x, dy + 4)
+           .lineTo(dm2x - 4, dy).closePath().fill("#4A235A");
         dy += 14;
 
-        // ── Declaration points ────────────────────────────────────────────────
+        // ── Date / Signature row ────────────────────────────────────────
+        const now = new Date();
+        const dd2 = String(now.getDate()).padStart(2, "0");
+        const mm2 = String(now.getMonth() + 1).padStart(2, "0");
+        const yy2 = String(now.getFullYear());
+        const dateStr2 = `${dd2}  /  ${mm2}  /  ${yy2}`;
+
         doc.font("NSR").fontSize(9).fillColor(DARK)
-           .text("मैं, उपर्युक्त अभ्यर्थी, सत्यनिष्ठापूर्वक निम्नलिखित घोषणा करता / करती हूँ :", PAD, dy, { width: BW, lineBreak: false });
-        doc.font("DVR").fontSize(8).fillColor(GRAY)
-           .text("I, the above-mentioned candidate, solemnly declare as follows:", PAD, dy + 12, { width: BW, lineBreak: false });
+           .text("दिनांक  :-  ", PAD, dy, { lineBreak: false });
+        doc.font("DVR").fontSize(9).fillColor(DARK)
+           .text(dateStr2, PAD + 68, dy, { lineBreak: false });
+
+        // Right: आवेदक के हस्ताक्षर
+        const sigRX = A4_W - PAD - 180;
+        t(doc, "आवेदक के हस्ताक्षर", sigRX, dy, { size: 9, color: DARK });
+        hl(doc, sigRX, dy + 20, PAD + BW, 0.7, "#333333");
         dy += 30;
 
-        const declPoints: Array<[string, string]> = [
-          [
-            "मेरे पास जाति प्रमाण पत्र उपलब्ध नहीं हैं।",
-            "I do not possess a valid Caste Certificate at this time.",
-          ],
-          [
-            "मेरी जाति उपर्युक्त वर्ग की हैं तथा मैं उक्त समुदाय का / की सदस्य हूँ।",
-            "I belong to the caste / community as mentioned above.",
-          ],
-          [
-            "यह घोषणा मेरी जानकारी एवं विश्वास के आधार पर पूर्णतः सत्य हैं।",
-            "This declaration is true and correct to the best of my knowledge and belief.",
-          ],
-          [
-            "जाति प्रमाण पत्र उपलब्ध होते ही प्रशिक्षण केन्द्र को प्रस्तुत करना अनिवार्य हैं।",
-
-            "I undertake to submit the Caste Certificate to the Training Centre as soon as it is available.",
-          ],
-        ];
-
-        for (let i = 0; i < declPoints.length; i++) {
-          const [hi2, en2] = declPoints[i]!;
-          doc.font("DVB").fontSize(8.5).fillColor(NAVY)
-             .text(String(i + 1) + ".", PAD, dy, { width: 14, lineBreak: false });
+        // ── Place / Name row ─────────────────────────────────────────────
+        doc.font("NSR").fontSize(9).fillColor(DARK)
+           .text("स्थान  :-", PAD, dy, { lineBreak: false });
+        if (sdPlace) {
           doc.font("NSR").fontSize(9).fillColor(DARK)
-             .text(hi2, PAD + 16, dy, { width: BW - 16, lineBreak: false });
-          dy += 13;
-          doc.font("DVR").fontSize(8).fillColor(GRAY)
-             .text(en2, PAD + 16, dy, { width: BW - 16, lineBreak: false });
-          dy += 18;
+             .text(sdPlace, PAD + 56, dy, { lineBreak: false });
         }
+        hl(doc, PAD + 54, dy + 14, PAD + 200, 0.7, "#333333");
 
-        // ── Signature + date section ──────────────────────────────────────────
-        dy += 6;
-        hl(doc, PAD - 6, dy, PAD + BW + 6, 0.7, NAVY);
-        dy += 12;
+        // Right: नाम
+        t(doc, "नाम  :-", sigRX, dy, { size: 9, color: DARK });
+        if (sdName) {
+          t(doc, sdName, sigRX + 42, dy,
+            { size: 9, color: DARK, width: PAD + BW - sigRX - 44 });
+        }
+        hl(doc, sigRX + 40, dy + 14, PAD + BW, 0.7, "#333333");
+        dy += 22;
 
-        const dateStr    = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" });
-        const sigBoxX    = A4_W - PAD - 165;
+        // ── Mobile row ───────────────────────────────────────────────────
+        t(doc, "मोबाईल नंबर  :-", sigRX, dy, { size: 9, color: DARK });
+        if (sdPhone) {
+          doc.font("DVR").fontSize(9).fillColor(DARK)
+             .text(sdPhone, sigRX + 100, dy, { lineBreak: false });
+        }
+        hl(doc, sigRX + 98, dy + 14, PAD + BW, 0.7, "#333333");
+        dy += 24;
 
-        // Date (left)
-        doc.font("NSR").fontSize(8).fillColor(GRAY)
-           .text("दिनांक :", PAD, dy, { width: 50, lineBreak: false });
-        doc.font("DVR").fontSize(8).fillColor(GRAY)
-           .text("Date :", PAD, dy + 11, { width: 50, lineBreak: false });
-        doc.font("DVR").fontSize(8.5).fillColor(DARK)
-           .text(dateStr, PAD + 54, dy + 5, { lineBreak: false });
-
-        // Signature box (right)
-        box(doc, sigBoxX, dy - 4, 165, 50, 0.6, NAVY);
-        doc.font("NSR").fontSize(7.5).fillColor(GRAY)
-           .text("हस्ताक्षर", sigBoxX, dy + 38, { width: 165, align: "center", lineBreak: false });
-        doc.font("DVR").fontSize(7).fillColor(LGRAY)
-           .text("Signature / अभ्यर्थी का हस्ताक्षर", sigBoxX, dy + 48, { width: 165, align: "center", lineBreak: false });
-
-        dy += 70;
-
-        // ── Footer note ───────────────────────────────────────────────────────
-        fill(doc, PAD - 6, dy, BW + 12, 26, "#FFF8E1");
-        hl(doc, PAD - 6, dy, PAD + BW + 6, 0.5, AMBER);
-        doc.font("NSR").fontSize(7.5).fillColor("#7B5E00")
-           .text("सूचना : यह स्व-घोषणा पत्र प्रशिक्षण हेतु अस्थायी आधार पर स्वीकृत हैं।",
-             PAD, dy + 4, { width: BW, lineBreak: false });
-        doc.font("DVR").fontSize(7).fillColor("#7B5E00")
-           .text("Note: This self-declaration is accepted on a provisional basis for training purposes only.",
-             PAD, dy + 15, { width: BW, lineBreak: false });
+        // ── NOTE BOX ─────────────────────────────────────────────────────
+        const noteH2 = 44;
+        box(doc, PAD - 2, dy, BW + 4, noteH2, 1.0, DARK);
+        // Left bullet label
+        doc.font("NSB").fontSize(9).fillColor(DARK)
+           .text("नोट  :-", PAD + 2, dy + 7, { lineBreak: false });
+        const noteTX = PAD + 50;
+        const noteTW = BW - 50;
+        doc.font("NSR").fontSize(8.5).fillColor(DARK)
+           .text(
+             "• यह स्वघोषणा पत्र जाति प्रमाण पत्र आवेदन के साथ संलग्न किया जाना अनिवार्य है।",
+             noteTX, dy + 7, { width: noteTW, lineBreak: false });
+        doc.font("NSR").fontSize(8.5).fillColor(DARK)
+           .text(
+             "• असत्य जानकारी देने पर विधि अनुसार कानूनी कार्रवाही की जा सकती है।",
+             noteTX, dy + 22, { width: noteTW, lineBreak: false });
 
         continue;
       }
