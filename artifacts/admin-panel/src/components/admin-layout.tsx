@@ -1,12 +1,13 @@
 import { Link, Redirect, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { LayoutDashboard, Users, UserSquare2, FileText, LogOut, Building2, ShieldCheck, Bell, Map, Settings, UserPlus, UserCheck } from "lucide-react";
+import { LayoutDashboard, Users, UserSquare2, FileText, LogOut, Building2, ShieldCheck, Bell, Map, Settings, UserPlus, UserCheck, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/staff", label: "Staff Management", icon: Users },
   { href: "/center-attendance", label: "Center Attendance", icon: UserCheck },
+  { href: "/field-attendance", label: "Field Attendance", icon: ClipboardList },
   { href: "/candidates", label: "Candidates", icon: UserSquare2 },
   { href: "/live-map", label: "Live Staff Map", icon: Map },
   { href: "/notices", label: "Notices", icon: Bell },

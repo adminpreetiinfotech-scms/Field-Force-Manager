@@ -1129,4 +1129,127 @@ router.get("/admin/center-attendance", requireAdmin, async (req, res, next) => {
   }
 });
 
+// ─── GET /api/admin/field-attendance ──────────────────────────────────────────
+// Returns per-staff, per-day attendance rows for field staff in a date range.
+
+router.get("/admin/field-attendance", requireAdmin, async (req, res, next) => {
+  try {
+    const companyId = res.locals.companyId as string | null;
+    const { dateFrom, dateTo, staffId } = req.query as {
+      dateFrom?: string;
+      dateTo?: string;
+      staffId?: string;
+    };
+
+    const todayIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const resolvedDateFrom = dateFrom || todayIST;
+    const resolvedDateTo = dateTo || todayIST;
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(resolvedDateFrom) || !/^\d{4}-\d{2}-\d{2}$/.test(resolvedDateTo)) {
+      res.status(400).json({ title: "Dates must be in YYYY-MM-DD format", status: 400 });
+      return;
+    }
+
+    const companyFilter = companyId
+      ? and(eq(staffTable.companyId, companyId), eq(staffTable.staffCategory, "field"))
+      : eq(staffTable.staffCategory, "field");
+    const staffFilter = staffId
+      ? and(companyFilter, eq(staffTable.id, staffId))
+      : companyFilter;
+
+    const fieldStaff = await db
+      .select({
+        id: staffTable.id,
+        name: staffTable.name,
+        empCode: staffTable.empCode,
+      })
+      .from(staffTable)
+      .where(and(staffFilter, isNull(staffTable.deletedAt)));
+
+    if (fieldStaff.length === 0) {
+      res.json([]);
+      return;
+    }
+
+    const fromUtc = new Date(resolvedDateFrom + "T00:00:00+05:30");
+    const toUtc = new Date(resolvedDateTo + "T23:59:59+05:30");
+    const staffIds = fieldStaff.map((s) => s.id);
+
+    const events = await db
+      .select({
+        staffId: activityEventsTable.staffId,
+        kind: activityEventsTable.kind,
+        occurredAt: activityEventsTable.occurredAt,
+      })
+      .from(activityEventsTable)
+      .where(
+        and(
+          inArray(activityEventsTable.staffId, staffIds),
+          or(
+            eq(activityEventsTable.kind, "checkin"),
+            eq(activityEventsTable.kind, "checkout"),
+          ),
+          gte(activityEventsTable.occurredAt, fromUtc),
+          lt(activityEventsTable.occurredAt, new Date(toUtc.getTime() + 1000)),
+        ),
+      )
+      .orderBy(activityEventsTable.occurredAt);
+
+    const dates: string[] = [];
+    const cur = new Date(resolvedDateFrom + "T00:00:00Z");
+    const end = new Date(resolvedDateTo + "T00:00:00Z");
+    while (cur <= end) {
+      dates.push(cur.toISOString().slice(0, 10));
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    const IST_OFFSET = 5.5 * 60 * 60 * 1000;
+    const eventMap = new Map<string, { checkin?: Date; checkout?: Date }>();
+    for (const ev of events) {
+      const istDate = new Date(ev.occurredAt.getTime() + IST_OFFSET).toISOString().slice(0, 10);
+      const key = `${ev.staffId}|${istDate}`;
+      if (!eventMap.has(key)) eventMap.set(key, {});
+      const entry = eventMap.get(key)!;
+      if (ev.kind === "checkin") {
+        if (!entry.checkin) entry.checkin = ev.occurredAt;
+      } else if (ev.kind === "checkout") {
+        entry.checkout = ev.occurredAt;
+      }
+    }
+
+    const today = new Date(new Date().getTime() + IST_OFFSET).toISOString().slice(0, 10);
+    const rows: object[] = [];
+
+    for (const staff of fieldStaff) {
+      for (const date of dates) {
+        const key = `${staff.id}|${date}`;
+        const entry = eventMap.get(key);
+
+        const checkInTime = entry?.checkin?.toISOString() ?? null;
+        const checkOutTime = entry?.checkout?.toISOString() ?? null;
+
+        let status: "present" | "partial" | "absent" = "absent";
+        if (checkInTime && checkOutTime) status = "present";
+        else if (checkInTime) status = "partial";
+
+        if (status === "absent" && date > today) continue;
+
+        rows.push({
+          staffId: staff.id,
+          staffName: staff.name,
+          empCode: staff.empCode,
+          date,
+          checkInTime,
+          checkOutTime,
+          status,
+        });
+      }
+    }
+
+    res.json(rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;
