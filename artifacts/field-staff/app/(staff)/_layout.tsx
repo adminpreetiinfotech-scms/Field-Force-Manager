@@ -63,10 +63,7 @@ export default function StaffTabsLayout() {
       <Tabs.Screen
         name="meter"
         options={{
-          title: "Meter",
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="activity" size={size - 2} color={color} />
-          ),
+          href: null,
         }}
       />
       <Tabs.Screen

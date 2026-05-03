@@ -9,6 +9,7 @@ import type { BestDay } from './bestDay';
 import type { MonthStat } from './monthStat';
 import type { PeriodStats } from './periodStats';
 import type { RecentTrip } from './recentTrip';
+import type { StaffProfileStatsVehicleType } from './staffProfileStatsVehicleType';
 
 /**
  * Full profile and ride stats for a single staff member.
@@ -28,6 +29,10 @@ export interface StaffProfileStats {
   state?: string | null;
   district?: string | null;
   area?: string | null;
+  /** Vehicle type used for field visits. */
+  vehicleType?: StaffProfileStatsVehicleType;
+  /** Vehicle registration number. */
+  vehicleNumber?: string | null;
   /** Admin-written performance notes / area assignment for this staff member. */
   notes?: string | null;
   lifetimeTotalRides: number;

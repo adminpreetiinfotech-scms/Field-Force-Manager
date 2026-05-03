@@ -43,6 +43,10 @@ export const staffTable = pgTable("staff", {
   lastLocationAt: timestamp("last_location_at", { withTimezone: true }),
   /** True while staff has an active shift (check-in done, no checkout yet). */
   isOnShift: boolean("is_on_shift").notNull().default(false),
+  /** Vehicle type used for field visits. Set once in profile. */
+  vehicleType: text("vehicle_type", { enum: ["2-wheeler", "4-wheeler"] }),
+  /** Vehicle registration number or identifier. */
+  vehicleNumber: text("vehicle_number"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

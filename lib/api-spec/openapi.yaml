@@ -1172,6 +1172,15 @@ components:
           format: date-time
           nullable: true
           description: Registration timestamp (ISO 8601).
+        vehicleType:
+          type: string
+          enum: ["2-wheeler", "4-wheeler"]
+          nullable: true
+          description: Vehicle type used for field visits.
+        vehicleNumber:
+          type: string
+          nullable: true
+          description: Vehicle registration number or identifier.
       required: [id, empCode, name, phone, role, approvalStatus]
 
     RegisterInput:
@@ -1297,6 +1306,15 @@ components:
             destination:
               $ref: "#/components/schemas/GeoPoint"
               nullable: true
+            startOdometerKm:
+              type: number
+              nullable: true
+            endOdometerKm:
+              type: number
+              nullable: true
+            vehicleMeterPhotoUri:
+              type: string
+              nullable: true
 
     ActivityPage:
       type: object
@@ -1361,6 +1379,18 @@ components:
         destination:
           $ref: "#/components/schemas/GeoPoint"
           nullable: true
+        startOdometerKm:
+          type: number
+          nullable: true
+          description: Vehicle odometer reading at check-in (km).
+        endOdometerKm:
+          type: number
+          nullable: true
+          description: Vehicle odometer reading at check-out (km).
+        vehicleMeterPhotoUri:
+          type: string
+          nullable: true
+          description: Photo URI of vehicle odometer meter.
       required: [kind, staffId, staffName]
 
     StaffDistance:
@@ -1509,6 +1539,15 @@ components:
         area:
           type: string
           nullable: true
+        vehicleType:
+          type: string
+          enum: ["2-wheeler", "4-wheeler"]
+          nullable: true
+          description: Vehicle type used for field visits.
+        vehicleNumber:
+          type: string
+          nullable: true
+          description: Vehicle registration number.
         notes:
           type: string
           nullable: true

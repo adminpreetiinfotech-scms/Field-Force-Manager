@@ -19,4 +19,7 @@ export type ActivityDetail = ActivityEvent & ({
   durationSec?: number | null;
   origin?: GeoPoint | null;
   destination?: GeoPoint | null;
+  startOdometerKm?: number | null;
+  endOdometerKm?: number | null;
+  vehicleMeterPhotoUri?: string | null;
 });

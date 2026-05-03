@@ -57,6 +57,8 @@ interface StaffMember {
   approvalStatus: "pending" | "approved" | "rejected";
   disabledAt: string | null;
   createdAt: string | null;
+  vehicleType?: "2-wheeler" | "4-wheeler" | null;
+  vehicleNumber?: string | null;
 }
 
 // ─── Auth helper ──────────────────────────────────────────────────────────────
@@ -333,6 +335,14 @@ function ViewProfileDialog({ staff, onClose }: { staff: StaffMember; onClose: ()
               )}
               {staff.centerName && (
                 <div className="text-muted-foreground col-span-2">Center: {staff.centerName}</div>
+              )}
+              {(staff.vehicleType || staff.vehicleNumber) && (
+                <div className="flex items-center gap-1.5 text-muted-foreground col-span-2">
+                  <span className="font-medium text-foreground">
+                    {staff.vehicleType === "2-wheeler" ? "2-Wheeler" : staff.vehicleType === "4-wheeler" ? "4-Wheeler" : ""}
+                    {staff.vehicleNumber ? ` · ${staff.vehicleNumber}` : ""}
+                  </span>
+                </div>
               )}
             </div>
             {staff.createdAt && (

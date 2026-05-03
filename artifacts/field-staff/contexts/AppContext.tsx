@@ -35,7 +35,12 @@ export type User = {
   companyLogoUrl?: string | null;
   companySchemeName?: string | null;
   companyTcId?: string | null;
+  /** Vehicle info — set once in profile, auto-fills check-in/out */
+  vehicleType?: "2-wheeler" | "4-wheeler" | null;
+  vehicleNumber?: string | null;
 };
+
+export type VehicleType = "2-wheeler" | "4-wheeler";
 
 export type GeoPoint = {
   latitude: number;
@@ -51,6 +56,12 @@ export type AttendanceRecord = {
   location: GeoPoint | null;
   selfieUri: string | null;
   synced: boolean;
+  /** Odometer reading at check-in (km). Set when vehicle is configured. */
+  startOdometerKm?: number | null;
+  /** Odometer reading at check-out (km). Set when vehicle is configured. */
+  endOdometerKm?: number | null;
+  /** Photo of vehicle odometer meter. */
+  vehicleMeterPhotoUri?: string | null;
 };
 
 export type MeterReading = {
@@ -172,6 +183,8 @@ type AppActions = {
     projectName?: string | null;
     state?: string | null;
     district?: string | null;
+    vehicleType?: "2-wheeler" | "4-wheeler" | null;
+    vehicleNumber?: string | null;
   }) => Promise<User>;
 };
 
@@ -650,6 +663,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         companyName?: string | null;
         companyLogoUrl?: string | null;
         companySchemeName?: string | null;
+        vehicleType?: "2-wheeler" | "4-wheeler" | null;
+        vehicleNumber?: string | null;
       };
     };
     const user: User = {
@@ -669,6 +684,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       companyLogoUrl: dto.companyLogoUrl ?? null,
       companySchemeName: dto.companySchemeName ?? null,
       companyTcId: (dto as any).companyTcId ?? null,
+      vehicleType: dto.vehicleType ?? null,
+      vehicleNumber: dto.vehicleNumber ?? null,
     };
     setState((s) => ({ ...s, user, pendingPhone: null, pendingRegistration: null }));
     return user;
@@ -701,6 +718,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         companyName?: string | null;
         companyLogoUrl?: string | null;
         companySchemeName?: string | null;
+        vehicleType?: "2-wheeler" | "4-wheeler" | null;
+        vehicleNumber?: string | null;
       };
     };
     // For the registration flow: if pendingRegistration is set, use that user + approval status
@@ -725,6 +744,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           companyLogoUrl: dto.companyLogoUrl ?? null,
           companySchemeName: dto.companySchemeName ?? null,
           companyTcId: (dto as any).companyTcId ?? null,
+          vehicleType: dto.vehicleType ?? null,
+          vehicleNumber: dto.vehicleNumber ?? null,
         };
     // Only log in if account is approved; pending users must wait for approval
     if (approvalStatus === "approved") {
@@ -813,7 +834,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         occurredAt: new Date(record.timestamp).toISOString(),
         location: record.location,
         selfieUri: record.type === "in" ? record.selfieUri : null,
-      }).catch(() => {});
+        ...(record.startOdometerKm != null ? { startOdometerKm: record.startOdometerKm } : {}),
+        ...(record.endOdometerKm != null ? { endOdometerKm: record.endOdometerKm } : {}),
+        ...(record.vehicleMeterPhotoUri != null ? { vehicleMeterPhotoUri: record.vehicleMeterPhotoUri } : {}),
+      } as Parameters<typeof enqueueActivity>[0]).catch(() => {});
 
       return full;
     },
@@ -987,6 +1011,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       projectName?: string | null;
       state?: string | null;
       district?: string | null;
+      vehicleType?: "2-wheeler" | "4-wheeler" | null;
+      vehicleNumber?: string | null;
     }): Promise<User> => {
       const currentUser = stateRef.current.user;
       if (!currentUser) throw new Error("Not logged in");
@@ -1003,6 +1029,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         id: string; name: string; phone: string; role: string; empCode: string;
         organization?: string | null; centerName?: string | null; projectName?: string | null;
         email?: string | null; state?: string | null; district?: string | null;
+        vehicleType?: "2-wheeler" | "4-wheeler" | null; vehicleNumber?: string | null;
       };
       const updated: User = {
         ...currentUser,
@@ -1013,6 +1040,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         email: dto.email ?? null,
         state: dto.state ?? null,
         district: dto.district ?? null,
+        vehicleType: dto.vehicleType ?? null,
+        vehicleNumber: dto.vehicleNumber ?? null,
       };
       setState((s) => ({ ...s, user: updated }));
       return updated;

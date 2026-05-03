@@ -24,4 +24,10 @@ export interface CreateActivityInput {
   durationSec?: number | null;
   origin?: GeoPoint | null;
   destination?: GeoPoint | null;
+  /** Vehicle odometer reading at check-in (km). */
+  startOdometerKm?: number | null;
+  /** Vehicle odometer reading at check-out (km). */
+  endOdometerKm?: number | null;
+  /** Photo URI of vehicle odometer meter. */
+  vehicleMeterPhotoUri?: string | null;
 }

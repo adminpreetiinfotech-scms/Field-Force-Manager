@@ -38,6 +38,12 @@ type ActivityPayload = {
     longitude: number;
     accuracy?: number;
   } | null;
+  /** Vehicle odometer reading at check-in (km). */
+  startOdometerKm?: number | null;
+  /** Vehicle odometer reading at check-out (km). */
+  endOdometerKm?: number | null;
+  /** Photo of vehicle odometer meter. */
+  vehicleMeterPhotoUri?: string | null;
 };
 
 function encodeCursor(occurredAt: Date, id: string): string {

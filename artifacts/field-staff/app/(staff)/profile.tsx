@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import {
   Alert,
   Platform,
@@ -8,6 +8,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -16,19 +17,22 @@ import { Button } from "@/components/Button";
 import { CompanyBrand } from "@/components/CompanyBrand";
 import { PillarsRow } from "@/components/PillarBadge";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
-import { useApp } from "@/contexts/AppContext";
+import { VehicleType, useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
 
 export default function StaffProfile() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user, signOut, attendance, meterReadings, trips } = useApp();
+  const { user, signOut, attendance, trips, updateProfile } = useApp();
 
   const mineAttendance = attendance.filter((a) => a.staffId === user?.id);
-  const mineMeters = meterReadings.filter((m) => m.staffId === user?.id);
   const totalKm = trips
     .filter((t) => t.staffId === user?.id)
     .reduce((s, t) => s + t.km, 0);
+
+  const [vehicleType, setVehicleType] = useState<VehicleType | null>(user?.vehicleType ?? null);
+  const [vehicleNumber, setVehicleNumber] = useState(user?.vehicleNumber ?? "");
+  const [savingVehicle, setSavingVehicle] = useState(false);
 
   const onSignOut = () => {
     Alert.alert("Sign out", "End your session on this device?", [
@@ -151,10 +155,10 @@ export default function StaffProfile() {
           <View style={[styles.statSep, { backgroundColor: colors.border }]} />
           <View style={styles.statCol}>
             <Text style={[styles.statValue, { color: colors.foreground }]}>
-              {mineMeters.length}
+              {trips.filter((t) => t.staffId === user?.id).length}
             </Text>
             <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
-              Meter reads
+              Trips
             </Text>
           </View>
           <View style={[styles.statSep, { backgroundColor: colors.border }]} />
@@ -167,6 +171,110 @@ export default function StaffProfile() {
             </Text>
           </View>
         </View>
+      </View>
+
+      {/* ── Vehicle Setup ─────────────────────────────────────────── */}
+      <View
+        style={[
+          styles.section,
+          {
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+            borderRadius: colors.radius + 4,
+            marginTop: 14,
+          },
+        ]}
+      >
+        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+          My Vehicle
+        </Text>
+        <Text style={{ color: colors.mutedForeground, fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 4 }}>
+          Set once — auto-fills odometer at every check-in/out
+        </Text>
+
+        {/* Type picker */}
+        <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
+          {(["2-wheeler", "4-wheeler"] as VehicleType[]).map((v) => (
+            <Pressable
+              key={v}
+              onPress={() => setVehicleType((prev) => (prev === v ? null : v))}
+              style={({ pressed }) => [
+                {
+                  flex: 1,
+                  alignItems: "center",
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  borderWidth: 2,
+                  borderColor: vehicleType === v ? colors.primary : colors.border,
+                  backgroundColor: vehicleType === v ? colors.primary + "14" : colors.background,
+                  opacity: pressed ? 0.8 : 1,
+                },
+              ]}
+            >
+              <Feather
+                name={v === "2-wheeler" ? "navigation" : "truck"}
+                size={20}
+                color={vehicleType === v ? colors.primary : colors.mutedForeground}
+              />
+              <Text
+                style={{
+                  marginTop: 6,
+                  fontSize: 12,
+                  fontFamily: vehicleType === v ? "Inter_700Bold" : "Inter_500Medium",
+                  color: vehicleType === v ? colors.primary : colors.mutedForeground,
+                }}
+              >
+                {v === "2-wheeler" ? "2-Wheeler" : "4-Wheeler"}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        {/* Vehicle number */}
+        <View style={{ marginTop: 12 }}>
+          <Text style={{ color: colors.mutedForeground, fontSize: 11, fontFamily: "Inter_500Medium", marginBottom: 6, letterSpacing: 0.4 }}>
+            VEHICLE NUMBER (OPTIONAL)
+          </Text>
+          <TextInput
+            value={vehicleNumber}
+            onChangeText={(t) => setVehicleNumber(t.toUpperCase())}
+            placeholder="e.g. JH 10 AB 1234"
+            placeholderTextColor={colors.mutedForeground}
+            autoCapitalize="characters"
+            style={{
+              backgroundColor: colors.background,
+              borderWidth: StyleSheet.hairlineWidth,
+              borderColor: colors.border,
+              borderRadius: 10,
+              paddingHorizontal: 14,
+              paddingVertical: 12,
+              color: colors.foreground,
+              fontSize: 14,
+              fontFamily: "Inter_600SemiBold",
+              letterSpacing: 1,
+            }}
+          />
+        </View>
+
+        <Button
+          label={savingVehicle ? "Saving…" : "Save vehicle"}
+          loading={savingVehicle}
+          size="md"
+          fullWidth
+          style={{ marginTop: 14 }}
+          icon={<Feather name="save" size={16} color="#fff" />}
+          onPress={async () => {
+            setSavingVehicle(true);
+            try {
+              await updateProfile({ vehicleType: vehicleType ?? null, vehicleNumber: vehicleNumber.trim() || null });
+              Alert.alert("Saved", "Vehicle info updated successfully.");
+            } catch (e: unknown) {
+              Alert.alert("Error", (e as Error).message || "Could not save vehicle info.");
+            } finally {
+              setSavingVehicle(false);
+            }
+          }}
+        />
       </View>
 
       {/* Account Details */}

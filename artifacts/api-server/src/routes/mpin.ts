@@ -65,6 +65,8 @@ function toUserDTO(row: typeof staffTable.$inferSelect) {
     district: row.district ?? null,
     area: row.area ?? null,
     approvalStatus: row.approvalStatus,
+    vehicleType: row.vehicleType ?? null,
+    vehicleNumber: row.vehicleNumber ?? null,
   };
 }
 

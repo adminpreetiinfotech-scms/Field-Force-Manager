@@ -29,6 +29,17 @@ export const StaffApprovalStatus = {
   rejected: 'rejected',
 } as const;
 
+/**
+ * Vehicle type used for field visits.
+ */
+export type StaffVehicleType = typeof StaffVehicleType[keyof typeof StaffVehicleType] | null;
+
+
+export const StaffVehicleType = {
+  '2-wheeler': '2-wheeler',
+  '4-wheeler': '4-wheeler',
+} as const;
+
 export interface Staff {
   id: string;
   empCode: string;
@@ -45,6 +56,10 @@ export interface Staff {
   approvalStatus: StaffApprovalStatus;
   /** Registration timestamp (ISO 8601). */
   createdAt?: string | null;
+  /** Vehicle type used for field visits. */
+  vehicleType?: StaffVehicleType;
+  /** Vehicle registration number or identifier. */
+  vehicleNumber?: string | null;
 }
 
 /**
@@ -121,6 +136,9 @@ export type ActivityDetail = ActivityEvent & ({
   durationSec?: number | null;
   origin?: GeoPoint | null;
   destination?: GeoPoint | null;
+  startOdometerKm?: number | null;
+  endOdometerKm?: number | null;
+  vehicleMeterPhotoUri?: string | null;
 });
 
 export interface ActivityPage {
@@ -146,6 +164,12 @@ export interface CreateActivityInput {
   durationSec?: number | null;
   origin?: GeoPoint | null;
   destination?: GeoPoint | null;
+  /** Vehicle odometer reading at check-in (km). */
+  startOdometerKm?: number | null;
+  /** Vehicle odometer reading at check-out (km). */
+  endOdometerKm?: number | null;
+  /** Photo URI of vehicle odometer meter. */
+  vehicleMeterPhotoUri?: string | null;
 }
 
 export interface StaffDistance {
@@ -218,6 +242,17 @@ export interface RecentTrip {
 }
 
 /**
+ * Vehicle type used for field visits.
+ */
+export type StaffProfileStatsVehicleType = typeof StaffProfileStatsVehicleType[keyof typeof StaffProfileStatsVehicleType] | null;
+
+
+export const StaffProfileStatsVehicleType = {
+  '2-wheeler': '2-wheeler',
+  '4-wheeler': '4-wheeler',
+} as const;
+
+/**
  * Full profile and ride stats for a single staff member.
  */
 export interface StaffProfileStats {
@@ -235,6 +270,10 @@ export interface StaffProfileStats {
   state?: string | null;
   district?: string | null;
   area?: string | null;
+  /** Vehicle type used for field visits. */
+  vehicleType?: StaffProfileStatsVehicleType;
+  /** Vehicle registration number. */
+  vehicleNumber?: string | null;
   /** Admin-written performance notes / area assignment for this staff member. */
   notes?: string | null;
   lifetimeTotalRides: number;

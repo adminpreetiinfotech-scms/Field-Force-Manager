@@ -7,6 +7,7 @@
  */
 import type { StaffApprovalStatus } from './staffApprovalStatus';
 import type { StaffRole } from './staffRole';
+import type { StaffVehicleType } from './staffVehicleType';
 
 export interface Staff {
   id: string;
@@ -24,4 +25,8 @@ export interface Staff {
   approvalStatus: StaffApprovalStatus;
   /** Registration timestamp (ISO 8601). */
   createdAt?: Date | null;
+  /** Vehicle type used for field visits. */
+  vehicleType?: StaffVehicleType;
+  /** Vehicle registration number or identifier. */
+  vehicleNumber?: string | null;
 }

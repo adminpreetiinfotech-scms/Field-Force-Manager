@@ -24,6 +24,8 @@ function toStaffDTO(r: typeof staffTable.$inferSelect) {
     adminCode: r.adminCode ?? null,
     approvalStatus: r.approvalStatus,
     createdAt: r.createdAt?.toISOString() ?? null,
+    vehicleType: r.vehicleType ?? null,
+    vehicleNumber: r.vehicleNumber ?? null,
   };
 }
 
@@ -447,6 +449,8 @@ router.get("/staff/:staffId/profile-stats", async (req, res, next) => {
       state: staffRow.state ?? null,
       district: staffRow.district ?? null,
       area: staffRow.area ?? null,
+      vehicleType: staffRow.vehicleType ?? null,
+      vehicleNumber: staffRow.vehicleNumber ?? null,
       notes: staffRow.notes ?? null,
       lifetimeTotalRides,
       lifetimeTotalKm,
@@ -569,7 +573,7 @@ function verifyPassword(plain: string, stored: string): boolean {
 // Body: { phone, name?, email?, organization?, centerName?, projectName?, state?, district? }
 router.patch("/staff/profile", async (req, res, next) => {
   try {
-    const { phone, name, email, organization, centerName, projectName, state, district } =
+    const { phone, name, email, organization, centerName, projectName, state, district, vehicleType, vehicleNumber } =
       req.body as {
         phone?: string;
         name?: string;
@@ -579,6 +583,8 @@ router.patch("/staff/profile", async (req, res, next) => {
         projectName?: string | null;
         state?: string | null;
         district?: string | null;
+        vehicleType?: "2-wheeler" | "4-wheeler" | null;
+        vehicleNumber?: string | null;
       };
 
     if (!phone || !/^\d{10}$/.test(phone.trim())) {
@@ -615,6 +621,8 @@ router.patch("/staff/profile", async (req, res, next) => {
     if (projectName !== undefined) updates.projectName = projectName?.trim() || null;
     if (state !== undefined) updates.state = state?.trim() || null;
     if (district !== undefined) updates.district = district?.trim() || null;
+    if (vehicleType !== undefined) updates.vehicleType = vehicleType ?? null;
+    if (vehicleNumber !== undefined) updates.vehicleNumber = vehicleNumber?.trim() || null;
 
     const [updated] = await db
       .update(staffTable)

@@ -30,7 +30,9 @@ export const ListStaffResponseItem = zod.object({
   "area": zod.string().nullish().describe('Assigned territory or area (staff only).'),
   "adminCode": zod.string().nullish().describe('Invite code that staff can use to link to this admin\'s organization.'),
   "approvalStatus": zod.enum(['pending', 'approved', 'rejected']).describe('Approval workflow status. Staff are pending until an admin approves them.'),
-  "createdAt": zod.coerce.date().nullish().describe('Registration timestamp (ISO 8601).')
+  "createdAt": zod.coerce.date().nullish().describe('Registration timestamp (ISO 8601).'),
+  "vehicleType": zod.enum(['2-wheeler', '4-wheeler']).nullish().describe('Vehicle type used for field visits.'),
+  "vehicleNumber": zod.string().nullish().describe('Vehicle registration number or identifier.')
 })
 export const ListStaffResponse = zod.array(ListStaffResponseItem)
 
@@ -79,7 +81,9 @@ export const ListPendingStaffResponseItem = zod.object({
   "area": zod.string().nullish().describe('Assigned territory or area (staff only).'),
   "adminCode": zod.string().nullish().describe('Invite code that staff can use to link to this admin\'s organization.'),
   "approvalStatus": zod.enum(['pending', 'approved', 'rejected']).describe('Approval workflow status. Staff are pending until an admin approves them.'),
-  "createdAt": zod.coerce.date().nullish().describe('Registration timestamp (ISO 8601).')
+  "createdAt": zod.coerce.date().nullish().describe('Registration timestamp (ISO 8601).'),
+  "vehicleType": zod.enum(['2-wheeler', '4-wheeler']).nullish().describe('Vehicle type used for field visits.'),
+  "vehicleNumber": zod.string().nullish().describe('Vehicle registration number or identifier.')
 })
 export const ListPendingStaffResponse = zod.array(ListPendingStaffResponseItem)
 
@@ -101,7 +105,9 @@ export const ApproveStaffResponse = zod.object({
   "area": zod.string().nullish().describe('Assigned territory or area (staff only).'),
   "adminCode": zod.string().nullish().describe('Invite code that staff can use to link to this admin\'s organization.'),
   "approvalStatus": zod.enum(['pending', 'approved', 'rejected']).describe('Approval workflow status. Staff are pending until an admin approves them.'),
-  "createdAt": zod.coerce.date().nullish().describe('Registration timestamp (ISO 8601).')
+  "createdAt": zod.coerce.date().nullish().describe('Registration timestamp (ISO 8601).'),
+  "vehicleType": zod.enum(['2-wheeler', '4-wheeler']).nullish().describe('Vehicle type used for field visits.'),
+  "vehicleNumber": zod.string().nullish().describe('Vehicle registration number or identifier.')
 })
 
 
@@ -122,7 +128,9 @@ export const RejectStaffResponse = zod.object({
   "area": zod.string().nullish().describe('Assigned territory or area (staff only).'),
   "adminCode": zod.string().nullish().describe('Invite code that staff can use to link to this admin\'s organization.'),
   "approvalStatus": zod.enum(['pending', 'approved', 'rejected']).describe('Approval workflow status. Staff are pending until an admin approves them.'),
-  "createdAt": zod.coerce.date().nullish().describe('Registration timestamp (ISO 8601).')
+  "createdAt": zod.coerce.date().nullish().describe('Registration timestamp (ISO 8601).'),
+  "vehicleType": zod.enum(['2-wheeler', '4-wheeler']).nullish().describe('Vehicle type used for field visits.'),
+  "vehicleNumber": zod.string().nullish().describe('Vehicle registration number or identifier.')
 })
 
 
@@ -146,6 +154,8 @@ export const GetStaffProfileStatsResponse = zod.object({
   "state": zod.string().nullish(),
   "district": zod.string().nullish(),
   "area": zod.string().nullish(),
+  "vehicleType": zod.enum(['2-wheeler', '4-wheeler']).nullish().describe('Vehicle type used for field visits.'),
+  "vehicleNumber": zod.string().nullish().describe('Vehicle registration number.'),
   "notes": zod.string().nullish().describe('Admin-written performance notes \/ area assignment for this staff member.'),
   "lifetimeTotalRides": zod.number(),
   "lifetimeTotalKm": zod.number(),
@@ -353,7 +363,10 @@ export const CreateActivityBody = zod.object({
   "latitude": zod.number(),
   "longitude": zod.number(),
   "accuracy": zod.number().optional()
-}).nullish()
+}).nullish(),
+  "startOdometerKm": zod.number().nullish().describe('Vehicle odometer reading at check-in (km).'),
+  "endOdometerKm": zod.number().nullish().describe('Vehicle odometer reading at check-out (km).'),
+  "vehicleMeterPhotoUri": zod.string().nullish().describe('Photo URI of vehicle odometer meter.')
 })
 
 
@@ -423,7 +436,10 @@ export const GetActivityResponse = zod.object({
   "latitude": zod.number(),
   "longitude": zod.number(),
   "accuracy": zod.number().optional()
-}).nullish()
+}).nullish(),
+  "startOdometerKm": zod.number().nullish(),
+  "endOdometerKm": zod.number().nullish(),
+  "vehicleMeterPhotoUri": zod.string().nullish()
 }))
 
 
@@ -653,7 +669,9 @@ export const LoginMpinResponse = zod.object({
   "area": zod.string().nullish().describe('Assigned territory or area (staff only).'),
   "adminCode": zod.string().nullish().describe('Invite code that staff can use to link to this admin\'s organization.'),
   "approvalStatus": zod.enum(['pending', 'approved', 'rejected']).describe('Approval workflow status. Staff are pending until an admin approves them.'),
-  "createdAt": zod.coerce.date().nullish().describe('Registration timestamp (ISO 8601).')
+  "createdAt": zod.coerce.date().nullish().describe('Registration timestamp (ISO 8601).'),
+  "vehicleType": zod.enum(['2-wheeler', '4-wheeler']).nullish().describe('Vehicle type used for field visits.'),
+  "vehicleNumber": zod.string().nullish().describe('Vehicle registration number or identifier.')
 })
 })
 
@@ -692,7 +710,9 @@ export const DeactivateStaffResponse = zod.object({
   "area": zod.string().nullish().describe('Assigned territory or area (staff only).'),
   "adminCode": zod.string().nullish().describe('Invite code that staff can use to link to this admin\'s organization.'),
   "approvalStatus": zod.enum(['pending', 'approved', 'rejected']).describe('Approval workflow status. Staff are pending until an admin approves them.'),
-  "createdAt": zod.coerce.date().nullish().describe('Registration timestamp (ISO 8601).')
+  "createdAt": zod.coerce.date().nullish().describe('Registration timestamp (ISO 8601).'),
+  "vehicleType": zod.enum(['2-wheeler', '4-wheeler']).nullish().describe('Vehicle type used for field visits.'),
+  "vehicleNumber": zod.string().nullish().describe('Vehicle registration number or identifier.')
 })
 
 

@@ -14,6 +14,9 @@ type ActivityPayload = {
   durationSec?: number | null;
   origin?: { latitude: number; longitude: number } | null;
   destination?: { latitude: number; longitude: number } | null;
+  startOdometerKm?: number | null;
+  endOdometerKm?: number | null;
+  vehicleMeterPhotoUri?: string | null;
 };
 
 const NAVY  = "FF1A3560";
@@ -115,27 +118,39 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
       : [];
     const staffMap = new Map(staffRows.map(s => [s.id, s]));
 
-    // ── 4. Fetch meter events for matching staff in range ─────────────────────
-    const meterConds = [
-      eq(activityEventsTable.kind, "meter"),
+    // ── 4. Fetch checkin/checkout events in range for odometer data ───────────
+    const attendConds = [
+      inArray(activityEventsTable.kind, ["checkin", "checkout"]),
       gte(activityEventsTable.occurredAt, startOfFrom),
       lt(activityEventsTable.occurredAt, new Date(endOfTo.getTime() + 1)),
     ] as ReturnType<typeof eq>[];
-    if (rawStaffId)   meterConds.push(eq(activityEventsTable.staffId, rawStaffId));
-    else if (uniqueIds.length) meterConds.push(inArray(activityEventsTable.staffId, uniqueIds));
-    if (rawCompanyId) meterConds.push(eq(activityEventsTable.companyId, rawCompanyId));
+    if (rawStaffId)   attendConds.push(eq(activityEventsTable.staffId, rawStaffId));
+    else if (uniqueIds.length) attendConds.push(inArray(activityEventsTable.staffId, uniqueIds));
+    if (rawCompanyId) attendConds.push(eq(activityEventsTable.companyId, rawCompanyId));
 
-    const meterRows = completed.length
+    const attendRows = completed.length
       ? await db
           .select()
           .from(activityEventsTable)
-          .where(and(...meterConds))
+          .where(and(...attendConds))
           .orderBy(activityEventsTable.occurredAt)
       : [];
 
-    // For each trip, find nearest meter event before start (start reading)
-    // and nearest meter event after end (end reading) within 90 min window.
-    const WINDOW_MS = 90 * 60 * 1000;
+    // Build: staffId → date (IST) → { startOdometerKm, endOdometerKm }
+    type OdometerDay = { startOdometerKm: number | null; endOdometerKm: number | null };
+    const odometerMap = new Map<string, OdometerDay>();
+    for (const row of attendRows) {
+      const key = `${row.staffId}::${toIST(new Date(row.occurredAt as Date))}`;
+      const payload = (row.payload || {}) as ActivityPayload;
+      const existing = odometerMap.get(key) ?? { startOdometerKm: null, endOdometerKm: null };
+      if (row.kind === "checkin" && payload.startOdometerKm != null) {
+        existing.startOdometerKm = payload.startOdometerKm;
+      }
+      if (row.kind === "checkout" && payload.endOdometerKm != null) {
+        existing.endOdometerKm = payload.endOdometerKm;
+      }
+      odometerMap.set(key, existing);
+    }
 
     // ── 5. Build rows ─────────────────────────────────────────────────────────
     type ReportRow = {
@@ -143,9 +158,11 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
       empCode: string;
       mobile: string;
       date: string;
-      startMeter: number | null;
-      endMeter: number | null;
-      totalKm: number | null;
+      startOdometer: number | null;
+      endOdometer: number | null;
+      vehicleKm: number | null;
+      gpsKm: number | null;
+      variancePct: number | null;
       startTime: string;
       endTime: string;
       startLocation: string;
@@ -162,41 +179,36 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
       const startAt      = new Date(start.occurredAt as Date);
       const endAt        = new Date(end.occurredAt   as Date);
 
-      const distanceKm = typeof endPayload.distanceKm === "number" ? endPayload.distanceKm : null;
-
-      // Find nearest meter event for this staff BEFORE trip start (within window)
-      const metersBefore = meterRows.filter(m =>
-        m.staffId === start.staffId &&
-        new Date(m.occurredAt as Date) <= startAt &&
-        new Date(m.occurredAt as Date) >= new Date(startAt.getTime() - WINDOW_MS),
-      ).sort((a, b) => new Date(b.occurredAt as Date).getTime() - new Date(a.occurredAt as Date).getTime());
-      const startMeterEvent = metersBefore[0];
-      const startMeter = startMeterEvent
-        ? ((startMeterEvent.payload as ActivityPayload).reading ?? null)
+      const gpsKm = typeof endPayload.distanceKm === "number"
+        ? Math.round(endPayload.distanceKm * 10) / 10
         : null;
 
-      // Find nearest meter event for this staff AFTER trip end (within window)
-      const metersAfter = meterRows.filter(m =>
-        m.staffId === start.staffId &&
-        new Date(m.occurredAt as Date) >= endAt &&
-        new Date(m.occurredAt as Date) <= new Date(endAt.getTime() + WINDOW_MS),
-      ).sort((a, b) => new Date(a.occurredAt as Date).getTime() - new Date(b.occurredAt as Date).getTime());
-      const endMeterEvent = metersAfter[0];
-      const endMeter = endMeterEvent
-        ? ((endMeterEvent.payload as ActivityPayload).reading ?? null)
-        : null;
+      // Look up odometer for this staff+date
+      const dateKey = `${start.staffId}::${toIST(startAt)}`;
+      const odo = odometerMap.get(dateKey) ?? { startOdometerKm: null, endOdometerKm: null };
+      const startOdometer = odo.startOdometerKm;
+      const endOdometer   = odo.endOdometerKm;
 
-      // Validation: skip if both readings exist but end < start (invalid)
-      if (startMeter !== null && endMeter !== null && endMeter < startMeter) continue;
+      let vehicleKm: number | null = null;
+      if (startOdometer != null && endOdometer != null && endOdometer >= startOdometer) {
+        vehicleKm = Math.round((endOdometer - startOdometer) * 10) / 10;
+      }
+
+      let variancePct: number | null = null;
+      if (vehicleKm != null && gpsKm != null && vehicleKm > 0) {
+        variancePct = Math.round(Math.abs(vehicleKm - gpsKm) / vehicleKm * 100 * 10) / 10;
+      }
 
       rows.push({
         staffName:     start.staffName,
         empCode:       staff?.empCode ?? "",
         mobile:        staff?.phone   ?? "",
         date:          toIST(startAt),
-        startMeter,
-        endMeter,
-        totalKm:       distanceKm !== null ? Math.round(distanceKm * 10) / 10 : null,
+        startOdometer,
+        endOdometer,
+        vehicleKm,
+        gpsKm,
+        variancePct,
         startTime:     toISTTime(startAt),
         endTime:       toISTTime(endAt),
         startLocation: coordStr(startPayload, "origin") || coordStr(startPayload, "location"),
@@ -211,14 +223,14 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
     // ── 6. Build summary ─────────────────────────────────────────────────────
     const totalStaff = new Set(rows.map(r => r.empCode || r.staffName)).size;
     const totalRides = rows.length;
-    const totalKmAll = rows.reduce((s, r) => s + (r.totalKm ?? 0), 0);
+    const totalKmAll = rows.reduce((s, r) => s + (r.gpsKm ?? 0), 0);
 
-    // Per-staff totals map: staffName → totalKm
+    // Per-staff totals map: staffName → gpsKm
     const staffTotals = new Map<string, { empCode: string; mobile: string; km: number; rides: number }>();
     for (const r of rows) {
       const key = r.staffName;
       const prev = staffTotals.get(key) ?? { empCode: r.empCode, mobile: r.mobile, km: 0, rides: 0 };
-      staffTotals.set(key, { ...prev, km: prev.km + (r.totalKm ?? 0), rides: prev.rides + 1 });
+      staffTotals.set(key, { ...prev, km: prev.km + (r.gpsKm ?? 0), rides: prev.rides + 1 });
     }
 
     // ── 7. Build Excel workbook ───────────────────────────────────────────────
@@ -234,9 +246,11 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
       { width: 13 }, // EMP ID
       { width: 14 }, // Mobile
       { width: 12 }, // Date
-      { width: 16 }, // Start Meter
-      { width: 16 }, // End Meter
-      { width: 10 }, // Total KM
+      { width: 16 }, // Start Odometer
+      { width: 16 }, // End Odometer
+      { width: 12 }, // Vehicle KM
+      { width: 10 }, // GPS KM
+      { width: 12 }, // Variance %
       { width: 12 }, // Start Time
       { width: 12 }, // End Time
       { width: 28 }, // Start Location
@@ -244,7 +258,7 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
       { width: 12 }, // Report Type
     ];
 
-    const COL_COUNT = 12;
+    const COL_COUNT = 14;
 
     function mergeHeader(ws: ExcelJS.Worksheet, row: number, text: string, fgArgb: string, textArgb: string, sz = 13) {
       ws.mergeCells(row, 1, row, COL_COUNT);
@@ -304,7 +318,8 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
     // Column headers (row 8)
     const HEADERS = [
       "Staff Name", "EMP ID", "Mobile No.", "Date",
-      "Start Meter\nReading", "End Meter\nReading", "Total KM",
+      "Start Odometer\n(km)", "End Odometer\n(km)", "Vehicle KM",
+      "GPS KM", "Variance %",
       "Ride Start\nTime", "Ride End\nTime",
       "Start Location", "End Location", "Report Type",
     ];
@@ -334,21 +349,29 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
         r.empCode,
         r.mobile,
         r.date,
-        r.startMeter ?? "",
-        r.endMeter   ?? "",
-        r.totalKm !== null ? r.totalKm : "",
+        r.startOdometer ?? "",
+        r.endOdometer   ?? "",
+        r.vehicleKm     !== null ? r.vehicleKm  : "",
+        r.gpsKm         !== null ? r.gpsKm      : "",
+        r.variancePct   !== null ? `${r.variancePct}%` : "",
         r.startTime,
         r.endTime,
         r.startLocation,
         r.endLocation,
         r.reportType,
       ];
+
+      // Highlight rows with variance > 20% in orange
+      const highVariance = r.variancePct !== null && r.variancePct > 20;
+      const varianceFill: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFDE68A" } };
+
       cells.forEach((val, ci) => {
         const cell = dr.getCell(ci + 1);
         cell.value = val;
-        cell.font  = { size: 9, name: "Calibri" };
-        cell.alignment = { horizontal: ci >= 4 && ci <= 6 ? "center" : "left", vertical: "middle" };
-        if (rowFill) cell.fill = rowFill;
+        cell.font  = { size: 9, name: "Calibri", color: { argb: highVariance && ci === 8 ? "FFB45309" : "FF111827" } };
+        cell.alignment = { horizontal: ci >= 4 && ci <= 8 ? "center" : "left", vertical: "middle" };
+        if (highVariance) cell.fill = varianceFill;
+        else if (rowFill) cell.fill = rowFill;
         cell.border = { bottom: { style: "hair", color: { argb: "FFD1D5DB" } } };
       });
       dataRowNum++;

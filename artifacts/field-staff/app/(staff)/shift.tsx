@@ -81,7 +81,6 @@ export default function StaffHome() {
   const {
     user,
     attendance,
-    meterReadings,
     trips,
     activeTripId,
     addAttendance,
@@ -193,6 +192,10 @@ export default function StaffHome() {
   };
 
   const onCheckOut = async () => {
+    if (user?.vehicleType) {
+      router.push(`/attendance/check-out?gpsKm=${totalKmRef.current.toFixed(2)}` as never);
+      return;
+    }
     Alert.alert(
       "End shift?",
       "Your kilometers and attendance will be locked for the day.",
@@ -206,14 +209,9 @@ export default function StaffHome() {
             try {
               if (Platform.OS !== "web") {
                 const cur = await Location.getCurrentPositionAsync({});
-                loc = {
-                  latitude: cur.coords.latitude,
-                  longitude: cur.coords.longitude,
-                };
+                loc = { latitude: cur.coords.latitude, longitude: cur.coords.longitude };
               }
-            } catch {
-              /* ignore */
-            }
+            } catch { /* ignore */ }
             await addAttendance({
               staffId: user!.id,
               staffName: user!.name,
@@ -222,16 +220,11 @@ export default function StaffHome() {
               location: loc,
               selfieUri: null,
             });
-            await endTrip(
-              Number(totalKmRef.current.toFixed(2)),
-              loc,
-            );
+            await endTrip(Number(totalKmRef.current.toFixed(2)), loc);
             totalKmRef.current = 0;
             lastPosRef.current = null;
             if (Platform.OS !== "web") {
-              Haptics.notificationAsync(
-                Haptics.NotificationFeedbackType.Success,
-              ).catch(() => {});
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
             }
           },
         },
@@ -249,11 +242,6 @@ export default function StaffHome() {
   }, [isCheckedIn, activeTripId, lastEntry, startTrip]);
 
   const today = new Date().toISOString().slice(0, 10);
-  const todayMeters = meterReadings.filter(
-    (m) =>
-      m.staffId === user?.id &&
-      new Date(m.timestamp).toISOString().slice(0, 10) === today,
-  ).length;
 
   const distanceParams = { date: today, staffId: user?.id ?? undefined };
   const {
@@ -410,9 +398,9 @@ export default function StaffHome() {
               }
             />
             <StatCard
-              label="Meter reads"
-              value={`${todayMeters}`}
-              icon="activity"
+              label="Check-ins"
+              value={`${myAttendance.filter((a) => a.type === "in").length}`}
+              icon="log-in"
               tint={colors.pillarTransparency}
             />
           </View>
@@ -432,22 +420,6 @@ export default function StaffHome() {
               Quick actions
             </Text>
             <View style={{ gap: 10, marginTop: 12 }}>
-              <Button
-                label="Capture meter reading"
-                onPress={() => {
-                  if (!isCheckedIn) {
-                    Alert.alert(
-                      "Shift not active",
-                      "Please check in before capturing a reading.",
-                    );
-                    return;
-                  }
-                  router.push("/meter/add");
-                }}
-                size="lg"
-                fullWidth
-                icon={<Feather name="zap" size={18} color="#fff" />}
-              />
               <Button
                 label="View today's trips"
                 onPress={() => router.push("/(staff)/trips")}
