@@ -84,7 +84,7 @@ export default function CheckInScreen() {
 
   const centerGeofenceWarning: { outside: boolean; distanceM: number } | null = (() => {
     if (user?.staffCategory !== "center") return null;
-    if (!loc || !user.companyCenterLat || !user.companyCenterLng || !user.companyCenterRadiusMeters) return null;
+    if (!loc || user.companyCenterLat == null || user.companyCenterLng == null || user.companyCenterRadiusMeters == null) return null;
     const d = haversineM(loc.latitude, loc.longitude, user.companyCenterLat, user.companyCenterLng);
     return { outside: d > user.companyCenterRadiusMeters, distanceM: Math.round(d) };
   })();

@@ -88,6 +88,11 @@ export default function CheckOutScreen() {
 
   const submit = async () => {
     if (!user) return;
+    if (isCenterStaff && !selfieUri) {
+      Alert.alert("Selfie required", "Please capture a selfie to complete your check-out.");
+      setPhase("selfie");
+      return;
+    }
     setSubmitting(true);
     try {
       let loc: GeoPoint | null = currentLoc;
@@ -121,7 +126,7 @@ export default function CheckOutScreen() {
 
   const centerGeofenceWarning: { outside: boolean; distanceM: number } | null = (() => {
     if (!isCenterStaff) return null;
-    if (!currentLoc || !user?.companyCenterLat || !user?.companyCenterLng || !user?.companyCenterRadiusMeters) return null;
+    if (!currentLoc || user?.companyCenterLat == null || user?.companyCenterLng == null || user?.companyCenterRadiusMeters == null) return null;
     const d = haversineM(currentLoc.latitude, currentLoc.longitude, user.companyCenterLat, user.companyCenterLng);
     return { outside: d > user.companyCenterRadiusMeters, distanceM: Math.round(d) };
   })();
