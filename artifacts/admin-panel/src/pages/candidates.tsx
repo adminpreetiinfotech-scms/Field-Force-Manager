@@ -9,7 +9,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Download, Pencil } from "lucide-react";
+import { Search, Download, Pencil, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
 import type { CandidateDto } from "@workspace/api-client-react";
@@ -269,6 +280,33 @@ export default function Candidates() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [mobilizerFilter, setMobilizerFilter] = useState("");
   const [editCandidate, setEditCandidate] = useState<CandidateDto | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleDeleteCandidate = async (candidate: CandidateDto) => {
+    if (!user?.phone) return;
+    setDeletingId(candidate.id);
+    try {
+      const res = await fetch(`/api/admin/candidates/${candidate.id}`, {
+        method: "DELETE",
+        headers: { "x-admin-phone": user.phone },
+      });
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { title?: string };
+        throw new Error(err?.title ?? "Delete failed");
+      }
+      toast({
+        title: "Candidate deleted",
+        description: `${candidate.name} has been permanently removed.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/candidates"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/dashboard/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/candidate-stats"] });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const queryParams: any = {};
   if (debouncedSearch) queryParams.search = debouncedSearch;
@@ -443,6 +481,37 @@ export default function Candidates() {
                           <Download className="h-4 w-4" />
                         </a>
                       </Button>
+
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            title="Delete Candidate"
+                            disabled={deletingId === candidate.id}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete this candidate?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              <strong>{candidate.name}</strong> and all related history (audit log, notifications) will be permanently removed. This cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteCandidate(candidate)}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              Yes, Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </TableCell>
                 </TableRow>

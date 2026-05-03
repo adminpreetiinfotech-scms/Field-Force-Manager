@@ -793,6 +793,45 @@ export const ResetCompanyAdminResponse = zod.object({
 
 
 /**
+ * Permanently deletes the company along with its candidates, candidate
+audit log entries, candidate notifications, activity events, and all
+non-super-admin staff. Notices are cascaded via the database FK.
+Super-admin staff are never deleted. Intended for cleaning up demo or
+test tenants.
+
+ * @summary Hard-delete a company and all its scoped data
+ */
+export const DeleteCompanyParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const DeleteCompanyResponse = zod.object({
+  "message": zod.string(),
+  "companyId": zod.string().uuid(),
+  "companyName": zod.string(),
+  "candidatesDeleted": zod.number(),
+  "staffDeleted": zod.number(),
+  "eventsDeleted": zod.number()
+})
+
+
+/**
+ * Permanently deletes a candidate together with their audit log and
+notification rows. Company admins can only delete candidates in their
+own company; super-admins can delete any candidate.
+
+ * @summary Hard-delete a candidate
+ */
+export const DeleteCandidateParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const DeleteCandidateResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+/**
  * One-time migration helper. Updates every candidate and every non-super-admin
 staff record that currently has `company_id = NULL` to belong to the given
 company. Super-admins are intentionally excluded (they remain cross-company).

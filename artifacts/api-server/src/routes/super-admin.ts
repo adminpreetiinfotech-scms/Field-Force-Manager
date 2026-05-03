@@ -709,4 +709,131 @@ router.post(
   },
 );
 
+// ─── DELETE /api/super-admin/companies/:id ────────────────────────────────────
+//
+// Hard-deletes a company and ALL its scoped data: candidates, candidate audit
+// logs, candidate notifications, activity events, and non-super-admin staff.
+// Notices are removed automatically by the FK ON DELETE CASCADE on
+// notices.company_id. Useful for cleaning up demo/test tenants.
+//
+// Super-admin staff are never deleted — they are intentionally cross-company.
+router.delete(
+  "/super-admin/companies/:id",
+  requireSuperAdmin,
+  async (req, res, next) => {
+    try {
+      const id = req.params.id as string;
+
+      const [company] = await db
+        .select({ id: companiesTable.id, name: companiesTable.name })
+        .from(companiesTable)
+        .where(eq(companiesTable.id, id))
+        .limit(1);
+      if (!company) {
+        res.status(404).json({ title: "Company not found", status: 404 });
+        return;
+      }
+
+      const result = await db.transaction(async (tx) => {
+        // Collect candidate ids first — audit log / notifications use a plain
+        // text candidate_id without an FK, so we have to clean them by id.
+        const candRows = await tx
+          .select({ id: candidatesTable.id })
+          .from(candidatesTable)
+          .where(eq(candidatesTable.companyId, id));
+        const candIds = candRows.map((r) => r.id);
+
+        if (candIds.length > 0) {
+          await tx
+            .delete(candidateAuditLogTable)
+            .where(inArray(candidateAuditLogTable.candidateId, candIds));
+          await tx
+            .delete(candidateNotificationsTable)
+            .where(inArray(candidateNotificationsTable.candidateId, candIds));
+        }
+        // Also wipe any remaining notifications/audit rows scoped only by
+        // company_id (e.g. notifications for staff that no longer have
+        // candidate links).
+        await tx
+          .delete(candidateAuditLogTable)
+          .where(eq(candidateAuditLogTable.companyId, id));
+        await tx
+          .delete(candidateNotificationsTable)
+          .where(eq(candidateNotificationsTable.companyId, id));
+
+        const candDel = await tx
+          .delete(candidatesTable)
+          .where(eq(candidatesTable.companyId, id));
+
+        // Collect tenant staff ids first so we can also wipe any activity
+        // events that reference them via staff_id (no FK there, so they would
+        // otherwise become dangling refs after the staff rows are deleted).
+        const staffRows = await tx
+          .select({ id: staffTable.id })
+          .from(staffTable)
+          .where(
+            and(
+              eq(staffTable.companyId, id),
+              or(eq(staffTable.role, "staff"), eq(staffTable.role, "admin")),
+            ),
+          );
+        const staffIds = staffRows.map((r) => r.id);
+
+        const evDel = await tx
+          .delete(activityEventsTable)
+          .where(eq(activityEventsTable.companyId, id));
+        if (staffIds.length > 0) {
+          await tx
+            .delete(activityEventsTable)
+            .where(inArray(activityEventsTable.staffId, staffIds));
+        }
+
+        // Hard-delete tenant staff. Allowlist: never touch super_admin.
+        const staffDel = await tx
+          .delete(staffTable)
+          .where(
+            and(
+              eq(staffTable.companyId, id),
+              or(eq(staffTable.role, "staff"), eq(staffTable.role, "admin")),
+            ),
+          );
+
+        // Finally, the company. Notices cascade via FK.
+        await tx.delete(companiesTable).where(eq(companiesTable.id, id));
+
+        return {
+          candidatesDeleted: Number(
+            (candDel as { rowCount?: number }).rowCount ?? 0,
+          ),
+          staffDeleted: Number(
+            (staffDel as { rowCount?: number }).rowCount ?? 0,
+          ),
+          eventsDeleted: Number(
+            (evDel as { rowCount?: number }).rowCount ?? 0,
+          ),
+        };
+      });
+
+      req.log.info(
+        {
+          actorPhone: req.headers["x-admin-phone"],
+          deletedCompanyId: id,
+          deletedCompanyName: company.name,
+          ...result,
+        },
+        "super-admin hard-deleted company",
+      );
+
+      res.json({
+        message: "Company deleted",
+        companyId: id,
+        companyName: company.name,
+        ...result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 export default router;

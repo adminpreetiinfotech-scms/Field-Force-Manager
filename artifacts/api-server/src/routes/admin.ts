@@ -6,7 +6,7 @@ import {
   db,
   staffTable,
 } from "@workspace/db";
-import { and, count, desc, eq, gte, isNotNull, isNull, lt, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 
 const router: IRouter = Router();
@@ -668,6 +668,61 @@ router.patch("/admin/staff/:id/deactivate", requireAdmin, async (req, res, next)
 // ─── PATCH /api/admin/candidates/:id ─────────────────────────────────────────
 // Allows admin to update any editable candidate field (phone, dob, parentMobile,
 // pin, etc.) to fix blank / incorrect data from old registrations.
+
+// ─── DELETE /api/admin/candidates/:id ────────────────────────────────────────
+//
+// Hard-deletes a candidate plus all related notification and audit-log rows.
+// Available to both company admins (scoped to their own company) and super
+// admins (no company filter). Useful for cleaning up demo records.
+router.delete("/admin/candidates/:id", requireAdmin, async (req, res, next) => {
+  try {
+    const { id } = req.params as { id: string };
+    const companyId = res.locals.companyId as string | null;
+
+    const [existing] = await db
+      .select({
+        id: candidatesTable.id,
+        name: candidatesTable.name,
+        companyId: candidatesTable.companyId,
+      })
+      .from(candidatesTable)
+      .where(eq(candidatesTable.id, id))
+      .limit(1);
+
+    if (!existing) {
+      res.status(404).json({ title: "Candidate not found", status: 404 });
+      return;
+    }
+    // Company admins can only delete candidates in their own company. Records
+    // with NULL company_id are treated as visible (legacy data).
+    if (companyId && existing.companyId && existing.companyId !== companyId) {
+      res.status(403).json({ title: "Forbidden", status: 403 });
+      return;
+    }
+
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(candidateAuditLogTable)
+        .where(eq(candidateAuditLogTable.candidateId, id));
+      await tx
+        .delete(candidateNotificationsTable)
+        .where(eq(candidateNotificationsTable.candidateId, id));
+      await tx.delete(candidatesTable).where(eq(candidatesTable.id, id));
+    });
+
+    req.log.info(
+      {
+        candidateId: id,
+        candidateName: existing.name,
+        actorPhone: req.headers["x-admin-phone"],
+      },
+      "Candidate hard-deleted",
+    );
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
 
 router.patch("/admin/candidates/:id", requireAdmin, async (req, res, next) => {
   try {

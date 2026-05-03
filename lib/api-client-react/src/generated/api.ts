@@ -34,6 +34,8 @@ import type {
   CompanyStats,
   CreateActivityInput,
   DashboardStats,
+  DeleteCandidate200,
+  DeleteCompany200,
   DistanceStats,
   GetAttendanceCalendarParams,
   GetDistanceStatsParams,
@@ -2445,6 +2447,156 @@ export const useResetCompanyAdmin = <TError = ErrorType<ProblemDetails>,
         TContext
       > => {
       return useMutation(getResetCompanyAdminMutationOptions(options));
+    }
+
+/**
+ * Permanently deletes the company along with its candidates, candidate
+audit log entries, candidate notifications, activity events, and all
+non-super-admin staff. Notices are cascaded via the database FK.
+Super-admin staff are never deleted. Intended for cleaning up demo or
+test tenants.
+
+ * @summary Hard-delete a company and all its scoped data
+ */
+export const getDeleteCompanyUrl = (id: string,) => {
+
+
+
+
+  return `/api/super-admin/companies/${id}`
+}
+
+export const deleteCompany = async (id: string, options?: RequestInit): Promise<DeleteCompany200> => {
+
+  return customFetch<DeleteCompany200>(getDeleteCompanyUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteCompanyMutationOptions = <TError = ErrorType<ProblemDetails>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCompany>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteCompany>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteCompany'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteCompany>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteCompany(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteCompanyMutationResult = NonNullable<Awaited<ReturnType<typeof deleteCompany>>>
+
+    export type DeleteCompanyMutationError = ErrorType<ProblemDetails>
+
+    /**
+ * @summary Hard-delete a company and all its scoped data
+ */
+export const useDeleteCompany = <TError = ErrorType<ProblemDetails>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCompany>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteCompany>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteCompanyMutationOptions(options));
+    }
+
+/**
+ * Permanently deletes a candidate together with their audit log and
+notification rows. Company admins can only delete candidates in their
+own company; super-admins can delete any candidate.
+
+ * @summary Hard-delete a candidate
+ */
+export const getDeleteCandidateUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/candidates/${id}`
+}
+
+export const deleteCandidate = async (id: string, options?: RequestInit): Promise<DeleteCandidate200> => {
+
+  return customFetch<DeleteCandidate200>(getDeleteCandidateUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteCandidateMutationOptions = <TError = ErrorType<ProblemDetails>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCandidate>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteCandidate>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteCandidate'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteCandidate>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteCandidate(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteCandidateMutationResult = NonNullable<Awaited<ReturnType<typeof deleteCandidate>>>
+
+    export type DeleteCandidateMutationError = ErrorType<ProblemDetails>
+
+    /**
+ * @summary Hard-delete a candidate
+ */
+export const useDeleteCandidate = <TError = ErrorType<ProblemDetails>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCandidate>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteCandidate>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteCandidateMutationOptions(options));
     }
 
 /**

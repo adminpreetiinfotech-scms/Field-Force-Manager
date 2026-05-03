@@ -39,7 +39,7 @@ import {
   ArrowLeft, RefreshCw, Users, UserSquare2, Activity,
   KeyRound, MapPin, User, CalendarDays, Mail,
   Building2, CreditCard, ShieldOff, CheckCircle2,
-  AlertTriangle, XCircle, Zap, CalendarClock, Plus, Wand2,
+  AlertTriangle, XCircle, Zap, CalendarClock, Plus, Wand2, Trash2,
 } from "lucide-react";
 import { format, addDays, differenceInDays, isPast } from "date-fns";
 
@@ -318,6 +318,39 @@ export default function SuperAdminCompanyDetail({ companyId }: Props) {
   };
 
   const [backfilling, setBackfilling] = useState(false);
+  const [deletingCompany, setDeletingCompany] = useState(false);
+
+  const handleDeleteCompany = async () => {
+    setDeletingCompany(true);
+    try {
+      const res = await adminFetch(
+        `/api/super-admin/companies/${companyId}`,
+        { method: "DELETE" },
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.title || "Delete failed");
+      }
+      const result = (await res.json()) as {
+        candidatesDeleted: number;
+        staffDeleted: number;
+        eventsDeleted: number;
+      };
+      toast({
+        title: "Company deleted",
+        description: `Removed ${result.candidatesDeleted} candidate(s), ${result.staffDeleted} staff, and ${result.eventsDeleted} activity record(s).`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/super-admin/companies"] });
+      setLocation("/super-admin/companies");
+    } catch (e) {
+      toast({
+        title: "Delete failed",
+        description: e instanceof Error ? e.message : "Unknown error",
+        variant: "destructive",
+      });
+      setDeletingCompany(false);
+    }
+  };
   const handleBackfillOrphans = async () => {
     setBackfilling(true);
     try {
@@ -651,6 +684,52 @@ export default function SuperAdminCompanyDetail({ companyId }: Props) {
                     className="bg-indigo-600 hover:bg-indigo-700"
                   >
                     {backfilling ? "Working..." : "Yes, Adopt All"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+
+          {/* Delete Company — destructive */}
+          <div className="flex items-center justify-between px-6 py-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-red-100 text-red-600">
+                <Trash2 className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Delete Company</p>
+                <p className="text-xs text-muted-foreground">
+                  Permanently removes <strong>{company.name}</strong> with all its candidates, staff, and activity. Use this to clean up after a demo.
+                </p>
+              </div>
+            </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 border-red-200 text-red-600 hover:bg-red-50"
+                  disabled={deletingCompany}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {deletingCompany ? "Deleting..." : "Delete Company"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete this company permanently?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    All candidates, field staff, company admin, activity events, and notices for <strong>{company.name}</strong> will be wiped from the database. Super-admin accounts are not affected. This action <strong>cannot be undone</strong>.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDeleteCompany}
+                    disabled={deletingCompany}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    {deletingCompany ? "Deleting..." : "Yes, Delete Company"}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>

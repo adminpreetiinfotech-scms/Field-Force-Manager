@@ -909,6 +909,93 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
 
+  /super-admin/companies/{id}:
+    delete:
+      operationId: deleteCompany
+      tags: [super-admin]
+      summary: Hard-delete a company and all its scoped data
+      description: |
+        Permanently deletes the company along with its candidates, candidate
+        audit log entries, candidate notifications, activity events, and all
+        non-super-admin staff. Notices are cascaded via the database FK.
+        Super-admin staff are never deleted. Intended for cleaning up demo or
+        test tenants.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Company deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  companyId:
+                    type: string
+                    format: uuid
+                  companyName:
+                    type: string
+                  candidatesDeleted:
+                    type: integer
+                  staffDeleted:
+                    type: integer
+                  eventsDeleted:
+                    type: integer
+                required: [message, companyId, companyName, candidatesDeleted, staffDeleted, eventsDeleted]
+        "404":
+          description: Company not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
+  /admin/candidates/{id}:
+    delete:
+      operationId: deleteCandidate
+      tags: [admin]
+      summary: Hard-delete a candidate
+      description: |
+        Permanently deletes a candidate together with their audit log and
+        notification rows. Company admins can only delete candidates in their
+        own company; super-admins can delete any candidate.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                required: [success]
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
   /super-admin/companies/{companyId}/backfill-orphans:
     post:
       operationId: backfillOrphanRecords

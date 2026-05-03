@@ -694,6 +694,19 @@ export type ResetCompanyAdmin200 = {
   phone: string;
 };
 
+export type DeleteCompany200 = {
+  message: string;
+  companyId: string;
+  companyName: string;
+  candidatesDeleted: number;
+  staffDeleted: number;
+  eventsDeleted: number;
+};
+
+export type DeleteCandidate200 = {
+  success: boolean;
+};
+
 export type BackfillOrphanRecords200 = {
   message: string;
   companyId: string;
