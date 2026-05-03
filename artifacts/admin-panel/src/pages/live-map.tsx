@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, RefreshCw, MapPin, Phone, Clock, Wifi, WifiOff, Users } from "lucide-react";
+import { Search, RefreshCw, MapPin, Clock, Wifi, WifiOff, Users, AlertTriangle } from "lucide-react";
 import { format, formatDistanceToNow, differenceInMinutes } from "date-fns";
 
 // ─── Fix leaflet default icon issue with Vite ─────────────────────────────────
@@ -51,6 +51,27 @@ function getAdminCompanyId(): string | null {
   } catch {
     return null;
   }
+}
+
+// ─── Haversine distance ───────────────────────────────────────────────────────
+
+function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6_371_000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function isOutsideFence(staff: LiveStaff, geoFence: GeoFence | null): boolean {
+  if (!geoFence || staff.lastLat == null || staff.lastLng == null) return false;
+  return (
+    haversineMeters(staff.lastLat, staff.lastLng, geoFence.centerLat, geoFence.centerLng) >
+    geoFence.centerRadiusMeters
+  );
 }
 
 // ─── Geo-fence types ──────────────────────────────────────────────────────────
@@ -167,10 +188,12 @@ function StaffCard({
   staff,
   selected,
   onClick,
+  geoFence,
 }: {
   staff: LiveStaff;
   selected: boolean;
   onClick: () => void;
+  geoFence: GeoFence | null;
 }) {
   const status = getStatusLabel(staff);
   const statusConfig = {
@@ -178,13 +201,14 @@ function StaffCard({
     idle:    { label: "Idle",     cls: "bg-amber-100 text-amber-800 border-amber-200" },
     offline: { label: "Offline",  cls: "bg-slate-100 text-slate-600 border-slate-200" },
   }[status];
+  const outsideFence = isOutsideFence(staff, geoFence);
 
   return (
     <button
       onClick={onClick}
       className={`w-full text-left px-3 py-2.5 border-b last:border-b-0 transition-colors hover:bg-muted/60 ${
         selected ? "bg-primary/5 border-l-2 border-l-primary" : ""
-      }`}
+      } ${outsideFence ? "bg-orange-50/60" : ""}`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
@@ -195,6 +219,14 @@ function StaffCard({
           {statusConfig.label}
         </Badge>
       </div>
+      {outsideFence && (
+        <div className="flex items-center gap-1 mt-1">
+          <AlertTriangle className="h-3 w-3 text-orange-500 shrink-0" />
+          <span className="text-[10px] font-semibold text-orange-600 uppercase tracking-wide">
+            Outside fence
+          </span>
+        </div>
+      )}
       {staff.area && (
         <div className="flex items-center gap-1 mt-0.5">
           <MapPin className="h-3 w-3 text-muted-foreground/60 shrink-0" />
@@ -483,6 +515,7 @@ export default function LiveMapPage() {
                     staff={s}
                     selected={selectedId === s.staffId}
                     onClick={() => handleSidebarClick(s)}
+                    geoFence={geoFence}
                   />
                 ))
             )}
@@ -507,10 +540,16 @@ export default function LiveMapPage() {
                 Blue dot = On Shift
               </div>
               {geoFence && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                  <span className="w-2.5 h-2.5 shrink-0 rounded-full border-2 border-dashed border-indigo-500" />
-                  Geo-fence boundary
-                </div>
+                <>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                    <span className="w-2.5 h-2.5 shrink-0 rounded-full border-2 border-dashed border-indigo-500" />
+                    Geo-fence boundary
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-orange-600 mt-1">
+                    <AlertTriangle className="w-2.5 h-2.5 shrink-0" />
+                    Outside fence
+                  </div>
+                </>
               )}
             </div>
           </div>
