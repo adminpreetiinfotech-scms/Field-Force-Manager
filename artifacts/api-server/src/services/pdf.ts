@@ -914,10 +914,9 @@ export async function generateCandidatePdf(
              { width: TBW, align: "center", lineBreak: false });
         dy += TBH + 8;
 
-        // Subtitle
-        doc.font("NSR").fontSize(9).fillColor(DARK)
-           .text("(जाति प्रमाण पत्र हेतु स्व-घोषणा / Self Declaration)",
-             PAD, dy, { width: BW, align: "center", lineBreak: false });
+        // Subtitle  (mixed script — use t() so Latin renders with DVR)
+        t(doc, "(जाति प्रमाण पत्र हेतु स्व-घोषणा / Self Declaration)",
+          PAD, dy, { size: 9, color: DARK, width: BW, align: "center" });
         dy += 18;
 
         // ════════════════════════════════════════════════════════════════════
@@ -1026,16 +1025,17 @@ export async function generateCandidatePdf(
 
         dy += 6;
 
-        // ── Declaration paragraph (multi-line wrapped) ───────────────────
-        const declPara =
-          "मैं यह भी घोषणा करता/करती हूँ कि मेरे द्वारा दी गई उपर्युक्त सभी जानकारी मेरे " +
-          "ज्ञान एवं विश्वास के अनुसार सत्य एवं सही है। यदि भविष्य में यह जानकारी असत्य " +
-          "पाई जाती है, तो इसके लिए मैं स्वयं जिम्मेदार रहूँगा/रहूँगी तथा विधि अनुसार दंड " +
-          "का भागीदार बनूँगा/बनूँगी।";
-        doc.font("NSR").fontSize(9.5).fillColor(DARK)
-           .text(declPara, PAD, dy,
-             { width: BW, align: "justify", lineBreak: true });
-        dy = doc.y + 18;
+        // ── Declaration paragraph (pre-split lines to avoid Devanagari ligature breaks)
+        const declLines = [
+          "मैं यह भी घोषणा करता/करती हूँ कि मेरे द्वारा दी गई उपर्युक्त सभी जानकारी मेरे ज्ञान एवं",
+          "विश्वास के अनुसार सत्य एवं सही है। यदि भविष्य में यह जानकारी असत्य पाई जाती है, तो",
+          "इसके लिए मैं स्वयं जिम्मेदार रहूँगा/रहूँगी तथा विधि अनुसार दंड का भागीदार बनूँगा/बनूँगी।",
+        ];
+        for (const ln of declLines) {
+          t(doc, ln, PAD, dy, { size: 9.5, color: DARK, width: BW });
+          dy += 15;
+        }
+        dy += 8;
 
         // ── Divider with diamond ─────────────────────────────────────────
         hl(doc, PAD, dy, A4_W - PAD, 0.8, "#4A235A");
@@ -1063,11 +1063,9 @@ export async function generateCandidatePdf(
         dy += 30;
 
         // ── Place / Name row ─────────────────────────────────────────────
-        doc.font("NSR").fontSize(9).fillColor(DARK)
-           .text("स्थान  :-", PAD, dy, { lineBreak: false });
+        t(doc, "स्थान  :-", PAD, dy, { size: 9, color: DARK });
         if (sdPlace) {
-          doc.font("NSR").fontSize(9).fillColor(DARK)
-             .text(sdPlace, PAD + 56, dy, { lineBreak: false });
+          t(doc, sdPlace, PAD + 56, dy, { size: 9, color: DARK, width: 144 });
         }
         hl(doc, PAD + 54, dy + 14, PAD + 200, 0.7, "#333333");
 
@@ -1097,14 +1095,15 @@ export async function generateCandidatePdf(
            .text("नोट  :-", PAD + 2, dy + 7, { lineBreak: false });
         const noteTX = PAD + 50;
         const noteTW = BW - 50;
-        doc.font("NSR").fontSize(8.5).fillColor(DARK)
-           .text(
-             "• यह स्वघोषणा पत्र जाति प्रमाण पत्र आवेदन के साथ संलग्न किया जाना अनिवार्य है।",
-             noteTX, dy + 7, { width: noteTW, lineBreak: false });
-        doc.font("NSR").fontSize(8.5).fillColor(DARK)
-           .text(
-             "• असत्य जानकारी देने पर विधि अनुसार कानूनी कार्रवाही की जा सकती है।",
-             noteTX, dy + 22, { width: noteTW, lineBreak: false });
+        // Bullet "•" must use DVR (NSR lacks this glyph); Hindi text uses t()
+        doc.font("DVR").fontSize(8.5).fillColor(DARK)
+           .text("\u2022", noteTX, dy + 7, { width: 10, lineBreak: false });
+        t(doc, "यह स्वघोषणा पत्र जाति प्रमाण पत्र आवेदन के साथ संलग्न किया जाना अनिवार्य है।",
+          noteTX + 12, dy + 7, { size: 8.5, color: DARK, width: noteTW - 12 });
+        doc.font("DVR").fontSize(8.5).fillColor(DARK)
+           .text("\u2022", noteTX, dy + 22, { width: 10, lineBreak: false });
+        t(doc, "असत्य जानकारी देने पर विधि अनुसार कानूनी कार्रवाही की जा सकती है।",
+          noteTX + 12, dy + 22, { size: 8.5, color: DARK, width: noteTW - 12 });
 
         continue;
       }
