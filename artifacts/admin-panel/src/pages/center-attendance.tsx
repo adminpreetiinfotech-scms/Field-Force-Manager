@@ -283,6 +283,14 @@ export default function CenterAttendance() {
         </Button>
       </div>
 
+      {/* Filter row count info */}
+      {statusFilter && rows.length > 0 && (
+        <p className="text-sm text-muted-foreground">
+          Showing <span className="font-semibold text-foreground">{filteredRows.length}</span> of{" "}
+          <span className="font-semibold text-foreground">{rows.length}</span> records
+        </p>
+      )}
+
       {/* Summary Cards */}
       {rows.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
