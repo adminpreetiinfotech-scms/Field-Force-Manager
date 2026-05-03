@@ -469,7 +469,9 @@ router.patch("/admin/staff/:id/profile", requireAdmin, async (req, res, next) =>
       ? and(eq(staffTable.id, id), eq(staffTable.companyId, companyId), isNull(staffTable.deletedAt))
       : and(eq(staffTable.id, id), isNull(staffTable.deletedAt));
 
-    const [row] = await db.select({ id: staffTable.id }).from(staffTable).where(filter).limit(1);
+    const [row] = await db
+      .select({ id: staffTable.id, staffCategory: staffTable.staffCategory, centerStaffRole: staffTable.centerStaffRole })
+      .from(staffTable).where(filter).limit(1);
     if (!row) {
       res.status(404).json({ title: "Staff not found", status: 404 });
       return;
@@ -496,14 +498,12 @@ router.patch("/admin/staff/:id/profile", requireAdmin, async (req, res, next) =>
       updates.staffCategory = staffCategory;
     }
     if (centerStaffRole !== undefined) updates.centerStaffRole = centerStaffRole?.trim() || null;
-    // Enforce: center staff must have a role set
-    const finalCategory = updates.staffCategory ?? undefined;
-    if (finalCategory === "center" && !updates.centerStaffRole) {
-      // Only error if role is being explicitly cleared; allow if it was already set
-      if (centerStaffRole !== undefined && !centerStaffRole?.trim()) {
-        res.status(400).json({ title: "centerStaffRole is required when staffCategory is center", status: 400 });
-        return;
-      }
+    // Enforce: whenever effective final category is "center", role must be non-empty
+    const effectiveCategory = updates.staffCategory ?? row.staffCategory ?? "field";
+    const effectiveRole = (updates.centerStaffRole !== undefined ? updates.centerStaffRole : row.centerStaffRole)?.trim();
+    if (effectiveCategory === "center" && !effectiveRole) {
+      res.status(400).json({ title: "centerStaffRole is required when staffCategory is center", status: 400 });
+      return;
     }
 
     if (Object.keys(updates).length === 0) {
