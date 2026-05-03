@@ -722,6 +722,10 @@ router.get("/admin/dashboard/stats", requireAdmin, async (_req, res, next) => {
 router.patch("/admin/staff/:id/deactivate", requireAdmin, async (req, res, next) => {
   try {
     const id = req.params.id as string;
+    if (!id || typeof id !== "string" || id.trim() === "") {
+      res.status(400).json({ title: "Missing or invalid staff id", status: 400 });
+      return;
+    }
     const companyId = res.locals.companyId as string | null;
 
     const filter = companyId
@@ -754,6 +758,10 @@ router.patch("/admin/staff/:id/deactivate", requireAdmin, async (req, res, next)
 router.delete("/admin/candidates/:id", requireAdmin, async (req, res, next) => {
   try {
     const { id } = req.params as { id: string };
+    if (!id || typeof id !== "string" || id.trim() === "") {
+      res.status(400).json({ title: "Missing or invalid candidate id", status: 400 });
+      return;
+    }
     const companyId = res.locals.companyId as string | null;
 
     const [existing] = await db
@@ -807,6 +815,10 @@ router.delete("/admin/candidates/:id", requireAdmin, async (req, res, next) => {
 router.patch("/admin/candidates/:id", requireAdmin, async (req, res, next) => {
   try {
     const id = req.params.id as string;
+    if (!id || typeof id !== "string" || id.trim() === "") {
+      res.status(400).json({ title: "Missing or invalid candidate id", status: 400 });
+      return;
+    }
     const companyId = res.locals.companyId as string | null;
 
     const [existing] = await db
