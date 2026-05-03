@@ -864,22 +864,35 @@ export async function generateCandidatePdf(
         const LOGO_CX = A4_W - PAD - EMB_R; // right logo centre-x
         const EMB_CY  = HDR_Y + EMB_R + 2;
 
-        // Left emblem (Ashoka — circular placeholder)
-        doc.circle(EMB_CX, EMB_CY, EMB_R).strokeColor("#4A235A").lineWidth(1.0).stroke();
-        doc.circle(EMB_CX, EMB_CY, EMB_R - 4).strokeColor("#4A235A").lineWidth(0.4).stroke();
-        doc.font("DVR").fontSize(5).fillColor("#4A235A")
-           .text("सत्यमेव", EMB_CX - EMB_R, EMB_CY + EMB_R - 2,
+        // Left emblem (Ashoka — decorative placeholder with correct font)
+        doc.circle(EMB_CX, EMB_CY, EMB_R).strokeColor("#4A235A").lineWidth(1.2).stroke();
+        doc.circle(EMB_CX, EMB_CY, EMB_R - 5).strokeColor("#4A235A").lineWidth(0.5).stroke();
+        // Spokes (lion capital suggestion)
+        for (let ang = 0; ang < 360; ang += 45) {
+          const rad = (ang * Math.PI) / 180;
+          doc.moveTo(EMB_CX, EMB_CY)
+             .lineTo(EMB_CX + Math.cos(rad) * (EMB_R - 6), EMB_CY + Math.sin(rad) * (EMB_R - 6))
+             .strokeColor("#4A235A").lineWidth(0.3).stroke();
+        }
+        doc.font("NSR").fontSize(5).fillColor("#4A235A")              // NSR for Devanagari
+           .text("सत्यमेव जयते", EMB_CX - EMB_R, EMB_CY + EMB_R - 4,
              { width: EMB_R * 2, align: "center", lineBreak: false });
 
-        // Right logo (Lok Seva — circular placeholder)
-        doc.circle(LOGO_CX, EMB_CY, EMB_R).strokeColor("#1565C0").lineWidth(1.0).stroke();
-        doc.circle(LOGO_CX, EMB_CY, EMB_R - 4).strokeColor("#1565C0").lineWidth(0.4).stroke();
-        doc.font("NSR").fontSize(4.5).fillColor("#1565C0")
-           .text("लोक सेवा", LOGO_CX - EMB_R, EMB_CY - 5,
-             { width: EMB_R * 2, align: "center", lineBreak: false });
-        doc.font("NSR").fontSize(4.5).fillColor("#1565C0")
-           .text("हमारा संकल्प", LOGO_CX - EMB_R, EMB_CY + 1,
-             { width: EMB_R * 2, align: "center", lineBreak: false });
+        // Right logo — use JSDMS logo image; fall back to styled circle
+        const logoImgSZ = EMB_R * 2;
+        const logoLoaded2 = safeImg(doc, LOGO_PATH,
+          LOGO_CX - EMB_R, EMB_CY - EMB_R, { width: logoImgSZ, height: logoImgSZ,
+            fit: [logoImgSZ, logoImgSZ] });
+        if (!logoLoaded2) {
+          doc.circle(LOGO_CX, EMB_CY, EMB_R).strokeColor("#1565C0").lineWidth(1.2).stroke();
+          doc.circle(LOGO_CX, EMB_CY, EMB_R - 5).strokeColor("#1565C0").lineWidth(0.5).stroke();
+          doc.font("NSR").fontSize(5).fillColor("#1565C0")
+             .text("लोक सेवा", LOGO_CX - EMB_R, EMB_CY - 6,
+               { width: EMB_R * 2, align: "center", lineBreak: false });
+          doc.font("NSR").fontSize(5).fillColor("#1565C0")
+             .text("हमारा संकल्प", LOGO_CX - EMB_R, EMB_CY + 1,
+               { width: EMB_R * 2, align: "center", lineBreak: false });
+        }
 
         // Centre government text
         const govCX = PAD + EMB_R * 2 + 8;
