@@ -5,6 +5,7 @@ import {
   Users, UserCheck, Clock, XCircle, UserSquare2,
   TrendingUp, Calendar, AlertCircle, ArrowRight,
   CheckCircle2, Activity, Award, AlertTriangle,
+  Building2, UserX, ShieldAlert,
 } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
@@ -125,6 +126,8 @@ function ProgressBar({ value, max, color }: { value: number; max: number; color:
 export default function Dashboard() {
   const { data: stats, isLoading, error } = useGetDashboardStats();
   const today = format(new Date(), "EEEE, MMMM d, yyyy");
+  // Use IST date for links to match backend stats day boundaries (IST = UTC+5:30)
+  const todayIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const [subInfo, setSubInfo] = useState<SubscriptionInfo | null>(null);
 
   useEffect(() => {
@@ -269,6 +272,40 @@ export default function Dashboard() {
             sub="New registrations"
             icon={Calendar}
             accent="bg-pink-500"
+          />
+        </div>
+      </div>
+
+      {/* Center Staff Attendance */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <Building2 className="h-4 w-4 text-muted-foreground" />
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Center Staff — Today</h2>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <StatCard
+            title="Present Today"
+            value={stats.centerPresentToday}
+            sub="Checked in at center"
+            icon={UserCheck}
+            accent="bg-emerald-500"
+            href={`/center-attendance?dateFrom=${todayIST}&dateTo=${todayIST}`}
+          />
+          <StatCard
+            title="Absent Today"
+            value={stats.centerAbsentToday}
+            sub={stats.centerAbsentToday > 0 ? "No check-in recorded" : "All present"}
+            icon={UserX}
+            accent="bg-red-500"
+            href={`/center-attendance?dateFrom=${todayIST}&dateTo=${todayIST}`}
+          />
+          <StatCard
+            title="Geofence Violations"
+            value={stats.centerViolationsToday}
+            sub={stats.centerViolationsToday > 0 ? "Checked in outside zone" : "No violations"}
+            icon={ShieldAlert}
+            accent="bg-amber-500"
+            href={`/center-attendance?dateFrom=${todayIST}&dateTo=${todayIST}`}
           />
         </div>
       </div>

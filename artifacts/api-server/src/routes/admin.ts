@@ -642,6 +642,59 @@ router.get("/admin/dashboard/stats", requireAdmin, async (_req, res, next) => {
       if (row.approvalStatus === "pending") pendingApprovals += row.count;
     }
 
+    // ── Center staff attendance summary for today (IST) ──────────────────────
+    // IST = UTC + 5h30m
+    const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+    const todayIST = new Date(Date.now() + IST_OFFSET_MS).toISOString().slice(0, 10);
+    const dayStartIST = new Date(todayIST + "T00:00:00+05:30");
+    const dayEndIST   = new Date(todayIST + "T23:59:59+05:30");
+
+    const centerStaffFilter = companyId
+      ? and(eq(staffTable.companyId, companyId), eq(staffTable.staffCategory, "center"), isNull(staffTable.deletedAt))
+      : and(eq(staffTable.staffCategory, "center"), isNull(staffTable.deletedAt));
+
+    const centerStaffList = await db
+      .select({ id: staffTable.id })
+      .from(staffTable)
+      .where(centerStaffFilter);
+
+    let centerPresentToday = 0;
+    let centerAbsentToday = 0;
+    let centerViolationsToday = 0;
+
+    if (centerStaffList.length > 0) {
+      const centerStaffIds = centerStaffList.map((s) => s.id);
+
+      const todayCheckins = await db
+        .select({
+          staffId: activityEventsTable.staffId,
+          payload: activityEventsTable.payload,
+        })
+        .from(activityEventsTable)
+        .where(
+          and(
+            inArray(activityEventsTable.staffId, centerStaffIds),
+            eq(activityEventsTable.kind, "checkin"),
+            gte(activityEventsTable.occurredAt, dayStartIST),
+            lt(activityEventsTable.occurredAt, new Date(dayEndIST.getTime() + 1000)),
+          ),
+        );
+
+      const checkedInIds = new Set<string>();
+      for (const ev of todayCheckins) {
+        const payload = (ev.payload ?? {}) as Record<string, unknown>;
+        if (!checkedInIds.has(ev.staffId)) {
+          checkedInIds.add(ev.staffId);
+          if (payload.outsideGeofence === true) {
+            centerViolationsToday += 1;
+          }
+        }
+      }
+
+      centerPresentToday = checkedInIds.size;
+      centerAbsentToday = centerStaffList.length - centerPresentToday;
+    }
+
     res.json({
       totalCandidates,
       pendingCandidates: candCounts["pending"] ?? 0,
@@ -653,6 +706,9 @@ router.get("/admin/dashboard/stats", requireAdmin, async (_req, res, next) => {
       totalStaff,
       activeStaff,
       pendingApprovals,
+      centerPresentToday,
+      centerAbsentToday,
+      centerViolationsToday,
     });
   } catch (err) {
     next(err);

@@ -122,8 +122,14 @@ export default function CenterAttendance() {
   const [rows, setRows] = useState<CenterAttendanceRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [staffLoading, setStaffLoading] = useState(true);
-  const [dateFrom, setDateFrom] = useState(monthStartIst());
-  const [dateTo, setDateTo] = useState(todayIst());
+
+  // Initialise date filters from URL search params if present (e.g. from dashboard links)
+  const urlParams = new URLSearchParams(window.location.search);
+  const initDateFrom = urlParams.get("dateFrom") ?? monthStartIst();
+  const initDateTo = urlParams.get("dateTo") ?? todayIst();
+
+  const [dateFrom, setDateFrom] = useState(initDateFrom);
+  const [dateTo, setDateTo] = useState(initDateTo);
   const [selectedStaffId, setSelectedStaffId] = useState<string>("");
 
   const loadStaff = useCallback(async () => {

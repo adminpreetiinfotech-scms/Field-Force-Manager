@@ -17,4 +17,10 @@ export interface DashboardStats {
   pendingApprovals: number;
   todayRegistrations: number;
   thisMonthRegistrations: number;
+  /** Number of center staff who have checked in today. */
+  centerPresentToday: number;
+  /** Number of center staff with no check-in today. */
+  centerAbsentToday: number;
+  /** Number of center staff who checked in outside the geo-fence today. */
+  centerViolationsToday: number;
 }

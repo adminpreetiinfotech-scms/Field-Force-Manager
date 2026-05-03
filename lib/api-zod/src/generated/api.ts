@@ -741,7 +741,10 @@ export const GetDashboardStatsResponse = zod.object({
   "activeStaff": zod.number(),
   "pendingApprovals": zod.number(),
   "todayRegistrations": zod.number(),
-  "thisMonthRegistrations": zod.number()
+  "thisMonthRegistrations": zod.number(),
+  "centerPresentToday": zod.number().describe('Number of center staff who have checked in today.'),
+  "centerAbsentToday": zod.number().describe('Number of center staff with no check-in today.'),
+  "centerViolationsToday": zod.number().describe('Number of center staff who checked in outside the geo-fence today.')
 })
 
 

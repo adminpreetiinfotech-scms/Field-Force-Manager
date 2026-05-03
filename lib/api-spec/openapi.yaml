@@ -2084,6 +2084,15 @@ components:
           type: integer
         thisMonthRegistrations:
           type: integer
+        centerPresentToday:
+          type: integer
+          description: Number of center staff who have checked in today.
+        centerAbsentToday:
+          type: integer
+          description: Number of center staff with no check-in today.
+        centerViolationsToday:
+          type: integer
+          description: Number of center staff who checked in outside the geo-fence today.
       required:
         - totalCandidates
         - pendingCandidates
@@ -2095,6 +2104,9 @@ components:
         - pendingApprovals
         - todayRegistrations
         - thisMonthRegistrations
+        - centerPresentToday
+        - centerAbsentToday
+        - centerViolationsToday
 
     Company:
       type: object
