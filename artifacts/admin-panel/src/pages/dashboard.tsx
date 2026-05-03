@@ -5,11 +5,11 @@ import {
   Users, UserCheck, Clock, XCircle, UserSquare2,
   TrendingUp, Calendar, AlertCircle, ArrowRight,
   CheckCircle2, Activity, Award, AlertTriangle,
-  Building2, UserX, ShieldAlert,
+  Building2, UserX, ShieldAlert, X,
 } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 interface SubscriptionInfo {
   plan: string | null;
@@ -129,6 +129,8 @@ export default function Dashboard() {
   // Use IST date for links to match backend stats day boundaries (IST = UTC+5:30)
   const todayIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const [subInfo, setSubInfo] = useState<SubscriptionInfo | null>(null);
+  const [centerHintDismissed, setCenterHintDismissed] = useState(false);
+  const dismissCenterHint = useCallback(() => setCenterHintDismissed(true), []);
 
   useEffect(() => {
     const phone = getAdminPhone();
@@ -282,6 +284,27 @@ export default function Dashboard() {
           <Building2 className="h-4 w-4 text-muted-foreground" />
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Center Staff — Today</h2>
         </div>
+        {stats.totalCenterStaff === 0 && !centerHintDismissed && (
+          <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 mb-3">
+            <AlertCircle className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-blue-800">No center staff set up yet</p>
+              <p className="text-xs text-blue-700 mt-0.5">
+                These counts will remain 0 until staff are categorised as <span className="font-semibold">Center</span> in their profile.{" "}
+                <Link href="/staff" className="underline underline-offset-2 hover:text-blue-900">
+                  Go to Staff page to set up center staff roles.
+                </Link>
+              </p>
+            </div>
+            <button
+              onClick={dismissCenterHint}
+              className="text-blue-400 hover:text-blue-600 transition-colors shrink-0 -mt-0.5"
+              aria-label="Dismiss hint"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <StatCard
             title="Present Today"

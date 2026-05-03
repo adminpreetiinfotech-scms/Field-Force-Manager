@@ -2093,6 +2093,9 @@ components:
         centerViolationsToday:
           type: integer
           description: Number of center staff who checked in outside the geo-fence today.
+        totalCenterStaff:
+          type: integer
+          description: Total number of staff with staffCategory = center (approved or not). Used to distinguish "all present" from "none configured".
       required:
         - totalCandidates
         - pendingCandidates
@@ -2107,6 +2110,7 @@ components:
         - centerPresentToday
         - centerAbsentToday
         - centerViolationsToday
+        - totalCenterStaff
 
     Company:
       type: object

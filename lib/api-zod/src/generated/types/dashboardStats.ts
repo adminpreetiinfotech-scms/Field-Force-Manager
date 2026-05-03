@@ -23,4 +23,6 @@ export interface DashboardStats {
   centerAbsentToday: number;
   /** Number of center staff who checked in outside the geo-fence today. */
   centerViolationsToday: number;
+  /** Total number of staff with staffCategory = center (approved or not). Used to distinguish "all present" from "none configured". */
+  totalCenterStaff: number;
 }

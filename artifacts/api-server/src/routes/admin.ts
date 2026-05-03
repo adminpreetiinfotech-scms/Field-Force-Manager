@@ -709,6 +709,7 @@ router.get("/admin/dashboard/stats", requireAdmin, async (_req, res, next) => {
       centerPresentToday,
       centerAbsentToday,
       centerViolationsToday,
+      totalCenterStaff: centerStaffList.length,
     });
   } catch (err) {
     next(err);
