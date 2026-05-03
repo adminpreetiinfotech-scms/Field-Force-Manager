@@ -242,22 +242,34 @@ export default function AutoScanCamera({
     setError(null);
 
     try {
-      // 1 — Take picture
-      const pic = await cameraRef.current.takePictureAsync({
-        quality: 0.95, base64: false, skipProcessing: false,
-      });
-      if (!pic?.uri) { setPhase("camera"); return; }
+      // 1 — Take picture (skipProcessing:true for Android reliability)
+      let pic;
+      try {
+        pic = await cameraRef.current.takePictureAsync({
+          quality: 0.85, base64: false, skipProcessing: true,
+        });
+      } catch (camErr) {
+        const m = camErr instanceof Error ? camErr.message : "Camera error";
+        setError(`Camera failed: ${m}. Try again.`);
+        setPhase("camera");
+        return;
+      }
+      if (!pic?.uri) {
+        setError("No image captured. Please tap the shutter again.");
+        setPhase("camera");
+        return;
+      }
 
       setCapturedUri(pic.uri);
       setCapturedDims({ w: pic.width, h: pic.height });
 
-      // 2 — Resize to transport size (max 2400 px wide)
-      const MAX_W  = 2400;
+      // 2 — Resize to transport size (max 2000 px wide for memory safety)
+      const MAX_W  = 2000;
       const tgtW   = Math.min(MAX_W, pic.width);
       const resized = await ImageManipulator.manipulateAsync(
         pic.uri,
         tgtW < pic.width ? [{ resize: { width: tgtW } }] : [],
-        { format: ImageManipulator.SaveFormat.JPEG, compress: 0.92, base64: true },
+        { format: ImageManipulator.SaveFormat.JPEG, compress: 0.88, base64: true },
       );
       const base64 = resized.base64!;
       const imgW   = resized.width;
@@ -266,37 +278,46 @@ export default function AutoScanCamera({
       // 3 — Compute guide corners (fallback for auto-detect failures)
       const guideCorners = buildGuideCorners(imgW, imgH);
 
-      // 4 — Send to WebView processor
-      if (!processorRef.current) throw new Error("Processor not mounted");
-      const result = await processorRef.current.processImage(base64, {
-        docType,
-        guideCorners,
-        enhance:    true,
-        brightness: 1.08,
-        contrast:   1.12,
-        sharpness:  1.35,
-      });
+      // 4 — Try WebView processor; if it fails, fall back to raw resized image
+      let finalBase64 = base64;
+      let didAutoDetect = false;
+      try {
+        if (!processorRef.current) throw new Error("Processor not mounted");
+        const result = await processorRef.current.processImage(base64, {
+          docType,
+          guideCorners,
+          enhance:    true,
+          brightness: 1.08,
+          contrast:   1.12,
+          sharpness:  1.35,
+        });
+        if (cancelledRef.current) return;
+        finalBase64   = result.imageDataUri.replace(/^data:image\/\w+;base64,/, "");
+        didAutoDetect = result.autoDetected;
+      } catch (procErr) {
+        // Processor failed — save raw photo so user is not blocked.
+        if (cancelledRef.current) return;
+        const m = procErr instanceof Error ? procErr.message : "processor error";
+        console.warn("[AutoScanCamera] Processor fallback:", m);
+        // finalBase64 already = raw resized base64; didAutoDetect stays false
+      }
 
-      // 5 — If user cancelled while we were waiting, discard the result
-      if (cancelledRef.current) return;
-
-      // 6 — Save data URI to temp file so we have a real file URI
-      const b64     = result.imageDataUri.replace(/^data:image\/\w+;base64,/, "");
+      // 5 — Save data URI to temp file so we have a real file URI
       const tmpPath = `${cacheDirectory ?? ""}scan_${Date.now()}.jpg`;
-      await writeAsStringAsync(tmpPath, b64, {
+      await writeAsStringAsync(tmpPath, finalBase64, {
         encoding: EncodingType.Base64,
       });
 
-      // 7 — One final cancellation check before committing state
+      // 6 — One final cancellation check before committing state
       if (cancelledRef.current) return;
 
-      setAutoDetected(result.autoDetected);
-      setProcessedImg({ uri: tmpPath, base64: b64, mimeType: "image/jpeg" });
+      setAutoDetected(didAutoDetect);
+      setProcessedImg({ uri: tmpPath, base64: finalBase64, mimeType: "image/jpeg" });
       setPhase("preview");
 
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Processing failed";
-      setError(msg);
+      const msg = err instanceof Error ? err.message : "Capture failed";
+      setError(`${msg}. Please try again.`);
       setPhase("camera");
     }
   }, [docType, buildGuideCorners]);
