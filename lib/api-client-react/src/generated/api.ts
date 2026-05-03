@@ -26,6 +26,7 @@ import type {
   AttendanceCalendarMonth,
   BackfillOrphanRecords200,
   CandidateDto,
+  CenterAttendanceRow,
   CheckDuplicateCandidate200,
   CheckDuplicateCandidateBody,
   CheckPhoneBody,
@@ -38,6 +39,7 @@ import type {
   DeleteCompany200,
   DistanceStats,
   GetAttendanceCalendarParams,
+  GetCenterAttendanceParams,
   GetDistanceStatsParams,
   GetLeaderboardParams,
   GetRideCalendarParams,
@@ -2159,6 +2161,90 @@ export function useGetDashboardStats<TData = Awaited<ReturnType<typeof getDashbo
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetDashboardStatsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+/**
+ * @summary Get center staff attendance records with geo-fence violation data
+ */
+export const getGetCenterAttendanceUrl = (params?: GetCenterAttendanceParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/center-attendance?${stringifiedParams}` : `/api/admin/center-attendance`
+}
+
+export const getCenterAttendance = async (params?: GetCenterAttendanceParams, options?: RequestInit): Promise<CenterAttendanceRow[]> => {
+
+  return customFetch<CenterAttendanceRow[]>(getGetCenterAttendanceUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCenterAttendanceQueryKey = (params?: GetCenterAttendanceParams,) => {
+    return [
+    `/api/admin/center-attendance`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCenterAttendanceQueryOptions = <TData = Awaited<ReturnType<typeof getCenterAttendance>>, TError = ErrorType<unknown>>(params?: GetCenterAttendanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCenterAttendance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCenterAttendanceQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCenterAttendance>>> = ({ signal }) => getCenterAttendance(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCenterAttendance>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCenterAttendanceQueryResult = NonNullable<Awaited<ReturnType<typeof getCenterAttendance>>>
+export type GetCenterAttendanceQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get center staff attendance records with geo-fence violation data
+ */
+
+export function useGetCenterAttendance<TData = Awaited<ReturnType<typeof getCenterAttendance>>, TError = ErrorType<unknown>>(
+ params?: GetCenterAttendanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCenterAttendance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCenterAttendanceQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

@@ -32,7 +32,12 @@ export const ListStaffResponseItem = zod.object({
   "approvalStatus": zod.enum(['pending', 'approved', 'rejected']).describe('Approval workflow status. Staff are pending until an admin approves them.'),
   "createdAt": zod.coerce.date().nullish().describe('Registration timestamp (ISO 8601).'),
   "vehicleType": zod.enum(['2-wheeler', '4-wheeler']).nullish().describe('Vehicle type used for field visits.'),
-  "vehicleNumber": zod.string().nullish().describe('Vehicle registration number or identifier.')
+  "vehicleNumber": zod.string().nullish().describe('Vehicle registration number or identifier.'),
+  "staffCategory": zod.enum(['field', 'center']).nullish().describe('Whether the staff is field-based (vehicle KM tracking) or center-based (geo-fence attendance).'),
+  "centerStaffRole": zod.string().nullish().describe('Role within the training center (e.g. trainer, centerHead, cook).'),
+  "companyCenterLat": zod.number().nullish().describe('Latitude of the training center geo-fence origin.'),
+  "companyCenterLng": zod.number().nullish().describe('Longitude of the training center geo-fence origin.'),
+  "companyCenterRadiusMeters": zod.number().nullish().describe('Geo-fence radius in meters around the training center.')
 })
 export const ListStaffResponse = zod.array(ListStaffResponseItem)
 
@@ -83,7 +88,12 @@ export const ListPendingStaffResponseItem = zod.object({
   "approvalStatus": zod.enum(['pending', 'approved', 'rejected']).describe('Approval workflow status. Staff are pending until an admin approves them.'),
   "createdAt": zod.coerce.date().nullish().describe('Registration timestamp (ISO 8601).'),
   "vehicleType": zod.enum(['2-wheeler', '4-wheeler']).nullish().describe('Vehicle type used for field visits.'),
-  "vehicleNumber": zod.string().nullish().describe('Vehicle registration number or identifier.')
+  "vehicleNumber": zod.string().nullish().describe('Vehicle registration number or identifier.'),
+  "staffCategory": zod.enum(['field', 'center']).nullish().describe('Whether the staff is field-based (vehicle KM tracking) or center-based (geo-fence attendance).'),
+  "centerStaffRole": zod.string().nullish().describe('Role within the training center (e.g. trainer, centerHead, cook).'),
+  "companyCenterLat": zod.number().nullish().describe('Latitude of the training center geo-fence origin.'),
+  "companyCenterLng": zod.number().nullish().describe('Longitude of the training center geo-fence origin.'),
+  "companyCenterRadiusMeters": zod.number().nullish().describe('Geo-fence radius in meters around the training center.')
 })
 export const ListPendingStaffResponse = zod.array(ListPendingStaffResponseItem)
 
@@ -107,7 +117,12 @@ export const ApproveStaffResponse = zod.object({
   "approvalStatus": zod.enum(['pending', 'approved', 'rejected']).describe('Approval workflow status. Staff are pending until an admin approves them.'),
   "createdAt": zod.coerce.date().nullish().describe('Registration timestamp (ISO 8601).'),
   "vehicleType": zod.enum(['2-wheeler', '4-wheeler']).nullish().describe('Vehicle type used for field visits.'),
-  "vehicleNumber": zod.string().nullish().describe('Vehicle registration number or identifier.')
+  "vehicleNumber": zod.string().nullish().describe('Vehicle registration number or identifier.'),
+  "staffCategory": zod.enum(['field', 'center']).nullish().describe('Whether the staff is field-based (vehicle KM tracking) or center-based (geo-fence attendance).'),
+  "centerStaffRole": zod.string().nullish().describe('Role within the training center (e.g. trainer, centerHead, cook).'),
+  "companyCenterLat": zod.number().nullish().describe('Latitude of the training center geo-fence origin.'),
+  "companyCenterLng": zod.number().nullish().describe('Longitude of the training center geo-fence origin.'),
+  "companyCenterRadiusMeters": zod.number().nullish().describe('Geo-fence radius in meters around the training center.')
 })
 
 
@@ -130,7 +145,12 @@ export const RejectStaffResponse = zod.object({
   "approvalStatus": zod.enum(['pending', 'approved', 'rejected']).describe('Approval workflow status. Staff are pending until an admin approves them.'),
   "createdAt": zod.coerce.date().nullish().describe('Registration timestamp (ISO 8601).'),
   "vehicleType": zod.enum(['2-wheeler', '4-wheeler']).nullish().describe('Vehicle type used for field visits.'),
-  "vehicleNumber": zod.string().nullish().describe('Vehicle registration number or identifier.')
+  "vehicleNumber": zod.string().nullish().describe('Vehicle registration number or identifier.'),
+  "staffCategory": zod.enum(['field', 'center']).nullish().describe('Whether the staff is field-based (vehicle KM tracking) or center-based (geo-fence attendance).'),
+  "centerStaffRole": zod.string().nullish().describe('Role within the training center (e.g. trainer, centerHead, cook).'),
+  "companyCenterLat": zod.number().nullish().describe('Latitude of the training center geo-fence origin.'),
+  "companyCenterLng": zod.number().nullish().describe('Longitude of the training center geo-fence origin.'),
+  "companyCenterRadiusMeters": zod.number().nullish().describe('Geo-fence radius in meters around the training center.')
 })
 
 
@@ -464,7 +484,9 @@ export const GetActivityResponse = zod.object({
 }).nullish(),
   "startOdometerKm": zod.number().nullish(),
   "endOdometerKm": zod.number().nullish(),
-  "vehicleMeterPhotoUri": zod.string().nullish()
+  "vehicleMeterPhotoUri": zod.string().nullish(),
+  "outsideGeofence": zod.boolean().nullish().describe('True if the event was recorded outside the company center geo-fence radius.'),
+  "distanceFromCenterM": zod.number().nullish().describe('Distance in metres from the training center at the time of the event.')
 }))
 
 
@@ -696,7 +718,12 @@ export const LoginMpinResponse = zod.object({
   "approvalStatus": zod.enum(['pending', 'approved', 'rejected']).describe('Approval workflow status. Staff are pending until an admin approves them.'),
   "createdAt": zod.coerce.date().nullish().describe('Registration timestamp (ISO 8601).'),
   "vehicleType": zod.enum(['2-wheeler', '4-wheeler']).nullish().describe('Vehicle type used for field visits.'),
-  "vehicleNumber": zod.string().nullish().describe('Vehicle registration number or identifier.')
+  "vehicleNumber": zod.string().nullish().describe('Vehicle registration number or identifier.'),
+  "staffCategory": zod.enum(['field', 'center']).nullish().describe('Whether the staff is field-based (vehicle KM tracking) or center-based (geo-fence attendance).'),
+  "centerStaffRole": zod.string().nullish().describe('Role within the training center (e.g. trainer, centerHead, cook).'),
+  "companyCenterLat": zod.number().nullish().describe('Latitude of the training center geo-fence origin.'),
+  "companyCenterLng": zod.number().nullish().describe('Longitude of the training center geo-fence origin.'),
+  "companyCenterRadiusMeters": zod.number().nullish().describe('Geo-fence radius in meters around the training center.')
 })
 })
 
@@ -719,6 +746,32 @@ export const GetDashboardStatsResponse = zod.object({
 
 
 /**
+ * @summary Get center staff attendance records with geo-fence violation data
+ */
+export const GetCenterAttendanceQueryParams = zod.object({
+  "from": zod.coerce.string().optional(),
+  "to": zod.coerce.string().optional(),
+  "staffId": zod.coerce.string().uuid().optional()
+})
+
+export const GetCenterAttendanceResponseItem = zod.object({
+  "staffId": zod.string().uuid(),
+  "staffName": zod.string(),
+  "empCode": zod.string(),
+  "centerStaffRole": zod.string().nullish(),
+  "date": zod.string().describe('Calendar date in YYYY-MM-DD (IST).'),
+  "checkInTime": zod.coerce.date().nullish(),
+  "checkOutTime": zod.coerce.date().nullish(),
+  "status": zod.enum(['present', 'partial', 'absent']).describe('present = check-in + check-out recorded; partial = only check-in; absent = no events.'),
+  "checkInOutsideGeofence": zod.boolean().nullish(),
+  "checkOutOutsideGeofence": zod.boolean().nullish(),
+  "checkInDistanceM": zod.number().nullish().describe('Distance from training center at check-in, in metres.'),
+  "checkOutDistanceM": zod.number().nullish().describe('Distance from training center at check-out, in metres.')
+}).describe('One row of center staff attendance data covering a single calendar date.')
+export const GetCenterAttendanceResponse = zod.array(GetCenterAttendanceResponseItem)
+
+
+/**
  * @summary Deactivate (soft-delete) a staff member
  */
 export const DeactivateStaffParams = zod.object({
@@ -737,7 +790,12 @@ export const DeactivateStaffResponse = zod.object({
   "approvalStatus": zod.enum(['pending', 'approved', 'rejected']).describe('Approval workflow status. Staff are pending until an admin approves them.'),
   "createdAt": zod.coerce.date().nullish().describe('Registration timestamp (ISO 8601).'),
   "vehicleType": zod.enum(['2-wheeler', '4-wheeler']).nullish().describe('Vehicle type used for field visits.'),
-  "vehicleNumber": zod.string().nullish().describe('Vehicle registration number or identifier.')
+  "vehicleNumber": zod.string().nullish().describe('Vehicle registration number or identifier.'),
+  "staffCategory": zod.enum(['field', 'center']).nullish().describe('Whether the staff is field-based (vehicle KM tracking) or center-based (geo-fence attendance).'),
+  "centerStaffRole": zod.string().nullish().describe('Role within the training center (e.g. trainer, centerHead, cook).'),
+  "companyCenterLat": zod.number().nullish().describe('Latitude of the training center geo-fence origin.'),
+  "companyCenterLng": zod.number().nullish().describe('Longitude of the training center geo-fence origin.'),
+  "companyCenterRadiusMeters": zod.number().nullish().describe('Geo-fence radius in meters around the training center.')
 })
 
 
@@ -756,7 +814,10 @@ export const ListCompaniesResponseItem = zod.object({
   "logoUrl": zod.string().nullish(),
   "status": zod.enum(['active', 'inactive']),
   "subscriptionActive": zod.boolean(),
-  "createdAt": zod.coerce.date().nullish()
+  "createdAt": zod.coerce.date().nullish(),
+  "centerLat": zod.number().nullish().describe('Latitude of the training center geo-fence origin.'),
+  "centerLng": zod.number().nullish().describe('Longitude of the training center geo-fence origin.'),
+  "centerRadiusMeters": zod.number().nullish().describe('Geo-fence radius in metres.')
 })
 export const ListCompaniesResponse = zod.array(ListCompaniesResponseItem)
 
@@ -789,7 +850,10 @@ export const UpdateCompanyResponse = zod.object({
   "logoUrl": zod.string().nullish(),
   "status": zod.enum(['active', 'inactive']),
   "subscriptionActive": zod.boolean(),
-  "createdAt": zod.coerce.date().nullish()
+  "createdAt": zod.coerce.date().nullish(),
+  "centerLat": zod.number().nullish().describe('Latitude of the training center geo-fence origin.'),
+  "centerLng": zod.number().nullish().describe('Longitude of the training center geo-fence origin.'),
+  "centerRadiusMeters": zod.number().nullish().describe('Geo-fence radius in metres.')
 })
 
 
@@ -813,7 +877,10 @@ export const GetCompanyStatsResponse = zod.object({
   "logoUrl": zod.string().nullish(),
   "status": zod.enum(['active', 'inactive']),
   "subscriptionActive": zod.boolean(),
-  "createdAt": zod.coerce.date().nullish()
+  "createdAt": zod.coerce.date().nullish(),
+  "centerLat": zod.number().nullish().describe('Latitude of the training center geo-fence origin.'),
+  "centerLng": zod.number().nullish().describe('Longitude of the training center geo-fence origin.'),
+  "centerRadiusMeters": zod.number().nullish().describe('Geo-fence radius in metres.')
 }),
   "stats": zod.object({
   "staffCount": zod.number(),

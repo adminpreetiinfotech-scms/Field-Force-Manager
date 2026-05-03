@@ -22,4 +22,8 @@ export type ActivityDetail = ActivityEvent & ({
   startOdometerKm?: number | null;
   endOdometerKm?: number | null;
   vehicleMeterPhotoUri?: string | null;
+  /** True if the event was recorded outside the company center geo-fence radius. */
+  outsideGeofence?: boolean | null;
+  /** Distance in metres from the training center at the time of the event. */
+  distanceFromCenterM?: number | null;
 });

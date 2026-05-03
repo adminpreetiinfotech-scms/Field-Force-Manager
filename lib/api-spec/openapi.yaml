@@ -797,6 +797,41 @@ paths:
               schema:
                 $ref: "#/components/schemas/DashboardStats"
 
+  /admin/center-attendance:
+    get:
+      operationId: getCenterAttendance
+      tags: [admin]
+      summary: Get center staff attendance records with geo-fence violation data
+      parameters:
+        - in: query
+          name: from
+          required: false
+          schema:
+            type: string
+            description: Start date in YYYY-MM-DD format (IST). Defaults to today.
+        - in: query
+          name: to
+          required: false
+          schema:
+            type: string
+            description: End date in YYYY-MM-DD format (IST). Defaults to today.
+        - in: query
+          name: staffId
+          required: false
+          schema:
+            type: string
+            format: uuid
+            description: Filter by a specific staff member.
+      responses:
+        "200":
+          description: Center attendance rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CenterAttendanceRow"
+
   /admin/staff/{staffId}/deactivate:
     patch:
       operationId: deactivateStaff
@@ -1219,6 +1254,27 @@ components:
           type: string
           nullable: true
           description: Vehicle registration number or identifier.
+        staffCategory:
+          type: string
+          enum: [field, center]
+          nullable: true
+          description: Whether the staff is field-based (vehicle KM tracking) or center-based (geo-fence attendance).
+        centerStaffRole:
+          type: string
+          nullable: true
+          description: Role within the training center (e.g. trainer, centerHead, cook).
+        companyCenterLat:
+          type: number
+          nullable: true
+          description: Latitude of the training center geo-fence origin.
+        companyCenterLng:
+          type: number
+          nullable: true
+          description: Longitude of the training center geo-fence origin.
+        companyCenterRadiusMeters:
+          type: number
+          nullable: true
+          description: Geo-fence radius in meters around the training center.
       required: [id, empCode, name, phone, role, approvalStatus]
 
     RegisterInput:
@@ -1353,6 +1409,14 @@ components:
             vehicleMeterPhotoUri:
               type: string
               nullable: true
+            outsideGeofence:
+              type: boolean
+              nullable: true
+              description: True if the event was recorded outside the company center geo-fence radius.
+            distanceFromCenterM:
+              type: number
+              nullable: true
+              description: Distance in metres from the training center at the time of the event.
 
     ActivityPage:
       type: object
@@ -1993,6 +2057,18 @@ components:
           type: string
           format: date-time
           nullable: true
+        centerLat:
+          type: number
+          nullable: true
+          description: Latitude of the training center geo-fence origin.
+        centerLng:
+          type: number
+          nullable: true
+          description: Longitude of the training center geo-fence origin.
+        centerRadiusMeters:
+          type: number
+          nullable: true
+          description: Geo-fence radius in metres.
       required: [id, name, status, subscriptionActive]
 
     CompanyStats:
@@ -2072,6 +2148,51 @@ components:
           type: number
           description: "(presentCount + partialCount) / totalWorkingDays * 100, rounded to 1 decimal."
       required: [year, month, days, presentCount, partialCount, absentCount, totalKm, totalWorkingDays, attendancePercent]
+
+    CenterAttendanceRow:
+      type: object
+      description: One row of center staff attendance data covering a single calendar date.
+      properties:
+        staffId:
+          type: string
+          format: uuid
+        staffName:
+          type: string
+        empCode:
+          type: string
+        centerStaffRole:
+          type: string
+          nullable: true
+        date:
+          type: string
+          description: Calendar date in YYYY-MM-DD (IST).
+        checkInTime:
+          type: string
+          format: date-time
+          nullable: true
+        checkOutTime:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum: [present, partial, absent]
+          description: "present = check-in + check-out recorded; partial = only check-in; absent = no events."
+        checkInOutsideGeofence:
+          type: boolean
+          nullable: true
+        checkOutOutsideGeofence:
+          type: boolean
+          nullable: true
+        checkInDistanceM:
+          type: number
+          nullable: true
+          description: Distance from training center at check-in, in metres.
+        checkOutDistanceM:
+          type: number
+          nullable: true
+          description: Distance from training center at check-out, in metres.
+      required: [staffId, staffName, empCode, date, status]
 
     ProblemDetails:
       type: object

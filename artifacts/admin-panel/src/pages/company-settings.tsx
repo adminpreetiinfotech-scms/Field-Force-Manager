@@ -426,16 +426,24 @@ export default function CompanySettings() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Geo-fence Radius (meters)</Label>
-              <Input
-                type="number"
+              <Label className="flex items-center justify-between">
+                <span>Geo-fence Radius</span>
+                <span className="text-sm font-semibold text-primary">{centerRadius || "200"} m</span>
+              </Label>
+              <input
+                type="range"
                 min={50}
-                max={5000}
-                value={centerRadius}
+                max={1000}
+                step={25}
+                value={centerRadius || "200"}
                 onChange={e => setCenterRadius(e.target.value)}
-                placeholder="Default: 200"
+                className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
               />
-              <p className="text-xs text-muted-foreground">Minimum 50 meters. Staff outside this radius at check-in/out will be flagged.</p>
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>50 m</span>
+                <span>1000 m</span>
+              </div>
+              <p className="text-xs text-muted-foreground">Staff outside this radius at check-in/out will be flagged as geo-fence violation.</p>
             </div>
             <Button
               type="button"

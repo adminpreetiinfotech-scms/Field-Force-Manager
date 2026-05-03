@@ -40,6 +40,17 @@ export const StaffVehicleType = {
   '4-wheeler': '4-wheeler',
 } as const;
 
+/**
+ * Whether the staff is field-based (vehicle KM tracking) or center-based (geo-fence attendance).
+ */
+export type StaffStaffCategory = typeof StaffStaffCategory[keyof typeof StaffStaffCategory] | null;
+
+
+export const StaffStaffCategory = {
+  field: 'field',
+  center: 'center',
+} as const;
+
 export interface Staff {
   id: string;
   empCode: string;
@@ -60,6 +71,16 @@ export interface Staff {
   vehicleType?: StaffVehicleType;
   /** Vehicle registration number or identifier. */
   vehicleNumber?: string | null;
+  /** Whether the staff is field-based (vehicle KM tracking) or center-based (geo-fence attendance). */
+  staffCategory?: StaffStaffCategory;
+  /** Role within the training center (e.g. trainer, centerHead, cook). */
+  centerStaffRole?: string | null;
+  /** Latitude of the training center geo-fence origin. */
+  companyCenterLat?: number | null;
+  /** Longitude of the training center geo-fence origin. */
+  companyCenterLng?: number | null;
+  /** Geo-fence radius in meters around the training center. */
+  companyCenterRadiusMeters?: number | null;
 }
 
 /**
@@ -139,6 +160,10 @@ export type ActivityDetail = ActivityEvent & ({
   startOdometerKm?: number | null;
   endOdometerKm?: number | null;
   vehicleMeterPhotoUri?: string | null;
+  /** True if the event was recorded outside the company center geo-fence radius. */
+  outsideGeofence?: boolean | null;
+  /** Distance in metres from the training center at the time of the event. */
+  distanceFromCenterM?: number | null;
 });
 
 export interface ActivityPage {
@@ -490,6 +515,12 @@ export interface Company {
   status: CompanyStatus;
   subscriptionActive: boolean;
   createdAt?: string | null;
+  /** Latitude of the training center geo-fence origin. */
+  centerLat?: number | null;
+  /** Longitude of the training center geo-fence origin. */
+  centerLng?: number | null;
+  /** Geo-fence radius in metres. */
+  centerRadiusMeters?: number | null;
 }
 
 export type CompanyStatsStats = {
@@ -554,6 +585,40 @@ export interface AttendanceCalendarMonth {
   totalWorkingDays: number;
   /** (presentCount + partialCount) / totalWorkingDays * 100, rounded to 1 decimal. */
   attendancePercent: number;
+}
+
+/**
+ * present = check-in + check-out recorded; partial = only check-in; absent = no events.
+ */
+export type CenterAttendanceRowStatus = typeof CenterAttendanceRowStatus[keyof typeof CenterAttendanceRowStatus];
+
+
+export const CenterAttendanceRowStatus = {
+  present: 'present',
+  partial: 'partial',
+  absent: 'absent',
+} as const;
+
+/**
+ * One row of center staff attendance data covering a single calendar date.
+ */
+export interface CenterAttendanceRow {
+  staffId: string;
+  staffName: string;
+  empCode: string;
+  centerStaffRole?: string | null;
+  /** Calendar date in YYYY-MM-DD (IST). */
+  date: string;
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
+  /** present = check-in + check-out recorded; partial = only check-in; absent = no events. */
+  status: CenterAttendanceRowStatus;
+  checkInOutsideGeofence?: boolean | null;
+  checkOutOutsideGeofence?: boolean | null;
+  /** Distance from training center at check-in, in metres. */
+  checkInDistanceM?: number | null;
+  /** Distance from training center at check-out, in metres. */
+  checkOutDistanceM?: number | null;
 }
 
 export interface ProblemDetails {
@@ -739,6 +804,21 @@ export type CheckPhoneBody = {
 export type LoginMpinBody = {
   phone: string;
   mpin: string;
+};
+
+export type GetCenterAttendanceParams = {
+/**
+ * Start date in YYYY-MM-DD format (IST). Defaults to today.
+ */
+from?: string;
+/**
+ * End date in YYYY-MM-DD format (IST). Defaults to today.
+ */
+to?: string;
+/**
+ * Filter by a specific staff member.
+ */
+staffId?: string;
 };
 
 export type UpdateCompanyBodyStatus = typeof UpdateCompanyBodyStatus[keyof typeof UpdateCompanyBodyStatus];

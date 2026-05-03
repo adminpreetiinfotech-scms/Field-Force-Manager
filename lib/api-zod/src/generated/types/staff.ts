@@ -7,6 +7,7 @@
  */
 import type { StaffApprovalStatus } from './staffApprovalStatus';
 import type { StaffRole } from './staffRole';
+import type { StaffStaffCategory } from './staffStaffCategory';
 import type { StaffVehicleType } from './staffVehicleType';
 
 export interface Staff {
@@ -29,4 +30,14 @@ export interface Staff {
   vehicleType?: StaffVehicleType;
   /** Vehicle registration number or identifier. */
   vehicleNumber?: string | null;
+  /** Whether the staff is field-based (vehicle KM tracking) or center-based (geo-fence attendance). */
+  staffCategory?: StaffStaffCategory;
+  /** Role within the training center (e.g. trainer, centerHead, cook). */
+  centerStaffRole?: string | null;
+  /** Latitude of the training center geo-fence origin. */
+  companyCenterLat?: number | null;
+  /** Longitude of the training center geo-fence origin. */
+  companyCenterLng?: number | null;
+  /** Geo-fence radius in meters around the training center. */
+  companyCenterRadiusMeters?: number | null;
 }

@@ -20,4 +20,10 @@ export interface Company {
   status: CompanyStatus;
   subscriptionActive: boolean;
   createdAt?: Date | null;
+  /** Latitude of the training center geo-fence origin. */
+  centerLat?: number | null;
+  /** Longitude of the training center geo-fence origin. */
+  centerLng?: number | null;
+  /** Geo-fence radius in metres. */
+  centerRadiusMeters?: number | null;
 }
