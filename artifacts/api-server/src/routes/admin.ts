@@ -253,6 +253,11 @@ router.get("/admin/audit-log", requireAdmin, async (req, res, next) => {
     };
     const pageLimit = Math.min(parseInt(limitParam ?? "100", 10), 500);
 
+    if (candidateId?.trim() && !isValidUUID(candidateId.trim())) {
+      res.status(400).json({ title: "Invalid candidateId: must be a valid UUID", status: 400 });
+      return;
+    }
+
     const conditions: ReturnType<typeof eq>[] = [];
     if (companyId) conditions.push(eq(candidateAuditLogTable.companyId, companyId));
     if (candidateId?.trim()) {
@@ -1141,12 +1146,18 @@ router.get("/admin/center-attendance", requireAdmin, async (req, res, next) => {
       return;
     }
 
+    const normalizedStaffId = staffId?.trim() || undefined;
+    if (normalizedStaffId && !isValidUUID(normalizedStaffId)) {
+      res.status(400).json({ title: "Invalid staffId: must be a valid UUID", status: 400 });
+      return;
+    }
+
     // Fetch center staff
     const companyFilter = companyId
       ? and(eq(staffTable.companyId, companyId), eq(staffTable.staffCategory, "center"))
       : eq(staffTable.staffCategory, "center");
-    const staffFilter = staffId
-      ? and(companyFilter, eq(staffTable.id, staffId))
+    const staffFilter = normalizedStaffId
+      ? and(companyFilter, eq(staffTable.id, normalizedStaffId))
       : companyFilter;
 
     const centerStaff = await db
@@ -1304,11 +1315,17 @@ router.get("/admin/center-attendance/xlsx", requireAdmin, async (req, res, next)
       } catch { /* non-fatal */ }
     }
 
+    const normalizedStaffId = staffId?.trim() || undefined;
+    if (normalizedStaffId && !isValidUUID(normalizedStaffId)) {
+      res.status(400).json({ title: "Invalid staffId: must be a valid UUID", status: 400 });
+      return;
+    }
+
     const companyFilter = companyId
       ? and(eq(staffTable.companyId, companyId), eq(staffTable.staffCategory, "center"))
       : eq(staffTable.staffCategory, "center");
-    const staffFilter = staffId
-      ? and(companyFilter, eq(staffTable.id, staffId))
+    const staffFilter = normalizedStaffId
+      ? and(companyFilter, eq(staffTable.id, normalizedStaffId))
       : companyFilter;
 
     const centerStaff = await db
@@ -1548,11 +1565,17 @@ router.get("/admin/field-attendance", requireAdmin, async (req, res, next) => {
       return;
     }
 
+    const normalizedStaffId = staffId?.trim() || undefined;
+    if (normalizedStaffId && !isValidUUID(normalizedStaffId)) {
+      res.status(400).json({ title: "Invalid staffId: must be a valid UUID", status: 400 });
+      return;
+    }
+
     const companyFilter = companyId
       ? and(eq(staffTable.companyId, companyId), eq(staffTable.staffCategory, "field"))
       : eq(staffTable.staffCategory, "field");
-    const staffFilter = staffId
-      ? and(companyFilter, eq(staffTable.id, staffId))
+    const staffFilter = normalizedStaffId
+      ? and(companyFilter, eq(staffTable.id, normalizedStaffId))
       : companyFilter;
 
     const fieldStaff = await db
@@ -1688,11 +1711,17 @@ router.get("/admin/field-attendance/xlsx", requireAdmin, async (req, res, next) 
       } catch { /* non-fatal */ }
     }
 
+    const normalizedStaffId = staffId?.trim() || undefined;
+    if (normalizedStaffId && !isValidUUID(normalizedStaffId)) {
+      res.status(400).json({ title: "Invalid staffId: must be a valid UUID", status: 400 });
+      return;
+    }
+
     const companyFilter = companyId
       ? and(eq(staffTable.companyId, companyId), eq(staffTable.staffCategory, "field"))
       : eq(staffTable.staffCategory, "field");
-    const staffFilter = staffId
-      ? and(companyFilter, eq(staffTable.id, staffId))
+    const staffFilter = normalizedStaffId
+      ? and(companyFilter, eq(staffTable.id, normalizedStaffId))
       : companyFilter;
 
     const fieldStaff = await db
