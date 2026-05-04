@@ -811,19 +811,26 @@ export default function Reports() {
                 Standalone sheet with odometer readings, Vehicle KM, GPS KM, variance %, and flagged rows — no other report data included.
               </TooltipContent>
             </Tooltip>
-            <Button
-              variant="outline"
-              onClick={handleDownloadFieldAttendance}
-              className="w-full gap-2 border-purple-600 text-purple-700 hover:bg-purple-50"
-              disabled={isDownloadingAttendance || attendanceRowCount === 0}
-            >
-              {isDownloadingAttendance ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-              {isDownloadingAttendance
-                ? "Downloading..."
-                : attendanceRowCount != null
-                  ? `Export Field Attendance Excel (${attendanceRowCount} ${attendanceRowCount === 1 ? "row" : "rows"})`
-                  : "Export Field Attendance Excel"}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  onClick={handleDownloadFieldAttendance}
+                  className="w-full gap-2 border-purple-600 text-purple-700 hover:bg-purple-50"
+                  disabled={isDownloadingAttendance || attendanceRowCount === 0}
+                >
+                  {isDownloadingAttendance ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  {isDownloadingAttendance
+                    ? "Downloading..."
+                    : attendanceRowCount != null
+                      ? `Export Field Attendance Excel (${attendanceRowCount} ${attendanceRowCount === 1 ? "row" : "rows"})`
+                      : "Export Field Attendance Excel"}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs text-center">
+                Standalone sheet with staff attendance records, check-in/out times, and a per-center breakdown — no other report data included.
+              </TooltipContent>
+            </Tooltip>
             <Button
               variant="outline"
               onClick={handleDownloadAttendanceSummary}
