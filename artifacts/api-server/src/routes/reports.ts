@@ -863,6 +863,223 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
   }
 });
 
+// ─── GET /api/admin/reports/attendance-summary/xlsx ────────────────────────
+// Downloads a styled Excel file with staff-wise check-in day counts + totals.
+// Query params: from (YYYY-MM-DD), to (YYYY-MM-DD), staffId? (optional)
+router.get("/admin/reports/attendance-summary/xlsx", requireAdmin, async (req, res, next) => {
+  try {
+    const rawFrom      = req.query.from    as string | undefined;
+    const rawTo        = req.query.to      as string | undefined;
+    const rawStaffId   = req.query.staffId as string | undefined;
+    const rawCompanyId = (res.locals.companyId as string | null) ?? null;
+    const staffNameHdr = (req.query.staffName as string | undefined)?.trim() || null;
+
+    const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+    if (!rawFrom || !DATE_RE.test(rawFrom) || !rawTo || !DATE_RE.test(rawTo)) {
+      res.status(400).json({ title: "`from` and `to` are required (YYYY-MM-DD)", status: 400 });
+      return;
+    }
+
+    // Auto-resolve organization name
+    let organization: string | null = null;
+    if (rawCompanyId) {
+      try {
+        const [co] = await db
+          .select({ name: companiesTable.name, projectName: companiesTable.projectName })
+          .from(companiesTable)
+          .where(eq(companiesTable.id, rawCompanyId))
+          .limit(1);
+        if (co) {
+          organization = co.projectName ? `${co.name} — ${co.projectName}` : co.name;
+        }
+      } catch { /* non-fatal */ }
+    }
+
+    const startOfFrom = new Date(`${rawFrom}T00:00:00.000Z`);
+    const endOfTo     = new Date(`${rawTo}T23:59:59.999Z`);
+
+    const conds = [
+      eq(activityEventsTable.kind, "checkin"),
+      gte(activityEventsTable.occurredAt, startOfFrom),
+      lt(activityEventsTable.occurredAt, new Date(endOfTo.getTime() + 1)),
+    ] as ReturnType<typeof eq>[];
+    if (rawStaffId)   conds.push(eq(activityEventsTable.staffId, rawStaffId));
+    if (rawCompanyId) conds.push(eq(activityEventsTable.companyId, rawCompanyId));
+
+    const checkinRows = await db
+      .select({
+        staffId:    activityEventsTable.staffId,
+        staffName:  activityEventsTable.staffName,
+        occurredAt: activityEventsTable.occurredAt,
+      })
+      .from(activityEventsTable)
+      .where(and(...conds))
+      .orderBy(activityEventsTable.occurredAt);
+
+    // Count distinct check-in days per staff
+    type StaffSummary = { staffId: string; staffName: string; days: Set<string> };
+    const staffMapLocal = new Map<string, StaffSummary>();
+    for (const row of checkinRows) {
+      const date = toIST(new Date(row.occurredAt as Date));
+      const existing = staffMapLocal.get(row.staffId) ?? { staffId: row.staffId, staffName: row.staffName, days: new Set() };
+      existing.days.add(date);
+      staffMapLocal.set(row.staffId, existing);
+    }
+
+    // Enrich with empCode
+    const staffIds = [...staffMapLocal.keys()];
+    const staffDetails = staffIds.length
+      ? await db
+          .select({ id: staffTable.id, empCode: staffTable.empCode })
+          .from(staffTable)
+          .where(inArray(staffTable.id, staffIds))
+      : [];
+    const empCodeMap = new Map(staffDetails.map(s => [s.id, s.empCode ?? ""]));
+
+    const staffBreakdown = [...staffMapLocal.values()]
+      .map(s => ({
+        staffName:   s.staffName,
+        empCode:     empCodeMap.get(s.staffId) ?? "",
+        checkInDays: s.days.size,
+      }))
+      .sort((a, b) => b.checkInDays - a.checkInDays || a.staffName.localeCompare(b.staffName));
+
+    const totalCheckInDays = staffBreakdown.reduce((sum, s) => sum + s.checkInDays, 0);
+    const uniqueStaff      = staffBreakdown.length;
+    const avgDaysPerStaff  = uniqueStaff > 0 ? Math.round((totalCheckInDays / uniqueStaff) * 10) / 10 : 0;
+
+    // ── Build Excel workbook ─────────────────────────────────────────────────
+    const TEAL     = "FF0F766E";
+    const TEAL_DK  = "FF0D9488";
+    const A_COLS   = 3;
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = "JSDMS Field Force Manager";
+    wb.created = new Date();
+
+    const ws = wb.addWorksheet("Attendance Summary", { properties: { tabColor: { argb: TEAL } } });
+    ws.columns = [
+      { width: 28 }, // Staff Name
+      { width: 14 }, // EMP ID
+      { width: 18 }, // Check-In Days
+    ];
+
+    const staffPart = staffNameHdr ? `Staff: ${staffNameHdr}   |   ` : "";
+    const orgLine   = organization ?? "Jharkhand Skill Development Mission Society (JSDMS) / DDU-KK";
+
+    // Row 1 — Org header
+    ws.mergeCells(1, 1, 1, A_COLS);
+    const r1 = ws.getCell(1, 1);
+    r1.value = orgLine;
+    r1.font  = { bold: true, size: 13, color: { argb: WHITE }, name: "Calibri" };
+    r1.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: TEAL } };
+    r1.alignment = { horizontal: "center", vertical: "middle" };
+    ws.getRow(1).height = 26;
+
+    // Row 2 — Report title
+    ws.mergeCells(2, 1, 2, A_COLS);
+    const r2 = ws.getCell(2, 1);
+    r2.value = "STAFF-WISE ATTENDANCE SUMMARY";
+    r2.font  = { bold: true, size: 14, color: { argb: AMBER }, name: "Calibri" };
+    r2.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: TEAL } };
+    r2.alignment = { horizontal: "center", vertical: "middle" };
+    ws.getRow(2).height = 26;
+
+    // Row 3 — Period / filter info
+    ws.mergeCells(3, 1, 3, A_COLS);
+    const r3 = ws.getCell(3, 1);
+    r3.value = `${staffPart}Period: ${rawFrom}  →  ${rawTo}   |   ${uniqueStaff} staff   |   ${totalCheckInDays} total check-in days`;
+    r3.font  = { bold: true, size: 10, color: { argb: WHITE }, name: "Calibri" };
+    r3.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: TEAL_DK } };
+    r3.alignment = { horizontal: "center", vertical: "middle" };
+    ws.getRow(3).height = 18;
+
+    // Row 4 — Summary stats block
+    const summaryItems = [
+      ["Unique Staff", String(uniqueStaff)],
+      ["Total Check-In Days", String(totalCheckInDays)],
+      ["Avg Days / Staff", String(avgDaysPerStaff)],
+    ];
+    ws.getRow(4).height = 8;
+    for (let i = 0; i < summaryItems.length; i++) {
+      const rowNum = 5 + i;
+      ws.getRow(rowNum).height = 18;
+      const [label, value] = summaryItems[i]!;
+      ws.getCell(rowNum, 1).value = label;
+      ws.getCell(rowNum, 1).font  = { bold: true, size: 10, color: { argb: DKGRAY } };
+      ws.getCell(rowNum, 1).fill  = { type: "pattern", pattern: "solid", fgColor: { argb: LGRAY } };
+      ws.getCell(rowNum, 1).alignment = { horizontal: "right" };
+      ws.getCell(rowNum, 2).value = value;
+      ws.getCell(rowNum, 2).font  = { bold: true, size: 11, color: { argb: TEAL } };
+      ws.getCell(rowNum, 2).alignment = { horizontal: "left" };
+    }
+
+    // Spacer row
+    ws.getRow(8).height = 8;
+
+    // Row 9 — Column headers
+    const HDRS = ["Staff Name", "EMP ID", "Check-In Days"];
+    const hRow = ws.getRow(9);
+    hRow.height = 28;
+    HDRS.forEach((h, ci) => {
+      const cell = hRow.getCell(ci + 1);
+      cell.value = h;
+      cell.font  = { bold: true, size: 9, color: { argb: WHITE }, name: "Calibri" };
+      cell.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: TEAL } };
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+      cell.border = { bottom: { style: "thin", color: { argb: AMBER } } };
+    });
+
+    // Data rows starting at row 10
+    const altFill: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: LGRAY } };
+    let dataRowNum = 10;
+    for (const [idx, s] of staffBreakdown.entries()) {
+      const dr = ws.getRow(dataRowNum);
+      dr.height = 16;
+      const isAlt = idx % 2 === 1;
+
+      [s.staffName, s.empCode, s.checkInDays].forEach((val, ci) => {
+        const cell = dr.getCell(ci + 1);
+        cell.value = val;
+        cell.font  = { size: 9, name: "Calibri", color: { argb: "FF111827" } };
+        cell.alignment = { horizontal: ci === 2 ? "center" : "left", vertical: "middle" };
+        if (isAlt) cell.fill = altFill;
+        cell.border = { bottom: { style: "hair", color: { argb: "FFD1D5DB" } } };
+      });
+
+      dataRowNum++;
+    }
+
+    // Totals footer
+    const ftRow = ws.getRow(dataRowNum);
+    ftRow.height = 18;
+    const ftLabel = ftRow.getCell(1);
+    ftLabel.value = `TOTAL  (${uniqueStaff} staff,  avg ${avgDaysPerStaff} days/staff)`;
+    ftLabel.font  = { bold: true, size: 10, color: { argb: WHITE }, name: "Calibri" };
+    ftLabel.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: TEAL } };
+    ftLabel.alignment = { horizontal: "left", vertical: "middle" };
+
+    const ftEmp = ftRow.getCell(2);
+    ftEmp.fill = { type: "pattern", pattern: "solid", fgColor: { argb: TEAL } };
+
+    const ftDays = ftRow.getCell(3);
+    ftDays.value = totalCheckInDays;
+    ftDays.font  = { bold: true, size: 10, color: { argb: WHITE }, name: "Calibri" };
+    ftDays.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: TEAL } };
+    ftDays.alignment = { horizontal: "center", vertical: "middle" };
+
+    // Stream response
+    const suffix = staffNameHdr ? `-${staffNameHdr.replace(/\s+/g, "-")}` : "-all-staff";
+    const fname  = `attendance-summary-${rawFrom}-to-${rawTo}${suffix}.xlsx`;
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="${fname}"`);
+    await wb.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ─── GET /api/admin/reports/attendance-summary ─────────────────────────────
 // Returns a lightweight staff-wise attendance count summary (no Excel needed).
 // Query params: from (YYYY-MM-DD), to (YYYY-MM-DD), staffId? (optional)

@@ -148,6 +148,7 @@ export default function Reports() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isDownloadingVehicleKm, setIsDownloadingVehicleKm] = useState(false);
   const [isDownloadingAttendance, setIsDownloadingAttendance] = useState(false);
+  const [isDownloadingAttendanceSummary, setIsDownloadingAttendanceSummary] = useState(false);
   const [isDownloadingCsv, setIsDownloadingCsv] = useState(false);
   const [attendanceRowCount, setAttendanceRowCount] = useState<number | null>(null);
   const { toast } = useToast();
@@ -348,6 +349,27 @@ export default function Reports() {
     }
   };
 
+  const handleDownloadAttendanceSummary = async () => {
+    setIsDownloadingAttendanceSummary(true);
+    try {
+      const params = new URLSearchParams({ from: fromDate, to: toDate });
+      if (selectedStaff) {
+        params.set("staffId", selectedStaff.id);
+        params.set("staffName", selectedStaff.name);
+      }
+      const suffix = selectedStaff ? `-${selectedStaff.name.replace(/\s+/g, "-")}` : "-all-staff";
+      await downloadBlob(
+        `/api/admin/reports/attendance-summary/xlsx?${params}`,
+        `attendance-summary-${fromDate}-to-${toDate}${suffix}.xlsx`
+      );
+      toast({ title: "Download started", description: "Attendance summary Excel is being downloaded." });
+    } catch (err: any) {
+      toast({ title: "Download failed", description: err.message || "Could not download attendance summary.", variant: "destructive" });
+    } finally {
+      setIsDownloadingAttendanceSummary(false);
+    }
+  };
+
   const handleDownloadCsv = async () => {
     setIsDownloadingCsv(true);
     try {
@@ -543,6 +565,19 @@ export default function Reports() {
                 : attendanceRowCount != null
                   ? `Export Field Attendance Excel (${attendanceRowCount} ${attendanceRowCount === 1 ? "row" : "rows"})`
                   : "Export Field Attendance Excel"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleDownloadAttendanceSummary}
+              className="w-full gap-2 border-teal-600 text-teal-700 hover:bg-teal-50"
+              disabled={isDownloadingAttendanceSummary || (summary !== null && summary.uniqueStaff === 0)}
+            >
+              {isDownloadingAttendanceSummary ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+              {isDownloadingAttendanceSummary
+                ? "Downloading..."
+                : selectedStaff
+                  ? `Export Attendance Summary for ${selectedStaff.name}`
+                  : "Export Attendance Summary"}
             </Button>
 
             {/* View on-screen report */}
