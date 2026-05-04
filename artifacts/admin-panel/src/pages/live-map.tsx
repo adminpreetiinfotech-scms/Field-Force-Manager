@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useLocalStorageBool } from "@/hooks/useLocalStorageBool";
 import { MapContainer, TileLayer, Marker, Popup, Circle, Tooltip, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -427,13 +428,7 @@ function MiniPin({ color, border }: { color: string; border: string }) {
 // ─── Sidebar legend (always-visible) ─────────────────────────────────────────
 
 function MapLegendSidebar({ geoFence }: { geoFence: GeoFence | null }) {
-  const [collapsed, setCollapsed] = useState(() => {
-    try { return localStorage.getItem("livemap:legendCollapsed") === "true"; } catch { return false; }
-  });
-
-  useEffect(() => {
-    try { localStorage.setItem("livemap:legendCollapsed", String(collapsed)); } catch {}
-  }, [collapsed]);
+  const [collapsed, setCollapsed] = useLocalStorageBool("livemap:legendCollapsed", false);
 
   return (
     <div className="border-t shrink-0 bg-muted/20">
@@ -670,22 +665,14 @@ export default function LiveMapPage() {
   });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [geoFence, setGeoFence] = useState<GeoFence | null>(null);
-  const [outsideCollapsed, setOutsideCollapsed] = useState(() => {
-    try { return localStorage.getItem("livemap:outsideCollapsed") === "true"; } catch { return false; }
-  });
-  const [insideCollapsed, setInsideCollapsed] = useState(() => {
-    try { return localStorage.getItem("livemap:insideCollapsed") === "true"; } catch { return false; }
-  });
+  const [outsideCollapsed, setOutsideCollapsed] = useLocalStorageBool("livemap:outsideCollapsed", false);
+  const [insideCollapsed, setInsideCollapsed] = useLocalStorageBool("livemap:insideCollapsed", false);
   const markerRefs = useRef<Record<string, L.Marker>>({});
   const [fenceChangeNotice, setFenceChangeNotice] = useState<string | null>(null);
   const prevOutsideFenceCountRef = useRef<number | null>(null);
   const filterStatusRef = useRef(filterStatus);
   const geoFenceRef = useRef(geoFence);
   const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Persist sidebar collapsed prefs to localStorage
-  useEffect(() => { try { localStorage.setItem("livemap:outsideCollapsed", String(outsideCollapsed)); } catch {} }, [outsideCollapsed]);
-  useEffect(() => { try { localStorage.setItem("livemap:insideCollapsed", String(insideCollapsed)); } catch {} }, [insideCollapsed]);
 
   // Persist filter and search prefs to localStorage
   useEffect(() => { try { localStorage.setItem("livemap:filterStatus", filterStatus); } catch {} }, [filterStatus]);
