@@ -195,6 +195,10 @@ router.get("/notices/admin/list", requireAdmin, async (req, res, next) => {
 router.get("/notices/admin/:id", requireAdmin, async (req, res, next) => {
   try {
     const id = req.params.id as string;
+    if (!id?.trim()) {
+      res.status(400).json({ title: "id is required", status: 400 });
+      return;
+    }
 
     const [notice] = await db
       .select()
@@ -232,6 +236,10 @@ router.get("/notices/admin/:id", requireAdmin, async (req, res, next) => {
 router.delete("/notices/admin/:id", requireAdmin, async (req, res, next) => {
   try {
     const id = req.params.id as string;
+    if (!id?.trim()) {
+      res.status(400).json({ title: "id is required", status: 400 });
+      return;
+    }
     await db.delete(noticesTable).where(eq(noticesTable.id, id));
     res.json({ ok: true });
   } catch (e) {
@@ -327,6 +335,10 @@ router.get("/notices/my", async (req, res, next) => {
 router.post("/notices/:id/read", async (req, res, next) => {
   try {
     const { id } = req.params;
+    if (!id?.trim()) {
+      res.status(400).json({ title: "id is required", status: 400 });
+      return;
+    }
     const phone = (req.body as Record<string, string>)?.phone;
 
     if (!phone?.trim()) {

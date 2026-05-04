@@ -242,6 +242,10 @@ router.post("/companies/register", async (req, res, next) => {
 router.get("/companies/:id/branding", async (req, res, next) => {
   try {
     const { id } = req.params;
+    if (!id?.trim()) {
+      res.status(400).json({ title: "id is required", status: 400 });
+      return;
+    }
     const [company] = await db
       .select()
       .from(companiesTable)
@@ -263,6 +267,10 @@ router.get("/companies/:id/branding", async (req, res, next) => {
 router.patch("/companies/:id/logo", async (req, res, next) => {
   try {
     const { id } = req.params;
+    if (!id?.trim()) {
+      res.status(400).json({ title: "id is required", status: 400 });
+      return;
+    }
     const { logoBase64, logoMime, adminPhone } = req.body as {
       logoBase64?: string | null;
       logoMime?: string | null;
@@ -310,6 +318,10 @@ router.patch("/companies/:id/logo", async (req, res, next) => {
 router.patch("/companies/:id/profile", async (req, res, next) => {
   try {
     const { id } = req.params;
+    if (!id?.trim()) {
+      res.status(400).json({ title: "id is required", status: 400 });
+      return;
+    }
     const { name, adminName, email, state, district, projectName, centerName, tcId, adminPhone } = req.body as {
       name?: string;
       adminName?: string;

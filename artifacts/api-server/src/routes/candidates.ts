@@ -800,6 +800,10 @@ router.patch("/admin/candidates/:id/status", requireAdmin, async (req, res, next
   try {
     const companyId = res.locals.companyId as string | null;
     const id = req.params.id as string;
+    if (!id?.trim()) {
+      res.status(400).json({ title: "id is required", status: 400 });
+      return;
+    }
     const { status, remarks, verifiedBy, verifiedByPhone } = req.body as {
       status?: string;
       remarks?: string;
@@ -886,6 +890,10 @@ router.patch("/admin/candidates/:id/status", requireAdmin, async (req, res, next
 router.get("/candidates/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
+    if (!id?.trim()) {
+      res.status(400).json({ title: "id is required", status: 400 });
+      return;
+    }
     const [candidate] = await db
       .select()
       .from(candidatesTable)
@@ -906,6 +914,10 @@ router.get("/candidates/:id", async (req, res, next) => {
 router.get("/candidates/:id/pdf", async (req, res, next) => {
   try {
     const { id } = req.params;
+    if (!id?.trim()) {
+      res.status(400).json({ title: "id is required", status: 400 });
+      return;
+    }
     const [candidate] = await db
       .select()
       .from(candidatesTable)
@@ -966,6 +978,10 @@ router.get("/notifications", async (req, res, next) => {
 router.patch("/notifications/:id/read", async (req, res, next) => {
   try {
     const { id } = req.params;
+    if (!id?.trim()) {
+      res.status(400).json({ title: "id is required", status: 400 });
+      return;
+    }
     const [updated] = await db
       .update(candidateNotificationsTable)
       .set({ isRead: true })

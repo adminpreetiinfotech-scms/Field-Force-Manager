@@ -327,6 +327,10 @@ router.get("/admin/staff-list", requireAdmin, async (_req, res, next) => {
 router.patch("/admin/staff/:id/approve", requireAdmin, async (req, res, next) => {
   try {
     const { id } = req.params as { id: string };
+    if (!id?.trim()) {
+      res.status(400).json({ title: "id is required", status: 400 });
+      return;
+    }
     const companyId = res.locals.companyId as string | null;
     const filter = companyId
       ? and(eq(staffTable.id, id), or(eq(staffTable.companyId, companyId), isNull(staffTable.companyId)))
@@ -349,6 +353,10 @@ router.patch("/admin/staff/:id/approve", requireAdmin, async (req, res, next) =>
 router.patch("/admin/staff/:id/disable", requireAdmin, async (req, res, next) => {
   try {
     const { id } = req.params as { id: string };
+    if (!id?.trim()) {
+      res.status(400).json({ title: "id is required", status: 400 });
+      return;
+    }
     const companyId = res.locals.companyId as string | null;
     const filter = companyId
       ? and(eq(staffTable.id, id), or(eq(staffTable.companyId, companyId), isNull(staffTable.companyId)))
@@ -386,6 +394,10 @@ router.patch("/admin/staff/:id/disable", requireAdmin, async (req, res, next) =>
 router.patch("/admin/staff/:id/enable", requireAdmin, async (req, res, next) => {
   try {
     const { id } = req.params as { id: string };
+    if (!id?.trim()) {
+      res.status(400).json({ title: "id is required", status: 400 });
+      return;
+    }
     const companyId = res.locals.companyId as string | null;
     const filter = companyId
       ? and(eq(staffTable.id, id), or(eq(staffTable.companyId, companyId), isNull(staffTable.companyId)))
@@ -414,6 +426,10 @@ router.patch("/admin/staff/:id/enable", requireAdmin, async (req, res, next) => 
 router.delete("/admin/staff/:id", requireAdmin, async (req, res, next) => {
   try {
     const { id } = req.params as { id: string };
+    if (!id?.trim()) {
+      res.status(400).json({ title: "id is required", status: 400 });
+      return;
+    }
     const companyId = res.locals.companyId as string | null;
     const filter = companyId
       ? and(eq(staffTable.id, id), or(eq(staffTable.companyId, companyId), isNull(staffTable.companyId)))
@@ -451,6 +467,10 @@ router.delete("/admin/staff/:id", requireAdmin, async (req, res, next) => {
 router.patch("/admin/staff/:id/profile", requireAdmin, async (req, res, next) => {
   try {
     const { id } = req.params as { id: string };
+    if (!id?.trim()) {
+      res.status(400).json({ title: "id is required", status: 400 });
+      return;
+    }
     const companyId = res.locals.companyId as string | null;
     const { name, email, organization, centerName, projectName, state, district, area, staffCategory, centerStaffRole } = req.body as {
       name?: string;

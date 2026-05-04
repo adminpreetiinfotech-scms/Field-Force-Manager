@@ -146,6 +146,10 @@ router.get("/super-admin/companies", requireSuperAdmin, async (_req, res, next) 
 router.get("/super-admin/companies/:id/stats", requireSuperAdmin, async (req, res, next) => {
   try {
     const id = req.params.id as string;
+    if (!id?.trim()) {
+      res.status(400).json({ title: "id is required", status: 400 });
+      return;
+    }
     const [company] = await db
       .select()
       .from(companiesTable)
@@ -189,6 +193,10 @@ router.get("/super-admin/companies/:id/stats", requireSuperAdmin, async (req, re
 router.patch("/super-admin/companies/:id", requireSuperAdmin, async (req, res, next) => {
   try {
     const id = req.params.id as string;
+    if (!id?.trim()) {
+      res.status(400).json({ title: "id is required", status: 400 });
+      return;
+    }
     const {
       status, subscriptionActive, name, projectName, state, district,
       plan, subscriptionStartDate, subscriptionEndDate, paymentStatus,
@@ -246,6 +254,10 @@ router.post(
   async (req, res, next) => {
     try {
       const id = req.params.id as string;
+      if (!id?.trim()) {
+        res.status(400).json({ title: "id is required", status: 400 });
+        return;
+      }
       // Find admin user for this company
       const [admin] = await db
         .select({ id: staffTable.id, name: staffTable.name, phone: staffTable.phone })
@@ -640,6 +652,10 @@ router.post(
   async (req, res, next) => {
     try {
       const id = req.params.id as string;
+      if (!id?.trim()) {
+        res.status(400).json({ title: "id is required", status: 400 });
+        return;
+      }
 
       const [company] = await db
         .select({ id: companiesTable.id, name: companiesTable.name })
@@ -723,6 +739,10 @@ router.delete(
   async (req, res, next) => {
     try {
       const id = req.params.id as string;
+      if (!id?.trim()) {
+        res.status(400).json({ title: "id is required", status: 400 });
+        return;
+      }
 
       const [company] = await db
         .select({ id: companiesTable.id, name: companiesTable.name })
