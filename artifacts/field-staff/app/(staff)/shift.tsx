@@ -269,7 +269,7 @@ export default function StaffHome() {
     isLoading: kmHistoryLoading,
   } = useGetStaffKmHistory(kmHistoryParams, {
     query: {
-      enabled: !!user?.id && !!user?.vehicleType,
+      enabled: !!user?.id,
       staleTime: 60_000,
     },
   });
@@ -665,8 +665,8 @@ export default function StaffHome() {
             )}
           </View>
 
-          {/* KM History — only shown for vehicle users */}
-          {!!user?.vehicleType && (
+          {/* KM History — shown for all staff who have trips */}
+          {(kmHistoryData?.entries?.length ?? 0) > 0 && (
             <View
               style={[
                 styles.section,
@@ -684,28 +684,35 @@ export default function StaffHome() {
                 </Text>
               </View>
               <Text style={[styles.sectionSub, { color: colors.mutedForeground, marginBottom: 12 }]}>
-                Last 7 days of odometer readings
+                {user?.vehicleType
+                  ? "Last 7 days of odometer readings"
+                  : "Last 7 days of GPS trip distance"}
               </Text>
 
               {/* Header row */}
-              <View style={[kmStyles.headerRow, { borderBottomColor: colors.border }]}>
-                <Text style={[kmStyles.colDate, { color: colors.mutedForeground }]}>Date</Text>
-                <Text style={[kmStyles.colOdo, { color: colors.mutedForeground }]}>Start km</Text>
-                <Text style={[kmStyles.colOdo, { color: colors.mutedForeground }]}>End km</Text>
-                <Text style={[kmStyles.colKm, { color: colors.mutedForeground }]}>Vehicle km</Text>
-              </View>
+              {user?.vehicleType ? (
+                <View style={[kmStyles.headerRow, { borderBottomColor: colors.border }]}>
+                  <Text style={[kmStyles.colDate, { color: colors.mutedForeground }]}>Date</Text>
+                  <Text style={[kmStyles.colOdo, { color: colors.mutedForeground }]}>Start km</Text>
+                  <Text style={[kmStyles.colOdo, { color: colors.mutedForeground }]}>End km</Text>
+                  <Text style={[kmStyles.colKm, { color: colors.mutedForeground }]}>Vehicle km</Text>
+                </View>
+              ) : (
+                <View style={[kmStyles.headerRow, { borderBottomColor: colors.border }]}>
+                  <Text style={[kmStyles.colDate, { color: colors.mutedForeground }]}>Date</Text>
+                  <Text style={[kmStyles.colOdo, { color: colors.mutedForeground }]}>Trips</Text>
+                  <Text style={[kmStyles.colKm, { color: colors.mutedForeground }]}>GPS km</Text>
+                </View>
+              )}
 
               {kmHistoryLoading ? (
                 <View style={{ paddingVertical: 16, alignItems: "center" }}>
                   <ActivityIndicator size="small" color={colors.primary} />
                 </View>
-              ) : !kmHistoryData?.entries?.length ? (
-                <Text style={{ color: colors.mutedForeground, fontSize: 13, fontFamily: "Inter_400Regular", paddingVertical: 12 }}>
-                  No odometer readings in the last 7 days.
-                </Text>
-              ) : (
-                kmHistoryData.entries.map((entry, idx) => {
-                  const isLast = idx === kmHistoryData.entries.length - 1;
+              ) : user?.vehicleType ? (
+                (kmHistoryData?.entries ?? []).map((entry, idx) => {
+                  const entries = kmHistoryData?.entries ?? [];
+                  const isLast = idx === entries.length - 1;
                   const vehicleKm = entry.vehicleKm;
                   const hasReading = entry.startOdometerKm != null || entry.endOdometerKm != null;
                   return (
@@ -738,6 +745,46 @@ export default function StaffHome() {
                           }}>
                             <Text style={{ color: colors.primary, fontFamily: "Inter_700Bold", fontSize: 12 }}>
                               {vehicleKm.toFixed(1)} km
+                            </Text>
+                          </View>
+                        ) : (
+                          <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12 }}>—</Text>
+                        )}
+                      </View>
+                    </View>
+                  );
+                })
+              ) : (
+                (kmHistoryData?.entries ?? []).map((entry, idx) => {
+                  const entries = kmHistoryData?.entries ?? [];
+                  const isLast = idx === entries.length - 1;
+                  return (
+                    <View
+                      key={entry.date}
+                      style={[
+                        kmStyles.dataRow,
+                        {
+                          borderBottomColor: colors.border,
+                          borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth,
+                        },
+                      ]}
+                    >
+                      <Text style={[kmStyles.colDate, { color: colors.foreground }]}>
+                        {formatShortDate(entry.date)}
+                      </Text>
+                      <Text style={[kmStyles.colOdo, { color: entry.tripCount > 0 ? colors.foreground : colors.mutedForeground }]}>
+                        {entry.tripCount > 0 ? entry.tripCount : "—"}
+                      </Text>
+                      <View style={[kmStyles.colKm, { alignItems: "flex-end" }]}>
+                        {entry.gpsKm > 0 ? (
+                          <View style={{
+                            backgroundColor: colors.primary + "18",
+                            paddingHorizontal: 8,
+                            paddingVertical: 2,
+                            borderRadius: 6,
+                          }}>
+                            <Text style={{ color: colors.primary, fontFamily: "Inter_700Bold", fontSize: 12 }}>
+                              {entry.gpsKm.toFixed(1)} km
                             </Text>
                           </View>
                         ) : (
