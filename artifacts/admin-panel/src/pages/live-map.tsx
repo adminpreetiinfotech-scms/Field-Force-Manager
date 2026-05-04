@@ -637,8 +637,16 @@ export default function LiveMapPage() {
   const [staffList, setStaffList] = useState<LiveStaff[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
-  const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "offline" | "outside-fence">("all");
+  const [search, setSearch] = useState(() => {
+    try { return localStorage.getItem("livemap:search") ?? ""; } catch { return ""; }
+  });
+  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "offline" | "outside-fence">(() => {
+    try {
+      const saved = localStorage.getItem("livemap:filterStatus");
+      if (saved === "active" || saved === "offline" || saved === "outside-fence") return saved;
+    } catch {}
+    return "all";
+  });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [geoFence, setGeoFence] = useState<GeoFence | null>(null);
   const [outsideCollapsed, setOutsideCollapsed] = useState(() => {
@@ -657,6 +665,10 @@ export default function LiveMapPage() {
   // Persist sidebar collapsed prefs to localStorage
   useEffect(() => { try { localStorage.setItem("livemap:outsideCollapsed", String(outsideCollapsed)); } catch {} }, [outsideCollapsed]);
   useEffect(() => { try { localStorage.setItem("livemap:insideCollapsed", String(insideCollapsed)); } catch {} }, [insideCollapsed]);
+
+  // Persist filter and search prefs to localStorage
+  useEffect(() => { try { localStorage.setItem("livemap:filterStatus", filterStatus); } catch {} }, [filterStatus]);
+  useEffect(() => { try { localStorage.setItem("livemap:search", search); } catch {} }, [search]);
 
   // Keep refs in sync with latest state so fetchLocations can read them
   useEffect(() => { filterStatusRef.current = filterStatus; }, [filterStatus]);
