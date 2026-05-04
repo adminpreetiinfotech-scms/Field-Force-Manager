@@ -134,6 +134,7 @@ function EdgeHandle({
   onRadiusChange: (radiusMeters: number) => void;
 }) {
   const map = useMap();
+  const [isDragging, setIsDragging] = useState(false);
   const centerLatLng = L.latLng(lat, lng);
   return (
     <Marker
@@ -141,6 +142,9 @@ function EdgeHandle({
       icon={HANDLE_ICON}
       draggable={true}
       eventHandlers={{
+        dragstart() {
+          setIsDragging(true);
+        },
         drag(e) {
           const handleLatLng = (e.target as L.Marker).getLatLng();
           const currentRadius = Math.round(centerLatLng.distanceTo(handleLatLng));
@@ -159,9 +163,16 @@ function EdgeHandle({
           const newRadius = Math.round(centerLatLng.distanceTo(handleLatLng));
           const clamped = Math.min(1000, Math.max(50, newRadius));
           onRadiusChange(clamped);
+          setIsDragging(false);
         },
       }}
-    />
+    >
+      {isDragging && (
+        <Tooltip permanent direction="right" offset={[10, 0]}>
+          {radiusMeters} m
+        </Tooltip>
+      )}
+    </Marker>
   );
 }
 
