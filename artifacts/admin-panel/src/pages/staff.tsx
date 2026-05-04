@@ -40,6 +40,7 @@ import {
   X as XIcon,
   Home,
   Users,
+  Download,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
@@ -355,9 +356,46 @@ function PhotoLightbox({ uri, onClose }: { uri: string; onClose: () => void }) {
   );
 }
 
+function todayIst(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+}
+
+function monthStartIst(): string {
+  const d = new Date();
+  const ist = new Date(d.getTime() + (5.5 * 60 * 60 * 1000));
+  return `${ist.getUTCFullYear()}-${String(ist.getUTCMonth() + 1).padStart(2, "0")}-01`;
+}
+
 function ViewProfileDialog({ staff, onClose }: { staff: StaffMember; onClose: () => void }) {
   const { data: stats, isLoading } = useGetStaffProfileStats(staff.id);
   const [lightboxUri, setLightboxUri] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const { toast } = useToast();
+
+  const downloadAttendance = async () => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams({
+        dateFrom: monthStartIst(),
+        dateTo: todayIst(),
+        staffId: staff.id,
+      });
+      const res = await adminFetch(`/api/admin/center-attendance/xlsx?${params}`);
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const safeName = staff.name.replace(/[^a-zA-Z0-9\s-]/g, "").replace(/\s+/g, "-").toLowerCase();
+      a.href = url;
+      a.download = `center-attendance-${safeName}-${monthStartIst()}-to-${todayIst()}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      toast({ title: "Export failed", description: e.message, variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const StatCard = ({ label, value, sub }: { label: string; value: string | number; sub?: string }) => (
     <div className="bg-muted/40 rounded-lg p-3 text-center">
@@ -559,8 +597,20 @@ function ViewProfileDialog({ staff, onClose }: { staff: StaffMember; onClose: ()
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Close</Button>
+        <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+          {staff.staffCategory === "center" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={downloadAttendance}
+              disabled={exporting}
+              className="flex items-center gap-1.5"
+            >
+              <Download className={`h-4 w-4 ${exporting ? "animate-bounce" : ""}`} />
+              {exporting ? "Downloading…" : "Download Attendance"}
+            </Button>
+          )}
+          <Button variant="outline" onClick={onClose} className={staff.staffCategory !== "center" ? "sm:ml-auto" : ""}>Close</Button>
         </DialogFooter>
       </DialogContent>
       {lightboxUri && <PhotoLightbox uri={lightboxUri} onClose={() => setLightboxUri(null)} />}
