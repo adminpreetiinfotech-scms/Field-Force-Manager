@@ -936,9 +936,13 @@ export default function LiveMapPage() {
               const activeFilterCount = (filterStatus !== "all" ? 1 : 0) + (search !== "" ? 1 : 0);
               return activeFilterCount > 0 ? (
                 <div className="flex items-center justify-end">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                  <button
+                    onClick={() => { setFilterStatus("all"); setSearch(""); }}
+                    className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary hover:bg-primary/20 transition-colors cursor-pointer"
+                  >
                     {activeFilterCount} filter{activeFilterCount !== 1 ? "s" : ""} active
-                  </span>
+                    <X className="h-3 w-3" />
+                  </button>
                 </div>
               ) : null;
             })()}
