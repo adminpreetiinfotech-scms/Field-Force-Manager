@@ -1295,12 +1295,22 @@ export default function Reports() {
                               <td className="px-3 py-2.5 text-center">
                                 {row.checkinPhotoUrl ? (
                                   <OdometerPhoto url={row.checkinPhotoUrl} label="check-in odometer" />
-                                ) : null}
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-600 border border-amber-200">
+                                    <ImageOff className="h-3 w-3 shrink-0" />
+                                    No photo
+                                  </span>
+                                )}
                               </td>
                               <td className="px-3 py-2.5 text-center">
                                 {row.checkoutPhotoUrl ? (
                                   <OdometerPhoto url={row.checkoutPhotoUrl} label="check-out odometer" />
-                                ) : null}
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-600 border border-amber-200">
+                                    <ImageOff className="h-3 w-3 shrink-0" />
+                                    No photo
+                                  </span>
+                                )}
                               </td>
                             </tr>
                           );
