@@ -42,9 +42,16 @@ interface Props {
   onRadiusChange: (radiusMeters: number) => void;
 }
 
-function ClickHandler({ onLocationChange }: { onLocationChange: (lat: number, lng: number) => void }) {
+function ClickHandler({
+  onLocationChange,
+  onMapClick,
+}: {
+  onLocationChange: (lat: number, lng: number) => void;
+  onMapClick: () => void;
+}) {
   useMapEvents({
     click(e) {
+      onMapClick();
       onLocationChange(e.latlng.lat, e.latlng.lng);
     },
   });
@@ -183,6 +190,7 @@ const GeoFenceMapPicker = forwardRef<GeoFenceMapPickerHandle, Props>(function Ge
   const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isDragMoveRef = useRef(false);
   const skipNextAutoHintRef = useRef(false);
+  const isMapClickRef = useRef(false);
   const prevLatRef = useRef<number | null>(null);
   const prevLngRef = useRef<number | null>(null);
 
@@ -212,10 +220,14 @@ const GeoFenceMapPicker = forwardRef<GeoFenceMapPickerHandle, Props>(function Ge
 
     const isClickMove = !wasNull && coordsChanged && !isDragMoveRef.current;
     isDragMoveRef.current = false;
+    const wasMapClick = isMapClickRef.current;
+    isMapClickRef.current = false;
 
     if ((wasNull && isNowSet) || isClickMove) {
-      if (skipNextAutoHintRef.current) {
+      if (skipNextAutoHintRef.current || wasMapClick) {
         skipNextAutoHintRef.current = false;
+        if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+        setShowDragHint(false);
         return;
       }
       if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
@@ -243,7 +255,10 @@ const GeoFenceMapPicker = forwardRef<GeoFenceMapPickerHandle, Props>(function Ge
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <ClickHandler onLocationChange={onLocationChange} />
+        <ClickHandler
+          onLocationChange={onLocationChange}
+          onMapClick={() => { isMapClickRef.current = true; }}
+        />
         {hasCoords && (
           <>
             <MapRecenter lat={lat} lng={lng} />
