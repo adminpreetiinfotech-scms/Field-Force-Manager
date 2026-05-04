@@ -7,26 +7,27 @@
  */
 import type { ActivityKind } from './activityKind';
 import type { GeoPoint } from './geoPoint';
+
 export interface CreateActivityInput {
-    kind: ActivityKind;
-    staffId: string;
-    staffName: string;
-    occurredAt?: Date;
-    tripRef?: string | null;
-    location?: GeoPoint | null;
-    consumerNo?: string | null;
-    reading?: number | null;
-    photoUri?: string | null;
-    selfieUri?: string | null;
-    notes?: string | null;
-    distanceKm?: number | null;
-    durationSec?: number | null;
-    origin?: GeoPoint | null;
-    destination?: GeoPoint | null;
-    /** Vehicle odometer reading at check-in (km). */
-    startOdometerKm?: number | null;
-    /** Vehicle odometer reading at check-out (km). */
-    endOdometerKm?: number | null;
-    /** Photo URI of vehicle odometer meter. */
-    vehicleMeterPhotoUri?: string | null;
+  kind: ActivityKind;
+  staffId: string;
+  staffName: string;
+  occurredAt?: Date;
+  tripRef?: string | null;
+  location?: GeoPoint | null;
+  consumerNo?: string | null;
+  reading?: number | null;
+  photoUri?: string | null;
+  selfieUri?: string | null;
+  notes?: string | null;
+  distanceKm?: number | null;
+  durationSec?: number | null;
+  origin?: GeoPoint | null;
+  destination?: GeoPoint | null;
+  /** Vehicle odometer reading at check-in (km). */
+  startOdometerKm?: number | null;
+  /** Vehicle odometer reading at check-out (km). */
+  endOdometerKm?: number | null;
+  /** Photo URI of vehicle odometer meter. */
+  vehicleMeterPhotoUri?: string | null;
 }

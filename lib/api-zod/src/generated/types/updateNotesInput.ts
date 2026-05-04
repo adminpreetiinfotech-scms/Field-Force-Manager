@@ -5,10 +5,11 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+
 /**
  * Request body for saving admin notes on a staff member.
  */
 export interface UpdateNotesInput {
-    /** Free-form performance notes / area assignment. Pass null to clear. */
-    notes: string | null;
+  /** Free-form performance notes / area assignment. Pass null to clear. */
+  notes: string | null;
 }

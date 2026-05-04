@@ -6,8 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { UpdateCandidateStatusBodyStatus } from './updateCandidateStatusBodyStatus';
+
 export type UpdateCandidateStatusBody = {
-    status: UpdateCandidateStatusBodyStatus;
-    remarks?: string | null;
-    verifiedBy?: string | null;
+  status: UpdateCandidateStatusBodyStatus;
+  remarks?: string | null;
+  verifiedBy?: string | null;
 };

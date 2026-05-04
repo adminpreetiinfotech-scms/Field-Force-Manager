@@ -10,43 +10,44 @@ import type { MonthStat } from './monthStat';
 import type { PeriodStats } from './periodStats';
 import type { RecentTrip } from './recentTrip';
 import type { StaffProfileStatsVehicleType } from './staffProfileStatsVehicleType';
+
 /**
  * Full profile and ride stats for a single staff member.
  */
 export interface StaffProfileStats {
-    staffId: string;
-    name: string;
-    empCode: string;
-    phone: string;
-    email?: string | null;
-    role: string;
-    organization?: string | null;
-    /** Center or branch name where the staff member is assigned. */
-    centerName?: string | null;
-    /** Scheme or project name (e.g. DDU-KK). */
-    projectName?: string | null;
-    state?: string | null;
-    district?: string | null;
-    area?: string | null;
-    /** Vehicle type used for field visits. */
-    vehicleType?: StaffProfileStatsVehicleType;
-    /** Vehicle registration number. */
-    vehicleNumber?: string | null;
-    /** Admin-written performance notes / area assignment for this staff member. */
-    notes?: string | null;
-    lifetimeTotalRides: number;
-    lifetimeTotalKm: number;
-    lifetimeAvgKmPerRide: number;
-    lifetimeActiveDays: number;
-    /** YYYY-MM-DD (IST) of first recorded trip, or null. */
-    firstRideDate?: string | null;
-    periodToday: PeriodStats;
-    periodLast7Days: PeriodStats;
-    periodLast30Days: PeriodStats;
-    periodThisMonth: PeriodStats;
-    bestDay?: BestDay | null;
-    /** Last 6 full calendar months (oldest first). */
-    monthly: MonthStat[];
-    /** Most recent 10 completed trips, newest first. */
-    recentTrips: RecentTrip[];
+  staffId: string;
+  name: string;
+  empCode: string;
+  phone: string;
+  email?: string | null;
+  role: string;
+  organization?: string | null;
+  /** Center or branch name where the staff member is assigned. */
+  centerName?: string | null;
+  /** Scheme or project name (e.g. DDU-KK). */
+  projectName?: string | null;
+  state?: string | null;
+  district?: string | null;
+  area?: string | null;
+  /** Vehicle type used for field visits. */
+  vehicleType?: StaffProfileStatsVehicleType;
+  /** Vehicle registration number. */
+  vehicleNumber?: string | null;
+  /** Admin-written performance notes / area assignment for this staff member. */
+  notes?: string | null;
+  lifetimeTotalRides: number;
+  lifetimeTotalKm: number;
+  lifetimeAvgKmPerRide: number;
+  lifetimeActiveDays: number;
+  /** YYYY-MM-DD (IST) of first recorded trip, or null. */
+  firstRideDate?: string | null;
+  periodToday: PeriodStats;
+  periodLast7Days: PeriodStats;
+  periodLast30Days: PeriodStats;
+  periodThisMonth: PeriodStats;
+  bestDay?: BestDay | null;
+  /** Last 6 full calendar months (oldest first). */
+  monthly: MonthStat[];
+  /** Most recent 10 completed trips, newest first. */
+  recentTrips: RecentTrip[];
 }

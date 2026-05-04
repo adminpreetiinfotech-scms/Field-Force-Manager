@@ -5,11 +5,12 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+
 export type DeleteCompany200 = {
-    message: string;
-    companyId: string;
-    companyName: string;
-    candidatesDeleted: number;
-    staffDeleted: number;
-    eventsDeleted: number;
+  message: string;
+  companyId: string;
+  companyName: string;
+  candidatesDeleted: number;
+  staffDeleted: number;
+  eventsDeleted: number;
 };

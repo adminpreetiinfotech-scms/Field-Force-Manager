@@ -5,23 +5,24 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+
 export type UpdateCompanyProfileBody = {
-    name?: string;
-    adminName?: string;
-    email?: string | null;
-    state?: string | null;
-    district?: string | null;
-    projectName?: string | null;
-    centerName?: string | null;
-    tcId?: string | null;
-    /** Training center latitude for geo-fence */
-    centerLat?: number | null;
-    /** Training center longitude for geo-fence */
-    centerLng?: number | null;
-    /**
-       * Geo-fence radius in metres (50–1000)
-       * @minimum 50
-       * @maximum 1000
-       */
-    centerRadiusMeters?: number | null;
+  name?: string;
+  adminName?: string;
+  email?: string | null;
+  state?: string | null;
+  district?: string | null;
+  projectName?: string | null;
+  centerName?: string | null;
+  tcId?: string | null;
+  /** Training center latitude for geo-fence */
+  centerLat?: number | null;
+  /** Training center longitude for geo-fence */
+  centerLng?: number | null;
+  /**
+     * Geo-fence radius in metres (50–1000)
+     * @minimum 50
+     * @maximum 1000
+     */
+  centerRadiusMeters?: number | null;
 };

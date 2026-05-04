@@ -5,11 +5,14 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+
 /**
  * Whether the staff is field-based (vehicle KM tracking) or center-based (geo-fence attendance).
  */
 export type StaffStaffCategory = typeof StaffStaffCategory[keyof typeof StaffStaffCategory] | null;
+
+
 export const StaffStaffCategory = {
-field: "field" as const,
-    center: "center" as const,
+  field: 'field',
+  center: 'center',
 } as const;

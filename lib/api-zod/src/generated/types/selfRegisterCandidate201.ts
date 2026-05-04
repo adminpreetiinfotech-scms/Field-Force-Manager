@@ -5,9 +5,10 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+
 export type SelfRegisterCandidate201 = {
-    id: string;
-    name: string;
-    status: string;
-    message: string;
+  id: string;
+  name: string;
+  status: string;
+  message: string;
 };

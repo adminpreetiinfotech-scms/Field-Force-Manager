@@ -5,17 +5,18 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+
 export type GetRideCalendarParams = {
-    /**
-     * Four-digit year, e.g. 2026.
-     */
-    year: number;
-    /**
-     * Month number 1–12.
-     */
-    month: number;
-    /**
-     * Filter to a single staff member. Omit for all staff.
-     */
-    staffId?: string;
+/**
+ * Four-digit year, e.g. 2026.
+ */
+year: number;
+/**
+ * Month number 1–12.
+ */
+month: number;
+/**
+ * Filter to a single staff member. Omit for all staff.
+ */
+staffId?: string;
 };

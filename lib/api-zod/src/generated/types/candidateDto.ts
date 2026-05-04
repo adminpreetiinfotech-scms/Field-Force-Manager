@@ -6,40 +6,41 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CandidateDtoStatus } from './candidateDtoStatus';
+
 /**
  * A candidate registration record.
  */
 export interface CandidateDto {
-    id: string;
-    name: string;
-    phone: string;
-    fatherName?: string | null;
-    dob?: string | null;
-    gender?: string | null;
-    address?: string | null;
-    area?: string | null;
-    aadhaarNumber?: string | null;
-    education?: string | null;
-    bankAccount?: string | null;
-    bankName?: string | null;
-    ifsc?: string | null;
-    caste?: string | null;
-    photoUrl?: string | null;
-    aadhaarFrontUrl?: string | null;
-    aadhaarBackUrl?: string | null;
-    educationCertUrl?: string | null;
-    bankPassbookUrl?: string | null;
-    casteCertUrl?: string | null;
-    /** URL to download the generated profile PDF. */
-    pdfUrl?: string | null;
-    /** Workflow status: pending, verified, rejected, enrolled */
-    status: CandidateDtoStatus;
-    verifiedBy?: string | null;
-    verifiedAt?: Date | null;
-    verificationRemarks?: string | null;
-    submittedBy?: string | null;
-    submittedByPhone?: string | null;
-    village?: string | null;
-    course?: string | null;
-    createdAt: Date;
+  id: string;
+  name: string;
+  phone: string;
+  fatherName?: string | null;
+  dob?: string | null;
+  gender?: string | null;
+  address?: string | null;
+  area?: string | null;
+  aadhaarNumber?: string | null;
+  education?: string | null;
+  bankAccount?: string | null;
+  bankName?: string | null;
+  ifsc?: string | null;
+  caste?: string | null;
+  photoUrl?: string | null;
+  aadhaarFrontUrl?: string | null;
+  aadhaarBackUrl?: string | null;
+  educationCertUrl?: string | null;
+  bankPassbookUrl?: string | null;
+  casteCertUrl?: string | null;
+  /** URL to download the generated profile PDF. */
+  pdfUrl?: string | null;
+  /** Workflow status: pending, verified, rejected, enrolled */
+  status: CandidateDtoStatus;
+  verifiedBy?: string | null;
+  verifiedAt?: Date | null;
+  verificationRemarks?: string | null;
+  submittedBy?: string | null;
+  submittedByPhone?: string | null;
+  village?: string | null;
+  course?: string | null;
+  createdAt: Date;
 }

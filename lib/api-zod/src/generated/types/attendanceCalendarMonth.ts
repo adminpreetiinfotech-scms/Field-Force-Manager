@@ -6,25 +6,26 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AttendanceCalendarDay } from './attendanceCalendarDay';
+
 /**
  * Full month of attendance calendar data.
  */
 export interface AttendanceCalendarMonth {
-    year: number;
-    /** Month 1–12. */
-    month: number;
-    /** One entry per day in the month that has activity, or all past days. */
-    days: AttendanceCalendarDay[];
-    /** Number of days with status=present. */
-    presentCount: number;
-    /** Number of days with status=partial. */
-    partialCount: number;
-    /** Number of past days with no check-in. */
-    absentCount: number;
-    /** Total km for the month. */
-    totalKm: number;
-    /** Total Mon–Sat working days from day 1 up to today (or end of month for past months). */
-    totalWorkingDays: number;
-    /** (presentCount + partialCount) / totalWorkingDays * 100, rounded to 1 decimal. */
-    attendancePercent: number;
+  year: number;
+  /** Month 1–12. */
+  month: number;
+  /** One entry per day in the month that has activity, or all past days. */
+  days: AttendanceCalendarDay[];
+  /** Number of days with status=present. */
+  presentCount: number;
+  /** Number of days with status=partial. */
+  partialCount: number;
+  /** Number of past days with no check-in. */
+  absentCount: number;
+  /** Total km for the month. */
+  totalKm: number;
+  /** Total Mon–Sat working days from day 1 up to today (or end of month for past months). */
+  totalWorkingDays: number;
+  /** (presentCount + partialCount) / totalWorkingDays * 100, rounded to 1 decimal. */
+  attendancePercent: number;
 }

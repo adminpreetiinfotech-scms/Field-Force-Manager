@@ -5,8 +5,9 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+
 export type CheckDuplicateCandidate200 = {
-    isDuplicate: boolean;
-    field?: string | null;
-    existingName?: string | null;
+  isDuplicate: boolean;
+  field?: string | null;
+  existingName?: string | null;
 };

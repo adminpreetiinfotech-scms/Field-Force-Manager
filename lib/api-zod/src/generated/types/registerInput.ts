@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { RegisterInputKind } from './registerInputKind';
+
 /**
  * Unified registration body. `kind` determines the role.
 Admin accounts require `organization`.
@@ -13,17 +14,17 @@ Staff accounts optionally supply `empCode`, `area`, and `adminCode`.
 
  */
 export interface RegisterInput {
-    /** Whether to create an admin or staff account. */
-    kind: RegisterInputKind;
-    name: string;
-    /** 10-digit mobile number (no country code). */
-    phone: string;
-    /** Company / organization name — required for admin registration. */
-    organization?: string | null;
-    /** Custom employee code. Auto-generated if omitted. */
-    empCode?: string | null;
-    /** Assigned territory (staff only). */
-    area?: string | null;
-    /** Invite code of an existing admin org to link to. */
-    adminCode?: string | null;
+  /** Whether to create an admin or staff account. */
+  kind: RegisterInputKind;
+  name: string;
+  /** 10-digit mobile number (no country code). */
+  phone: string;
+  /** Company / organization name — required for admin registration. */
+  organization?: string | null;
+  /** Custom employee code. Auto-generated if omitted. */
+  empCode?: string | null;
+  /** Assigned territory (staff only). */
+  area?: string | null;
+  /** Invite code of an existing admin org to link to. */
+  adminCode?: string | null;
 }

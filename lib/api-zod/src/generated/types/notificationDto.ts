@@ -5,11 +5,12 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+
 export interface NotificationDto {
-    id: string;
-    candidateId: string;
-    candidateName: string;
-    message: string;
-    isRead: boolean;
-    createdAt: Date;
+  id: string;
+  candidateId: string;
+  candidateName: string;
+  message: string;
+  isRead: boolean;
+  createdAt: Date;
 }

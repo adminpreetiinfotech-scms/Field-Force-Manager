@@ -5,17 +5,18 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+
 export type GetCenterAttendanceParams = {
-    /**
-     * Start date in YYYY-MM-DD format (IST). Defaults to today.
-     */
-    dateFrom?: string;
-    /**
-     * End date in YYYY-MM-DD format (IST). Defaults to today.
-     */
-    dateTo?: string;
-    /**
-     * Filter by a specific staff member.
-     */
-    staffId?: string;
+/**
+ * Start date in YYYY-MM-DD format (IST). Defaults to today.
+ */
+dateFrom?: string;
+/**
+ * End date in YYYY-MM-DD format (IST). Defaults to today.
+ */
+dateTo?: string;
+/**
+ * Filter by a specific staff member.
+ */
+staffId?: string;
 };

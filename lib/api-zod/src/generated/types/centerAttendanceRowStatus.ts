@@ -5,12 +5,15 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+
 /**
  * present = check-in + check-out recorded; partial = only check-in; absent = no events.
  */
 export type CenterAttendanceRowStatus = typeof CenterAttendanceRowStatus[keyof typeof CenterAttendanceRowStatus];
+
+
 export const CenterAttendanceRowStatus = {
-present: "present" as const,
-    partial: "partial" as const,
-    absent: "absent" as const,
+  present: 'present',
+  partial: 'partial',
+  absent: 'absent',
 } as const;

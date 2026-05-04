@@ -9,34 +9,35 @@ import type { StaffApprovalStatus } from './staffApprovalStatus';
 import type { StaffRole } from './staffRole';
 import type { StaffStaffCategory } from './staffStaffCategory';
 import type { StaffVehicleType } from './staffVehicleType';
+
 export interface Staff {
-    id: string;
-    empCode: string;
-    name: string;
-    phone: string;
-    role: StaffRole;
-    /** Company / organization name (populated for admins and linked staff). */
-    organization?: string | null;
-    /** Assigned territory or area (staff only). */
-    area?: string | null;
-    /** Invite code that staff can use to link to this admin's organization. */
-    adminCode?: string | null;
-    /** Approval workflow status. Staff are pending until an admin approves them. */
-    approvalStatus: StaffApprovalStatus;
-    /** Registration timestamp (ISO 8601). */
-    createdAt?: Date | null;
-    /** Vehicle type used for field visits. */
-    vehicleType?: StaffVehicleType;
-    /** Vehicle registration number or identifier. */
-    vehicleNumber?: string | null;
-    /** Whether the staff is field-based (vehicle KM tracking) or center-based (geo-fence attendance). */
-    staffCategory?: StaffStaffCategory;
-    /** Role within the training center (e.g. trainer, centerHead, cook). */
-    centerStaffRole?: string | null;
-    /** Latitude of the training center geo-fence origin. */
-    companyCenterLat?: number | null;
-    /** Longitude of the training center geo-fence origin. */
-    companyCenterLng?: number | null;
-    /** Geo-fence radius in meters around the training center. */
-    companyCenterRadiusMeters?: number | null;
+  id: string;
+  empCode: string;
+  name: string;
+  phone: string;
+  role: StaffRole;
+  /** Company / organization name (populated for admins and linked staff). */
+  organization?: string | null;
+  /** Assigned territory or area (staff only). */
+  area?: string | null;
+  /** Invite code that staff can use to link to this admin's organization. */
+  adminCode?: string | null;
+  /** Approval workflow status. Staff are pending until an admin approves them. */
+  approvalStatus: StaffApprovalStatus;
+  /** Registration timestamp (ISO 8601). */
+  createdAt?: Date | null;
+  /** Vehicle type used for field visits. */
+  vehicleType?: StaffVehicleType;
+  /** Vehicle registration number or identifier. */
+  vehicleNumber?: string | null;
+  /** Whether the staff is field-based (vehicle KM tracking) or center-based (geo-fence attendance). */
+  staffCategory?: StaffStaffCategory;
+  /** Role within the training center (e.g. trainer, centerHead, cook). */
+  centerStaffRole?: string | null;
+  /** Latitude of the training center geo-fence origin. */
+  companyCenterLat?: number | null;
+  /** Longitude of the training center geo-fence origin. */
+  companyCenterLng?: number | null;
+  /** Geo-fence radius in meters around the training center. */
+  companyCenterRadiusMeters?: number | null;
 }

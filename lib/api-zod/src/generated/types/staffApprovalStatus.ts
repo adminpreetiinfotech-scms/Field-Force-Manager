@@ -5,12 +5,15 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+
 /**
  * Approval workflow status. Staff are pending until an admin approves them.
  */
 export type StaffApprovalStatus = typeof StaffApprovalStatus[keyof typeof StaffApprovalStatus];
+
+
 export const StaffApprovalStatus = {
-pending: "pending" as const,
-    approved: "approved" as const,
-    rejected: "rejected" as const,
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
 } as const;

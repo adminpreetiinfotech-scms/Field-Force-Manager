@@ -5,17 +5,18 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+
 export type GetAttendanceCalendarParams = {
-    /**
-     * UUID of the staff member.
-     */
-    staffId: string;
-    /**
-     * Four-digit year, e.g. 2026.
-     */
-    year: number;
-    /**
-     * Month number 1–12.
-     */
-    month: number;
+/**
+ * UUID of the staff member.
+ */
+staffId: string;
+/**
+ * Four-digit year, e.g. 2026.
+ */
+year: number;
+/**
+ * Month number 1–12.
+ */
+month: number;
 };

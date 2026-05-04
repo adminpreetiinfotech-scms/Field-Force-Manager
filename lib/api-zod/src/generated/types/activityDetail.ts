@@ -7,22 +7,23 @@
  */
 import type { ActivityEvent } from './activityEvent';
 import type { GeoPoint } from './geoPoint';
+
 export type ActivityDetail = ActivityEvent & ({
-    location?: GeoPoint | null;
-    consumerNo?: string | null;
-    reading?: number | null;
-    photoUri?: string | null;
-    selfieUri?: string | null;
-    notes?: string | null;
-    distanceKm?: number | null;
-    durationSec?: number | null;
-    origin?: GeoPoint | null;
-    destination?: GeoPoint | null;
-    startOdometerKm?: number | null;
-    endOdometerKm?: number | null;
-    vehicleMeterPhotoUri?: string | null;
-    /** True if the event was recorded outside the company center geo-fence radius. */
-    outsideGeofence?: boolean | null;
-    /** Distance in metres from the training center at the time of the event. */
-    distanceFromCenterM?: number | null;
+  location?: GeoPoint | null;
+  consumerNo?: string | null;
+  reading?: number | null;
+  photoUri?: string | null;
+  selfieUri?: string | null;
+  notes?: string | null;
+  distanceKm?: number | null;
+  durationSec?: number | null;
+  origin?: GeoPoint | null;
+  destination?: GeoPoint | null;
+  startOdometerKm?: number | null;
+  endOdometerKm?: number | null;
+  vehicleMeterPhotoUri?: string | null;
+  /** True if the event was recorded outside the company center geo-fence radius. */
+  outsideGeofence?: boolean | null;
+  /** Distance in metres from the training center at the time of the event. */
+  distanceFromCenterM?: number | null;
 });

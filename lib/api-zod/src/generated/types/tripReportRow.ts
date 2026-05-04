@@ -5,30 +5,27 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+
 /**
  * A single completed trip for the ride report / CSV export.
  */
 export interface TripReportRow {
-    /** Shared tripRef that links the start and end events. */
-    tripRef: string;
-    staffId: string;
-    staffName: string;
-    /** 10-digit mobile number from the staff table. */
-    staffPhone: string;
-    /** Calendar date of the trip (YYYY-MM-DD, in IST). */
-    rideDate: string;
-    /** When the trip started (ISO-8601 UTC). */
-    startTime: Date;
-    /** When the trip ended (ISO-8601 UTC). */
-    endTime: Date;
-    /** Human-readable start coords, e.g. '28.6139, 77.2090'. */
-    startLocation?: string | null;
-    /** Human-readable end coords, e.g. '28.5355, 77.3910'. */
-    endLocation?: string | null;
-    /** Total distance travelled in kilometres. */
-    distanceKm?: number | null;
-    /** URL of the odometer photo taken at check-in, if available. */
-    checkinPhotoUrl?: string | null;
-    /** URL of the odometer photo taken at check-out, if available. */
-    checkoutPhotoUrl?: string | null;
+  /** Shared tripRef that links the start and end events. */
+  tripRef: string;
+  staffId: string;
+  staffName: string;
+  /** 10-digit mobile number from the staff table. */
+  staffPhone: string;
+  /** Calendar date of the trip (YYYY-MM-DD, in IST). */
+  rideDate: string;
+  /** When the trip started (ISO-8601 UTC). */
+  startTime: Date;
+  /** When the trip ended (ISO-8601 UTC). */
+  endTime: Date;
+  /** Human-readable start coords, e.g. '28.6139, 77.2090'. */
+  startLocation?: string | null;
+  /** Human-readable end coords, e.g. '28.5355, 77.3910'. */
+  endLocation?: string | null;
+  /** Total distance travelled in kilometres. */
+  distanceKm?: number | null;
 }

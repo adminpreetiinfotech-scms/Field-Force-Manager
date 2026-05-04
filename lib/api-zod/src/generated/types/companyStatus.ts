@@ -5,8 +5,11 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+
 export type CompanyStatus = typeof CompanyStatus[keyof typeof CompanyStatus];
+
+
 export const CompanyStatus = {
-active: "active" as const,
-    inactive: "inactive" as const,
+  active: 'active',
+  inactive: 'inactive',
 } as const;

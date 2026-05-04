@@ -5,10 +5,11 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+
 export type BackfillOrphanRecords200 = {
-    message: string;
-    companyId: string;
-    companyName: string;
-    candidatesUpdated: number;
-    staffUpdated: number;
+  message: string;
+  companyId: string;
+  companyName: string;
+  candidatesUpdated: number;
+  staffUpdated: number;
 };

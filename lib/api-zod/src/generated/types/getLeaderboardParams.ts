@@ -6,9 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { GetLeaderboardPeriod } from './getLeaderboardPeriod';
+
 export type GetLeaderboardParams = {
-    /**
-     * Time period to aggregate over.
-     */
-    period: GetLeaderboardPeriod;
+/**
+ * Time period to aggregate over.
+ */
+period: GetLeaderboardPeriod;
 };

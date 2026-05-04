@@ -5,22 +5,23 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+
 export type ListActivityParams = {
-    /**
-     * @minimum 1
-     * @maximum 100
-     */
-    limit?: number;
-    /**
-     * Opaque cursor returned by a previous page response.
-     */
-    cursor?: string;
-    /**
-     * Return events strictly newer than this ISO timestamp.
-     */
-    since?: Date;
-    /**
-     * Comma-separated kinds to include (default all).
-     */
-    kinds?: string;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * Opaque cursor returned by a previous page response.
+ */
+cursor?: string;
+/**
+ * Return events strictly newer than this ISO timestamp.
+ */
+since?: Date;
+/**
+ * Comma-separated kinds to include (default all).
+ */
+kinds?: string;
 };

@@ -5,21 +5,22 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+
 /**
  * A single staff member's aggregated distance stats for the leaderboard.
  */
 export interface LeaderboardEntry {
-    /** 1-based rank ordered by totalKm descending. */
-    rank: number;
-    staffId: string;
-    staffName: string;
-    empCode: string;
-    /** Total kilometres travelled in the period. */
-    totalKm: number;
-    /** Number of completed trips in the period. */
-    tripCount: number;
-    /** Human-readable label for the period (e.g. "Today" or "Apr 2026"). */
-    periodLabel: string;
-    /** True when this staff member has at least one admin note saved. */
-    hasNotes: boolean;
+  /** 1-based rank ordered by totalKm descending. */
+  rank: number;
+  staffId: string;
+  staffName: string;
+  empCode: string;
+  /** Total kilometres travelled in the period. */
+  totalKm: number;
+  /** Number of completed trips in the period. */
+  tripCount: number;
+  /** Human-readable label for the period (e.g. "Today" or "Apr 2026"). */
+  periodLabel: string;
+  /** True when this staff member has at least one admin note saved. */
+  hasNotes: boolean;
 }

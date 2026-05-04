@@ -6,19 +6,20 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { RideCalendarDay } from './rideCalendarDay';
+
 /**
  * Full month of calendar heat-map data.
  */
 export interface RideCalendarMonth {
-    year: number;
-    /** Month 1–12. */
-    month: number;
-    /** Only days with rideCount > 0 are included. */
-    days: RideCalendarDay[];
-    /** Highest rideCount in the month (used to scale heat-map intensity). */
-    maxRideCount: number;
-    /** Total km for the entire month. */
-    totalKm: number;
-    /** Total ride count for the entire month. */
-    totalRides: number;
+  year: number;
+  /** Month 1–12. */
+  month: number;
+  /** Only days with rideCount > 0 are included. */
+  days: RideCalendarDay[];
+  /** Highest rideCount in the month (used to scale heat-map intensity). */
+  maxRideCount: number;
+  /** Total km for the entire month. */
+  totalKm: number;
+  /** Total ride count for the entire month. */
+  totalRides: number;
 }

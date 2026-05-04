@@ -5,7 +5,8 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+
 export type LoginMpinBody = {
-    phone: string;
-    mpin: string;
+  phone: string;
+  mpin: string;
 };

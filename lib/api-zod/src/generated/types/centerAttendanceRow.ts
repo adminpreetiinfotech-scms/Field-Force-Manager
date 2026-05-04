@@ -6,24 +6,25 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CenterAttendanceRowStatus } from './centerAttendanceRowStatus';
+
 /**
  * One row of center staff attendance data covering a single calendar date.
  */
 export interface CenterAttendanceRow {
-    staffId: string;
-    staffName: string;
-    empCode: string;
-    centerStaffRole?: string | null;
-    /** Calendar date in YYYY-MM-DD (IST). */
-    date: string;
-    checkInTime?: Date | null;
-    checkOutTime?: Date | null;
-    /** present = check-in + check-out recorded; partial = only check-in; absent = no events. */
-    status: CenterAttendanceRowStatus;
-    checkInOutsideGeofence?: boolean | null;
-    checkOutOutsideGeofence?: boolean | null;
-    /** Distance from training center at check-in, in metres. */
-    checkInDistanceM?: number | null;
-    /** Distance from training center at check-out, in metres. */
-    checkOutDistanceM?: number | null;
+  staffId: string;
+  staffName: string;
+  empCode: string;
+  centerStaffRole?: string | null;
+  /** Calendar date in YYYY-MM-DD (IST). */
+  date: string;
+  checkInTime?: Date | null;
+  checkOutTime?: Date | null;
+  /** present = check-in + check-out recorded; partial = only check-in; absent = no events. */
+  status: CenterAttendanceRowStatus;
+  checkInOutsideGeofence?: boolean | null;
+  checkOutOutsideGeofence?: boolean | null;
+  /** Distance from training center at check-in, in metres. */
+  checkInDistanceM?: number | null;
+  /** Distance from training center at check-out, in metres. */
+  checkOutDistanceM?: number | null;
 }

@@ -507,7 +507,8 @@ paths:
   /activity/trip-route/{tripRef}:
     get:
       operationId: getTripRoute
-      tags: [activity]
+      tags:
+        - activity
       summary: Get GPS waypoints for a completed trip
       parameters:
         - in: path
@@ -522,48 +523,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  tripRef:
-                    type: string
-                    format: uuid
-                  startTime:
-                    type: string
-                    format: date-time
-                    nullable: true
-                  endTime:
-                    type: string
-                    format: date-time
-                    nullable: true
-                  startLat:
-                    type: number
-                    nullable: true
-                  startLng:
-                    type: number
-                    nullable: true
-                  endLat:
-                    type: number
-                    nullable: true
-                  endLng:
-                    type: number
-                    nullable: true
-                  distanceKm:
-                    type: number
-                    nullable: true
-                  waypoints:
-                    type: array
-                    description: Ordered GPS waypoints (lat/lng/t) stored on trip-end.
-                    items:
-                      type: object
-                      properties:
-                        lat:
-                          type: number
-                        lng:
-                          type: number
-                        t:
-                          type: integer
-                      required: [lat, lng, t]
-                required: [tripRef, waypoints]
+                $ref: "#/components/schemas/TripRoute"
         "404":
           description: Trip not found
           content:
@@ -1726,17 +1686,64 @@ components:
           nullable: true
           description: Ordered GPS waypoints recorded during the trip (lat/lng/timestamp).
           items:
-            type: object
-            properties:
-              lat:
-                type: number
-              lng:
-                type: number
-              t:
-                type: integer
-                description: Unix timestamp in milliseconds.
-            required: [lat, lng, t]
-      required: [kind, staffId, staffName]
+            $ref: "#/components/schemas/GpsWaypoint"
+      required:
+        - kind
+        - staffId
+        - staffName
+
+    GpsWaypoint:
+      type: object
+      properties:
+        lat:
+          type: number
+        lng:
+          type: number
+        t:
+          type: integer
+          description: Unix timestamp in milliseconds.
+      required:
+        - lat
+        - lng
+        - t
+
+    TripRoute:
+      type: object
+      properties:
+        tripRef:
+          type: string
+          format: uuid
+        startTime:
+          type: string
+          format: date-time
+          nullable: true
+        endTime:
+          type: string
+          format: date-time
+          nullable: true
+        startLat:
+          type: number
+          nullable: true
+        startLng:
+          type: number
+          nullable: true
+        endLat:
+          type: number
+          nullable: true
+        endLng:
+          type: number
+          nullable: true
+        distanceKm:
+          type: number
+          nullable: true
+        waypoints:
+          type: array
+          description: Ordered GPS waypoints stored on trip-end.
+          items:
+            $ref: "#/components/schemas/GpsWaypoint"
+      required:
+        - tripRef
+        - waypoints
 
     StaffDistance:
       type: object

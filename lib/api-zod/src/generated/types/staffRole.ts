@@ -5,8 +5,11 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+
 export type StaffRole = typeof StaffRole[keyof typeof StaffRole];
+
+
 export const StaffRole = {
-staff: "staff" as const,
-    admin: "admin" as const,
+  staff: 'staff',
+  admin: 'admin',
 } as const;

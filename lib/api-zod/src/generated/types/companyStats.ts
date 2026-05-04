@@ -7,7 +7,8 @@
  */
 import type { Company } from './company';
 import type { CompanyStatsStats } from './companyStatsStats';
+
 export interface CompanyStats {
-    company: Company;
-    stats: CompanyStatsStats;
+  company: Company;
+  stats: CompanyStatsStats;
 }

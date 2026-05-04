@@ -5,7 +5,8 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+
 export type CheckDuplicateCandidateBody = {
-    phone?: string;
-    aadhaarNumber?: string;
+  phone?: string;
+  aadhaarNumber?: string;
 };

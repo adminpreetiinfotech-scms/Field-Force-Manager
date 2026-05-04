@@ -5,15 +5,16 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+
 /**
  * Aggregated stats for a single calendar month.
  */
 export interface MonthStat {
-    year: number;
-    /** 1–12 */
-    month: number;
-    /** Human-readable label, e.g. "Apr 2026". */
-    label: string;
-    rides: number;
-    km: number;
+  year: number;
+  /** 1–12 */
+  month: number;
+  /** Human-readable label, e.g. "Apr 2026". */
+  label: string;
+  rides: number;
+  km: number;
 }

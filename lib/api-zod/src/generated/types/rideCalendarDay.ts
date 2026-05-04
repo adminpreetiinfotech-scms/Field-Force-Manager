@@ -5,14 +5,15 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+
 /**
  * Aggregated ride stats for a single calendar day.
  */
 export interface RideCalendarDay {
-    /** Calendar date (YYYY-MM-DD, IST). */
-    date: string;
-    /** Number of completed trips on this day. */
-    rideCount: number;
-    /** Total kilometres ridden on this day. */
-    totalKm: number;
+  /** Calendar date (YYYY-MM-DD, IST). */
+  date: string;
+  /** Number of completed trips on this day. */
+  rideCount: number;
+  /** Total kilometres ridden on this day. */
+  totalKm: number;
 }

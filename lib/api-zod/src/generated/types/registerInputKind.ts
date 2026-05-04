@@ -5,11 +5,14 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+
 /**
  * Whether to create an admin or staff account.
  */
 export type RegisterInputKind = typeof RegisterInputKind[keyof typeof RegisterInputKind];
+
+
 export const RegisterInputKind = {
-admin: "admin" as const,
-    staff: "staff" as const,
+  admin: 'admin',
+  staff: 'staff',
 } as const;

@@ -5,7 +5,8 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+
 export type RestoreHintBody = {
-    /** The hint key to restore (e.g. "dashboard_hint_center") */
-    key: string;
+  /** The hint key to restore (e.g. "dashboard_hint_center") */
+  key: string;
 };
