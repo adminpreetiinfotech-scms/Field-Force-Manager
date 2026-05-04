@@ -419,6 +419,14 @@ export default function LiveMapPage() {
     };
   }, []);
 
+  // Auto-dismiss the outside-fence notice when the filter is cleared
+  useEffect(() => {
+    if (filterStatus !== "outside-fence") {
+      if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+      setFenceChangeNotice(null);
+    }
+  }, [filterStatus]);
+
   // Detect outside-fence count changes on every staffList update
   useEffect(() => {
     const fence = geoFenceRef.current;
