@@ -116,6 +116,48 @@ function MapRecenter({ lat, lng }: { lat: number; lng: number }) {
   return null;
 }
 
+function EdgeHandle({
+  lat,
+  lng,
+  radiusMeters,
+  onRadiusChange,
+}: {
+  lat: number;
+  lng: number;
+  radiusMeters: number;
+  onRadiusChange: (radiusMeters: number) => void;
+}) {
+  const map = useMap();
+  const centerLatLng = L.latLng(lat, lng);
+  return (
+    <Marker
+      position={edgeHandlePos(lat, lng, radiusMeters)}
+      icon={HANDLE_ICON}
+      draggable={true}
+      eventHandlers={{
+        drag(e) {
+          const handleLatLng = (e.target as L.Marker).getLatLng();
+          const currentRadius = Math.round(centerLatLng.distanceTo(handleLatLng));
+          const clamped = Math.min(1000, Math.max(50, currentRadius));
+          const circleBounds = L.circle(centerLatLng, clamped).getBounds();
+          map.fitBounds(circleBounds, {
+            animate: true,
+            duration: 0.1,
+            maxZoom: map.getZoom(),
+            padding: [24, 24],
+          });
+        },
+        dragend(e) {
+          const handleLatLng = (e.target as L.Marker).getLatLng();
+          const newRadius = Math.round(centerLatLng.distanceTo(handleLatLng));
+          const clamped = Math.min(1000, Math.max(50, newRadius));
+          onRadiusChange(clamped);
+        },
+      }}
+    />
+  );
+}
+
 const DEFAULT_CENTER: [number, number] = [23.3565, 85.3095];
 const DEFAULT_ZOOM = 14;
 
@@ -196,19 +238,11 @@ export default function GeoFenceMapPicker({
               }}
             />
             {/* Edge handle marker — drag to resize radius */}
-            <Marker
-              position={edgeHandlePos(lat, lng, radiusMeters)}
-              icon={HANDLE_ICON}
-              draggable={true}
-              eventHandlers={{
-                dragend(e) {
-                  const handleLatLng = (e.target as L.Marker).getLatLng();
-                  const center = L.latLng(lat, lng);
-                  const newRadius = Math.round(center.distanceTo(handleLatLng));
-                  const clamped = Math.min(1000, Math.max(50, newRadius));
-                  onRadiusChange(clamped);
-                },
-              }}
+            <EdgeHandle
+              lat={lat}
+              lng={lng}
+              radiusMeters={radiusMeters}
+              onRadiusChange={onRadiusChange}
             />
           </>
         )}
