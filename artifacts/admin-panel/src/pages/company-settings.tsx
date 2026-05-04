@@ -10,7 +10,7 @@ import {
   Eye, EyeOff,
 } from "lucide-react";
 import GeoFenceMapPicker, { type GeoFenceMapPickerHandle } from "@/components/geo-fence-map-picker";
-import { DASHBOARD_HINT_PREFIX, DASHBOARD_HINT_KEYS, DASHBOARD_HINT_LABELS } from "@/lib/dashboard-hints";
+import { DASHBOARD_HINT_PREFIX, DASHBOARD_HINT_KEYS, DASHBOARD_HINT_LABELS, DASHBOARD_HINT_DESCRIPTIONS } from "@/lib/dashboard-hints";
 import { useGetDismissedHints, useResetDismissedHints, useRestoreHint, useDismissHint, getGetDismissedHintsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -611,18 +611,27 @@ export default function CompanySettings() {
               {allHintEntries.map(({ key, label, dismissed }) => (
                 <div
                   key={key}
-                  className="flex items-center justify-between gap-3 rounded-lg border bg-muted/20 px-3 py-2.5"
+                  className="flex items-start justify-between gap-3 rounded-lg border bg-muted/20 px-3 py-2.5"
                 >
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex items-start gap-2 min-w-0">
                     {dismissed ? (
-                      <EyeOff className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <EyeOff className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
                     ) : (
-                      <Eye className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                      <Eye className="h-3.5 w-3.5 text-emerald-600 shrink-0 mt-0.5" />
                     )}
-                    <span className="text-sm truncate">{label}</span>
-                    <span className={`text-xs shrink-0 ${dismissed ? "text-muted-foreground" : "text-emerald-600 font-medium"}`}>
-                      {dismissed ? "Dismissed" : "Visible"}
-                    </span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium">{label}</span>
+                        <span className={`text-xs shrink-0 ${dismissed ? "text-muted-foreground" : "text-emerald-600 font-medium"}`}>
+                          {dismissed ? "Dismissed" : "Visible"}
+                        </span>
+                      </div>
+                      {DASHBOARD_HINT_DESCRIPTIONS[key] && (
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                          {DASHBOARD_HINT_DESCRIPTIONS[key]}
+                        </p>
+                      )}
+                    </div>
                   </div>
                   <Button
                     type="button"

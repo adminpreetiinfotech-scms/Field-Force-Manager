@@ -16,6 +16,10 @@ export const DASHBOARD_HINT_LABELS: Record<string, string> = {
   [DASHBOARD_HINT_KEYS.centerStaff]: "Center Staff Map Tip",
 };
 
+export const DASHBOARD_HINT_DESCRIPTIONS: Record<string, string> = {
+  [DASHBOARD_HINT_KEYS.centerStaff]: "Tip shown on the dashboard map explaining how to center the view on a staff member's location. Appears above the staff list until dismissed.",
+};
+
 /**
  * Manages the dismissed state for a single dashboard hint key.
  *
