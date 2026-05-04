@@ -10,7 +10,7 @@ import {
   Eye, EyeOff,
 } from "lucide-react";
 import GeoFenceMapPicker, { type GeoFenceMapPickerHandle } from "@/components/geo-fence-map-picker";
-import { DASHBOARD_HINT_PREFIX, DASHBOARD_HINT_KEYS, DASHBOARD_HINT_LABELS, DASHBOARD_HINT_DESCRIPTIONS } from "@/lib/dashboard-hints";
+import { DASHBOARD_HINT_PREFIX, DASHBOARD_HINT_KEYS, DASHBOARD_HINT_LABELS, DASHBOARD_HINT_DESCRIPTIONS, type HintKey } from "@/lib/dashboard-hints";
 import { useGetDismissedHints, useResetDismissedHints, useRestoreHint, useDismissHint, getGetDismissedHintsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -117,7 +117,7 @@ export default function CompanySettings() {
         onSuccess: (data) => {
           localStorage.removeItem(key);
           queryClient.setQueryData(getGetDismissedHintsQueryKey(), data);
-          toast({ title: "Hint re-enabled", description: `"${DASHBOARD_HINT_LABELS[key] ?? key}" will show again on the dashboard.` });
+          toast({ title: "Hint re-enabled", description: `"${DASHBOARD_HINT_LABELS[key as HintKey] ?? key}" will show again on the dashboard.` });
         },
         onError: () => {
           toast({ title: "Failed to re-enable hint", variant: "destructive" });
@@ -133,7 +133,7 @@ export default function CompanySettings() {
         onSuccess: (data) => {
           localStorage.setItem(key, "true");
           queryClient.setQueryData(getGetDismissedHintsQueryKey(), data);
-          toast({ title: "Hint dismissed", description: `"${DASHBOARD_HINT_LABELS[key] ?? key}" will no longer show on the dashboard.` });
+          toast({ title: "Hint dismissed", description: `"${DASHBOARD_HINT_LABELS[key as HintKey] ?? key}" will no longer show on the dashboard.` });
         },
         onError: () => {
           toast({ title: "Failed to dismiss hint", variant: "destructive" });

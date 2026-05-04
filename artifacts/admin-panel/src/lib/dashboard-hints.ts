@@ -13,12 +13,14 @@ export const DASHBOARD_HINT_KEYS = {
   fieldStaff: `${DASHBOARD_HINT_PREFIX}field`,
 } as const;
 
-export const DASHBOARD_HINT_LABELS: Record<string, string> = {
+export type HintKey = (typeof DASHBOARD_HINT_KEYS)[keyof typeof DASHBOARD_HINT_KEYS];
+
+export const DASHBOARD_HINT_LABELS: Record<HintKey, string> = {
   [DASHBOARD_HINT_KEYS.centerStaff]: "Center Staff Map Tip",
   [DASHBOARD_HINT_KEYS.fieldStaff]: "Field Staff Setup Tip",
 };
 
-export const DASHBOARD_HINT_DESCRIPTIONS: Record<string, string> = {
+export const DASHBOARD_HINT_DESCRIPTIONS: Record<HintKey, string> = {
   [DASHBOARD_HINT_KEYS.centerStaff]: "Tip shown on the dashboard map explaining how to center the view on a staff member's location. Appears above the staff list until dismissed.",
   [DASHBOARD_HINT_KEYS.fieldStaff]: "Hint shown on the dashboard when no field staff are configured. Guides admins to set up staff with the Field category.",
 };
