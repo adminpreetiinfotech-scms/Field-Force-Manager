@@ -7,6 +7,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Linking,
   Modal,
   Platform,
@@ -100,6 +101,7 @@ export default function StaffHome() {
   const isCheckedIn = lastEntry?.type === "in";
 
   const [showReport, setShowReport] = useState(false);
+  const [selectedKmDay, setSelectedKmDay] = useState<string | null>(null);
 
   const {
     unreadCount,
@@ -553,6 +555,19 @@ export default function StaffHome() {
             todayKm={todayKm}
           />
 
+          <KmDayDetailSheet
+            visible={selectedKmDay != null}
+            date={selectedKmDay ?? ""}
+            staffId={user?.id ?? ""}
+            vehicleType={user?.vehicleType}
+            kmEntry={
+              selectedKmDay != null
+                ? (kmHistoryData?.entries ?? []).find((e) => e.date === selectedKmDay) ?? null
+                : null
+            }
+            onClose={() => setSelectedKmDay(null)}
+          />
+
           {/* Pillars */}
           <View
             style={[
@@ -716,13 +731,15 @@ export default function StaffHome() {
                   const vehicleKm = entry.vehicleKm;
                   const hasReading = entry.startOdometerKm != null || entry.endOdometerKm != null;
                   return (
-                    <View
+                    <Pressable
                       key={entry.date}
-                      style={[
+                      onPress={() => setSelectedKmDay(entry.date)}
+                      style={({ pressed }) => [
                         kmStyles.dataRow,
                         {
                           borderBottomColor: colors.border,
                           borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth,
+                          opacity: pressed ? 0.7 : 1,
                         },
                       ]}
                     >
@@ -735,7 +752,7 @@ export default function StaffHome() {
                       <Text style={[kmStyles.colOdo, { color: hasReading ? colors.foreground : colors.mutedForeground }]}>
                         {entry.endOdometerKm != null ? entry.endOdometerKm.toLocaleString("en-IN") : "—"}
                       </Text>
-                      <View style={[kmStyles.colKm, { alignItems: "flex-end" }]}>
+                      <View style={[kmStyles.colKm, { alignItems: "flex-end", gap: 4, flexDirection: "row", justifyContent: "flex-end" }]}>
                         {vehicleKm != null ? (
                           <View style={{
                             backgroundColor: colors.primary + "18",
@@ -750,8 +767,9 @@ export default function StaffHome() {
                         ) : (
                           <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12 }}>—</Text>
                         )}
+                        <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
                       </View>
-                    </View>
+                    </Pressable>
                   );
                 })
               ) : (
@@ -759,13 +777,15 @@ export default function StaffHome() {
                   const entries = kmHistoryData?.entries ?? [];
                   const isLast = idx === entries.length - 1;
                   return (
-                    <View
+                    <Pressable
                       key={entry.date}
-                      style={[
+                      onPress={() => setSelectedKmDay(entry.date)}
+                      style={({ pressed }) => [
                         kmStyles.dataRow,
                         {
                           borderBottomColor: colors.border,
                           borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth,
+                          opacity: pressed ? 0.7 : 1,
                         },
                       ]}
                     >
@@ -775,7 +795,7 @@ export default function StaffHome() {
                       <Text style={[kmStyles.colOdo, { color: entry.tripCount > 0 ? colors.foreground : colors.mutedForeground }]}>
                         {entry.tripCount > 0 ? entry.tripCount : "—"}
                       </Text>
-                      <View style={[kmStyles.colKm, { alignItems: "flex-end" }]}>
+                      <View style={[kmStyles.colKm, { alignItems: "flex-end", gap: 4, flexDirection: "row", justifyContent: "flex-end" }]}>
                         {entry.gpsKm > 0 ? (
                           <View style={{
                             backgroundColor: colors.primary + "18",
@@ -790,8 +810,9 @@ export default function StaffHome() {
                         ) : (
                           <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12 }}>—</Text>
                         )}
+                        <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
                       </View>
-                    </View>
+                    </Pressable>
                   );
                 })
               )}
@@ -1157,6 +1178,604 @@ function ReportStatBox({
       <Text style={{ fontSize: small ? 16 : 20, fontFamily: "Inter_700Bold", color }}>{value}</Text>
       <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>{label}</Text>
     </View>
+  );
+}
+
+type TripReportRow = {
+  tripRef: string;
+  rideDate: string;
+  startTime: string;
+  endTime: string;
+  distanceKm: number | null;
+  checkinPhotoUrl: string | null;
+  checkoutPhotoUrl: string | null;
+};
+
+type KmEntry = {
+  date: string;
+  startOdometerKm?: number | null;
+  endOdometerKm?: number | null;
+  vehicleKm?: number | null;
+  tripCount: number;
+  gpsKm: number;
+};
+
+type AttendanceDayInfo = {
+  date: string;
+  checkinTime: string | null;
+  checkoutTime: string | null;
+};
+
+function KmDayDetailSheet({
+  visible,
+  date,
+  staffId,
+  vehicleType,
+  kmEntry,
+  onClose,
+}: {
+  visible: boolean;
+  date: string;
+  staffId: string;
+  vehicleType?: string | null;
+  kmEntry: KmEntry | null;
+  onClose: () => void;
+}) {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+
+  const [trips, setTrips] = useState<TripReportRow[]>([]);
+  const [attendanceDay, setAttendanceDay] = useState<AttendanceDayInfo | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
+
+  useEffect(() => {
+    if (!visible || !date || !staffId) return;
+    setLoading(true);
+    setFetchError(false);
+    setTrips([]);
+    setAttendanceDay(null);
+
+    const base = getApiBase();
+    const parts = date.split("-").map(Number);
+    const year = parts[0] ?? 0;
+    const month = parts[1] ?? 0;
+
+    Promise.all([
+      fetch(
+        `${base}/api/activity/trip-report?from=${date}&to=${date}&staffId=${encodeURIComponent(staffId)}`,
+      ).then((r) => {
+        if (!r.ok) throw new Error(`trip-report: ${r.status}`);
+        return r.json() as Promise<TripReportRow[]>;
+      }),
+      fetch(
+        `${base}/api/activity/attendance-calendar?staffId=${encodeURIComponent(staffId)}&year=${year}&month=${month}`,
+      ).then((r) => {
+        if (!r.ok) throw new Error(`attendance-calendar: ${r.status}`);
+        return r.json();
+      }),
+    ])
+      .then(([tripsData, calData]) => {
+        const tripList = Array.isArray(tripsData) ? tripsData : [];
+        tripList.sort(
+          (a, b) =>
+            new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
+        );
+        setTrips(tripList);
+        const day = (calData?.days as AttendanceDayInfo[] | undefined)?.find(
+          (d) => d.date === date,
+        );
+        setAttendanceDay(day ?? null);
+      })
+      .catch(() => {
+        setFetchError(true);
+      })
+      .finally(() => setLoading(false));
+  }, [visible, date, staffId]);
+
+  const fmtTime = (iso: string | null | undefined) => {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleTimeString("en-IN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+
+  const checkinPhoto = trips[0]?.checkinPhotoUrl ?? null;
+  const checkoutPhoto = trips[0]?.checkoutPhotoUrl ?? null;
+
+  const displayDate = date
+    ? new Date(date + "T12:00:00").toLocaleDateString("en-IN", {
+        weekday: "long",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : "";
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent
+      onRequestClose={onClose}
+    >
+      <Pressable
+        style={{
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,0.5)",
+          justifyContent: "flex-end",
+        }}
+        onPress={onClose}
+      >
+        <Pressable
+          style={{
+            backgroundColor: colors.background,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            paddingHorizontal: 20,
+            paddingTop: 16,
+            paddingBottom: insets.bottom + 28,
+            maxHeight: "90%",
+          }}
+          onPress={(e) => e.stopPropagation()}
+        >
+          <View
+            style={{
+              width: 40,
+              height: 4,
+              borderRadius: 999,
+              backgroundColor: colors.border,
+              alignSelf: "center",
+              marginBottom: 20,
+            }}
+          />
+
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 18,
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <View
+                style={{
+                  backgroundColor: colors.primary + "14",
+                  borderRadius: 10,
+                  padding: 8,
+                }}
+              >
+                <Feather name="navigation" size={18} color={colors.primary} />
+              </View>
+              <View>
+                <Text
+                  style={{
+                    fontSize: 17,
+                    fontFamily: "Inter_700Bold",
+                    color: colors.foreground,
+                  }}
+                >
+                  Day Detail
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontFamily: "Inter_400Regular",
+                    color: colors.mutedForeground,
+                    marginTop: 2,
+                  }}
+                >
+                  {displayDate}
+                </Text>
+              </View>
+            </View>
+            <Pressable onPress={onClose} hitSlop={10}>
+              <Feather name="x" size={20} color={colors.mutedForeground} />
+            </Pressable>
+          </View>
+
+          {loading ? (
+            <View style={{ paddingVertical: 40, alignItems: "center" }}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text
+                style={{
+                  marginTop: 12,
+                  color: colors.mutedForeground,
+                  fontFamily: "Inter_400Regular",
+                  fontSize: 14,
+                }}
+              >
+                Loading details…
+              </Text>
+            </View>
+          ) : fetchError ? (
+            <View style={{ paddingVertical: 40, alignItems: "center", gap: 10 }}>
+              <Feather name="alert-circle" size={28} color="#DC2626" />
+              <Text
+                style={{
+                  fontSize: 15,
+                  fontFamily: "Inter_600SemiBold",
+                  color: colors.foreground,
+                }}
+              >
+                Couldn't load details
+              </Text>
+              <Text
+                style={{
+                  fontSize: 13,
+                  fontFamily: "Inter_400Regular",
+                  color: colors.mutedForeground,
+                  textAlign: "center",
+                  paddingHorizontal: 16,
+                }}
+              >
+                Check your connection and try again.
+              </Text>
+            </View>
+          ) : (
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={{ gap: 12, paddingBottom: 8 }}>
+                {/* Check-in / Check-out times */}
+                <View style={{ flexDirection: "row", gap: 10 }}>
+                  <ReportStatBox
+                    icon="clock"
+                    label="Check-in"
+                    value={fmtTime(attendanceDay?.checkinTime)}
+                    color="#1E3A5F"
+                  />
+                  <ReportStatBox
+                    icon="log-out"
+                    label="Check-out"
+                    value={fmtTime(attendanceDay?.checkoutTime)}
+                    color="#6B7280"
+                  />
+                </View>
+
+                {/* Odometer section for vehicle users */}
+                {vehicleType && kmEntry && (
+                  <View
+                    style={{
+                      backgroundColor: colors.card,
+                      borderRadius: 14,
+                      borderWidth: StyleSheet.hairlineWidth,
+                      borderColor: colors.border,
+                      padding: 14,
+                      gap: 12,
+                    }}
+                  >
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                    >
+                      <Feather name="truck" size={15} color={colors.primary} />
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          fontFamily: "Inter_600SemiBold",
+                          color: colors.foreground,
+                        }}
+                      >
+                        Odometer Readings
+                      </Text>
+                    </View>
+
+                    <View style={{ flexDirection: "row", gap: 8 }}>
+                      <View
+                        style={{
+                          flex: 1,
+                          backgroundColor: "#1E3A5F10",
+                          borderRadius: 10,
+                          borderWidth: StyleSheet.hairlineWidth,
+                          borderColor: "#1E3A5F30",
+                          padding: 10,
+                          alignItems: "center",
+                          gap: 3,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 15,
+                            fontFamily: "Inter_700Bold",
+                            color: "#1E3A5F",
+                          }}
+                        >
+                          {kmEntry.startOdometerKm != null
+                            ? kmEntry.startOdometerKm.toLocaleString("en-IN")
+                            : "—"}
+                        </Text>
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            fontFamily: "Inter_400Regular",
+                            color: colors.mutedForeground,
+                          }}
+                        >
+                          Start km
+                        </Text>
+                      </View>
+                      <View
+                        style={{
+                          flex: 1,
+                          backgroundColor: "#16A34A10",
+                          borderRadius: 10,
+                          borderWidth: StyleSheet.hairlineWidth,
+                          borderColor: "#16A34A30",
+                          padding: 10,
+                          alignItems: "center",
+                          gap: 3,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 15,
+                            fontFamily: "Inter_700Bold",
+                            color: "#16A34A",
+                          }}
+                        >
+                          {kmEntry.endOdometerKm != null
+                            ? kmEntry.endOdometerKm.toLocaleString("en-IN")
+                            : "—"}
+                        </Text>
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            fontFamily: "Inter_400Regular",
+                            color: colors.mutedForeground,
+                          }}
+                        >
+                          End km
+                        </Text>
+                      </View>
+                      <View
+                        style={{
+                          flex: 1,
+                          backgroundColor: colors.primary + "10",
+                          borderRadius: 10,
+                          borderWidth: StyleSheet.hairlineWidth,
+                          borderColor: colors.primary + "30",
+                          padding: 10,
+                          alignItems: "center",
+                          gap: 3,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 15,
+                            fontFamily: "Inter_700Bold",
+                            color: colors.primary,
+                          }}
+                        >
+                          {kmEntry.vehicleKm != null
+                            ? kmEntry.vehicleKm.toFixed(1)
+                            : "—"}
+                        </Text>
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            fontFamily: "Inter_400Regular",
+                            color: colors.mutedForeground,
+                          }}
+                        >
+                          Vehicle km
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Odometer photos */}
+                    {(checkinPhoto || checkoutPhoto) && (
+                      <View style={{ gap: 8 }}>
+                        <Text
+                          style={{
+                            fontSize: 12,
+                            fontFamily: "Inter_600SemiBold",
+                            color: colors.mutedForeground,
+                          }}
+                        >
+                          Odometer Photos
+                        </Text>
+                        <View style={{ flexDirection: "row", gap: 10 }}>
+                          {checkinPhoto ? (
+                            <View style={{ flex: 1, gap: 4 }}>
+                              <Image
+                                source={{ uri: checkinPhoto }}
+                                style={{
+                                  width: "100%",
+                                  height: 90,
+                                  borderRadius: 8,
+                                  backgroundColor: colors.border,
+                                }}
+                                resizeMode="cover"
+                              />
+                              <Text
+                                style={{
+                                  fontSize: 10,
+                                  fontFamily: "Inter_400Regular",
+                                  color: colors.mutedForeground,
+                                  textAlign: "center",
+                                }}
+                              >
+                                Start
+                              </Text>
+                            </View>
+                          ) : null}
+                          {checkoutPhoto ? (
+                            <View style={{ flex: 1, gap: 4 }}>
+                              <Image
+                                source={{ uri: checkoutPhoto }}
+                                style={{
+                                  width: "100%",
+                                  height: 90,
+                                  borderRadius: 8,
+                                  backgroundColor: colors.border,
+                                }}
+                                resizeMode="cover"
+                              />
+                              <Text
+                                style={{
+                                  fontSize: 10,
+                                  fontFamily: "Inter_400Regular",
+                                  color: colors.mutedForeground,
+                                  textAlign: "center",
+                                }}
+                              >
+                                End
+                              </Text>
+                            </View>
+                          ) : null}
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                )}
+
+                {/* GPS summary for non-vehicle users */}
+                {!vehicleType && kmEntry && (
+                  <View style={{ flexDirection: "row", gap: 10 }}>
+                    <ReportStatBox
+                      icon="map"
+                      label="GPS Trips"
+                      value={String(kmEntry.tripCount)}
+                      color="#7C3AED"
+                    />
+                    <ReportStatBox
+                      icon="navigation"
+                      label="GPS Distance"
+                      value={`${kmEntry.gpsKm.toFixed(1)} km`}
+                      color={colors.primary}
+                    />
+                  </View>
+                )}
+
+                {/* Individual GPS trips */}
+                {trips.length > 0 && (
+                  <View
+                    style={{
+                      backgroundColor: colors.card,
+                      borderRadius: 14,
+                      borderWidth: StyleSheet.hairlineWidth,
+                      borderColor: colors.border,
+                      padding: 14,
+                    }}
+                  >
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 8,
+                        marginBottom: 12,
+                      }}
+                    >
+                      <Feather name="map-pin" size={15} color="#7C3AED" />
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          fontFamily: "Inter_600SemiBold",
+                          color: colors.foreground,
+                        }}
+                      >
+                        GPS Trips
+                      </Text>
+                    </View>
+                    {trips.map((trip, i) => (
+                      <View
+                        key={trip.tripRef}
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          paddingVertical: 10,
+                          borderTopWidth: i === 0 ? 0 : StyleSheet.hairlineWidth,
+                          borderTopColor: colors.border,
+                          gap: 10,
+                        }}
+                      >
+                        <View
+                          style={{
+                            width: 26,
+                            height: 26,
+                            borderRadius: 13,
+                            backgroundColor: "#7C3AED18",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 11,
+                              fontFamily: "Inter_700Bold",
+                              color: "#7C3AED",
+                            }}
+                          >
+                            {i + 1}
+                          </Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text
+                            style={{
+                              fontSize: 12,
+                              fontFamily: "Inter_600SemiBold",
+                              color: colors.foreground,
+                            }}
+                          >
+                            {fmtTime(trip.startTime)} → {fmtTime(trip.endTime)}
+                          </Text>
+                        </View>
+                        <View
+                          style={{
+                            backgroundColor: colors.primary + "18",
+                            paddingHorizontal: 8,
+                            paddingVertical: 3,
+                            borderRadius: 6,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 12,
+                              fontFamily: "Inter_700Bold",
+                              color: colors.primary,
+                            }}
+                          >
+                            {trip.distanceKm != null
+                              ? `${trip.distanceKm.toFixed(1)} km`
+                              : "—"}
+                          </Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {trips.length === 0 && !loading && (
+                  <View
+                    style={{
+                      paddingVertical: 20,
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <Feather name="inbox" size={24} color={colors.mutedForeground} />
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        fontFamily: "Inter_400Regular",
+                        color: colors.mutedForeground,
+                      }}
+                    >
+                      No GPS trips recorded for this day.
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </ScrollView>
+          )}
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
