@@ -482,30 +482,40 @@ function ViewProfileDialog({ staff, onClose }: { staff: StaffMember; onClose: ()
                 {stats.recentTrips.length > 0 && (
                   <div className="mt-3">
                     <p className="text-xs font-semibold text-muted-foreground mb-1.5">Recent Trips</p>
-                    <div className="border rounded-md divide-y text-xs max-h-48 overflow-y-auto">
+                    <div className="border rounded-md divide-y text-xs max-h-64 overflow-y-auto">
                       {stats.recentTrips.slice(0, 10).map((t) => (
                         <div key={t.tripRef} className="flex items-center gap-2 px-3 py-2">
                           <span className="text-muted-foreground w-14 shrink-0">{format(new Date(t.rideDate), "dd MMM")}</span>
                           <span className="flex-1 font-medium">{t.distanceKm != null ? `${t.distanceKm.toFixed(1)} km` : "—"}</span>
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-2">
                             {t.checkinMeterPhotoUri ? (
                               <button
-                                title="Check-in odometer photo"
+                                title="Check-in odometer photo — click to enlarge"
                                 onClick={() => setLightboxUri(t.checkinMeterPhotoUri!)}
-                                className="flex items-center gap-0.5 text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded px-1.5 py-0.5 transition-colors"
+                                className="group relative flex flex-col items-center gap-0.5 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
                               >
-                                <Camera className="h-3 w-3" />
-                                <span className="text-[10px]">In</span>
+                                <img
+                                  src={t.checkinMeterPhotoUri}
+                                  alt="Check-in odometer"
+                                  loading="lazy"
+                                  className="w-12 h-9 object-cover rounded border border-blue-200 group-hover:border-blue-500 group-hover:shadow transition-all"
+                                />
+                                <span className="text-[9px] text-blue-600 group-hover:text-blue-800">In</span>
                               </button>
                             ) : null}
                             {t.checkoutMeterPhotoUri ? (
                               <button
-                                title="Check-out odometer photo"
+                                title="Check-out odometer photo — click to enlarge"
                                 onClick={() => setLightboxUri(t.checkoutMeterPhotoUri!)}
-                                className="flex items-center gap-0.5 text-green-600 hover:text-green-800 bg-green-50 hover:bg-green-100 rounded px-1.5 py-0.5 transition-colors"
+                                className="group relative flex flex-col items-center gap-0.5 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-1"
                               >
-                                <Camera className="h-3 w-3" />
-                                <span className="text-[10px]">Out</span>
+                                <img
+                                  src={t.checkoutMeterPhotoUri}
+                                  alt="Check-out odometer"
+                                  loading="lazy"
+                                  className="w-12 h-9 object-cover rounded border border-green-200 group-hover:border-green-500 group-hover:shadow transition-all"
+                                />
+                                <span className="text-[9px] text-green-600 group-hover:text-green-800">Out</span>
                               </button>
                             ) : null}
                             {!t.checkinMeterPhotoUri && !t.checkoutMeterPhotoUri && (
