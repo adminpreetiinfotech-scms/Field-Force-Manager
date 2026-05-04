@@ -403,7 +403,7 @@ export default function CompanySettings() {
           </div>
 
           {/* Geo-fence */}
-          <div className="border rounded-xl p-6 bg-card space-y-4">
+          <div id="geo-fence" className="border rounded-xl p-6 bg-card space-y-4 scroll-mt-6">
             <div className="flex items-center gap-2 mb-1">
               <Navigation className="h-4 w-4 text-muted-foreground" />
               <h2 className="text-sm font-semibold">Geo-fence (Center Staff Attendance)</h2>

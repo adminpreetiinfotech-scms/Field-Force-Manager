@@ -205,9 +205,12 @@ function StaffCard({
   const outsideFence = isOutsideFence(staff, geoFence);
 
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
-      className={`w-full text-left px-3 py-2.5 border-b last:border-b-0 transition-colors hover:bg-muted/60 ${
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
+      className={`w-full text-left px-3 py-2.5 border-b last:border-b-0 transition-colors hover:bg-muted/60 cursor-pointer ${
         selected ? "bg-primary/5 border-l-2 border-l-primary" : ""
       } ${outsideFence ? "bg-orange-50/60" : ""}`}
     >
@@ -221,11 +224,20 @@ function StaffCard({
         </Badge>
       </div>
       {outsideFence && (
-        <div className="flex items-center gap-1 mt-1">
-          <AlertTriangle className="h-3 w-3 text-orange-500 shrink-0" />
-          <span className="text-[10px] font-semibold text-orange-600 uppercase tracking-wide">
-            Outside fence
-          </span>
+        <div className="flex items-center justify-between gap-1 mt-1">
+          <div className="flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3 text-orange-500 shrink-0" />
+            <span className="text-[10px] font-semibold text-orange-600 uppercase tracking-wide">
+              Outside fence
+            </span>
+          </div>
+          <a
+            href={`${import.meta.env.BASE_URL}settings#geo-fence`}
+            className="text-[10px] text-indigo-600 hover:text-indigo-800 hover:underline font-medium shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Edit fence
+          </a>
         </div>
       )}
       {staff.area && (
@@ -250,7 +262,7 @@ function StaffCard({
           On Shift
         </span>
       )}
-    </button>
+    </div>
   );
 }
 
