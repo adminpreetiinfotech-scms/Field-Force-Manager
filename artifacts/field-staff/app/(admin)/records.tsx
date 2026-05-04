@@ -1,9 +1,8 @@
 import { Feather } from "@expo/vector-icons";
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import {
   FlatList,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -12,23 +11,17 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { EmptyState } from "@/components/EmptyState";
 import { SyncBanner } from "@/components/SyncBanner";
-import { AttendanceRecord, MeterReading, useApp } from "@/contexts/AppContext";
+import { AttendanceRecord, useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
-
-type Tab = "attendance" | "meter";
 
 export default function AdminRecords() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { attendance, meterReadings } = useApp();
-  const [tab, setTab] = useState<Tab>("attendance");
+  const { attendance } = useApp();
 
-  const data = useMemo<(AttendanceRecord | MeterReading)[]>(() => {
-    if (tab === "attendance") {
-      return [...attendance].sort((a, b) => b.timestamp - a.timestamp);
-    }
-    return [...meterReadings].sort((a, b) => b.timestamp - a.timestamp);
-  }, [tab, attendance, meterReadings]);
+  const data = useMemo<AttendanceRecord[]>(() => {
+    return [...attendance].sort((a, b) => b.timestamp - a.timestamp);
+  }, [attendance]);
 
   const webBottomPad = Platform.OS === "web" ? 84 : 84;
   const webTop = Platform.OS === "web" ? 67 : 0;
@@ -47,27 +40,6 @@ export default function AdminRecords() {
           Tamper-resistant audit trail of every field event.
         </Text>
 
-        <View
-          style={[
-            styles.tabs,
-            {
-              backgroundColor: colors.muted,
-              borderRadius: colors.radius,
-              marginTop: 14,
-            },
-          ]}
-        >
-          <TabPill
-            label={`Attendance · ${attendance.length}`}
-            active={tab === "attendance"}
-            onPress={() => setTab("attendance")}
-          />
-          <TabPill
-            label={`Meter · ${meterReadings.length}`}
-            active={tab === "meter"}
-            onPress={() => setTab("meter")}
-          />
-        </View>
 
         <View style={{ marginTop: 14 }}>
           <SyncBanner />
@@ -85,174 +57,72 @@ export default function AdminRecords() {
         ListEmptyComponent={
           <EmptyState
             icon="file-text"
-            title={tab === "attendance" ? "No attendance yet" : "No meter readings yet"}
+            title="No attendance yet"
             subtitle="As staff log activity in the field, entries will appear here in real time."
           />
         }
-        renderItem={({ item }) => {
-          if (tab === "attendance") {
-            const a = item as (typeof attendance)[number];
-            return (
-              <View
-                style={[
-                  styles.card,
-                  {
-                    backgroundColor: colors.card,
-                    borderColor: colors.border,
-                    borderRadius: colors.radius + 2,
-                  },
-                ]}
+        renderItem={({ item: a }) => (
+          <View
+            style={[
+              styles.card,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                borderRadius: colors.radius + 2,
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.icon,
+                {
+                  backgroundColor:
+                    (a.type === "in" ? colors.success : colors.destructive) +
+                    "1A",
+                  borderRadius: 10,
+                },
+              ]}
+            >
+              <Feather
+                name={a.type === "in" ? "log-in" : "log-out"}
+                size={15}
+                color={a.type === "in" ? colors.success : colors.destructive}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  color: colors.foreground,
+                  fontSize: 13,
+                  fontFamily: "Inter_600SemiBold",
+                }}
               >
-                <View
-                  style={[
-                    styles.icon,
-                    {
-                      backgroundColor:
-                        (a.type === "in" ? colors.success : colors.destructive) +
-                        "1A",
-                      borderRadius: 10,
-                    },
-                  ]}
-                >
-                  <Feather
-                    name={a.type === "in" ? "log-in" : "log-out"}
-                    size={15}
-                    color={a.type === "in" ? colors.success : colors.destructive}
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={{
-                      color: colors.foreground,
-                      fontSize: 13,
-                      fontFamily: "Inter_600SemiBold",
-                    }}
-                  >
-                    {a.staffName} · {a.type === "in" ? "Check in" : "Check out"}
-                  </Text>
-                  <Text
-                    style={{
-                      color: colors.mutedForeground,
-                      fontSize: 11,
-                      fontFamily: "Inter_400Regular",
-                      marginTop: 2,
-                    }}
-                  >
-                    {new Date(a.timestamp).toLocaleString("en-IN", {
-                      day: "numeric",
-                      month: "short",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                    {a.location
-                      ? `  ·  ${a.location.latitude.toFixed(3)}, ${a.location.longitude.toFixed(3)}`
-                      : "  ·  No GPS"}
-                  </Text>
-                </View>
-                <SyncDot synced={a.synced} />
-              </View>
-            );
-          } else {
-            const m = item as (typeof meterReadings)[number];
-            return (
-              <View
-                style={[
-                  styles.card,
-                  {
-                    backgroundColor: colors.card,
-                    borderColor: colors.border,
-                    borderRadius: colors.radius + 2,
-                  },
-                ]}
+                {a.staffName} · {a.type === "in" ? "Check in" : "Check out"}
+              </Text>
+              <Text
+                style={{
+                  color: colors.mutedForeground,
+                  fontSize: 11,
+                  fontFamily: "Inter_400Regular",
+                  marginTop: 2,
+                }}
               >
-                <View
-                  style={[
-                    styles.icon,
-                    {
-                      backgroundColor: colors.pillarTransparency + "1A",
-                      borderRadius: 10,
-                    },
-                  ]}
-                >
-                  <Feather
-                    name="zap"
-                    size={15}
-                    color={colors.pillarTransparency}
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={{
-                      color: colors.foreground,
-                      fontSize: 13,
-                      fontFamily: "Inter_600SemiBold",
-                    }}
-                  >
-                    {m.staffName} · {m.reading} kWh
-                  </Text>
-                  <Text
-                    style={{
-                      color: colors.mutedForeground,
-                      fontSize: 11,
-                      fontFamily: "Inter_400Regular",
-                      marginTop: 2,
-                    }}
-                  >
-                    Consumer #{m.consumerNo}  ·{" "}
-                    {new Date(m.timestamp).toLocaleString("en-IN", {
-                      day: "numeric",
-                      month: "short",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </Text>
-                </View>
-                <SyncDot synced={m.synced} />
-              </View>
-            );
-          }
-        }}
+                {new Date(a.timestamp).toLocaleString("en-IN", {
+                  day: "numeric",
+                  month: "short",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+                {a.location
+                  ? `  ·  ${a.location.latitude.toFixed(3)}, ${a.location.longitude.toFixed(3)}`
+                  : "  ·  No GPS"}
+              </Text>
+            </View>
+            <SyncDot synced={a.synced} />
+          </View>
+        )}
       />
     </View>
-  );
-}
-
-function TabPill({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  const colors = useColors();
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.tabBtn,
-        {
-          backgroundColor: active ? colors.card : "transparent",
-          borderRadius: colors.radius - 2,
-          opacity: pressed ? 0.85 : 1,
-          shadowColor: active ? "#0B2545" : "transparent",
-          shadowOpacity: active ? 0.08 : 0,
-          shadowRadius: active ? 4 : 0,
-          shadowOffset: { width: 0, height: 2 },
-        },
-      ]}
-    >
-      <Text
-        style={{
-          color: active ? colors.foreground : colors.mutedForeground,
-          fontSize: 13,
-          fontFamily: "Inter_600SemiBold",
-        }}
-      >
-        {label}
-      </Text>
-    </Pressable>
   );
 }
 
@@ -273,16 +143,6 @@ function SyncDot({ synced }: { synced: boolean }) {
 const styles = StyleSheet.create({
   title: { fontSize: 24, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
   sub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
-  tabs: {
-    flexDirection: "row",
-    padding: 4,
-    gap: 4,
-  },
-  tabBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: "center",
-  },
   card: {
     flexDirection: "row",
     alignItems: "center",

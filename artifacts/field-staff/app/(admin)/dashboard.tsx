@@ -74,7 +74,7 @@ function useCandidateStats() {
 export default function AdminDashboard() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user, attendance, meterReadings, staffLocations } = useApp();
+  const { user, attendance, staffLocations } = useApp();
   const { unreadCount, unreadNotices, markRead } = useNotices({
     phone: user?.phone,
     enabled: !!user?.phone,
@@ -104,25 +104,17 @@ export default function AdminDashboard() {
     );
     const checkInsToday = todayAttendance.filter((a) => a.type === "in").length;
     const onShiftNow = staffLocations.filter((s) => s.status === "in").length;
-    const todayMeters = meterReadings.filter(
-      (m) => new Date(m.timestamp).toISOString().slice(0, 10) === today,
-    ).length;
-    const synced =
-      attendance.filter((a) => a.synced).length +
-      meterReadings.filter((m) => m.synced).length;
+    const synced = attendance.filter((a) => a.synced).length;
     const totalAccuracy =
-      attendance.length + meterReadings.length === 0
+      attendance.length === 0
         ? 100
-        : Math.round(
-            (synced / (attendance.length + meterReadings.length)) * 100,
-          );
+        : Math.round((synced / attendance.length) * 100);
     return {
       checkInsToday,
       onShiftNow,
-      todayMeters,
       accuracy: totalAccuracy,
     };
-  }, [attendance, meterReadings, staffLocations]);
+  }, [attendance, staffLocations]);
 
   const totalKm = distanceData?.totalKm ?? 0;
   const tripCount = distanceData?.tripCount ?? 0;
@@ -339,13 +331,6 @@ export default function AdminDashboard() {
           </View>
 
           <View style={styles.row}>
-            <StatCard
-              label="Meter reads"
-              value={`${stats.todayMeters}`}
-              icon="activity"
-              tint={colors.pillarTransparency}
-              trend={stats.todayMeters > 0 ? "Aaj ke meter readings" : "Aaj koi reading nahi"}
-            />
             <StatCard
               label="Distance"
               value={

@@ -72,19 +72,6 @@ export type AttendanceRecord = {
   vehicleMeterPhotoUri?: string | null;
 };
 
-export type MeterReading = {
-  id: string;
-  staffId: string;
-  staffName: string;
-  consumerNo: string;
-  reading: number;
-  photoUri: string | null;
-  location: GeoPoint | null;
-  timestamp: number;
-  synced: boolean;
-  notes?: string;
-};
-
 export type TripPoint = {
   latitude: number;
   longitude: number;
@@ -138,7 +125,6 @@ type AppState = {
   /** User record created during registration, waiting for MPIN setup. */
   pendingRegistration: { user: User; approvalStatus: string } | null;
   attendance: AttendanceRecord[];
-  meterReadings: MeterReading[];
   trips: Trip[];
   staffLocations: StaffLocation[];
   activeTripId: string | null;
@@ -173,9 +159,6 @@ type AppActions = {
   addAttendance: (
     record: Omit<AttendanceRecord, "id" | "synced">,
   ) => Promise<AttendanceRecord>;
-  addMeterReading: (
-    reading: Omit<MeterReading, "id" | "synced">,
-  ) => Promise<MeterReading>;
   startTrip: (start: GeoPoint | null) => Promise<Trip>;
   endTrip: (km: number, end: GeoPoint | null) => Promise<void>;
   updateActiveTripKm: (km: number) => void;
@@ -397,7 +380,6 @@ const defaultState: AppState = {
   pendingPhone: null,
   pendingRegistration: null,
   attendance: [],
-  meterReadings: [],
   trips: [],
   staffLocations: [],
   activeTripId: null,
@@ -428,7 +410,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const toPersist = {
       user: state.user,
       attendance: state.attendance,
-      meterReadings: state.meterReadings,
       trips: state.trips,
       activeTripId: state.activeTripId,
       staffLocations: state.staffLocations,
@@ -438,7 +419,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     state.bootstrapped,
     state.user,
     state.attendance,
-    state.meterReadings,
     state.trips,
     state.activeTripId,
     state.staffLocations,
@@ -506,7 +486,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsynced =
       state.attendance.filter((a) => !a.synced).length +
-      state.meterReadings.filter((m) => !m.synced).length +
       state.trips.filter((t) => !t.synced && t.endedAt !== null).length;
     setState((s) => (s.unsyncedCount === unsynced ? s : { ...s, unsyncedCount: unsynced }));
     if (unsynced === 0) return;
@@ -514,7 +493,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setState((s) => ({
         ...s,
         attendance: s.attendance.map((a) => ({ ...a, synced: true })),
-        meterReadings: s.meterReadings.map((m) => ({ ...m, synced: true })),
         trips: s.trips.map((tr) =>
           tr.endedAt !== null ? { ...tr, synced: true } : tr,
         ),
@@ -522,7 +500,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }));
     }, 4000);
     return () => clearTimeout(t);
-  }, [state.attendance, state.meterReadings, state.trips]);
+  }, [state.attendance, state.trips]);
 
   const register = useCallback(async (data: RegisterData) => {
     const staff = await registerStaff({
@@ -863,28 +841,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
-  const addMeterReading = useCallback(
-    async (reading: Omit<MeterReading, "id" | "synced">) => {
-      const full: MeterReading = { ...reading, id: genId(), synced: false };
-      setState((s) => ({ ...s, meterReadings: [full, ...s.meterReadings] }));
-
-      enqueueActivity({
-        kind: "meter",
-        staffId: reading.staffId,
-        staffName: reading.staffName,
-        occurredAt: new Date(reading.timestamp).toISOString(),
-        location: reading.location,
-        consumerNo: reading.consumerNo,
-        reading: reading.reading,
-        photoUri: reading.photoUri,
-        notes: reading.notes,
-      }).catch(() => {});
-
-      return full;
-    },
-    [],
-  );
-
   const startTrip = useCallback(async (start: GeoPoint | null) => {
     const user = stateRef.current.user;
     const now = Date.now();
@@ -992,7 +948,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setState((s) => ({
       ...s,
       attendance: s.attendance.map((a) => ({ ...a, synced: true })),
-      meterReadings: s.meterReadings.map((m) => ({ ...m, synced: true })),
       trips: s.trips.map((t) =>
         t.endedAt !== null ? { ...t, synced: true } : t,
       ),
@@ -1079,7 +1034,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setupMpin,
       signOut,
       addAttendance,
-      addMeterReading,
       startTrip,
       endTrip,
       updateActiveTripKm,
@@ -1099,7 +1053,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setupMpin,
       signOut,
       addAttendance,
-      addMeterReading,
       startTrip,
       endTrip,
       updateActiveTripKm,

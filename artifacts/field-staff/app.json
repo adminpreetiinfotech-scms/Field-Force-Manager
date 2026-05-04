@@ -16,8 +16,8 @@
     "ios": {
       "supportsTablet": false,
       "infoPlist": {
-        "NSCameraUsageDescription": "We use the camera to capture a live selfie at every check-in and a photo of the meter when you record a reading. This proves you were on site.",
-        "NSLocationWhenInUseUsageDescription": "Your GPS is used to stamp every check-in, meter reading, and trip so kilometers are auto-calculated and audit-ready.",
+        "NSCameraUsageDescription": "We use the camera to capture a live selfie at every check-in and a photo of your vehicle odometer. This proves you were on site.",
+        "NSLocationWhenInUseUsageDescription": "Your GPS is used to stamp every check-in and trip so kilometers are auto-calculated and audit-ready.",
         "NSPhotoLibraryUsageDescription": "Used to attach photos to records when needed."
       }
     },
@@ -45,7 +45,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow Field Staff Manager to access your camera for selfie check-ins and meter photos.",
+          "cameraPermission": "Allow Field Staff Manager to access your camera for selfie check-ins and odometer photos.",
           "recordAudioAndroid": false
         }
       ],

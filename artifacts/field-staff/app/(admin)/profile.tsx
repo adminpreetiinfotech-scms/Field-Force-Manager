@@ -21,7 +21,7 @@ import { useColors } from "@/hooks/useColors";
 export default function AdminProfile() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user, signOut, attendance, meterReadings, staffLocations } = useApp();
+  const { user, signOut, attendance, staffLocations } = useApp();
 
   const onSignOut = () => {
     Alert.alert("Sign out", "End your session?", [
@@ -136,15 +136,6 @@ export default function AdminProfile() {
             </Text>
             <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
               Attendance
-            </Text>
-          </View>
-          <View style={[styles.statSep, { backgroundColor: colors.border }]} />
-          <View style={styles.statCol}>
-            <Text style={[styles.statValue, { color: colors.foreground }]}>
-              {meterReadings.length}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
-              Meter reads
             </Text>
           </View>
         </View>
