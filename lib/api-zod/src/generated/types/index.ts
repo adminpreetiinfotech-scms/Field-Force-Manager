@@ -63,6 +63,7 @@ export * from './recentTrip';
 export * from './registerInput';
 export * from './registerInputKind';
 export * from './resetCompanyAdmin200';
+export * from './restoreHintBody';
 export * from './rideCalendarDay';
 export * from './rideCalendarMonth';
 export * from './selfRegisterCandidate201';

@@ -838,6 +838,36 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
 
+  /admin/hints/restore:
+    post:
+      operationId: restoreHint
+      tags: [admin]
+      summary: Remove a single dismissed hint key so it shows again for the current admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                key:
+                  type: string
+                  description: The hint key to restore (e.g. "dashboard_hint_center")
+              required: [key]
+      responses:
+        "200":
+          description: Hint restored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DismissedHints"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
   /admin/dashboard/stats:
     get:
       operationId: getDashboardStats

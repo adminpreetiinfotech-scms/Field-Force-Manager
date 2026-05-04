@@ -824,6 +824,11 @@ export type DismissHintBody = {
   key: string;
 };
 
+export type RestoreHintBody = {
+  /** The hint key to restore (e.g. "dashboard_hint_center") */
+  key: string;
+};
+
 export type GetCenterAttendanceParams = {
 /**
  * Start date in YYYY-MM-DD format (IST). Defaults to today.

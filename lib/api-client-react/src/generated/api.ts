@@ -61,6 +61,7 @@ import type {
   ProblemDetails,
   RegisterInput,
   ResetCompanyAdmin200,
+  RestoreHintBody,
   RideCalendarMonth,
   SelfRegisterCandidate201,
   SelfRegisterCandidateBody,
@@ -2315,6 +2316,77 @@ export const useDismissHint = <TError = ErrorType<ProblemDetails>,
         TContext
       > => {
       return useMutation(getDismissHintMutationOptions(options));
+    }
+
+/**
+ * @summary Remove a single dismissed hint key so it shows again for the current admin
+ */
+export const getRestoreHintUrl = () => {
+
+
+
+
+  return `/api/admin/hints/restore`
+}
+
+export const restoreHint = async (restoreHintBody: RestoreHintBody, options?: RequestInit): Promise<DismissedHints> => {
+
+  return customFetch<DismissedHints>(getRestoreHintUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      restoreHintBody,)
+  }
+);}
+
+
+
+
+export const getRestoreHintMutationOptions = <TError = ErrorType<ProblemDetails>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreHint>>, TError,{data: BodyType<RestoreHintBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof restoreHint>>, TError,{data: BodyType<RestoreHintBody>}, TContext> => {
+
+const mutationKey = ['restoreHint'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof restoreHint>>, {data: BodyType<RestoreHintBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  restoreHint(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RestoreHintMutationResult = NonNullable<Awaited<ReturnType<typeof restoreHint>>>
+    export type RestoreHintMutationBody = BodyType<RestoreHintBody>
+    export type RestoreHintMutationError = ErrorType<ProblemDetails>
+
+    /**
+ * @summary Remove a single dismissed hint key so it shows again for the current admin
+ */
+export const useRestoreHint = <TError = ErrorType<ProblemDetails>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreHint>>, TError,{data: BodyType<RestoreHintBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof restoreHint>>,
+        TError,
+        {data: BodyType<RestoreHintBody>},
+        TContext
+      > => {
+      return useMutation(getRestoreHintMutationOptions(options));
     }
 
 /**

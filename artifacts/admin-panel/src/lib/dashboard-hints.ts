@@ -12,6 +12,10 @@ export const DASHBOARD_HINT_KEYS = {
   centerStaff: `${DASHBOARD_HINT_PREFIX}center`,
 } as const;
 
+export const DASHBOARD_HINT_LABELS: Record<string, string> = {
+  [DASHBOARD_HINT_KEYS.centerStaff]: "Center Staff Map Tip",
+};
+
 /**
  * Manages the dismissed state for a single dashboard hint key.
  *

@@ -757,6 +757,18 @@ export const DismissHintResponse = zod.object({
 
 
 /**
+ * @summary Remove a single dismissed hint key so it shows again for the current admin
+ */
+export const RestoreHintBody = zod.object({
+  "key": zod.string().describe('The hint key to restore (e.g. \"dashboard_hint_center\")')
+})
+
+export const RestoreHintResponse = zod.object({
+  "dismissedHints": zod.array(zod.string()).describe('List of dismissed dashboard hint keys')
+})
+
+
+/**
  * @summary Get admin dashboard summary statistics
  */
 export const GetDashboardStatsResponse = zod.object({

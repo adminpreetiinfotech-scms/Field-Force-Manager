@@ -1330,6 +1330,45 @@ router.post("/admin/hints/dismiss", requireAdmin, async (req, res, next) => {
   }
 });
 
+// ─── POST /api/admin/hints/restore ───────────────────────────────────────────
+// Removes a single hint key from the dismissed list for the authenticated admin.
+
+router.post("/admin/hints/restore", requireAdmin, async (req, res, next) => {
+  try {
+    const phone =
+      (req.headers["x-admin-phone"] as string | undefined) ??
+      (req.query.adminPhone as string | undefined);
+    if (!phone) {
+      res.status(401).json({ title: "Unauthorized", status: 401 });
+      return;
+    }
+    const { key } = req.body as { key?: string };
+    if (!key?.trim()) {
+      res.status(400).json({ title: "key is required", status: 400 });
+      return;
+    }
+    const [row] = await db
+      .select({ dismissedHints: staffTable.dismissedHints })
+      .from(staffTable)
+      .where(eq(staffTable.phone, phone.trim()))
+      .limit(1);
+    let hints: string[] = [];
+    if (row?.dismissedHints) {
+      try { hints = JSON.parse(row.dismissedHints); } catch { hints = []; }
+    }
+    const filtered = hints.filter((h) => h !== key.trim());
+    if (filtered.length !== hints.length) {
+      await db
+        .update(staffTable)
+        .set({ dismissedHints: filtered.length > 0 ? JSON.stringify(filtered) : null })
+        .where(eq(staffTable.phone, phone.trim()));
+    }
+    res.json({ dismissedHints: filtered });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ─── DELETE /api/admin/hints ──────────────────────────────────────────────────
 // Clears all dismissed hint keys for the authenticated admin.
 

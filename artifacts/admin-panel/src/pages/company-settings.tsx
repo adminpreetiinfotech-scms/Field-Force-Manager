@@ -7,10 +7,11 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Building2, Save, Loader2, Upload, X, ImageIcon,
   MapPin, Layers, GitBranch, RefreshCw, AlertTriangle, Navigation, RotateCcw, SlidersHorizontal,
+  Eye, EyeOff,
 } from "lucide-react";
 import GeoFenceMapPicker, { type GeoFenceMapPickerHandle } from "@/components/geo-fence-map-picker";
-import { DASHBOARD_HINT_PREFIX } from "@/lib/dashboard-hints";
-import { useGetDismissedHints, useResetDismissedHints, getGetDismissedHintsQueryKey } from "@workspace/api-client-react";
+import { DASHBOARD_HINT_PREFIX, DASHBOARD_HINT_KEYS, DASHBOARD_HINT_LABELS } from "@/lib/dashboard-hints";
+import { useGetDismissedHints, useResetDismissedHints, useRestoreHint, useDismissHint, getGetDismissedHintsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface CompanyProfile {
@@ -84,16 +85,22 @@ export default function CompanySettings() {
   const queryClient = useQueryClient();
   const { data: serverHints } = useGetDismissedHints();
   const { mutate: resetHintsOnServer, isPending: resettingHints } = useResetDismissedHints();
+  const { mutate: restoreHintOnServer } = useRestoreHint();
+  const { mutate: dismissHintOnServer } = useDismissHint();
 
-  const dismissedHintCount = serverHints?.dismissedHints.length ?? 0;
+  const dismissedHintKeys = serverHints?.dismissedHints ?? [];
+  const dismissedHintCount = dismissedHintKeys.length;
+
+  const allHintEntries = Object.values(DASHBOARD_HINT_KEYS).map((key) => ({
+    key,
+    label: DASHBOARD_HINT_LABELS[key] ?? key,
+    dismissed: dismissedHintKeys.includes(key),
+  }));
 
   const handleResetHints = () => {
     resetHintsOnServer(undefined, {
       onSuccess: (data) => {
-        // Clear localStorage only after the server confirms success to avoid divergence on error.
         clearLocalHints();
-        // Update query cache immediately so the hint count shows 0 and the
-        // dashboard re-enables hints without waiting for the next refetch.
         queryClient.setQueryData(getGetDismissedHintsQueryKey(), data);
         toast({ title: "Dashboard hints restored", description: "All dashboard hints will reappear on your next visit." });
       },
@@ -101,6 +108,38 @@ export default function CompanySettings() {
         toast({ title: "Failed to reset hints", variant: "destructive" });
       },
     });
+  };
+
+  const handleRestoreHint = (key: string) => {
+    restoreHintOnServer(
+      { data: { key } },
+      {
+        onSuccess: (data) => {
+          localStorage.removeItem(key);
+          queryClient.setQueryData(getGetDismissedHintsQueryKey(), data);
+          toast({ title: "Hint re-enabled", description: `"${DASHBOARD_HINT_LABELS[key] ?? key}" will show again on the dashboard.` });
+        },
+        onError: () => {
+          toast({ title: "Failed to re-enable hint", variant: "destructive" });
+        },
+      },
+    );
+  };
+
+  const handleDismissHint = (key: string) => {
+    dismissHintOnServer(
+      { data: { key } },
+      {
+        onSuccess: (data) => {
+          localStorage.setItem(key, "true");
+          queryClient.setQueryData(getGetDismissedHintsQueryKey(), data);
+          toast({ title: "Hint dismissed", description: `"${DASHBOARD_HINT_LABELS[key] ?? key}" will no longer show on the dashboard.` });
+        },
+        onError: () => {
+          toast({ title: "Failed to dismiss hint", variant: "destructive" });
+        },
+      },
+    );
   };
 
   const [name, setName] = useState("");
@@ -535,34 +574,65 @@ export default function CompanySettings() {
 
           {/* Preferences */}
           <div className="border rounded-xl p-6 bg-card space-y-4">
-            <div className="flex items-center gap-2 mb-1">
-              <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
-              <h2 className="text-sm font-semibold">Preferences</h2>
-            </div>
-            <div className="flex items-center justify-between gap-4">
-              <div className="min-w-0">
-                <p className="text-sm font-medium">Dashboard hints</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {dismissedHintCount > 0
-                    ? `${dismissedHintCount} hint${dismissedHintCount === 1 ? "" : "s"} currently dismissed.`
-                    : "All dashboard hints are visible."}
-                </p>
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+                <h2 className="text-sm font-semibold">Preferences</h2>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={dismissedHintCount === 0 || resettingHints}
-                onClick={handleResetHints}
-                className="gap-1.5 shrink-0"
-              >
-                {resettingHints ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <RotateCcw className="h-3.5 w-3.5" />
-                )}
-                Reset all hints
-              </Button>
+              {dismissedHintCount > 0 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={resettingHints}
+                  onClick={handleResetHints}
+                  className="gap-1.5 text-xs text-muted-foreground h-7 px-2"
+                >
+                  {resettingHints ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <RotateCcw className="h-3 w-3" />
+                  )}
+                  Re-enable all
+                </Button>
+              )}
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Dashboard hints</p>
+              <p className="text-xs text-muted-foreground">
+                {dismissedHintCount > 0
+                  ? `${dismissedHintCount} hint${dismissedHintCount === 1 ? "" : "s"} currently dismissed.`
+                  : "All dashboard hints are visible."}
+              </p>
+            </div>
+            <div className="space-y-2">
+              {allHintEntries.map(({ key, label, dismissed }) => (
+                <div
+                  key={key}
+                  className="flex items-center justify-between gap-3 rounded-lg border bg-muted/20 px-3 py-2.5"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    {dismissed ? (
+                      <EyeOff className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    ) : (
+                      <Eye className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                    )}
+                    <span className="text-sm truncate">{label}</span>
+                    <span className={`text-xs shrink-0 ${dismissed ? "text-muted-foreground" : "text-emerald-600 font-medium"}`}>
+                      {dismissed ? "Dismissed" : "Visible"}
+                    </span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2.5 text-xs shrink-0"
+                    onClick={() => dismissed ? handleRestoreHint(key) : handleDismissHint(key)}
+                  >
+                    {dismissed ? "Re-enable" : "Dismiss"}
+                  </Button>
+                </div>
+              ))}
             </div>
           </div>
 
