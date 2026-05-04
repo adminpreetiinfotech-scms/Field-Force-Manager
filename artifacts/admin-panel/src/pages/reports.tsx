@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { Download, FileSpreadsheet, Loader2, X, Search, Users, CalendarCheck, ChevronDown, ChevronUp, Camera, ExternalLink } from "lucide-react";
+import { Download, FileSpreadsheet, Loader2, X, Search, Users, CalendarCheck, TrendingUp, ChevronDown, ChevronUp, Camera, ExternalLink } from "lucide-react";
 import { format, subMonths } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
@@ -30,6 +30,7 @@ interface AttendanceSummary {
   to: string;
   uniqueStaff: number;
   totalCheckInDays: number;
+  avgDaysPerStaff: number;
   staffBreakdown: { staffId: string; staffName: string; empCode: string; checkInDays: number }[];
 }
 
@@ -459,7 +460,7 @@ export default function Reports() {
               </div>
               {summary && !summaryLoading ? (
                 <>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     <div className="flex items-center gap-2 bg-background rounded-md px-3 py-2 border">
                       <Users className="h-4 w-4 text-blue-600 shrink-0" />
                       <div>
@@ -472,6 +473,13 @@ export default function Reports() {
                       <div>
                         <p className="text-xs text-muted-foreground leading-none">Total Check-In Days</p>
                         <p className="text-lg font-bold text-foreground leading-tight">{summary.totalCheckInDays}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 bg-background rounded-md px-3 py-2 border">
+                      <TrendingUp className="h-4 w-4 text-purple-600 shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground leading-none">Avg Days/Staff</p>
+                        <p className="text-lg font-bold text-foreground leading-tight">{summary.avgDaysPerStaff.toFixed(1)}</p>
                       </div>
                     </div>
                   </div>

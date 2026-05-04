@@ -931,12 +931,16 @@ router.get("/admin/reports/attendance-summary", requireAdmin, async (req, res, n
 
     const totalCheckInDays = staffBreakdown.reduce((sum, s) => sum + s.checkInDays, 0);
     const uniqueStaff      = staffBreakdown.length;
+    const avgDaysPerStaff  = uniqueStaff > 0
+      ? Math.round((totalCheckInDays / uniqueStaff) * 10) / 10
+      : 0;
 
     res.json({
       from:           rawFrom,
       to:             rawTo,
       uniqueStaff,
       totalCheckInDays,
+      avgDaysPerStaff,
       staffBreakdown,
     });
   } catch (err) {
