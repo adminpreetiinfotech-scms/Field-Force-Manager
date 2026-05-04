@@ -299,6 +299,29 @@ export default function FieldAttendance() {
         </p>
       )}
 
+      {/* Active filter badge */}
+      {isFiltered && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Showing:</span>
+          {categoryFilter && (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+              {categoryFilter.charAt(0).toUpperCase() + categoryFilter.slice(1)}
+            </span>
+          )}
+          {statusFilter && (
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+              statusFilter === "present"
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                : statusFilter === "partial"
+                ? "bg-amber-50 text-amber-700 border-amber-200"
+                : "bg-red-50 text-red-700 border-red-200"
+            }`}>
+              {statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Summary Cards */}
       {filteredRows.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
