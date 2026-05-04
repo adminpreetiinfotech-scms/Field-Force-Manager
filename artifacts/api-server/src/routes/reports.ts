@@ -17,6 +17,8 @@ type ActivityPayload = {
   startOdometerKm?: number | null;
   endOdometerKm?: number | null;
   vehicleMeterPhotoUri?: string | null;
+  selfieUri?: string | null;
+  photoUri?: string | null;
 };
 
 const NAVY  = "FF1A3560";
@@ -133,18 +135,25 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
       .where(and(...attendConds))
       .orderBy(activityEventsTable.occurredAt);
 
-    // Build: staffId → date (IST) → { startOdometerKm, endOdometerKm }
-    type OdometerDay = { startOdometerKm: number | null; endOdometerKm: number | null };
+    // Build: staffId → date (IST) → { startOdometerKm, endOdometerKm, checkinPhotoUri, checkoutPhotoUri }
+    type OdometerDay = {
+      startOdometerKm: number | null;
+      endOdometerKm: number | null;
+      checkinPhotoUri: string | null;
+      checkoutPhotoUri: string | null;
+    };
     const odometerMap = new Map<string, OdometerDay>();
     for (const row of attendRows) {
       const key = `${row.staffId}::${toIST(new Date(row.occurredAt as Date))}`;
       const payload = (row.payload || {}) as ActivityPayload;
-      const existing = odometerMap.get(key) ?? { startOdometerKm: null, endOdometerKm: null };
-      if (row.kind === "checkin" && payload.startOdometerKm != null) {
-        existing.startOdometerKm = payload.startOdometerKm;
+      const existing = odometerMap.get(key) ?? { startOdometerKm: null, endOdometerKm: null, checkinPhotoUri: null, checkoutPhotoUri: null };
+      if (row.kind === "checkin") {
+        if (payload.startOdometerKm != null) existing.startOdometerKm = payload.startOdometerKm;
+        if (payload.vehicleMeterPhotoUri) existing.checkinPhotoUri = payload.vehicleMeterPhotoUri;
       }
-      if (row.kind === "checkout" && payload.endOdometerKm != null) {
-        existing.endOdometerKm = payload.endOdometerKm;
+      if (row.kind === "checkout") {
+        if (payload.endOdometerKm != null) existing.endOdometerKm = payload.endOdometerKm;
+        if (payload.vehicleMeterPhotoUri) existing.checkoutPhotoUri = payload.vehicleMeterPhotoUri;
       }
       odometerMap.set(key, existing);
     }
@@ -198,6 +207,8 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
       startLocation: string;
       endLocation: string;
       reportType: string;
+      checkinPhotoUrl: string | null;
+      checkoutPhotoUrl: string | null;
     };
 
     const rows: ReportRow[] = [];
@@ -215,7 +226,7 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
 
       // Look up odometer for this staff+date
       const dateKey = `${start.staffId}::${toIST(startAt)}`;
-      const odo = odometerMap.get(dateKey) ?? { startOdometerKm: null, endOdometerKm: null };
+      const odo = odometerMap.get(dateKey) ?? { startOdometerKm: null, endOdometerKm: null, checkinPhotoUri: null, checkoutPhotoUri: null };
       const startOdometer = odo.startOdometerKm;
       const endOdometer   = odo.endOdometerKm;
 
@@ -244,6 +255,8 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
         startLocation: coordStr(startPayload, "origin") || coordStr(startPayload, "location"),
         endLocation:   coordStr(endPayload, "destination") || coordStr(endPayload, "location"),
         reportType:    reportType.charAt(0).toUpperCase() + reportType.slice(1),
+        checkinPhotoUrl:  odo.checkinPhotoUri  ?? null,
+        checkoutPhotoUrl: odo.checkoutPhotoUri ?? null,
       });
     }
 
@@ -286,9 +299,11 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
       { width: 28 }, // Start Location
       { width: 28 }, // End Location
       { width: 12 }, // Report Type
+      { width: 30 }, // Check-In Photo
+      { width: 30 }, // Check-Out Photo
     ];
 
-    const COL_COUNT = 14;
+    const COL_COUNT = 16;
 
     function mergeHeader(ws: ExcelJS.Worksheet, row: number, text: string, fgArgb: string, textArgb: string, sz = 13) {
       ws.mergeCells(row, 1, row, COL_COUNT);
@@ -352,6 +367,7 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
       "GPS KM", "Variance %",
       "Ride Start\nTime", "Ride End\nTime",
       "Start Location", "End Location", "Report Type",
+      "Check-In\nOdo Photo", "Check-Out\nOdo Photo",
     ];
     const hRow = ws.getRow(8);
     hRow.height = 32;
@@ -374,7 +390,7 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
       const isAlt = idx % 2 === 1;
       const rowFill = isAlt ? altFill : undefined;
 
-      const cells = [
+      const cells: (string | number)[] = [
         r.staffName,
         r.empCode,
         r.mobile,
@@ -404,6 +420,35 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
         else if (rowFill) cell.fill = rowFill;
         cell.border = { bottom: { style: "hair", color: { argb: "FFD1D5DB" } } };
       });
+
+      // Check-In Photo (col 15)
+      const ciPhotoCell = dr.getCell(15);
+      if (r.checkinPhotoUrl) {
+        ciPhotoCell.value = { text: "View Photo", hyperlink: r.checkinPhotoUrl };
+        ciPhotoCell.font  = { size: 9, name: "Calibri", color: { argb: "FF1A3560" }, underline: true };
+      } else {
+        ciPhotoCell.value = "—";
+        ciPhotoCell.font  = { size: 9, name: "Calibri", color: { argb: "FF9CA3AF" } };
+      }
+      ciPhotoCell.alignment = { horizontal: "center", vertical: "middle" };
+      if (highVariance) ciPhotoCell.fill = varianceFill;
+      else if (rowFill) ciPhotoCell.fill = rowFill;
+      ciPhotoCell.border = { bottom: { style: "hair", color: { argb: "FFD1D5DB" } } };
+
+      // Check-Out Photo (col 16)
+      const coPhotoCell = dr.getCell(16);
+      if (r.checkoutPhotoUrl) {
+        coPhotoCell.value = { text: "View Photo", hyperlink: r.checkoutPhotoUrl };
+        coPhotoCell.font  = { size: 9, name: "Calibri", color: { argb: "FF1A3560" }, underline: true };
+      } else {
+        coPhotoCell.value = "—";
+        coPhotoCell.font  = { size: 9, name: "Calibri", color: { argb: "FF9CA3AF" } };
+      }
+      coPhotoCell.alignment = { horizontal: "center", vertical: "middle" };
+      if (highVariance) coPhotoCell.fill = varianceFill;
+      else if (rowFill) coPhotoCell.fill = rowFill;
+      coPhotoCell.border = { bottom: { style: "hair", color: { argb: "FFD1D5DB" } } };
+
       dataRowNum++;
     }
 

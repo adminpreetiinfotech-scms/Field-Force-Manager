@@ -2011,6 +2011,14 @@ components:
           type: number
           nullable: true
           description: Total distance travelled in kilometres.
+        checkinPhotoUrl:
+          type: string
+          nullable: true
+          description: URL of the odometer photo taken at check-in, if available.
+        checkoutPhotoUrl:
+          type: string
+          nullable: true
+          description: URL of the odometer photo taken at check-out, if available.
       required: [tripRef, staffId, staffName, staffPhone, rideDate, startTime, endTime]
 
     CandidateDto:

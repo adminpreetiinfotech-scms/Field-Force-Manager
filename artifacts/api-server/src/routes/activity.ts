@@ -717,11 +717,32 @@ router.get("/activity/trip-report", async (req, res, next) => {
       tripConds.push(eq(activityEventsTable.staffId, rawStaffId));
     }
 
-    const tripRows = await db
-      .select()
-      .from(activityEventsTable)
-      .where(and(...tripConds))
-      .orderBy(activityEventsTable.occurredAt);
+    // Also pull checkin/checkout events for the same window (for odometer photos).
+    const attendConds = [
+      inArray(activityEventsTable.kind, ["checkin", "checkout"]),
+      gte(activityEventsTable.occurredAt, startOfFrom),
+      lt(activityEventsTable.occurredAt, new Date(endOfTo.getTime() + 1)),
+    ] as ReturnType<typeof eq>[];
+    if (rawStaffId) {
+      attendConds.push(eq(activityEventsTable.staffId, rawStaffId));
+    }
+
+    const [tripRows, attendRows] = await Promise.all([
+      db
+        .select()
+        .from(activityEventsTable)
+        .where(and(...tripConds))
+        .orderBy(activityEventsTable.occurredAt),
+      db
+        .select({
+          staffId: activityEventsTable.staffId,
+          kind: activityEventsTable.kind,
+          occurredAt: activityEventsTable.occurredAt,
+          payload: activityEventsTable.payload,
+        })
+        .from(activityEventsTable)
+        .where(and(...attendConds)),
+    ]);
 
     // Group by tripRef: build a map of tripRef → { start, end } rows.
     type TripAccum = {
@@ -749,6 +770,26 @@ router.get("/activity/trip-report", async (req, res, next) => {
     if (completed.length === 0) {
       res.json([]);
       return;
+    }
+
+    // Build staffId::date → { checkinPhotoUri, checkoutPhotoUri } from checkin/checkout events.
+    const IST_OFFSET = 5.5 * 60 * 60 * 1000;
+    const toISTDate = (d: Date) =>
+      new Date(d.getTime() + IST_OFFSET).toISOString().slice(0, 10);
+
+    type PhotoDay = { checkinPhotoUri: string | null; checkoutPhotoUri: string | null };
+    const photoMap = new Map<string, PhotoDay>();
+    for (const row of attendRows) {
+      const key = `${row.staffId}::${toISTDate(row.occurredAt as Date)}`;
+      const p = (row.payload || {}) as ActivityPayload;
+      const existing = photoMap.get(key) ?? { checkinPhotoUri: null, checkoutPhotoUri: null };
+      if (row.kind === "checkin" && p.vehicleMeterPhotoUri) {
+        existing.checkinPhotoUri = p.vehicleMeterPhotoUri;
+      }
+      if (row.kind === "checkout" && p.vehicleMeterPhotoUri) {
+        existing.checkoutPhotoUri = p.vehicleMeterPhotoUri;
+      }
+      photoMap.set(key, existing);
     }
 
     // Fetch phone numbers for each unique staffId in the results.
@@ -780,12 +821,15 @@ router.get("/activity/trip-report", async (req, res, next) => {
     const report = completed.map(({ tripRef, start, end }) => {
       const startPayload = (start.payload || {}) as ActivityPayload;
       const endPayload = (end.payload || {}) as ActivityPayload;
+      const rideDate = toIST(start.occurredAt as Date);
+      const photoKey = `${start.staffId}::${rideDate}`;
+      const photos = photoMap.get(photoKey) ?? { checkinPhotoUri: null, checkoutPhotoUri: null };
       return {
         tripRef,
         staffId: start.staffId,
         staffName: start.staffName,
         staffPhone: phoneMap.get(start.staffId) ?? "",
-        rideDate: toIST(start.occurredAt as Date),
+        rideDate,
         startTime: start.occurredAt,
         endTime: end.occurredAt,
         startLocation:
@@ -798,6 +842,8 @@ router.get("/activity/trip-report", async (req, res, next) => {
           typeof endPayload.distanceKm === "number"
             ? Math.round(endPayload.distanceKm * 10) / 10
             : null,
+        checkinPhotoUrl: photos.checkinPhotoUri ?? null,
+        checkoutPhotoUrl: photos.checkoutPhotoUri ?? null,
       };
     });
 
