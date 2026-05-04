@@ -53,6 +53,7 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
     const rawTo         = req.query.to           as string | undefined;
     const rawStaffId    = req.query.staffId      as string | undefined;
     const reportType    = (req.query.reportType  as string | undefined) ?? "daily";
+    const sheetFilter   = (req.query.sheet       as string | undefined) ?? null;
     // Use companyId from auth middleware (null = super admin, sees all)
     const rawCompanyId  = (res.locals.companyId as string | null) ?? null;
     let   organization  = (req.query.organization as string | undefined)?.trim() || null;
@@ -281,6 +282,9 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
     wb.creator = "JSDMS Field Force Manager";
     wb.created = new Date();
 
+    const staffPart = staffNameHdr ? `Staff: ${staffNameHdr}   |   ` : "";
+
+    if (sheetFilter !== "vehicleKm") {
     const ws = wb.addWorksheet("Ride Report", { properties: { tabColor: { argb: NAVY } } });
 
     // Column widths
@@ -320,7 +324,6 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
     mergeHeader(ws, 1, orgLine, NAVY, WHITE, 13);
     mergeHeader(ws, 2, "STAFF RIDE READING REPORT", NAVY, AMBER, 14);
 
-    const staffPart = staffNameHdr ? `Staff: ${staffNameHdr}   |   ` : "";
     const rtLabel   = (rows[0]?.reportType ?? reportType.charAt(0).toUpperCase() + reportType.slice(1));
     mergeHeader(ws, 3, `${staffPart}Report: ${rawFrom}  →  ${rawTo}   |   Type: ${rtLabel}`, "FF1E3A5F", WHITE, 10);
 
@@ -511,6 +514,7 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
     gtKm.font  = { bold: true, size: 10, color: { argb: WHITE } };
     gtKm.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: NAVY } };
     gtKm.alignment = { horizontal: "center" };
+    } // end if (sheetFilter !== "vehicleKm")
 
     // ── 8. Build "Daily Vehicle KM" sheet ────────────────────────────────────
 
@@ -689,8 +693,8 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
     dtFlag.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: NAVY } };
     dtFlag.alignment = { horizontal: "center", vertical: "middle" };
 
-    // ── 9. Build "Attendance" sheet (only when data exists) ──────────────────
-    if (attendDayMap.size > 0) {
+    // ── 9. Build "Attendance" sheet (only when data exists and not vehicleKm-only export) ──
+    if (sheetFilter !== "vehicleKm" && attendDayMap.size > 0) {
       const PURPLE = "FF4F46E5";
       const PURPLE_DK = "FF3730A3";
 
@@ -810,7 +814,9 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
     }
 
     // ── 10. Stream response ───────────────────────────────────────────────────
-    const fname = `ride-report-${rawFrom}-to-${rawTo}.xlsx`;
+    const fname = sheetFilter === "vehicleKm"
+      ? `vehicle-km-summary-${rawFrom}-to-${rawTo}.xlsx`
+      : `ride-report-${rawFrom}-to-${rawTo}.xlsx`;
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename="${fname}"`);
     await wb.xlsx.write(res);

@@ -46,6 +46,7 @@ export default function Reports() {
   const [fromDate, setFromDate] = useState(format(subMonths(new Date(), 1), "yyyy-MM-dd"));
   const [toDate, setToDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isDownloadingVehicleKm, setIsDownloadingVehicleKm] = useState(false);
   const [isDownloadingCsv, setIsDownloadingCsv] = useState(false);
   const { toast } = useToast();
 
@@ -111,6 +112,27 @@ export default function Reports() {
       toast({ title: "Download failed", description: err.message || "Could not download report.", variant: "destructive" });
     } finally {
       setIsDownloading(false);
+    }
+  };
+
+  const handleDownloadVehicleKm = async () => {
+    setIsDownloadingVehicleKm(true);
+    try {
+      const params = new URLSearchParams({ from: fromDate, to: toDate, sheet: "vehicleKm" });
+      if (selectedStaff) {
+        params.set("staffId", selectedStaff.id);
+        params.set("staffName", selectedStaff.name);
+      }
+      const suffix = selectedStaff ? `-${selectedStaff.name.replace(/\s+/g, "-")}` : "-all-staff";
+      await downloadBlob(
+        `/api/admin/reports/rides/xlsx?${params}`,
+        `vehicle-km-summary-${fromDate}-to-${toDate}${suffix}.xlsx`
+      );
+      toast({ title: "Download started", description: "Vehicle KM summary is being downloaded." });
+    } catch (err: any) {
+      toast({ title: "Download failed", description: err.message || "Could not download report.", variant: "destructive" });
+    } finally {
+      setIsDownloadingVehicleKm(false);
     }
   };
 
@@ -216,6 +238,15 @@ export default function Reports() {
             <Button onClick={handleDownloadRides} className="w-full gap-2" disabled={isDownloading}>
               {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
               {isDownloading ? "Downloading..." : selectedStaff ? `Download Report for ${selectedStaff.name}` : "Download Excel Report"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleDownloadVehicleKm}
+              className="w-full gap-2 border-green-600 text-green-700 hover:bg-green-50"
+              disabled={isDownloadingVehicleKm}
+            >
+              {isDownloadingVehicleKm ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+              {isDownloadingVehicleKm ? "Downloading..." : "Export Vehicle KM Summary"}
             </Button>
           </CardContent>
         </Card>
