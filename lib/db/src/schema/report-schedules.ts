@@ -27,3 +27,18 @@ export const reportSchedulesTable = pgTable(
 
 export type ReportSchedule = typeof reportSchedulesTable.$inferSelect;
 export type InsertReportSchedule = typeof reportSchedulesTable.$inferInsert;
+
+export const reportDeliveryLogsTable = pgTable("report_delivery_logs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  scheduleId: uuid("schedule_id").references(() => reportSchedulesTable.id, { onDelete: "set null" }),
+  companyId: uuid("company_id").references(() => companiesTable.id, { onDelete: "cascade" }),
+  sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  reportTypes: text("report_types").array().notNull().default([]),
+  recipients: text("recipients").array().notNull().default([]),
+  success: boolean("success").notNull(),
+  errorMessage: text("error_message"),
+  triggeredBy: text("triggered_by", { enum: ["scheduler", "manual"] }).notNull().default("scheduler"),
+});
+
+export type ReportDeliveryLog = typeof reportDeliveryLogsTable.$inferSelect;
+export type InsertReportDeliveryLog = typeof reportDeliveryLogsTable.$inferInsert;

@@ -4,6 +4,7 @@ import {
   activityEventsTable,
   companiesTable,
   db,
+  reportDeliveryLogsTable,
   reportSchedulesTable,
   staffTable,
 } from "@workspace/db";
@@ -685,34 +686,53 @@ export async function buildAndSendScheduledReports(opts: {
   to: string;
   recipients: string[];
   reportTypes: ReportType[];
+  scheduleId?: string | null;
+  triggeredBy?: "scheduler" | "manual";
 }): Promise<void> {
   const { reportTypes } = opts;
   const orgName = opts.organization ?? "JSDMS";
+  const triggeredBy = opts.triggeredBy ?? "scheduler";
 
   const attachments: Array<{ buffer: Buffer; filename: string }> = [];
   const reportLabels: string[] = [];
 
-  if (reportTypes.includes("attendance")) {
-    const result = await buildAttendanceSummaryXlsx(opts);
-    attachments.push(result);
-    reportLabels.push("Attendance Summary");
-  }
-  if (reportTypes.includes("rideReport")) {
-    const result = await buildRideReportXlsx(opts);
-    attachments.push(result);
-    reportLabels.push("Staff Ride Report");
-  }
-  if (reportTypes.includes("vehicleKm")) {
-    const result = await buildVehicleKmXlsx(opts);
-    attachments.push(result);
-    reportLabels.push("Vehicle KM Summary");
-  }
+  const writeLog = async (success: boolean, errorMessage?: string) => {
+    await db.insert(reportDeliveryLogsTable).values({
+      scheduleId: opts.scheduleId ?? null,
+      companyId: opts.companyId ?? undefined,
+      reportTypes,
+      recipients: opts.recipients,
+      success,
+      errorMessage: errorMessage ?? null,
+      triggeredBy,
+    }).catch(logErr => logger.error({ logErr }, "Failed to write delivery log"));
+  };
 
-  if (attachments.length === 0) return;
+  try {
+    if (reportTypes.includes("attendance")) {
+      const result = await buildAttendanceSummaryXlsx(opts);
+      attachments.push(result);
+      reportLabels.push("Attendance Summary");
+    }
+    if (reportTypes.includes("rideReport")) {
+      const result = await buildRideReportXlsx(opts);
+      attachments.push(result);
+      reportLabels.push("Staff Ride Report");
+    }
+    if (reportTypes.includes("vehicleKm")) {
+      const result = await buildVehicleKmXlsx(opts);
+      attachments.push(result);
+      reportLabels.push("Vehicle KM Summary");
+    }
 
-  const reportList = reportLabels.join(", ");
-  const subject = `Scheduled Reports — ${opts.from} to ${opts.to} | ${orgName}`;
-  const html = `
+    if (attachments.length === 0) {
+      await writeLog(false, "No report types produced attachments — nothing to send");
+      return;
+    }
+
+    const reportList = reportLabels.join(", ");
+    const subject = `Scheduled Reports — ${opts.from} to ${opts.to} | ${orgName}`;
+    const html = `
     <div style="font-family: Arial, sans-serif; color: #111827; max-width: 600px; margin: 0 auto;">
       <div style="background: #0F766E; padding: 20px 24px; border-radius: 8px 8px 0 0;">
         <h2 style="color: #fff; margin: 0; font-size: 18px;">Scheduled Reports</h2>
@@ -736,14 +756,20 @@ export async function buildAndSendScheduledReports(opts: {
     </div>
   `;
 
-  await sendEmailWithAttachments({
-    to: opts.recipients,
-    subject,
-    html,
-    attachments: attachments.map(a => ({ buffer: a.buffer, filename: a.filename })),
-  });
+    await sendEmailWithAttachments({
+      to: opts.recipients,
+      subject,
+      html,
+      attachments: attachments.map(a => ({ buffer: a.buffer, filename: a.filename })),
+    });
 
-  logger.info({ recipients: opts.recipients, reports: reportList, from: opts.from, to: opts.to }, "Scheduled reports email sent");
+    logger.info({ recipients: opts.recipients, reports: reportList, from: opts.from, to: opts.to }, "Scheduled reports email sent");
+    await writeLog(true);
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    await writeLog(false, errorMessage);
+    throw err;
+  }
 }
 
 // ─── Backward-compat shim (kept for any existing call sites) ─────────────────
@@ -857,6 +883,8 @@ export function startReportScheduler(): void {
               to,
               recipients: schedule.recipients,
               reportTypes,
+              scheduleId: schedule.id,
+              triggeredBy: "scheduler",
             });
 
             logger.info(

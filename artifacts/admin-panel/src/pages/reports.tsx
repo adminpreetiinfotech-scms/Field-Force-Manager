@@ -8,7 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Download, FileSpreadsheet, Loader2, X, Search, Users, CalendarCheck, TrendingUp, ChevronDown, ChevronUp, Camera, ExternalLink, Mail, Clock, Bell, Plus, Send, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ImageOff, ImageIcon, Filter } from "lucide-react";
+import { Download, FileSpreadsheet, Loader2, X, Search, Users, CalendarCheck, TrendingUp, ChevronDown, ChevronUp, Camera, ExternalLink, Mail, Clock, Bell, Plus, Send, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ImageOff, ImageIcon, Filter, CheckCircle2, XCircle, History } from "lucide-react";
 import { format, subMonths } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
@@ -77,6 +77,18 @@ interface ReportSchedule {
   reportTypes: ReportType[];
   lastSentAt: string | null;
   updatedAt: string;
+}
+
+interface DeliveryLogEntry {
+  id: string;
+  scheduleId: string | null;
+  companyId: string | null;
+  sentAt: string;
+  reportTypes: string[];
+  recipients: string[];
+  success: boolean;
+  errorMessage: string | null;
+  triggeredBy: "scheduler" | "manual";
 }
 
 async function fetchWithAuth(url: string) {
@@ -214,6 +226,10 @@ export default function Reports() {
   const [scheduleLoading, setScheduleLoading] = useState(false);
   const [emailConfigured, setEmailConfigured] = useState(false);
   const [scheduleEditing, setScheduleEditing] = useState(false);
+
+  // Delivery history state
+  const [deliveryHistory, setDeliveryHistory] = useState<DeliveryLogEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [schedFrequency, setSchedFrequency] = useState<"daily" | "weekly" | "monthly">("weekly");
   const [schedDayOfWeek, setSchedDayOfWeek] = useState(1);
   const [schedDayOfMonth, setSchedDayOfMonth] = useState(1);
@@ -465,6 +481,18 @@ export default function Reports() {
 
   // ─── Email schedule functions ───────────────────────────────────────────────
 
+  const fetchDeliveryHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const res = await fetchWithAuth("/api/admin/report-schedule/delivery-history");
+      if (res.ok) {
+        const data = await res.json() as { history: DeliveryLogEntry[] };
+        setDeliveryHistory(data.history ?? []);
+      }
+    } catch { /* ignore */ }
+    setHistoryLoading(false);
+  }, []);
+
   const fetchSchedule = useCallback(async () => {
     setScheduleLoading(true);
     try {
@@ -486,7 +514,7 @@ export default function Reports() {
     setScheduleLoading(false);
   }, []);
 
-  useEffect(() => { fetchSchedule(); }, [fetchSchedule]);
+  useEffect(() => { fetchSchedule(); fetchDeliveryHistory(); }, [fetchSchedule, fetchDeliveryHistory]);
 
   const startEditing = () => {
     if (schedule) {
@@ -632,6 +660,7 @@ export default function Reports() {
       const reportLabels = REPORT_TYPE_OPTIONS.filter(o => reportTypes.includes(o.value)).map(o => o.label);
       toast({ title: "Reports sent", description: `${reportLabels.join(", ")} emailed to ${recipients.join(", ")}.` });
       await fetchSchedule();
+      await fetchDeliveryHistory();
     } catch (err: any) {
       toast({ title: "Send failed", description: err.message, variant: "destructive" });
     } finally {
@@ -1222,6 +1251,76 @@ export default function Reports() {
           )}
         </CardContent>
       </Card>
+
+      {/* ── Delivery History ── */}
+      {emailConfigured && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <History className="h-4 w-4 text-teal-600" />
+              Delivery History
+              {historyLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+            </CardTitle>
+            <CardDescription>Last 10 email sends — scheduled and manual</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!historyLoading && deliveryHistory.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">No delivery records yet. They will appear here after the first send.</p>
+            ) : (
+              <div className="divide-y rounded-md border overflow-hidden">
+                {deliveryHistory.map((entry) => {
+                  const reportLabels = entry.reportTypes.map(t => {
+                    const opt = REPORT_TYPE_OPTIONS.find(o => o.value === t);
+                    return opt?.label ?? t;
+                  });
+                  return (
+                    <div key={entry.id} className={`flex items-start gap-3 px-3 py-2.5 text-sm ${entry.success ? "" : "bg-destructive/5"}`}>
+                      <div className="mt-0.5 shrink-0">
+                        {entry.success ? (
+                          <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-destructive" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0 space-y-0.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-foreground">
+                            {new Date(entry.sentAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })} IST
+                          </span>
+                          <Badge
+                            variant="secondary"
+                            className={`text-[10px] px-1.5 py-0 ${entry.triggeredBy === "manual" ? "bg-blue-100 text-blue-700 border-blue-200" : "bg-muted text-muted-foreground"}`}
+                          >
+                            {entry.triggeredBy === "manual" ? "Manual" : "Scheduled"}
+                          </Badge>
+                          {!entry.success && (
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-destructive/10 text-destructive border-destructive/20">
+                              Failed
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {reportLabels.map(l => (
+                            <span key={l} className="text-[10px] px-1.5 py-0 rounded bg-teal-50 text-teal-700 border border-teal-200 font-medium">{l}</span>
+                          ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate">
+                          To: {entry.recipients.join(", ")}
+                        </p>
+                        {!entry.success && entry.errorMessage && (
+                          <p className="text-xs text-destructive bg-destructive/10 rounded px-2 py-1 mt-1 break-words">
+                            {entry.errorMessage}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── Ride Report Viewer ── */}
       {reportVisible && (
