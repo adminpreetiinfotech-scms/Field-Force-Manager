@@ -52,6 +52,7 @@ function DraggablePin({
   radiusMeters,
   showDragHint,
   hintTimerRef,
+  isDragMoveRef,
   setShowDragHint,
   onLocationChange,
 }: {
@@ -60,6 +61,7 @@ function DraggablePin({
   radiusMeters: number;
   showDragHint: boolean;
   hintTimerRef: RefObject<ReturnType<typeof setTimeout> | null>;
+  isDragMoveRef: RefObject<boolean>;
   setShowDragHint: (v: boolean) => void;
   onLocationChange: (lat: number, lng: number) => void;
 }) {
@@ -71,6 +73,7 @@ function DraggablePin({
       draggable={true}
       eventHandlers={{
         dragstart() {
+          isDragMoveRef.current = true;
           if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
           setShowDragHint(false);
         },
@@ -87,6 +90,7 @@ function DraggablePin({
         dragend(e) {
           const pos = (e.target as L.Marker).getLatLng();
           onLocationChange(pos.lat, pos.lng);
+          isDragMoveRef.current = false;
         },
       }}
     >
@@ -122,17 +126,24 @@ export default function GeoFenceMapPicker({
   const center: [number, number] = hasCoords ? [lat, lng] : DEFAULT_CENTER;
   const [showDragHint, setShowDragHint] = useState(true);
   const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isDragMoveRef = useRef(false);
   const prevLatRef = useRef<number | null>(null);
   const prevLngRef = useRef<number | null>(null);
 
   useEffect(() => {
     const wasNull = prevLatRef.current == null || prevLngRef.current == null;
     const isNowSet = lat != null && lng != null;
+    const coordsChanged =
+      isNowSet &&
+      (prevLatRef.current !== lat || prevLngRef.current !== lng);
 
     prevLatRef.current = lat;
     prevLngRef.current = lng;
 
-    if (wasNull && isNowSet) {
+    const isClickMove = !wasNull && coordsChanged && !isDragMoveRef.current;
+    isDragMoveRef.current = false;
+
+    if ((wasNull && isNowSet) || isClickMove) {
       if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
       setShowDragHint(true);
       hintTimerRef.current = setTimeout(() => setShowDragHint(false), 4000);
@@ -169,6 +180,7 @@ export default function GeoFenceMapPicker({
               radiusMeters={radiusMeters}
               showDragHint={showDragHint}
               hintTimerRef={hintTimerRef}
+              isDragMoveRef={isDragMoveRef}
               setShowDragHint={setShowDragHint}
               onLocationChange={onLocationChange}
             />
