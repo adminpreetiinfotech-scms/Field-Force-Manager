@@ -538,6 +538,7 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
       staffName: string; empCode: string; mobile: string; date: string;
       startOdometer: number | null; endOdometer: number | null;
       vehicleKm: number | null; gpsKm: number; tripCount: number; variancePct: number | null;
+      checkinPhotoUri: string | null; checkoutPhotoUri: string | null;
     };
 
     const dayRows: DayRow[] = [];
@@ -546,7 +547,7 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
     for (const key of allDayKeys) {
       const [staffId, date] = key.split("::");
       if (!staffId || !date) continue;
-      const odo   = odometerMap.get(key) ?? { startOdometerKm: null, endOdometerKm: null };
+      const odo   = odometerMap.get(key) ?? { startOdometerKm: null, endOdometerKm: null, checkinPhotoUri: null, checkoutPhotoUri: null };
       const gps   = gpsPerDay.get(key) ?? { gpsKm: 0, tripCount: 0, staffName: "", empCode: "", mobile: "" };
       const staff = staffMap.get(staffId);
       const staffName = gps.staffName || staff?.name || staffId;
@@ -563,12 +564,12 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
         variancePct = Math.round(Math.abs(vehicleKm - gps.gpsKm) / vehicleKm * 100 * 10) / 10;
       }
 
-      dayRows.push({ staffName, empCode, mobile, date, startOdometer: odo.startOdometerKm, endOdometer: odo.endOdometerKm, vehicleKm, gpsKm: Math.round(gps.gpsKm * 10) / 10, tripCount: gps.tripCount, variancePct });
+      dayRows.push({ staffName, empCode, mobile, date, startOdometer: odo.startOdometerKm, endOdometer: odo.endOdometerKm, vehicleKm, gpsKm: Math.round(gps.gpsKm * 10) / 10, tripCount: gps.tripCount, variancePct, checkinPhotoUri: odo.checkinPhotoUri ?? null, checkoutPhotoUri: odo.checkoutPhotoUri ?? null });
     }
     dayRows.sort((a, b) => a.date.localeCompare(b.date) || a.staffName.localeCompare(b.staffName));
 
     const ws2 = wb.addWorksheet("Daily Vehicle KM", { properties: { tabColor: { argb: "FF059669" } } });
-    const D_COLS = 10;
+    const D_COLS = 12;
     ws2.columns = [
       { width: 22 }, // Staff Name
       { width: 13 }, // EMP ID
@@ -580,6 +581,8 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
       { width: 14 }, // Sum GPS KM
       { width: 12 }, // Variance %
       { width: 14 }, // Flag
+      { width: 20 }, // Check-In Photo
+      { width: 20 }, // Check-Out Photo
     ];
 
     // Header rows for sheet 2
@@ -613,6 +616,7 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
       "Staff Name", "EMP ID", "Mobile No.", "Date",
       "Start Odometer\n(km)", "End Odometer\n(km)", "Vehicle KM",
       "Sum GPS KM\n(all trips)", "Variance %", "Flag",
+      "Check-In Photo", "Check-Out Photo",
     ];
     const dhRow = ws2.getRow(5);
     dhRow.height = 32;
@@ -660,6 +664,33 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
         if (fill) cell.fill = fill;
         cell.border = { bottom: { style: "hair", color: { argb: "FFD1D5DB" } } };
       });
+
+      // Check-In Photo (col 11)
+      const dCiPhotoCell = dr.getCell(11);
+      if (r.checkinPhotoUri) {
+        dCiPhotoCell.value = { text: "View Photo", hyperlink: r.checkinPhotoUri };
+        dCiPhotoCell.font  = { size: 9, name: "Calibri", color: { argb: "FF1A3560" }, underline: true };
+      } else {
+        dCiPhotoCell.value = "—";
+        dCiPhotoCell.font  = { size: 9, name: "Calibri", color: { argb: "FF9CA3AF" } };
+      }
+      dCiPhotoCell.alignment = { horizontal: "center", vertical: "middle" };
+      if (fill) dCiPhotoCell.fill = fill;
+      dCiPhotoCell.border = { bottom: { style: "hair", color: { argb: "FFD1D5DB" } } };
+
+      // Check-Out Photo (col 12)
+      const dCoPhotoCell = dr.getCell(12);
+      if (r.checkoutPhotoUri) {
+        dCoPhotoCell.value = { text: "View Photo", hyperlink: r.checkoutPhotoUri };
+        dCoPhotoCell.font  = { size: 9, name: "Calibri", color: { argb: "FF1A3560" }, underline: true };
+      } else {
+        dCoPhotoCell.value = "—";
+        dCoPhotoCell.font  = { size: 9, name: "Calibri", color: { argb: "FF9CA3AF" } };
+      }
+      dCoPhotoCell.alignment = { horizontal: "center", vertical: "middle" };
+      if (fill) dCoPhotoCell.fill = fill;
+      dCoPhotoCell.border = { bottom: { style: "hair", color: { argb: "FFD1D5DB" } } };
+
       if (r.vehicleKm !== null) totalVehicleKm += r.vehicleKm;
       totalGpsKm += r.gpsKm;
       if (highVar) flaggedCount++;
@@ -692,6 +723,11 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
     dtFlag.font      = { bold: true, size: 10, name: "Calibri", color: { argb: WHITE } };
     dtFlag.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: NAVY } };
     dtFlag.alignment = { horizontal: "center", vertical: "middle" };
+    // Fill photo columns in totals row
+    for (const photoCol of [11, 12]) {
+      const dtPhoto = dtRow.getCell(photoCol);
+      dtPhoto.fill = { type: "pattern", pattern: "solid", fgColor: { argb: NAVY } };
+    }
 
     // ── 9. Build "Attendance" sheet (only when data exists and not vehicleKm-only export) ──
     if (sheetFilter !== "vehicleKm" && attendDayMap.size > 0) {
