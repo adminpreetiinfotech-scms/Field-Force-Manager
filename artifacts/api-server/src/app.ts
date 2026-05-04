@@ -47,7 +47,7 @@ if (process.env.NODE_ENV === "production") {
   if (fs.existsSync(adminDist)) {
     app.use("/admin-panel", express.static(adminDist, { index: false }));
     // SPA fallback — all unknown /admin-panel/* routes serve index.html
-    app.get("/admin-panel/*", (_req: Request, res: Response) => {
+    app.get("/admin-panel/*splat", (_req: Request, res: Response) => {
       res.sendFile(path.join(adminDist, "index.html"));
     });
   }
