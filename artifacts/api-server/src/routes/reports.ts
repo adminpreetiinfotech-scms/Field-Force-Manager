@@ -827,4 +827,85 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
   }
 });
 
+// ─── GET /api/admin/reports/attendance-summary ─────────────────────────────
+// Returns a lightweight staff-wise attendance count summary (no Excel needed).
+// Query params: from (YYYY-MM-DD), to (YYYY-MM-DD), staffId? (optional)
+router.get("/admin/reports/attendance-summary", requireAdmin, async (req, res, next) => {
+  try {
+    const rawFrom    = req.query.from    as string | undefined;
+    const rawTo      = req.query.to      as string | undefined;
+    const rawStaffId = req.query.staffId as string | undefined;
+    const rawCompanyId = (res.locals.companyId as string | null) ?? null;
+
+    const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+    if (!rawFrom || !DATE_RE.test(rawFrom) || !rawTo || !DATE_RE.test(rawTo)) {
+      res.status(400).json({ title: "`from` and `to` are required (YYYY-MM-DD)", status: 400 });
+      return;
+    }
+
+    const startOfFrom = new Date(`${rawFrom}T00:00:00.000Z`);
+    const endOfTo     = new Date(`${rawTo}T23:59:59.999Z`);
+
+    const conds = [
+      eq(activityEventsTable.kind, "checkin"),
+      gte(activityEventsTable.occurredAt, startOfFrom),
+      lt(activityEventsTable.occurredAt, new Date(endOfTo.getTime() + 1)),
+    ] as ReturnType<typeof eq>[];
+    if (rawStaffId)   conds.push(eq(activityEventsTable.staffId, rawStaffId));
+    if (rawCompanyId) conds.push(eq(activityEventsTable.companyId, rawCompanyId));
+
+    const checkinRows = await db
+      .select({
+        staffId:   activityEventsTable.staffId,
+        staffName: activityEventsTable.staffName,
+        occurredAt: activityEventsTable.occurredAt,
+      })
+      .from(activityEventsTable)
+      .where(and(...conds))
+      .orderBy(activityEventsTable.occurredAt);
+
+    // Count distinct check-in days per staff
+    type StaffSummary = { staffId: string; staffName: string; days: Set<string> };
+    const staffMap = new Map<string, StaffSummary>();
+    for (const row of checkinRows) {
+      const date = toIST(new Date(row.occurredAt as Date));
+      const existing = staffMap.get(row.staffId) ?? { staffId: row.staffId, staffName: row.staffName, days: new Set() };
+      existing.days.add(date);
+      staffMap.set(row.staffId, existing);
+    }
+
+    // Enrich with empCode from staff table
+    const staffIds = [...staffMap.keys()];
+    const staffDetails = staffIds.length
+      ? await db
+          .select({ id: staffTable.id, empCode: staffTable.empCode })
+          .from(staffTable)
+          .where(inArray(staffTable.id, staffIds))
+      : [];
+    const empCodeMap = new Map(staffDetails.map(s => [s.id, s.empCode ?? ""]));
+
+    const staffBreakdown = [...staffMap.values()]
+      .map(s => ({
+        staffId:   s.staffId,
+        staffName: s.staffName,
+        empCode:   empCodeMap.get(s.staffId) ?? "",
+        checkInDays: s.days.size,
+      }))
+      .sort((a, b) => b.checkInDays - a.checkInDays || a.staffName.localeCompare(b.staffName));
+
+    const totalCheckInDays = staffBreakdown.reduce((sum, s) => sum + s.checkInDays, 0);
+    const uniqueStaff      = staffBreakdown.length;
+
+    res.json({
+      from:           rawFrom,
+      to:             rawTo,
+      uniqueStaff,
+      totalCheckInDays,
+      staffBreakdown,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

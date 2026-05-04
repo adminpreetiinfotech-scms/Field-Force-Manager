@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Download, FileSpreadsheet, Loader2, X, Search } from "lucide-react";
+import { Download, FileSpreadsheet, Loader2, X, Search, Users, CalendarCheck, ChevronDown, ChevronUp } from "lucide-react";
 import { format, subMonths } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
@@ -22,6 +22,14 @@ interface StaffOption {
   name: string;
   empCode?: string | null;
   phone?: string | null;
+}
+
+interface AttendanceSummary {
+  from: string;
+  to: string;
+  uniqueStaff: number;
+  totalCheckInDays: number;
+  staffBreakdown: { staffId: string; staffName: string; empCode: string; checkInDays: number }[];
 }
 
 async function fetchWithAuth(url: string) {
@@ -57,6 +65,33 @@ export default function Reports() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [staffLoading, setStaffLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Attendance summary state
+  const [summary, setSummary] = useState<AttendanceSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryExpanded, setSummaryExpanded] = useState(false);
+
+  const fetchSummary = useCallback(async (from: string, to: string, staffId?: string) => {
+    setSummaryLoading(true);
+    try {
+      const params = new URLSearchParams({ from, to });
+      if (staffId) params.set("staffId", staffId);
+      const res = await fetchWithAuth(`/api/admin/reports/attendance-summary?${params}`);
+      if (res.ok) {
+        const data: AttendanceSummary = await res.json();
+        setSummary(data);
+      } else {
+        setSummary(null);
+      }
+    } catch {
+      setSummary(null);
+    }
+    setSummaryLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchSummary(fromDate, toDate, selectedStaff?.id);
+  }, [fromDate, toDate, selectedStaff, fetchSummary]);
 
   // Fetch staff list when user types
   useEffect(() => {
@@ -233,6 +268,70 @@ export default function Reports() {
               {!selectedStaff && !staffQuery && (
                 <p className="text-xs text-muted-foreground">Leave blank to include all staff in the report.</p>
               )}
+            </div>
+
+            {/* Attendance Summary */}
+            <div className="rounded-lg border bg-muted/40 p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Attendance Summary</span>
+                  {summary && !summaryLoading && (
+                    <p className="text-xs text-muted-foreground mt-0.5">{summary.from} → {summary.to}</p>
+                  )}
+                </div>
+                {summaryLoading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+              </div>
+              {summary && !summaryLoading ? (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center gap-2 bg-background rounded-md px-3 py-2 border">
+                      <Users className="h-4 w-4 text-blue-600 shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground leading-none">Unique Staff</p>
+                        <p className="text-lg font-bold text-foreground leading-tight">{summary.uniqueStaff}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 bg-background rounded-md px-3 py-2 border">
+                      <CalendarCheck className="h-4 w-4 text-green-600 shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground leading-none">Total Check-In Days</p>
+                        <p className="text-lg font-bold text-foreground leading-tight">{summary.totalCheckInDays}</p>
+                      </div>
+                    </div>
+                  </div>
+                  {summary.staffBreakdown.length > 0 && (
+                    <div>
+                      <button
+                        onClick={() => setSummaryExpanded(v => !v)}
+                        className="flex items-center gap-1 text-xs text-primary hover:underline"
+                      >
+                        {summaryExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                        {summaryExpanded ? "Hide" : "Show"} staff breakdown
+                      </button>
+                      {summaryExpanded && (
+                        <div className="mt-2 max-h-40 overflow-y-auto rounded border bg-background divide-y text-xs">
+                          {summary.staffBreakdown.map(s => (
+                            <div key={s.staffId} className="flex items-center justify-between px-3 py-1.5">
+                              <span className="font-medium truncate">
+                                {s.staffName}
+                                {s.empCode && <span className="text-muted-foreground ml-1">· {s.empCode}</span>}
+                              </span>
+                              <span className="shrink-0 ml-2 font-semibold text-green-700">
+                                {s.checkInDays} {s.checkInDays === 1 ? "day" : "days"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {summary.uniqueStaff === 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-1">No check-ins found in this date range.</p>
+                  )}
+                </>
+              ) : !summaryLoading ? (
+                <p className="text-xs text-muted-foreground">Could not load summary.</p>
+              ) : null}
             </div>
 
             <Button onClick={handleDownloadRides} className="w-full gap-2" disabled={isDownloading}>
