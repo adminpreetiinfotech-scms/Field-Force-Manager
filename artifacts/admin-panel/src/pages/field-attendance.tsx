@@ -189,9 +189,9 @@ export default function FieldAttendance() {
     }
   };
 
-  const presentCount = rows.filter((r) => r.status === "present").length;
-  const absentCount = rows.filter((r) => r.status === "absent").length;
-  const partialCount = rows.filter((r) => r.status === "partial").length;
+  const presentCount = filteredRows.filter((r) => r.status === "present").length;
+  const absentCount = filteredRows.filter((r) => r.status === "absent").length;
+  const partialCount = filteredRows.filter((r) => r.status === "partial").length;
 
   return (
     <div className="space-y-6">
@@ -300,10 +300,10 @@ export default function FieldAttendance() {
       )}
 
       {/* Summary Cards */}
-      {rows.length > 0 && (
+      {filteredRows.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: "Total Records", value: rows.length, color: "text-foreground" },
+            { label: "Total Records", value: filteredRows.length, color: "text-foreground" },
             { label: "Present Days", value: presentCount, color: "text-emerald-600" },
             { label: "Partial Days", value: partialCount, color: "text-amber-600" },
             { label: "Absent Days", value: absentCount, color: "text-red-600" },
