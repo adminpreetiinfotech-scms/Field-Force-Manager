@@ -891,15 +891,22 @@ export default function Reports() {
             <p className="text-sm text-muted-foreground">
               Exports all candidate records including name, contact, location, mobilizer, and current status.
             </p>
-            <Button
-              variant="outline"
-              className="w-full gap-2"
-              onClick={handleDownloadCsv}
-              disabled={isDownloadingCsv}
-            >
-              {isDownloadingCsv ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-              {isDownloadingCsv ? "Downloading..." : "Download Candidates CSV"}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={handleDownloadCsv}
+                  disabled={isDownloadingCsv}
+                >
+                  {isDownloadingCsv ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  {isDownloadingCsv ? "Downloading..." : "Download Candidates CSV"}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs text-center">
+                All candidate records including name, contact, location, mobilizer, and current status — exported as a CSV file.
+              </TooltipContent>
+            </Tooltip>
             <p className="text-xs text-muted-foreground">
               Individual candidate PDFs can be downloaded from the{" "}
               <a href="/admin-panel/candidates" className="text-primary underline-offset-2 hover:underline">
