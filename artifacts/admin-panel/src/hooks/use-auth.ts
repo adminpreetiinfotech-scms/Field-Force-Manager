@@ -5,6 +5,7 @@ export interface User {
   phone: string;
   name: string;
   role: "admin" | "super_admin" | "staff" | string;
+  companyName?: string | null;
 }
 
 const listeners = new Set<(user: User | null) => void>();
