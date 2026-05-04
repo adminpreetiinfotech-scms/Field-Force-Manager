@@ -249,7 +249,14 @@ router.delete("/notices/admin/:id", requireAdmin, async (req, res, next) => {
       res.status(400).json({ title: "id must be a valid UUID", status: 400 });
       return;
     }
-    await db.delete(noticesTable).where(eq(noticesTable.id, id));
+    const deleted = await db
+      .delete(noticesTable)
+      .where(eq(noticesTable.id, id))
+      .returning({ id: noticesTable.id });
+    if (deleted.length === 0) {
+      res.status(404).json({ title: "Notice not found", status: 404 });
+      return;
+    }
     res.json({ ok: true });
   } catch (e) {
     next(e);
