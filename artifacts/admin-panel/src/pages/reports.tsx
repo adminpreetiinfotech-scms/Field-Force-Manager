@@ -479,7 +479,7 @@ export default function Reports() {
               disabled={isDownloadingVehicleKm}
             >
               {isDownloadingVehicleKm ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
-              {isDownloadingVehicleKm ? "Downloading..." : "Export Vehicle KM Summary"}
+              {isDownloadingVehicleKm ? "Downloading..." : selectedStaff ? `Export KM Summary for ${selectedStaff.name}` : "Export Vehicle KM Summary"}
             </Button>
 
             {/* View on-screen report */}
