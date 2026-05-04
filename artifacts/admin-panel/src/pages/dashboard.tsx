@@ -5,7 +5,7 @@ import {
   Users, UserCheck, Clock, XCircle, UserSquare2,
   TrendingUp, Calendar, AlertCircle, ArrowRight,
   CheckCircle2, Activity, Award, AlertTriangle,
-  Building2, UserX, ShieldAlert, X,
+  Building2, UserX, ShieldAlert, X, MapPin,
 } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
@@ -275,6 +275,40 @@ export default function Dashboard() {
             sub="New registrations"
             icon={Calendar}
             accent="bg-pink-500"
+          />
+        </div>
+      </div>
+
+      {/* Field Staff Attendance */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <MapPin className="h-4 w-4 text-muted-foreground" />
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Field Staff — Today</h2>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <StatCard
+            title="Present Today"
+            value={stats.fieldPresentToday}
+            sub="Checked in & out"
+            icon={UserCheck}
+            accent="bg-emerald-500"
+            href={`/field-attendance?dateFrom=${todayIST}&dateTo=${todayIST}&status=present`}
+          />
+          <StatCard
+            title="Partial Today"
+            value={stats.fieldPartialToday}
+            sub={stats.fieldPartialToday > 0 ? "Checked in, not out yet" : "None in progress"}
+            icon={Clock}
+            accent="bg-amber-500"
+            href={`/field-attendance?dateFrom=${todayIST}&dateTo=${todayIST}&status=partial`}
+          />
+          <StatCard
+            title="Absent Today"
+            value={stats.fieldAbsentToday}
+            sub={stats.fieldAbsentToday > 0 ? "No check-in recorded" : "All accounted for"}
+            icon={UserX}
+            accent="bg-red-500"
+            href={`/field-attendance?dateFrom=${todayIST}&dateTo=${todayIST}&status=absent`}
           />
         </div>
       </div>

@@ -695,6 +695,56 @@ router.get("/admin/dashboard/stats", requireAdmin, async (_req, res, next) => {
       centerAbsentToday = centerStaffList.length - centerPresentToday;
     }
 
+    // ── Field staff attendance summary for today (IST) ────────────────────────
+    const fieldStaffFilter = companyId
+      ? and(eq(staffTable.companyId, companyId), eq(staffTable.staffCategory, "field"), isNull(staffTable.deletedAt))
+      : and(eq(staffTable.staffCategory, "field"), isNull(staffTable.deletedAt));
+
+    const fieldStaffList = await db
+      .select({ id: staffTable.id })
+      .from(staffTable)
+      .where(fieldStaffFilter);
+
+    let fieldPresentToday = 0;
+    let fieldAbsentToday = 0;
+    let fieldPartialToday = 0;
+
+    if (fieldStaffList.length > 0) {
+      const fieldStaffIds = fieldStaffList.map((s) => s.id);
+
+      const todayFieldEvents = await db
+        .select({
+          staffId: activityEventsTable.staffId,
+          kind: activityEventsTable.kind,
+        })
+        .from(activityEventsTable)
+        .where(
+          and(
+            inArray(activityEventsTable.staffId, fieldStaffIds),
+            inArray(activityEventsTable.kind, ["checkin", "checkout"]),
+            gte(activityEventsTable.occurredAt, dayStartIST),
+            lt(activityEventsTable.occurredAt, new Date(dayEndIST.getTime() + 1000)),
+          ),
+        );
+
+      const checkedInField = new Set<string>();
+      const checkedOutField = new Set<string>();
+      for (const ev of todayFieldEvents) {
+        if (ev.kind === "checkin") checkedInField.add(ev.staffId);
+        if (ev.kind === "checkout") checkedOutField.add(ev.staffId);
+      }
+
+      for (const { id } of fieldStaffList) {
+        if (!checkedInField.has(id)) {
+          fieldAbsentToday += 1;
+        } else if (checkedOutField.has(id)) {
+          fieldPresentToday += 1;
+        } else {
+          fieldPartialToday += 1;
+        }
+      }
+    }
+
     res.json({
       totalCandidates,
       pendingCandidates: candCounts["pending"] ?? 0,
@@ -710,6 +760,9 @@ router.get("/admin/dashboard/stats", requireAdmin, async (_req, res, next) => {
       centerAbsentToday,
       centerViolationsToday,
       totalCenterStaff: centerStaffList.length,
+      fieldPresentToday,
+      fieldAbsentToday,
+      fieldPartialToday,
     });
   } catch (err) {
     next(err);

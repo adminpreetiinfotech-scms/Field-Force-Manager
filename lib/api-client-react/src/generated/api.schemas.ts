@@ -500,6 +500,12 @@ export interface DashboardStats {
   centerViolationsToday: number;
   /** Total number of staff with staffCategory = center (approved or not). Used to distinguish "all present" from "none configured". */
   totalCenterStaff: number;
+  /** Number of field staff who have both checked in and checked out today. */
+  fieldPresentToday: number;
+  /** Number of field staff with no check-in today. */
+  fieldAbsentToday: number;
+  /** Number of field staff who checked in but have not yet checked out today. */
+  fieldPartialToday: number;
 }
 
 export type CompanyStatus = typeof CompanyStatus[keyof typeof CompanyStatus];
