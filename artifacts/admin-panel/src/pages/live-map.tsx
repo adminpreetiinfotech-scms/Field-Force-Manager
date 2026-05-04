@@ -327,13 +327,14 @@ function GeoFencePopupContent({
 
 // ─── Map popup content ────────────────────────────────────────────────────────
 
-function PopupContent({ staff }: { staff: LiveStaff }) {
+function PopupContent({ staff, geoFence }: { staff: LiveStaff; geoFence: GeoFence | null }) {
   const status = getStatusLabel(staff);
   const statusConfig = {
     active:  { label: "Active",  cls: "bg-green-100 text-green-800" },
     idle:    { label: "Idle",    cls: "bg-amber-100 text-amber-800" },
     offline: { label: "Offline", cls: "bg-slate-100 text-slate-600" },
   }[status];
+  const outsideFence = isOutsideFence(staff, geoFence);
 
   return (
     <div className="min-w-[180px] text-sm space-y-1.5">
@@ -344,6 +345,20 @@ function PopupContent({ staff }: { staff: LiveStaff }) {
         </span>
       </div>
       <p className="text-xs text-gray-500 font-mono">{staff.empCode}</p>
+
+      {outsideFence && (
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+          <AlertTriangle className="h-3 w-3 shrink-0" />
+          Outside
+          <a
+            href={`${import.meta.env.BASE_URL}settings#geo-fence`}
+            className="text-[10px] text-indigo-600 hover:text-indigo-800 hover:underline font-medium"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Edit fence
+          </a>
+        </span>
+      )}
 
       {staff.area && (
         <div className="flex items-center gap-1 text-xs text-gray-600">
@@ -1008,7 +1023,7 @@ export default function LiveMapPage() {
                   }}
                 >
                   <Popup>
-                    <PopupContent staff={staff} />
+                    <PopupContent staff={staff} geoFence={geoFence} />
                   </Popup>
                 </Marker>
               );
