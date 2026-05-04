@@ -8,6 +8,7 @@ import {
 } from "@workspace/db";
 import { and, desc, eq, gte, ilike, isNull, lt, or } from "drizzle-orm";
 import express, { Router } from "express";
+import { isValidUUID } from "../lib/validation";
 import fs from "fs";
 import path from "path";
 import { sendSmsSilent } from "../lib/twilio";
@@ -804,6 +805,10 @@ router.patch("/admin/candidates/:id/status", requireAdmin, async (req, res, next
       res.status(400).json({ title: "id is required", status: 400 });
       return;
     }
+    if (!isValidUUID(id)) {
+      res.status(400).json({ title: "id must be a valid UUID", status: 400 });
+      return;
+    }
     const { status, remarks, verifiedBy, verifiedByPhone } = req.body as {
       status?: string;
       remarks?: string;
@@ -894,6 +899,10 @@ router.get("/candidates/:id", async (req, res, next) => {
       res.status(400).json({ title: "id is required", status: 400 });
       return;
     }
+    if (!isValidUUID(id)) {
+      res.status(400).json({ title: "id must be a valid UUID", status: 400 });
+      return;
+    }
     const [candidate] = await db
       .select()
       .from(candidatesTable)
@@ -916,6 +925,10 @@ router.get("/candidates/:id/pdf", async (req, res, next) => {
     const { id } = req.params;
     if (!id?.trim()) {
       res.status(400).json({ title: "id is required", status: 400 });
+      return;
+    }
+    if (!isValidUUID(id)) {
+      res.status(400).json({ title: "id must be a valid UUID", status: 400 });
       return;
     }
     const [candidate] = await db
@@ -980,6 +993,10 @@ router.patch("/notifications/:id/read", async (req, res, next) => {
     const { id } = req.params;
     if (!id?.trim()) {
       res.status(400).json({ title: "id is required", status: 400 });
+      return;
+    }
+    if (!isValidUUID(id)) {
+      res.status(400).json({ title: "id must be a valid UUID", status: 400 });
       return;
     }
     const [updated] = await db

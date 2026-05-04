@@ -10,6 +10,7 @@ import {
 import { and, count, desc, eq, gte, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
 import ExcelJS from "exceljs";
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
+import { isValidUUID } from "../lib/validation";
 
 const PURPLE    = "FF4F46E5";
 const PURPLE_DK = "FF3730A3";
@@ -338,6 +339,10 @@ router.patch("/admin/staff/:id/approve", requireAdmin, async (req, res, next) =>
       res.status(400).json({ title: "id is required", status: 400 });
       return;
     }
+    if (!isValidUUID(id)) {
+      res.status(400).json({ title: "id must be a valid UUID", status: 400 });
+      return;
+    }
     const companyId = res.locals.companyId as string | null;
     const filter = companyId
       ? and(eq(staffTable.id, id), or(eq(staffTable.companyId, companyId), isNull(staffTable.companyId)))
@@ -362,6 +367,10 @@ router.patch("/admin/staff/:id/disable", requireAdmin, async (req, res, next) =>
     const { id } = req.params as { id: string };
     if (!id?.trim()) {
       res.status(400).json({ title: "id is required", status: 400 });
+      return;
+    }
+    if (!isValidUUID(id)) {
+      res.status(400).json({ title: "id must be a valid UUID", status: 400 });
       return;
     }
     const companyId = res.locals.companyId as string | null;
@@ -405,6 +414,10 @@ router.patch("/admin/staff/:id/enable", requireAdmin, async (req, res, next) => 
       res.status(400).json({ title: "id is required", status: 400 });
       return;
     }
+    if (!isValidUUID(id)) {
+      res.status(400).json({ title: "id must be a valid UUID", status: 400 });
+      return;
+    }
     const companyId = res.locals.companyId as string | null;
     const filter = companyId
       ? and(eq(staffTable.id, id), or(eq(staffTable.companyId, companyId), isNull(staffTable.companyId)))
@@ -435,6 +448,10 @@ router.delete("/admin/staff/:id", requireAdmin, async (req, res, next) => {
     const { id } = req.params as { id: string };
     if (!id?.trim()) {
       res.status(400).json({ title: "id is required", status: 400 });
+      return;
+    }
+    if (!isValidUUID(id)) {
+      res.status(400).json({ title: "id must be a valid UUID", status: 400 });
       return;
     }
     const companyId = res.locals.companyId as string | null;
@@ -476,6 +493,10 @@ router.patch("/admin/staff/:id/profile", requireAdmin, async (req, res, next) =>
     const { id } = req.params as { id: string };
     if (!id?.trim()) {
       res.status(400).json({ title: "id is required", status: 400 });
+      return;
+    }
+    if (!isValidUUID(id)) {
+      res.status(400).json({ title: "id must be a valid UUID", status: 400 });
       return;
     }
     const companyId = res.locals.companyId as string | null;
@@ -791,7 +812,6 @@ router.get("/admin/dashboard/stats", requireAdmin, async (_req, res, next) => {
       fieldPresentToday,
       fieldAbsentToday,
       fieldPartialToday,
-      totalFieldStaff: fieldStaffList.length,
     });
   } catch (err) {
     next(err);
@@ -806,6 +826,10 @@ router.patch("/admin/staff/:id/deactivate", requireAdmin, async (req, res, next)
     const id = req.params.id as string;
     if (!id || typeof id !== "string" || id.trim() === "") {
       res.status(400).json({ title: "Missing or invalid staff id", status: 400 });
+      return;
+    }
+    if (!isValidUUID(id)) {
+      res.status(400).json({ title: "id must be a valid UUID", status: 400 });
       return;
     }
     const companyId = res.locals.companyId as string | null;
@@ -842,6 +866,10 @@ router.delete("/admin/candidates/:id", requireAdmin, async (req, res, next) => {
     const { id } = req.params as { id: string };
     if (!id || typeof id !== "string" || id.trim() === "") {
       res.status(400).json({ title: "Missing or invalid candidate id", status: 400 });
+      return;
+    }
+    if (!isValidUUID(id)) {
+      res.status(400).json({ title: "id must be a valid UUID", status: 400 });
       return;
     }
     const companyId = res.locals.companyId as string | null;
@@ -899,6 +927,10 @@ router.patch("/admin/candidates/:id", requireAdmin, async (req, res, next) => {
     const id = req.params.id as string;
     if (!id || typeof id !== "string" || id.trim() === "") {
       res.status(400).json({ title: "Missing or invalid candidate id", status: 400 });
+      return;
+    }
+    if (!isValidUUID(id)) {
+      res.status(400).json({ title: "id must be a valid UUID", status: 400 });
       return;
     }
     const companyId = res.locals.companyId as string | null;

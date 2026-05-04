@@ -2,6 +2,7 @@ import { companiesTable, db, staffTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import { uploadLogoBuffer } from "../lib/logoStorage";
+import { isValidUUID } from "../lib/validation";
 import { getAdminCompanyId } from "./admin";
 
 const router: IRouter = Router();
@@ -246,6 +247,10 @@ router.get("/companies/:id/branding", async (req, res, next) => {
       res.status(400).json({ title: "id is required", status: 400 });
       return;
     }
+    if (!isValidUUID(id)) {
+      res.status(400).json({ title: "id must be a valid UUID", status: 400 });
+      return;
+    }
     const [company] = await db
       .select()
       .from(companiesTable)
@@ -269,6 +274,10 @@ router.patch("/companies/:id/logo", async (req, res, next) => {
     const { id } = req.params;
     if (!id?.trim()) {
       res.status(400).json({ title: "id is required", status: 400 });
+      return;
+    }
+    if (!isValidUUID(id)) {
+      res.status(400).json({ title: "id must be a valid UUID", status: 400 });
       return;
     }
     const { logoBase64, logoMime, adminPhone } = req.body as {
@@ -320,6 +329,10 @@ router.patch("/companies/:id/profile", async (req, res, next) => {
     const { id } = req.params;
     if (!id?.trim()) {
       res.status(400).json({ title: "id is required", status: 400 });
+      return;
+    }
+    if (!isValidUUID(id)) {
+      res.status(400).json({ title: "id must be a valid UUID", status: 400 });
       return;
     }
     const { name, adminName, email, state, district, projectName, centerName, tcId, adminPhone } = req.body as {

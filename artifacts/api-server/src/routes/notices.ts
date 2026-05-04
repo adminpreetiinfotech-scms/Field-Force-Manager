@@ -17,6 +17,7 @@ import {
 } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import { sendSmsSilent } from "../lib/twilio";
+import { isValidUUID } from "../lib/validation";
 import { requireAdmin } from "./admin";
 
 const router: IRouter = Router();
@@ -199,6 +200,10 @@ router.get("/notices/admin/:id", requireAdmin, async (req, res, next) => {
       res.status(400).json({ title: "id is required", status: 400 });
       return;
     }
+    if (!isValidUUID(id)) {
+      res.status(400).json({ title: "id must be a valid UUID", status: 400 });
+      return;
+    }
 
     const [notice] = await db
       .select()
@@ -238,6 +243,10 @@ router.delete("/notices/admin/:id", requireAdmin, async (req, res, next) => {
     const id = req.params.id as string;
     if (!id?.trim()) {
       res.status(400).json({ title: "id is required", status: 400 });
+      return;
+    }
+    if (!isValidUUID(id)) {
+      res.status(400).json({ title: "id must be a valid UUID", status: 400 });
       return;
     }
     await db.delete(noticesTable).where(eq(noticesTable.id, id));
@@ -337,6 +346,10 @@ router.post("/notices/:id/read", async (req, res, next) => {
     const { id } = req.params;
     if (!id?.trim()) {
       res.status(400).json({ title: "id is required", status: 400 });
+      return;
+    }
+    if (!isValidUUID(id)) {
+      res.status(400).json({ title: "id must be a valid UUID", status: 400 });
       return;
     }
     const phone = (req.body as Record<string, string>)?.phone;
