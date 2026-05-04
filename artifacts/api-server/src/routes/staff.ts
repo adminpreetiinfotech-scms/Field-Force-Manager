@@ -45,7 +45,7 @@ router.post("/staff/register", async (req, res, next) => {
   try {
     const {
       kind, name, phone, organization, centerName, projectName, email, state, district,
-      empCode, area, adminCode, adminRegistrationKey, companyId,
+      empCode, area, adminCode, adminRegistrationKey, companyId, staffCategory, centerStaffRole,
     } = req.body as {
       kind?: string;
       name?: string;
@@ -61,6 +61,8 @@ router.post("/staff/register", async (req, res, next) => {
       adminCode?: string | null;
       adminRegistrationKey?: string | null;
       companyId?: string | null;
+      staffCategory?: "field" | "center" | null;
+      centerStaffRole?: string | null;
     };
 
     if (!kind || !["admin", "staff"].includes(kind)) {
@@ -201,6 +203,8 @@ router.post("/staff/register", async (req, res, next) => {
         area: area?.trim() || null,
         adminCode: resolvedAdminCode,
         approvalStatus: "pending",
+        staffCategory: staffCategory === "center" ? "center" : "field",
+        centerStaffRole: staffCategory === "center" ? (centerStaffRole?.trim() || null) : null,
       })
       .returning();
 

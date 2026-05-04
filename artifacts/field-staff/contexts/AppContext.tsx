@@ -520,6 +520,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       area: data.area ?? null,
       adminCode: data.adminCode ?? null,
       adminRegistrationKey: data.adminRegistrationKey ?? null,
+      staffCategory: data.staffCategory ?? null,
+      centerStaffRole: data.centerStaffRole ?? null,
     } as Parameters<typeof registerStaff>[0]);
     const user: User = {
       id: staff.id,

@@ -19,6 +19,19 @@ import { Button } from "@/components/Button";
 import { useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
 
+const CENTER_ROLES = [
+  "Center Head",
+  "MIS Executive",
+  "Trainer",
+  "Co-Trainer",
+  "Counselor",
+  "Cook",
+  "Security Guard",
+  "Hostel Warden",
+  "Lab Assistant",
+  "Other",
+];
+
 export default function RegisterStaffScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -32,6 +45,9 @@ export default function RegisterStaffScreen() {
   const [state, setState_] = useState("");
   const [district, setDistrict] = useState("");
   const [adminCode, setAdminCode] = useState("");
+  const [staffCategory, setStaffCategory] = useState<"field" | "center">("field");
+  const [centerStaffRole, setCenterStaffRole] = useState("");
+  const [showRolePicker, setShowRolePicker] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const phoneRef = useRef<TextInput>(null);
@@ -52,7 +68,8 @@ export default function RegisterStaffScreen() {
     centerName.trim().length >= 2 &&
     projectName.trim().length >= 2 &&
     state.trim().length >= 2 &&
-    district.trim().length >= 2;
+    district.trim().length >= 2 &&
+    (staffCategory === "field" || centerStaffRole.trim().length >= 2);
 
   const onRegister = async () => {
     if (!valid) return;
@@ -68,6 +85,8 @@ export default function RegisterStaffScreen() {
         state: state.trim(),
         district: district.trim(),
         adminCode: adminCode.trim().toUpperCase() || undefined,
+        staffCategory,
+        centerStaffRole: staffCategory === "center" ? centerStaffRole.trim() : undefined,
       });
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(
@@ -141,9 +160,173 @@ export default function RegisterStaffScreen() {
               Staff Registration
             </Text>
             <Text style={[styles.sub, { color: colors.mutedForeground }]}>
-              Apna field staff account banayein. Saari details sahi bharein.
+              Apna account banayein. Saari details sahi bharein.
             </Text>
           </View>
+
+          {/* Section: Staff Type */}
+          <SectionHeader label="STAFF TYPE" colors={colors} />
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            <Pressable
+              onPress={() => { setStaffCategory("field"); setCenterStaffRole(""); }}
+              style={[
+                styles.categoryBtn,
+                {
+                  flex: 1,
+                  borderColor: staffCategory === "field" ? colors.primary : colors.border,
+                  backgroundColor: staffCategory === "field" ? colors.primary + "12" : colors.background,
+                  borderRadius: colors.radius,
+                },
+              ]}
+            >
+              <Feather
+                name="navigation"
+                size={20}
+                color={staffCategory === "field" ? colors.primary : colors.mutedForeground}
+              />
+              <Text
+                style={[
+                  styles.categoryLabel,
+                  { color: staffCategory === "field" ? colors.primary : colors.mutedForeground },
+                ]}
+              >
+                Field Staff
+              </Text>
+              <Text
+                style={[
+                  styles.categorySub,
+                  { color: staffCategory === "field" ? colors.primary + "99" : colors.mutedForeground + "88" },
+                ]}
+              >
+                Mobilizer, BDA, etc.
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setStaffCategory("center")}
+              style={[
+                styles.categoryBtn,
+                {
+                  flex: 1,
+                  borderColor: staffCategory === "center" ? colors.primary : colors.border,
+                  backgroundColor: staffCategory === "center" ? colors.primary + "12" : colors.background,
+                  borderRadius: colors.radius,
+                },
+              ]}
+            >
+              <Feather
+                name="home"
+                size={20}
+                color={staffCategory === "center" ? colors.primary : colors.mutedForeground}
+              />
+              <Text
+                style={[
+                  styles.categoryLabel,
+                  { color: staffCategory === "center" ? colors.primary : colors.mutedForeground },
+                ]}
+              >
+                Center Staff
+              </Text>
+              <Text
+                style={[
+                  styles.categorySub,
+                  { color: staffCategory === "center" ? colors.primary + "99" : colors.mutedForeground + "88" },
+                ]}
+              >
+                Trainer, MIS, Cook, etc.
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* Center Role — only for center staff */}
+          {staffCategory === "center" && (
+            <>
+              <SectionHeader label="CENTER ROLE *" colors={colors} />
+              <View style={{ gap: 8 }}>
+                <Pressable
+                  onPress={() => setShowRolePicker((p) => !p)}
+                  style={[
+                    styles.roleSelector,
+                    {
+                      borderColor: centerStaffRole ? colors.primary : colors.border,
+                      backgroundColor: colors.background,
+                      borderRadius: colors.radius,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={{
+                      flex: 1,
+                      color: centerStaffRole ? colors.foreground : colors.mutedForeground,
+                      fontFamily: "Inter_400Regular",
+                      fontSize: 15,
+                    }}
+                  >
+                    {centerStaffRole || "Role chunein..."}
+                  </Text>
+                  <Feather
+                    name={showRolePicker ? "chevron-up" : "chevron-down"}
+                    size={16}
+                    color={colors.mutedForeground}
+                  />
+                </Pressable>
+
+                {showRolePicker && (
+                  <View
+                    style={[
+                      styles.roleDropdown,
+                      {
+                        borderColor: colors.border,
+                        backgroundColor: colors.card,
+                        borderRadius: colors.radius,
+                      },
+                    ]}
+                  >
+                    {CENTER_ROLES.map((role) => (
+                      <Pressable
+                        key={role}
+                        onPress={() => {
+                          setCenterStaffRole(role);
+                          setShowRolePicker(false);
+                        }}
+                        style={({ pressed }) => [
+                          styles.roleOption,
+                          {
+                            backgroundColor:
+                              centerStaffRole === role
+                                ? colors.primary + "15"
+                                : pressed
+                                ? colors.border + "40"
+                                : "transparent",
+                          },
+                        ]}
+                      >
+                        {centerStaffRole === role && (
+                          <Feather name="check" size={14} color={colors.primary} />
+                        )}
+                        <Text
+                          style={{
+                            color:
+                              centerStaffRole === role
+                                ? colors.primary
+                                : colors.foreground,
+                            fontFamily:
+                              centerStaffRole === role
+                                ? "Inter_600SemiBold"
+                                : "Inter_400Regular",
+                            fontSize: 14,
+                            marginLeft: centerStaffRole === role ? 0 : 18,
+                          }}
+                        >
+                          {role}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
+              </View>
+            </>
+          )}
 
           {/* Section: Personal Details */}
           <SectionHeader label="PERSONAL DETAILS" colors={colors} />
@@ -495,5 +678,40 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     marginTop: 16,
     textAlign: "center",
+  },
+  categoryBtn: {
+    padding: 16,
+    borderWidth: 1.5,
+    alignItems: "center",
+    gap: 6,
+  },
+  categoryLabel: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    marginTop: 2,
+  },
+  categorySub: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+  },
+  roleSelector: {
+    height: 52,
+    paddingHorizontal: 14,
+    borderWidth: 1.5,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  roleDropdown: {
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
+  },
+  roleOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
 });
