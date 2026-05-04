@@ -725,96 +725,129 @@ export default function StaffHome() {
                   <ActivityIndicator size="small" color={colors.primary} />
                 </View>
               ) : user?.vehicleType ? (
-                (kmHistoryData?.entries ?? []).map((entry, idx) => {
-                  const entries = kmHistoryData?.entries ?? [];
-                  const isLast = idx === entries.length - 1;
-                  const vehicleKm = entry.vehicleKm;
-                  const hasReading = entry.startOdometerKm != null || entry.endOdometerKm != null;
-                  return (
-                    <Pressable
-                      key={entry.date}
-                      onPress={() => setSelectedKmDay(entry.date)}
-                      style={({ pressed }) => [
-                        kmStyles.dataRow,
-                        {
-                          borderBottomColor: colors.border,
-                          borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth,
-                          opacity: pressed ? 0.7 : 1,
-                        },
-                      ]}
-                    >
-                      <Text style={[kmStyles.colDate, { color: colors.foreground }]}>
-                        {formatShortDate(entry.date)}
-                      </Text>
-                      <Text style={[kmStyles.colOdo, { color: hasReading ? colors.foreground : colors.mutedForeground }]}>
-                        {entry.startOdometerKm != null ? entry.startOdometerKm.toLocaleString("en-IN") : "—"}
-                      </Text>
-                      <Text style={[kmStyles.colOdo, { color: hasReading ? colors.foreground : colors.mutedForeground }]}>
-                        {entry.endOdometerKm != null ? entry.endOdometerKm.toLocaleString("en-IN") : "—"}
-                      </Text>
-                      <View style={[kmStyles.colKm, { alignItems: "flex-end", gap: 4, flexDirection: "row", justifyContent: "flex-end" }]}>
-                        {vehicleKm != null ? (
-                          <View style={{
-                            backgroundColor: colors.primary + "18",
-                            paddingHorizontal: 8,
-                            paddingVertical: 2,
-                            borderRadius: 6,
-                          }}>
-                            <Text style={{ color: colors.primary, fontFamily: "Inter_700Bold", fontSize: 12 }}>
-                              {vehicleKm.toFixed(1)} km
-                            </Text>
-                          </View>
-                        ) : (
-                          <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12 }}>—</Text>
-                        )}
-                        <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
+                <>
+                  {(kmHistoryData?.entries ?? []).map((entry, idx) => {
+                    const entries = kmHistoryData?.entries ?? [];
+                    const isLast = idx === entries.length - 1;
+                    const vehicleKm = entry.vehicleKm;
+                    const hasReading = entry.startOdometerKm != null || entry.endOdometerKm != null;
+                    return (
+                      <Pressable
+                        key={entry.date}
+                        onPress={() => setSelectedKmDay(entry.date)}
+                        style={({ pressed }) => [
+                          kmStyles.dataRow,
+                          {
+                            borderBottomColor: colors.border,
+                            borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth,
+                            opacity: pressed ? 0.7 : 1,
+                          },
+                        ]}
+                      >
+                        <Text style={[kmStyles.colDate, { color: colors.foreground }]}>
+                          {formatShortDate(entry.date)}
+                        </Text>
+                        <Text style={[kmStyles.colOdo, { color: hasReading ? colors.foreground : colors.mutedForeground }]}>
+                          {entry.startOdometerKm != null ? entry.startOdometerKm.toLocaleString("en-IN") : "—"}
+                        </Text>
+                        <Text style={[kmStyles.colOdo, { color: hasReading ? colors.foreground : colors.mutedForeground }]}>
+                          {entry.endOdometerKm != null ? entry.endOdometerKm.toLocaleString("en-IN") : "—"}
+                        </Text>
+                        <View style={[kmStyles.colKm, { alignItems: "flex-end", gap: 4, flexDirection: "row", justifyContent: "flex-end" }]}>
+                          {vehicleKm != null ? (
+                            <View style={{
+                              backgroundColor: colors.primary + "18",
+                              paddingHorizontal: 8,
+                              paddingVertical: 2,
+                              borderRadius: 6,
+                            }}>
+                              <Text style={{ color: colors.primary, fontFamily: "Inter_700Bold", fontSize: 12 }}>
+                                {vehicleKm.toFixed(1)} km
+                              </Text>
+                            </View>
+                          ) : (
+                            <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12 }}>—</Text>
+                          )}
+                          <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                  {/* 7-day total footer */}
+                  <View style={[kmStyles.dataRow, { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: 0, marginTop: 2 }]}>
+                    <Text style={[kmStyles.colDate, { color: colors.foreground, fontFamily: "Inter_700Bold" }]}>
+                      Total
+                    </Text>
+                    <Text style={[kmStyles.colOdo, { color: colors.mutedForeground }]}>{""}</Text>
+                    <Text style={[kmStyles.colOdo, { color: colors.mutedForeground }]}>{""}</Text>
+                    <View style={[kmStyles.colKm, { alignItems: "flex-end" }]}>
+                      <View style={{ backgroundColor: colors.primary + "18", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                        <Text style={{ color: colors.primary, fontFamily: "Inter_700Bold", fontSize: 12 }}>
+                          {(kmHistoryData?.entries ?? []).reduce((sum, e) => sum + (e.vehicleKm ?? 0), 0).toFixed(1)} km
+                        </Text>
                       </View>
-                    </Pressable>
-                  );
-                })
+                    </View>
+                  </View>
+                </>
               ) : (
-                (kmHistoryData?.entries ?? []).map((entry, idx) => {
-                  const entries = kmHistoryData?.entries ?? [];
-                  const isLast = idx === entries.length - 1;
-                  return (
-                    <Pressable
-                      key={entry.date}
-                      onPress={() => setSelectedKmDay(entry.date)}
-                      style={({ pressed }) => [
-                        kmStyles.dataRow,
-                        {
-                          borderBottomColor: colors.border,
-                          borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth,
-                          opacity: pressed ? 0.7 : 1,
-                        },
-                      ]}
-                    >
-                      <Text style={[kmStyles.colDate, { color: colors.foreground }]}>
-                        {formatShortDate(entry.date)}
-                      </Text>
-                      <Text style={[kmStyles.colOdo, { color: entry.tripCount > 0 ? colors.foreground : colors.mutedForeground }]}>
-                        {entry.tripCount > 0 ? entry.tripCount : "—"}
-                      </Text>
-                      <View style={[kmStyles.colKm, { alignItems: "flex-end", gap: 4, flexDirection: "row", justifyContent: "flex-end" }]}>
-                        {entry.gpsKm > 0 ? (
-                          <View style={{
-                            backgroundColor: colors.primary + "18",
-                            paddingHorizontal: 8,
-                            paddingVertical: 2,
-                            borderRadius: 6,
-                          }}>
-                            <Text style={{ color: colors.primary, fontFamily: "Inter_700Bold", fontSize: 12 }}>
-                              {entry.gpsKm.toFixed(1)} km
-                            </Text>
-                          </View>
-                        ) : (
-                          <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12 }}>—</Text>
-                        )}
-                        <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
+                <>
+                  {(kmHistoryData?.entries ?? []).map((entry, idx) => {
+                    const entries = kmHistoryData?.entries ?? [];
+                    const isLast = idx === entries.length - 1;
+                    return (
+                      <Pressable
+                        key={entry.date}
+                        onPress={() => setSelectedKmDay(entry.date)}
+                        style={({ pressed }) => [
+                          kmStyles.dataRow,
+                          {
+                            borderBottomColor: colors.border,
+                            borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth,
+                            opacity: pressed ? 0.7 : 1,
+                          },
+                        ]}
+                      >
+                        <Text style={[kmStyles.colDate, { color: colors.foreground }]}>
+                          {formatShortDate(entry.date)}
+                        </Text>
+                        <Text style={[kmStyles.colOdo, { color: entry.tripCount > 0 ? colors.foreground : colors.mutedForeground }]}>
+                          {entry.tripCount > 0 ? entry.tripCount : "—"}
+                        </Text>
+                        <View style={[kmStyles.colKm, { alignItems: "flex-end", gap: 4, flexDirection: "row", justifyContent: "flex-end" }]}>
+                          {entry.gpsKm > 0 ? (
+                            <View style={{
+                              backgroundColor: colors.primary + "18",
+                              paddingHorizontal: 8,
+                              paddingVertical: 2,
+                              borderRadius: 6,
+                            }}>
+                              <Text style={{ color: colors.primary, fontFamily: "Inter_700Bold", fontSize: 12 }}>
+                                {entry.gpsKm.toFixed(1)} km
+                              </Text>
+                            </View>
+                          ) : (
+                            <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12 }}>—</Text>
+                          )}
+                          <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                  {/* 7-day total footer */}
+                  <View style={[kmStyles.dataRow, { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: 0, marginTop: 2 }]}>
+                    <Text style={[kmStyles.colDate, { color: colors.foreground, fontFamily: "Inter_700Bold" }]}>
+                      Total
+                    </Text>
+                    <Text style={[kmStyles.colOdo, { color: colors.mutedForeground }]}>{""}</Text>
+                    <View style={[kmStyles.colKm, { alignItems: "flex-end" }]}>
+                      <View style={{ backgroundColor: colors.primary + "18", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                        <Text style={{ color: colors.primary, fontFamily: "Inter_700Bold", fontSize: 12 }}>
+                          {(kmHistoryData?.entries ?? []).reduce((sum, e) => sum + e.gpsKm, 0).toFixed(1)} km
+                        </Text>
                       </View>
-                    </Pressable>
-                  );
-                })
+                    </View>
+                  </View>
+                </>
               )}
             </View>
           )}
