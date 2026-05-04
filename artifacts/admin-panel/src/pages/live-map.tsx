@@ -862,7 +862,12 @@ export default function LiveMapPage() {
     const sb = getStatusLabel(b);
     return statusOrder[sa] - statusOrder[sb];
   };
-  const outsideStaff = filtered.filter((s) => isOutsideFence(s, geoFence)).sort(sortByStatus);
+  const outsideStaff = filtered.filter((s) => isOutsideFence(s, geoFence)).sort((a, b) => {
+    if (!geoFence) return 0;
+    const distA = haversineMeters(a.lastLat, a.lastLng, geoFence.centerLat, geoFence.centerLng) - geoFence.centerRadiusMeters;
+    const distB = haversineMeters(b.lastLat, b.lastLng, geoFence.centerLat, geoFence.centerLng) - geoFence.centerRadiusMeters;
+    return distB - distA;
+  });
   const insideStaff = filtered.filter((s) => !isOutsideFence(s, geoFence)).sort(sortByStatus);
 
   return (
