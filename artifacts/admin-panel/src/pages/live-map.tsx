@@ -930,6 +930,16 @@ export default function LiveMapPage() {
         <aside className="w-72 shrink-0 border-r bg-card flex flex-col overflow-hidden">
           {/* Sidebar filters */}
           <div className="p-3 border-b space-y-2 shrink-0">
+            {(() => {
+              const activeFilterCount = (filterStatus !== "all" ? 1 : 0) + (search !== "" ? 1 : 0);
+              return activeFilterCount > 0 ? (
+                <div className="flex items-center justify-end">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                    {activeFilterCount} filter{activeFilterCount !== 1 ? "s" : ""} active
+                  </span>
+                </div>
+              ) : null;
+            })()}
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
               <Input
