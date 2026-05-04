@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "SCMS",
-    "slug": "field-staff",
+    "slug": "scms-field-app",
     "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
