@@ -780,10 +780,17 @@ export default function Reports() {
               ) : null}
             </div>
 
-            <Button onClick={handleDownloadRides} className="w-full gap-2" disabled={isDownloading}>
-              {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-              {isDownloading ? "Downloading..." : selectedStaff ? `Download Report for ${selectedStaff.name}` : "Download Excel Report"}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button onClick={handleDownloadRides} className="w-full gap-2" disabled={isDownloading}>
+                  {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  {isDownloading ? "Downloading..." : selectedStaff ? `Download Report for ${selectedStaff.name}` : "Download Excel Report"}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs text-center">
+                Full report including Ride Details, Vehicle KM, and Attendance sheets.
+              </TooltipContent>
+            </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
