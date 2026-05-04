@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Circle, Tooltip, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useLocation } from "wouter";
@@ -82,6 +82,14 @@ interface GeoFence {
   centerLng: number;
   centerRadiusMeters: number;
 }
+
+// Returns the lat/lng of a point on the east edge of the fence circle
+function fenceEastEdge(lat: number, lng: number, radiusMeters: number): [number, number] {
+  const lngDeg = radiusMeters / (Math.cos((lat * Math.PI) / 180) * 111320);
+  return [lat, lng + lngDeg];
+}
+
+const FENCE_LABEL_ICON = L.divIcon({ className: "", html: "", iconSize: [0, 0], iconAnchor: [0, 0] });
 
 // ─── Status helpers ───────────────────────────────────────────────────────────
 
@@ -727,28 +735,38 @@ export default function LiveMapPage() {
     prevOutsideFenceCountRef.current = newCount;
   }, [staffList]);
 
-  // Fetch geo-fence config once on mount
-  useEffect(() => {
+  const fetchGeoFence = useCallback(async () => {
     const companyId = getAdminCompanyId();
     if (!companyId) return;
-    fetch(`/api/companies/${companyId}/branding`, {
-      headers: { "x-admin-phone": getAdminPhone() },
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (
-          data &&
-          typeof data.centerLat === "number" &&
-          typeof data.centerLng === "number"
-        ) {
-          setGeoFence({
-            centerLat: data.centerLat,
-            centerLng: data.centerLng,
-            centerRadiusMeters: typeof data.centerRadiusMeters === "number" ? data.centerRadiusMeters : 200,
-          });
-        }
-      })
-      .catch(() => {});
+    try {
+      const res = await fetch(`/api/companies/${companyId}/branding`, {
+        headers: { "x-admin-phone": getAdminPhone() },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (
+        data &&
+        typeof data.centerLat === "number" &&
+        typeof data.centerLng === "number"
+      ) {
+        const radius = typeof data.centerRadiusMeters === "number" ? data.centerRadiusMeters : 200;
+        setGeoFence((prev) => {
+          if (
+            prev &&
+            prev.centerLat === data.centerLat &&
+            prev.centerLng === data.centerLng &&
+            prev.centerRadiusMeters === radius
+          ) {
+            return prev;
+          }
+          return { centerLat: data.centerLat, centerLng: data.centerLng, centerRadiusMeters: radius };
+        });
+      } else {
+        setGeoFence(null);
+      }
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   const fetchLocations = useCallback(async () => {
@@ -768,12 +786,16 @@ export default function LiveMapPage() {
     }
   }, []);
 
-  // Initial fetch + auto-refresh
+  // Initial fetch + auto-refresh (locations + fence config)
   useEffect(() => {
+    fetchGeoFence();
     fetchLocations();
-    const timer = setInterval(fetchLocations, REFRESH_INTERVAL_MS);
+    const timer = setInterval(() => {
+      fetchGeoFence();
+      fetchLocations();
+    }, REFRESH_INTERVAL_MS);
     return () => clearInterval(timer);
-  }, [fetchLocations]);
+  }, [fetchGeoFence, fetchLocations]);
 
   // Filter logic
   const filtered = staffList.filter((s) => {
@@ -1014,24 +1036,35 @@ export default function LiveMapPage() {
             <FitBounds staff={locatedStaff} geoFence={geoFence} />
 
             {geoFence && (
-              <Circle
-                center={[geoFence.centerLat, geoFence.centerLng]}
-                radius={geoFence.centerRadiusMeters}
-                pathOptions={{
-                  color: "#6366f1",
-                  fillColor: "#6366f1",
-                  fillOpacity: 0.08,
-                  weight: 2,
-                  dashArray: "6 4",
-                }}
-              >
-                <Popup>
-                  <GeoFencePopupContent
-                    geoFence={geoFence}
-                    onEdit={() => navigate("/settings")}
-                  />
-                </Popup>
-              </Circle>
+              <>
+                <Circle
+                  center={[geoFence.centerLat, geoFence.centerLng]}
+                  radius={geoFence.centerRadiusMeters}
+                  pathOptions={{
+                    color: "#6366f1",
+                    fillColor: "#6366f1",
+                    fillOpacity: 0.08,
+                    weight: 2,
+                    dashArray: "6 4",
+                  }}
+                >
+                  <Popup>
+                    <GeoFencePopupContent
+                      geoFence={geoFence}
+                      onEdit={() => navigate("/settings")}
+                    />
+                  </Popup>
+                </Circle>
+                <Marker
+                  position={fenceEastEdge(geoFence.centerLat, geoFence.centerLng, geoFence.centerRadiusMeters)}
+                  icon={FENCE_LABEL_ICON}
+                  interactive={false}
+                >
+                  <Tooltip permanent direction="right" offset={[6, 0]} className="fence-radius-label">
+                    {`${geoFence.centerRadiusMeters} m`}
+                  </Tooltip>
+                </Marker>
+              </>
             )}
 
             {locatedStaff.map((staff) => {
