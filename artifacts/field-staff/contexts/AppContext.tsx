@@ -122,6 +122,8 @@ type AppState = {
   user: User | null;
   /** Phone number being verified during login / MPIN setup flow. */
   pendingPhone: string | null;
+  /** Company name fetched during check-phone, shown on MPIN screen. */
+  pendingCompanyName: string | null;
   /** User record created during registration, waiting for MPIN setup. */
   pendingRegistration: { user: User; approvalStatus: string } | null;
   attendance: AttendanceRecord[];
@@ -149,8 +151,8 @@ type AppActions = {
   registerCompany: (data: RegisterCompanyData) => Promise<User>;
   /** Set pendingPhone explicitly (used by phone screen before navigating to MPIN). */
   setPendingPhone: (phone: string) => void;
-  /** Check if a phone number is registered and whether an MPIN is set. */
-  checkPhone: (phone: string) => Promise<{ exists: boolean; hasMpin: boolean }>;
+  /** Check if a phone number is registered and whether an MPIN is set. Also stores companyName in state. */
+  checkPhone: (phone: string) => Promise<{ exists: boolean; hasMpin: boolean; companyName: string | null }>;
   /** Log in an existing user with their MPIN. */
   loginWithMpin: (phone: string, mpin: string) => Promise<User>;
   /** Set the MPIN for a registered user (first-time or after registration). Returns user + approvalStatus. */
@@ -378,6 +380,7 @@ const defaultState: AppState = {
   bootstrapped: false,
   user: null,
   pendingPhone: null,
+  pendingCompanyName: null,
   pendingRegistration: null,
   attendance: [],
   trips: [],
@@ -607,7 +610,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const checkPhone = useCallback(
-    async (phone: string): Promise<{ exists: boolean; hasMpin: boolean }> => {
+    async (phone: string): Promise<{ exists: boolean; hasMpin: boolean; companyName: string | null }> => {
       const res = await fetch(`${API_BASE}/api/auth/check-phone`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -617,7 +620,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const err = (await res.json().catch(() => ({}))) as Record<string, unknown>;
         throw new Error((err["title"] as string) || "Failed to check phone.");
       }
-      return res.json() as Promise<{ exists: boolean; hasMpin: boolean }>;
+      const data = (await res.json()) as { exists: boolean; hasMpin: boolean; companyName: string | null };
+      setState((s) => ({ ...s, pendingCompanyName: data.companyName ?? null }));
+      return data;
     },
     [],
   );
@@ -684,7 +689,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       companyCenterLng: dto.companyCenterLng ?? null,
       companyCenterRadiusMeters: dto.companyCenterRadiusMeters ?? null,
     };
-    setState((s) => ({ ...s, user, pendingPhone: null, pendingRegistration: null }));
+    setState((s) => ({ ...s, user, pendingPhone: null, pendingCompanyName: null, pendingRegistration: null }));
     return user;
   }, []);
 
@@ -746,10 +751,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         };
     // Only log in if account is approved; pending users must wait for approval
     if (approvalStatus === "approved") {
-      setState((s) => ({ ...s, user, pendingPhone: null, pendingRegistration: null }));
+      setState((s) => ({ ...s, user, pendingPhone: null, pendingCompanyName: null, pendingRegistration: null }));
     } else {
       // Clear pendingRegistration but do NOT set user — keep them logged out
-      setState((s) => ({ ...s, pendingPhone: null, pendingRegistration: null }));
+      setState((s) => ({ ...s, pendingPhone: null, pendingCompanyName: null, pendingRegistration: null }));
     }
     return { user, approvalStatus };
   }, []);
@@ -773,7 +778,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   void _resolveDemoUser; // suppress unused-variable warning
 
   const signOut = useCallback(async () => {
-    setState((s) => ({ ...s, user: null, pendingPhone: null, activeTripId: null }));
+    setState((s) => ({ ...s, user: null, pendingPhone: null, pendingCompanyName: null, activeTripId: null }));
   }, []);
 
   const switchRole = useCallback(async (target: "admin" | "staff") => {

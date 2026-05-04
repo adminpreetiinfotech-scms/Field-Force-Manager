@@ -20,7 +20,7 @@ const PIN_LENGTH = 4;
 export default function MpinScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { loginWithMpin, setupMpin, pendingPhone, pendingRegistration } = useApp();
+  const { loginWithMpin, setupMpin, pendingPhone, pendingCompanyName, pendingRegistration } = useApp();
   const params = useLocalSearchParams<{ mode?: string }>();
 
   const isSetup = params.mode === "setup";
@@ -187,11 +187,40 @@ export default function MpinScreen() {
             borderColor: colors.primary + "30",
             alignItems: "center",
             justifyContent: "center",
-            marginBottom: 18,
+            marginBottom: 14,
           }}
         >
           <Feather name="lock" size={22} color={colors.primary} />
         </View>
+
+        {pendingCompanyName ? (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
+              marginBottom: 14,
+              backgroundColor: colors.primary + "10",
+              borderWidth: StyleSheet.hairlineWidth,
+              borderColor: colors.primary + "28",
+              borderRadius: 999,
+              paddingHorizontal: 12,
+              paddingVertical: 5,
+              alignSelf: "flex-start",
+            }}
+          >
+            <Feather name="briefcase" size={12} color={colors.primary} />
+            <Text
+              style={{
+                fontSize: 13,
+                fontFamily: "Inter_600SemiBold",
+                color: colors.primary,
+              }}
+            >
+              {pendingCompanyName} – SCMS
+            </Text>
+          </View>
+        ) : null}
 
         <Text
           style={{

@@ -85,7 +85,7 @@ function toUserDTO(row: typeof staffTable.$inferSelect) {
 }
 
 // ─── POST /api/auth/check-phone ─────────────────────────────────────────────
-// Returns whether the phone is registered, whether an MPIN is set, and the approvalStatus.
+// Returns whether the phone is registered, whether an MPIN is set, approvalStatus, and companyName.
 router.post("/auth/check-phone", async (req, res, next) => {
   try {
     const { phone } = req.body as { phone?: string };
@@ -94,16 +94,28 @@ router.post("/auth/check-phone", async (req, res, next) => {
       return;
     }
     const rows = await db
-      .select({ id: staffTable.id, mpinHash: staffTable.mpinHash, approvalStatus: staffTable.approvalStatus })
+      .select({
+        id: staffTable.id,
+        mpinHash: staffTable.mpinHash,
+        approvalStatus: staffTable.approvalStatus,
+        companyId: staffTable.companyId,
+      })
       .from(staffTable)
       .where(eq(staffTable.phone, phone.trim()))
       .limit(1);
 
     if (rows.length === 0) {
-      res.json({ exists: false, hasMpin: false, approvalStatus: null });
+      res.json({ exists: false, hasMpin: false, approvalStatus: null, companyName: null });
       return;
     }
-    res.json({ exists: true, hasMpin: !!rows[0]!.mpinHash, approvalStatus: rows[0]!.approvalStatus });
+    const row = rows[0]!;
+    const branding = await getCompanyBranding(row.companyId);
+    res.json({
+      exists: true,
+      hasMpin: !!row.mpinHash,
+      approvalStatus: row.approvalStatus,
+      companyName: branding.companyName,
+    });
   } catch (err) {
     next(err);
   }
