@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -174,30 +173,30 @@ export default function CenterAttendance() {
   useEffect(() => { loadStaff(); }, []);
   useEffect(() => { if (!staffLoading) loadAttendance(); }, [staffLoading, loadAttendance]);
 
-  const exportExcel = () => {
+  const [exporting, setExporting] = useState(false);
+
+  const exportExcel = async () => {
     if (!filteredRows.length) return;
-    const sheetData = [
-      ["Date", "Staff Name", "Emp Code", "Role", "Status", "Check-in (IST)", "Check-out (IST)", "Check-in Geofence", "Check-in Distance (m)", "Check-out Geofence", "Check-out Distance (m)"],
-      ...filteredRows.map((r) => [
-        r.date,
-        r.staffName,
-        r.empCode,
-        roleFmt(r.centerStaffRole),
-        r.status,
-        toIst(r.checkInTime),
-        toIst(r.checkOutTime),
-        r.checkInOutsideGeofence === null ? "N/A" : r.checkInOutsideGeofence ? "Outside" : "Inside",
-        r.checkInDistanceM ?? "N/A",
-        r.checkOutOutsideGeofence === null ? "N/A" : r.checkOutOutsideGeofence ? "Outside" : "Inside",
-        r.checkOutDistanceM ?? "N/A",
-      ]),
-    ];
-    const ws = XLSX.utils.aoa_to_sheet(sheetData);
-    ws["!cols"] = [9, 22, 10, 18, 10, 16, 16, 16, 14, 16, 14].map((w) => ({ wch: w }));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Attendance");
-    const filterSuffix = statusFilter ? `-${statusFilter}` : "";
-    XLSX.writeFile(wb, `center-attendance${filterSuffix}-${dateFrom}-to-${dateTo}.xlsx`);
+    setExporting(true);
+    try {
+      const params = new URLSearchParams({ dateFrom, dateTo });
+      if (selectedStaffId) params.set("staffId", selectedStaffId);
+      if (statusFilter) params.set("status", statusFilter);
+      const res = await adminFetch(`/api/admin/center-attendance/xlsx?${params}`);
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const filterSuffix = statusFilter ? `-${statusFilter}` : "";
+      a.href = url;
+      a.download = `center-attendance${filterSuffix}-${dateFrom}-to-${dateTo}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      toast({ title: "Export failed", description: e.message, variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
   };
 
   const filteredRows = rows.filter((r) => {
@@ -225,9 +224,9 @@ export default function CenterAttendance() {
             <RefreshCw className={`h-4 w-4 mr-1.5 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </Button>
-          <Button variant="outline" size="sm" onClick={exportExcel} disabled={!filteredRows.length}>
-            <Download className="h-4 w-4 mr-1.5" />
-            Export Excel ({filteredRows.length} {filteredRows.length === 1 ? "row" : "rows"})
+          <Button variant="outline" size="sm" onClick={exportExcel} disabled={!filteredRows.length || exporting}>
+            <Download className={`h-4 w-4 mr-1.5 ${exporting ? "animate-bounce" : ""}`} />
+            {exporting ? "Exporting…" : `Export Excel (${filteredRows.length} ${filteredRows.length === 1 ? "row" : "rows"})`}
           </Button>
         </div>
       </div>
