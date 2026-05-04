@@ -489,7 +489,7 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
     dayRows.sort((a, b) => a.date.localeCompare(b.date) || a.staffName.localeCompare(b.staffName));
 
     const ws2 = wb.addWorksheet("Daily Vehicle KM", { properties: { tabColor: { argb: "FF059669" } } });
-    const D_COLS = 9;
+    const D_COLS = 10;
     ws2.columns = [
       { width: 22 }, // Staff Name
       { width: 13 }, // EMP ID
@@ -498,8 +498,9 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
       { width: 16 }, // Start Odometer
       { width: 16 }, // End Odometer
       { width: 12 }, // Vehicle KM
-      { width: 10 }, // GPS KM
+      { width: 14 }, // Sum GPS KM
       { width: 12 }, // Variance %
+      { width: 14 }, // Flag
     ];
 
     // Header rows for sheet 2
@@ -532,7 +533,7 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
     const D_HDRS = [
       "Staff Name", "EMP ID", "Mobile No.", "Date",
       "Start Odometer\n(km)", "End Odometer\n(km)", "Vehicle KM",
-      "GPS KM\n(sum trips)", "Variance %",
+      "Sum GPS KM\n(all trips)", "Variance %", "Flag",
     ];
     const dhRow = ws2.getRow(5);
     dhRow.height = 32;
@@ -547,7 +548,7 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
 
     // Data rows
     const dAltFill: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: LGRAY } };
-    const dVarFill: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFDE68A" } };
+    const dVarFill: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFED7AA" } };
     let dRowNum = 6;
     for (const [idx, r] of dayRows.entries()) {
       const dr = ws2.getRow(dRowNum);
@@ -561,11 +562,18 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
         r.vehicleKm     !== null ? r.vehicleKm : "",
         r.gpsKm         > 0     ? r.gpsKm : "",
         r.variancePct   !== null ? `${r.variancePct}%` : "",
+        highVar ? "⚠ >20% Variance" : "",
       ];
       cells.forEach((val, ci) => {
         const cell = dr.getCell(ci + 1);
         cell.value = val;
-        cell.font  = { size: 9, name: "Calibri", color: { argb: highVar && ci === 8 ? "FFB45309" : "FF111827" } };
+        const isVarCol  = ci === 8;
+        const isFlagCol = ci === 9;
+        cell.font  = {
+          size: 9, name: "Calibri",
+          bold: isFlagCol && highVar,
+          color: { argb: highVar && (isVarCol || isFlagCol) ? "FFB45309" : "FF111827" },
+        };
         cell.alignment = { horizontal: ci >= 4 ? "center" : "left", vertical: "middle" };
         if (fill) cell.fill = fill;
         cell.border = { bottom: { style: "hair", color: { argb: "FFD1D5DB" } } };
