@@ -47,6 +47,11 @@ interface TripReportRow {
   distanceKm?: number | null;
   checkinPhotoUrl?: string | null;
   checkoutPhotoUrl?: string | null;
+  vehicleKm?: number | null;
+  gpsKm?: number | null;
+  variancePct?: number | null;
+  startOdometer?: number | null;
+  endOdometer?: number | null;
 }
 
 async function fetchWithAuth(url: string) {
@@ -689,14 +694,18 @@ export default function Reports() {
                       <th className="px-3 py-2.5 text-left font-semibold">Staff</th>
                       <th className="px-3 py-2.5 text-left font-semibold">Start</th>
                       <th className="px-3 py-2.5 text-left font-semibold">End</th>
-                      <th className="px-3 py-2.5 text-right font-semibold">KM</th>
+                      <th className="px-3 py-2.5 text-right font-semibold">GPS KM</th>
+                      <th className="px-3 py-2.5 text-right font-semibold">Vehicle KM</th>
+                      <th className="px-3 py-2.5 text-right font-semibold">Variance</th>
                       <th className="px-3 py-2.5 text-center font-semibold">Check-in Photo</th>
                       <th className="px-3 py-2.5 text-center font-semibold">Check-out Photo</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {tripRows.map((row) => (
-                      <tr key={row.tripRef} className="hover:bg-muted/30 transition-colors">
+                    {tripRows.map((row) => {
+                      const highVariance = row.variancePct != null && row.variancePct > 20;
+                      return (
+                      <tr key={row.tripRef} className={`hover:bg-muted/30 transition-colors ${highVariance ? "bg-amber-50" : ""}`}>
                         <td className="px-3 py-2.5 whitespace-nowrap font-medium text-foreground">
                           {fmtDate(row.rideDate)}
                         </td>
@@ -711,7 +720,26 @@ export default function Reports() {
                           {toIst(row.endTime)}
                         </td>
                         <td className="px-3 py-2.5 text-right whitespace-nowrap font-medium">
-                          {row.distanceKm != null ? `${row.distanceKm.toFixed(1)} km` : "—"}
+                          {row.gpsKm != null ? `${row.gpsKm.toFixed(1)} km` : row.distanceKm != null ? `${row.distanceKm.toFixed(1)} km` : "—"}
+                        </td>
+                        <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                          {row.vehicleKm != null ? (
+                            <span className="font-medium">
+                              {row.vehicleKm.toFixed(1)} km
+                              {row.startOdometer != null && row.endOdometer != null && (
+                                <span className="block text-xs text-muted-foreground">
+                                  {row.startOdometer.toLocaleString("en-IN")} → {row.endOdometer.toLocaleString("en-IN")}
+                                </span>
+                              )}
+                            </span>
+                          ) : "—"}
+                        </td>
+                        <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                          {row.variancePct != null ? (
+                            <span className={`font-medium px-1.5 py-0.5 rounded text-xs ${highVariance ? "bg-amber-100 text-amber-700" : "text-muted-foreground"}`}>
+                              {row.variancePct.toFixed(1)}%
+                            </span>
+                          ) : "—"}
                         </td>
                         <td className="px-3 py-2.5 text-center">
                           {row.checkinPhotoUrl ? (
@@ -724,7 +752,8 @@ export default function Reports() {
                           ) : null}
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
