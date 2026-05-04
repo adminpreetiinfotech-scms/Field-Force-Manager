@@ -8,7 +8,14 @@ import {
   staffTable,
 } from "@workspace/db";
 import { and, count, desc, eq, gte, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
+import ExcelJS from "exceljs";
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
+
+const PURPLE    = "FF4F46E5";
+const PURPLE_DK = "FF3730A3";
+const AMBER     = "FFF59E0B";
+const WHITE     = "FFFFFFFF";
+const LGRAY     = "FFF3F4F6";
 
 const router: IRouter = Router();
 
@@ -1334,6 +1341,231 @@ router.get("/admin/field-attendance", requireAdmin, async (req, res, next) => {
     }
 
     res.json(rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── GET /api/admin/field-attendance/xlsx ─────────────────────────────────────
+// Generates a styled ExcelJS attendance workbook for field staff.
+
+router.get("/admin/field-attendance/xlsx", requireAdmin, async (req, res, next) => {
+  try {
+    const companyId = res.locals.companyId as string | null;
+    const { dateFrom, dateTo, staffId, status: statusFilter, category: categoryFilter } = req.query as {
+      dateFrom?: string;
+      dateTo?: string;
+      staffId?: string;
+      status?: string;
+      category?: string;
+    };
+
+    const todayIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const resolvedDateFrom = dateFrom || todayIST;
+    const resolvedDateTo   = dateTo   || todayIST;
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(resolvedDateFrom) || !/^\d{4}-\d{2}-\d{2}$/.test(resolvedDateTo)) {
+      res.status(400).json({ title: "Dates must be in YYYY-MM-DD format", status: 400 });
+      return;
+    }
+
+    // Resolve organization name
+    let organization: string | null = null;
+    if (companyId) {
+      try {
+        const [co] = await db
+          .select({ name: companiesTable.name, projectName: companiesTable.projectName })
+          .from(companiesTable)
+          .where(eq(companiesTable.id, companyId))
+          .limit(1);
+        if (co) {
+          organization = co.projectName ? `${co.name} — ${co.projectName}` : co.name;
+        }
+      } catch { /* non-fatal */ }
+    }
+
+    const companyFilter = companyId
+      ? and(eq(staffTable.companyId, companyId), eq(staffTable.staffCategory, "field"))
+      : eq(staffTable.staffCategory, "field");
+    const staffFilter = staffId
+      ? and(companyFilter, eq(staffTable.id, staffId))
+      : companyFilter;
+
+    const fieldStaff = await db
+      .select({ id: staffTable.id, name: staffTable.name, empCode: staffTable.empCode, phone: staffTable.phone, staffCategory: staffTable.staffCategory })
+      .from(staffTable)
+      .where(and(staffFilter, isNull(staffTable.deletedAt)));
+
+    const fromUtc = new Date(resolvedDateFrom + "T00:00:00+05:30");
+    const toUtc   = new Date(resolvedDateTo   + "T23:59:59+05:30");
+    const staffIds = fieldStaff.map((s) => s.id);
+
+    const events = staffIds.length > 0
+      ? await db
+          .select({ staffId: activityEventsTable.staffId, kind: activityEventsTable.kind, occurredAt: activityEventsTable.occurredAt })
+          .from(activityEventsTable)
+          .where(and(
+            inArray(activityEventsTable.staffId, staffIds),
+            or(eq(activityEventsTable.kind, "checkin"), eq(activityEventsTable.kind, "checkout")),
+            gte(activityEventsTable.occurredAt, fromUtc),
+            lt(activityEventsTable.occurredAt, new Date(toUtc.getTime() + 1000)),
+          ))
+          .orderBy(activityEventsTable.occurredAt)
+      : [];
+
+    const IST_OFFSET = 5.5 * 60 * 60 * 1000;
+    const eventMap = new Map<string, { checkin?: Date; checkout?: Date }>();
+    for (const ev of events) {
+      const istDate = new Date(ev.occurredAt.getTime() + IST_OFFSET).toISOString().slice(0, 10);
+      const key = `${ev.staffId}|${istDate}`;
+      if (!eventMap.has(key)) eventMap.set(key, {});
+      const entry = eventMap.get(key)!;
+      if (ev.kind === "checkin") { if (!entry.checkin) entry.checkin = ev.occurredAt; }
+      else if (ev.kind === "checkout") { entry.checkout = ev.occurredAt; }
+    }
+
+    function toISTTime(d: Date): string {
+      const local = new Date(d.getTime() + IST_OFFSET);
+      return local.toISOString().slice(11, 16);
+    }
+
+    const dates: string[] = [];
+    const cur = new Date(resolvedDateFrom + "T00:00:00Z");
+    const end = new Date(resolvedDateTo   + "T00:00:00Z");
+    while (cur <= end) { dates.push(cur.toISOString().slice(0, 10)); cur.setDate(cur.getDate() + 1); }
+
+    const today = new Date(Date.now() + IST_OFFSET).toISOString().slice(0, 10);
+
+    type AttendRow = { staffName: string; empCode: string; mobile: string; date: string; checkIn: string; checkOut: string; durationHours: string; };
+    const attendRows: AttendRow[] = [];
+
+    const staffCategoryMap = new Map(fieldStaff.map((s) => [s.id, s.staffCategory ?? ""]));
+
+    for (const staff of fieldStaff) {
+      // Apply category filter: skip staff whose category doesn't match
+      if (categoryFilter && staffCategoryMap.get(staff.id) !== categoryFilter) continue;
+
+      for (const date of dates) {
+        const entry = eventMap.get(`${staff.id}|${date}`);
+        const hasCheckin  = !!entry?.checkin;
+        const hasCheckout = !!entry?.checkout;
+        if (!hasCheckin && !hasCheckout && date > today) continue;
+
+        // Compute row status for filter matching
+        let rowStatus: "present" | "partial" | "absent" = "absent";
+        if (hasCheckin && hasCheckout) rowStatus = "present";
+        else if (hasCheckin) rowStatus = "partial";
+
+        // Apply status filter
+        if (statusFilter && rowStatus !== statusFilter) continue;
+
+        const checkIn  = hasCheckin  ? toISTTime(entry!.checkin!)  : "";
+        const checkOut = hasCheckout ? toISTTime(entry!.checkout!) : "";
+        let durationHours = "";
+        if (hasCheckin && hasCheckout && entry!.checkout! > entry!.checkin!) {
+          const diffMs = entry!.checkout!.getTime() - entry!.checkin!.getTime();
+          const hrs    = diffMs / (1000 * 60 * 60);
+          durationHours = `${Math.floor(hrs)}h ${Math.round((hrs % 1) * 60)}m`;
+        }
+        attendRows.push({ staffName: staff.name, empCode: staff.empCode ?? "", mobile: staff.phone ?? "", date, checkIn, checkOut, durationHours });
+      }
+    }
+    attendRows.sort((a, b) => a.date.localeCompare(b.date) || a.staffName.localeCompare(b.staffName));
+
+    // Build ExcelJS workbook
+    const wb = new ExcelJS.Workbook();
+    wb.creator  = "Nistha Skill";
+    wb.modified = new Date();
+
+    const A_COLS = 7;
+    const ws = wb.addWorksheet("Attendance", { properties: { tabColor: { argb: PURPLE } } });
+    ws.columns = [
+      { width: 24 }, { width: 13 }, { width: 14 },
+      { width: 12 }, { width: 14 }, { width: 14 }, { width: 14 },
+    ];
+
+    // Row 1 — organization
+    ws.mergeCells(1, 1, 1, A_COLS);
+    const r1 = ws.getCell(1, 1);
+    r1.value     = organization ?? "Jharkhand Skill Development Mission Society (JSDMS) / DDU-KK";
+    r1.font      = { bold: true, size: 13, color: { argb: WHITE }, name: "Calibri" };
+    r1.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: PURPLE } };
+    r1.alignment = { horizontal: "center", vertical: "middle" };
+    ws.getRow(1).height = 26;
+
+    // Row 2 — title
+    ws.mergeCells(2, 1, 2, A_COLS);
+    const r2 = ws.getCell(2, 1);
+    r2.value     = "FIELD ATTENDANCE SUMMARY";
+    r2.font      = { bold: true, size: 14, color: { argb: AMBER }, name: "Calibri" };
+    r2.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: PURPLE } };
+    r2.alignment = { horizontal: "center", vertical: "middle" };
+    ws.getRow(2).height = 26;
+
+    // Row 3 — period
+    const staffPart = staffId && fieldStaff.length === 1 ? `Staff: ${fieldStaff[0].name}   |   ` : "";
+    ws.mergeCells(3, 1, 3, A_COLS);
+    const r3 = ws.getCell(3, 1);
+    r3.value     = `${staffPart}Period: ${resolvedDateFrom}  →  ${resolvedDateTo}   |   ${attendRows.length} attendance record(s)`;
+    r3.font      = { bold: true, size: 10, color: { argb: WHITE }, name: "Calibri" };
+    r3.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: PURPLE_DK } };
+    r3.alignment = { horizontal: "center", vertical: "middle" };
+    ws.getRow(3).height = 18;
+
+    // Row 4 — spacer
+    ws.getRow(4).height = 8;
+
+    // Row 5 — column headers
+    const A_HDRS = ["Staff Name", "EMP ID", "Mobile No.", "Date", "Check-In\nTime", "Check-Out\nTime", "Hours on\nDuty"];
+    const hdr = ws.getRow(5);
+    hdr.height = 32;
+    A_HDRS.forEach((h, ci) => {
+      const cell = hdr.getCell(ci + 1);
+      cell.value     = h;
+      cell.font      = { bold: true, size: 9, color: { argb: WHITE }, name: "Calibri" };
+      cell.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: PURPLE } };
+      cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+      cell.border    = { bottom: { style: "thin", color: { argb: AMBER } } };
+    });
+
+    // Data rows
+    const altFill:     ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: LGRAY } };
+    const partialFill: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEF3C7" } };
+    let rowNum = 6;
+    for (const [idx, r] of attendRows.entries()) {
+      const dr = ws.getRow(rowNum);
+      dr.height = 16;
+      const isPartial = !r.checkIn || !r.checkOut;
+      const fill = isPartial ? partialFill : idx % 2 === 1 ? altFill : undefined;
+      [r.staffName, r.empCode, r.mobile, r.date, r.checkIn, r.checkOut, r.durationHours].forEach((val, ci) => {
+        const cell = dr.getCell(ci + 1);
+        cell.value     = val;
+        cell.font      = { size: 9, name: "Calibri", color: { argb: "FF111827" } };
+        cell.alignment = { horizontal: ci >= 4 ? "center" : "left", vertical: "middle" };
+        if (fill) cell.fill = fill;
+        cell.border = { bottom: { style: "hair", color: { argb: "FFD1D5DB" } } };
+      });
+      rowNum++;
+    }
+
+    // Footer
+    rowNum++;
+    const totalPresent = attendRows.filter((r) => r.checkIn && r.checkOut).length;
+    const totalPartial = attendRows.filter((r) => r.checkIn && !r.checkOut).length;
+    const totalAbsent  = attendRows.filter((r) => !r.checkIn).length;
+    ws.mergeCells(rowNum, 1, rowNum, A_COLS);
+    const footer = ws.getCell(rowNum, 1);
+    footer.value     = `Total: ${attendRows.length} record(s)   |   ${totalPresent} present   |   ${totalPartial} check-out pending   |   ${totalAbsent} absent`;
+    footer.font      = { bold: true, size: 9, color: { argb: WHITE } };
+    footer.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: PURPLE } };
+    footer.alignment = { horizontal: "center" };
+    ws.getRow(rowNum).height = 18;
+
+    const fname = `field-attendance-${resolvedDateFrom}-to-${resolvedDateTo}.xlsx`;
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="${fname}"`);
+    await wb.xlsx.write(res);
+    res.end();
   } catch (err) {
     next(err);
   }

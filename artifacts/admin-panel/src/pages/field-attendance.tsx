@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -86,12 +85,27 @@ function statusBadge(status: FieldAttendanceRow["status"]) {
   );
 }
 
+async function downloadBlob(url: string, filename: string) {
+  const res = await adminFetch(url);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { title?: string };
+    throw new Error(err.title || `Error ${res.status}`);
+  }
+  const blob = await res.blob();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 export default function FieldAttendance() {
   const { toast } = useToast();
   const [staffList, setStaffList] = useState<FieldStaffListItem[]>([]);
   const [rows, setRows] = useState<FieldAttendanceRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [staffLoading, setStaffLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
 
   const urlParams = new URLSearchParams(window.location.search);
   const initDateFrom = urlParams.get("dateFrom") ?? monthStartIst();
@@ -153,26 +167,26 @@ export default function FieldAttendance() {
 
   const isFiltered = !!(statusFilter || categoryFilter);
 
-  const exportExcel = () => {
+  const exportExcel = async () => {
     if (!filteredRows.length) return;
-    const sheetData = [
-      ["Date", "Staff Name", "Emp Code", "Status", "Check-in (IST)", "Check-out (IST)"],
-      ...filteredRows.map((r) => [
-        r.date,
-        r.staffName,
-        r.empCode,
-        r.status,
-        toIst(r.checkInTime),
-        toIst(r.checkOutTime),
-      ]),
-    ];
-    const ws = XLSX.utils.aoa_to_sheet(sheetData);
-    ws["!cols"] = [12, 22, 10, 10, 16, 16].map((w) => ({ wch: w }));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Attendance");
-    const suffixes = [categoryFilter, statusFilter].filter(Boolean).join("-");
-    const filterSuffix = suffixes ? `-${suffixes}` : "";
-    XLSX.writeFile(wb, `field-attendance${filterSuffix}-${dateFrom}-to-${dateTo}.xlsx`);
+    setIsExporting(true);
+    try {
+      const params = new URLSearchParams({ dateFrom, dateTo });
+      if (selectedStaffId) params.set("staffId", selectedStaffId);
+      if (statusFilter)    params.set("status", statusFilter);
+      if (categoryFilter)  params.set("category", categoryFilter);
+      const suffixes = [categoryFilter, statusFilter].filter(Boolean).join("-");
+      const filterSuffix = suffixes ? `-${suffixes}` : "";
+      await downloadBlob(
+        `/api/admin/field-attendance/xlsx?${params}`,
+        `field-attendance${filterSuffix}-${dateFrom}-to-${dateTo}.xlsx`,
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Could not export attendance.";
+      toast({ title: "Export failed", description: msg, variant: "destructive" });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const presentCount = rows.filter((r) => r.status === "present").length;
@@ -194,9 +208,9 @@ export default function FieldAttendance() {
             <RefreshCw className={`h-4 w-4 mr-1.5 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </Button>
-          <Button variant="outline" size="sm" onClick={exportExcel} disabled={!filteredRows.length}>
-            <Download className="h-4 w-4 mr-1.5" />
-            Export Excel ({filteredRows.length} {filteredRows.length === 1 ? "row" : "rows"})
+          <Button variant="outline" size="sm" onClick={exportExcel} disabled={!filteredRows.length || isExporting}>
+            <Download className={`h-4 w-4 mr-1.5 ${isExporting ? "animate-spin" : ""}`} />
+            {isExporting ? "Exporting…" : `Export Excel (${filteredRows.length} ${filteredRows.length === 1 ? "row" : "rows"})`}
           </Button>
         </div>
       </div>
