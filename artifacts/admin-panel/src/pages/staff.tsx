@@ -20,6 +20,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { useToast } from "@/hooks/use-toast";
 import {
   Search,
@@ -489,34 +490,58 @@ function ViewProfileDialog({ staff, onClose }: { staff: StaffMember; onClose: ()
                           <span className="flex-1 font-medium">{t.distanceKm != null ? `${t.distanceKm.toFixed(1)} km` : "—"}</span>
                           <div className="flex items-center gap-2">
                             {t.checkinMeterPhotoUri ? (
-                              <button
-                                title="Check-in odometer photo — click to enlarge"
-                                onClick={() => setLightboxUri(t.checkinMeterPhotoUri!)}
-                                className="group relative flex flex-col items-center gap-0.5 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
-                              >
-                                <img
-                                  src={t.checkinMeterPhotoUri}
-                                  alt="Check-in odometer"
-                                  loading="lazy"
-                                  className="w-12 h-9 object-cover rounded border border-blue-200 group-hover:border-blue-500 group-hover:shadow transition-all"
-                                />
-                                <span className="text-[9px] text-blue-600 group-hover:text-blue-800">In</span>
-                              </button>
+                              <HoverCard openDelay={200} closeDelay={100}>
+                                <HoverCardTrigger asChild>
+                                  <button
+                                    title="Check-in odometer photo — click to enlarge"
+                                    onClick={() => setLightboxUri(t.checkinMeterPhotoUri!)}
+                                    className="group flex flex-col items-center gap-0.5 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
+                                  >
+                                    <img
+                                      src={t.checkinMeterPhotoUri}
+                                      alt="Check-in odometer"
+                                      loading="lazy"
+                                      className="w-12 h-9 object-cover rounded border border-blue-200 group-hover:border-blue-500 group-hover:shadow transition-all"
+                                    />
+                                    <span className="text-[9px] text-blue-600 group-hover:text-blue-800">In</span>
+                                  </button>
+                                </HoverCardTrigger>
+                                <HoverCardContent side="top" className="w-auto p-1.5 border-blue-200">
+                                  <img
+                                    src={t.checkinMeterPhotoUri}
+                                    alt="Check-in odometer preview"
+                                    className="w-[120px] h-[90px] object-cover rounded"
+                                  />
+                                  <p className="text-[9px] text-center text-blue-600 mt-0.5">Check-in</p>
+                                </HoverCardContent>
+                              </HoverCard>
                             ) : null}
                             {t.checkoutMeterPhotoUri ? (
-                              <button
-                                title="Check-out odometer photo — click to enlarge"
-                                onClick={() => setLightboxUri(t.checkoutMeterPhotoUri!)}
-                                className="group relative flex flex-col items-center gap-0.5 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-1"
-                              >
-                                <img
-                                  src={t.checkoutMeterPhotoUri}
-                                  alt="Check-out odometer"
-                                  loading="lazy"
-                                  className="w-12 h-9 object-cover rounded border border-green-200 group-hover:border-green-500 group-hover:shadow transition-all"
-                                />
-                                <span className="text-[9px] text-green-600 group-hover:text-green-800">Out</span>
-                              </button>
+                              <HoverCard openDelay={200} closeDelay={100}>
+                                <HoverCardTrigger asChild>
+                                  <button
+                                    title="Check-out odometer photo — click to enlarge"
+                                    onClick={() => setLightboxUri(t.checkoutMeterPhotoUri!)}
+                                    className="group flex flex-col items-center gap-0.5 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-1"
+                                  >
+                                    <img
+                                      src={t.checkoutMeterPhotoUri}
+                                      alt="Check-out odometer"
+                                      loading="lazy"
+                                      className="w-12 h-9 object-cover rounded border border-green-200 group-hover:border-green-500 group-hover:shadow transition-all"
+                                    />
+                                    <span className="text-[9px] text-green-600 group-hover:text-green-800">Out</span>
+                                  </button>
+                                </HoverCardTrigger>
+                                <HoverCardContent side="top" className="w-auto p-1.5 border-green-200">
+                                  <img
+                                    src={t.checkoutMeterPhotoUri}
+                                    alt="Check-out odometer preview"
+                                    className="w-[120px] h-[90px] object-cover rounded"
+                                  />
+                                  <p className="text-[9px] text-center text-green-600 mt-0.5">Check-out</p>
+                                </HoverCardContent>
+                              </HoverCard>
                             ) : null}
                             {!t.checkinMeterPhotoUri && !t.checkoutMeterPhotoUri && (
                               <span className="text-muted-foreground text-[10px]">No photos</span>
