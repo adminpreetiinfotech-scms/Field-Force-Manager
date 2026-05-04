@@ -1,5 +1,5 @@
-import { companiesTable, db, staffTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { centersTable, companiesTable, db, staffTable } from "@workspace/db";
+import { and, eq } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import { uploadLogoBuffer } from "../lib/logoStorage";
 import { isValidUUID } from "../lib/validation";
