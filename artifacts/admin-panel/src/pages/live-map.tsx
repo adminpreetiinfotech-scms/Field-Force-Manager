@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocalStorageBool } from "@/hooks/useLocalStorageBool";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
-import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Circle, Tooltip, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useLocation } from "wouter";
@@ -1112,7 +1112,11 @@ export default function LiveMapPage() {
                   eventHandlers={{
                     click: () => navigate("/settings#geo-fence"),
                   }}
-                />
+                >
+                  <Tooltip direction="top" offset={[0, -4]} opacity={0.9}>
+                    Click to edit fence settings
+                  </Tooltip>
+                </Marker>
               </>
             )}
 
