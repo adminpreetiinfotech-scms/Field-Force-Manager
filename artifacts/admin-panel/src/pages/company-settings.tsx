@@ -549,9 +549,11 @@ export default function CompanySettings() {
                 setLocatingGeo(true);
                 navigator.geolocation.getCurrentPosition(
                   (pos) => {
+                    geoFencePickerRef.current?.suppressNextAutoHint();
                     setCenterLat(pos.coords.latitude.toFixed(6));
                     setCenterLng(pos.coords.longitude.toFixed(6));
                     setLocatingGeo(false);
+                    geoFencePickerRef.current?.clearHint();
                     toast({ title: "Location captured", description: `Lat: ${pos.coords.latitude.toFixed(6)}, Lng: ${pos.coords.longitude.toFixed(6)}` });
                   },
                   () => {

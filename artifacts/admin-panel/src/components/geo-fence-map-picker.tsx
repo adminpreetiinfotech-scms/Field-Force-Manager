@@ -31,6 +31,7 @@ function edgeHandlePos(lat: number, lng: number, radiusMeters: number): [number,
 
 export interface GeoFenceMapPickerHandle {
   clearHint: () => void;
+  suppressNextAutoHint: () => void;
 }
 
 interface Props {
@@ -181,6 +182,7 @@ const GeoFenceMapPicker = forwardRef<GeoFenceMapPickerHandle, Props>(function Ge
   const [liveRadius, setLiveRadius] = useState(radiusMeters);
   const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isDragMoveRef = useRef(false);
+  const skipNextAutoHintRef = useRef(false);
   const prevLatRef = useRef<number | null>(null);
   const prevLngRef = useRef<number | null>(null);
 
@@ -192,6 +194,9 @@ const GeoFenceMapPicker = forwardRef<GeoFenceMapPickerHandle, Props>(function Ge
     clearHint() {
       if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
       setShowDragHint(false);
+    },
+    suppressNextAutoHint() {
+      skipNextAutoHintRef.current = true;
     },
   }));
 
@@ -209,6 +214,10 @@ const GeoFenceMapPicker = forwardRef<GeoFenceMapPickerHandle, Props>(function Ge
     isDragMoveRef.current = false;
 
     if ((wasNull && isNowSet) || isClickMove) {
+      if (skipNextAutoHintRef.current) {
+        skipNextAutoHintRef.current = false;
+        return;
+      }
       if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
       setShowDragHint(true);
       hintTimerRef.current = setTimeout(() => setShowDragHint(false), 4000);
