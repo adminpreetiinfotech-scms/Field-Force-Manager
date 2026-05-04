@@ -19,8 +19,12 @@ localPort = 24426
 run = "pnpm --filter @workspace/field-staff run dev"
 
 [services.production]
+deploymentTarget = "vm"
 build = [ "pnpm", "--filter", "@workspace/field-staff", "run", "build" ]
 run = [ "pnpm", "--filter", "@workspace/field-staff", "run", "serve" ]
+
+[services.production.health.startup]
+path = "/status"
 
 [services.env]
 PORT = "24426"
