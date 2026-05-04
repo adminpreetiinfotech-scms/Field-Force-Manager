@@ -1290,7 +1290,7 @@ export default function Reports() {
       </Card>
 
       {/* ── Delivery History ── */}
-      {emailConfigured && (
+      {(emailConfigured || deliveryHistory.length > 0 || historyLoading) && (
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between gap-2">
@@ -1305,6 +1305,12 @@ export default function Reports() {
                     ? `Showing ${deliveryHistory.length} of ${historyTotal} send${historyTotal !== 1 ? "s" : ""} — scheduled and manual`
                     : "Scheduled and manual email sends"}
                 </CardDescription>
+                {!emailConfigured && (
+                  <p className="mt-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 inline-flex items-center gap-1.5">
+                    <Mail className="h-3 w-3 shrink-0" />
+                    Email is not currently configured — past records are shown below.
+                  </p>
+                )}
               </div>
               {/* Status filter */}
               <div className="flex items-center gap-1 shrink-0">
