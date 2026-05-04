@@ -689,6 +689,14 @@ export default function LiveMapPage() {
     }
   }, [filterStatus]);
 
+  // Auto-dismiss the outside-fence notice when the geo-fence is removed
+  useEffect(() => {
+    if (!geoFence) {
+      if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+      setFenceChangeNotice(null);
+    }
+  }, [geoFence]);
+
   // Detect outside-fence count changes on every staffList update
   useEffect(() => {
     const fence = geoFenceRef.current;
