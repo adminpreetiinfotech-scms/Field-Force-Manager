@@ -788,6 +788,7 @@ export const GetDashboardStatsResponse = zod.object({
   "centerAbsentToday": zod.number().describe('Number of center staff with no check-in today.'),
   "centerViolationsToday": zod.number().describe('Number of center staff who checked in outside the geo-fence today.'),
   "totalCenterStaff": zod.number().describe('Total number of staff with staffCategory = center (approved or not). Used to distinguish \"all present\" from \"none configured\".'),
+  "totalFieldStaff": zod.number().describe('Total number of staff with staffCategory = field (approved or not). Used to distinguish \"all present\" from \"none configured\".'),
   "fieldPresentToday": zod.number().describe('Number of field staff who have both checked in and checked out today.'),
   "fieldAbsentToday": zod.number().describe('Number of field staff with no check-in today.'),
   "fieldPartialToday": zod.number().describe('Number of field staff who checked in but have not yet checked out today.'),

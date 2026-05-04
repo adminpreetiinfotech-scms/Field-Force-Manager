@@ -25,6 +25,8 @@ export interface DashboardStats {
   centerViolationsToday: number;
   /** Total number of staff with staffCategory = center (approved or not). Used to distinguish "all present" from "none configured". */
   totalCenterStaff: number;
+  /** Total number of staff with staffCategory = field (approved or not). Used to distinguish "all present" from "none configured". */
+  totalFieldStaff: number;
   /** Number of field staff who have both checked in and checked out today. */
   fieldPresentToday: number;
   /** Number of field staff with no check-in today. */

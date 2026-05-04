@@ -2188,6 +2188,9 @@ components:
         totalCenterStaff:
           type: integer
           description: Total number of staff with staffCategory = center (approved or not). Used to distinguish "all present" from "none configured".
+        totalFieldStaff:
+          type: integer
+          description: Total number of staff with staffCategory = field (approved or not). Used to distinguish "all present" from "none configured".
         fieldPresentToday:
           type: integer
           description: Number of field staff who have both checked in and checked out today.
@@ -2215,6 +2218,7 @@ components:
         - centerAbsentToday
         - centerViolationsToday
         - totalCenterStaff
+        - totalFieldStaff
         - fieldPresentToday
         - fieldAbsentToday
         - fieldPartialToday

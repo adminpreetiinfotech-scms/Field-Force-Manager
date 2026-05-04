@@ -780,6 +780,7 @@ router.get("/admin/dashboard/stats", requireAdmin, async (_req, res, next) => {
       centerAbsentToday,
       centerViolationsToday,
       totalCenterStaff: centerStaffList.length,
+      totalFieldStaff: fieldStaffList.length,
       fieldPresentToday,
       fieldAbsentToday,
       fieldPartialToday,
