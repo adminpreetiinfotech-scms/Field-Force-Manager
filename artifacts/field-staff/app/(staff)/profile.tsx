@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button } from "@/components/Button";
 import { CompanyBrand } from "@/components/CompanyBrand";
+import { KmDayDetailSheet } from "@/components/KmDayDetailSheet";
 import { PillarsRow } from "@/components/PillarBadge";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
 import { VehicleType, useApp } from "@/contexts/AppContext";
@@ -62,6 +63,8 @@ export default function StaffProfile() {
   );
   const kmHistory = kmHistoryData?.entries ?? [];
 
+  const [selectedKmDay, setSelectedKmDay] = useState<string | null>(null);
+
   const onSignOut = () => {
     Alert.alert("Sign out", "End your session on this device?", [
       { text: "Cancel", style: "cancel" },
@@ -80,6 +83,7 @@ export default function StaffProfile() {
   const webTop = Platform.OS === "web" ? 67 : 0;
 
   return (
+    <>
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{
@@ -370,19 +374,24 @@ export default function StaffProfile() {
           {kmHistory.slice(0, 10).map((entry) => {
             const highVar = entry.variancePct != null && entry.variancePct > 20;
             return (
-              <View
+              <Pressable
                 key={entry.date}
-                style={{
+                onPress={() => setSelectedKmDay(entry.date)}
+                style={({ pressed }) => ({
                   flexDirection: "row",
                   alignItems: "center",
                   paddingVertical: 8,
                   borderBottomWidth: StyleSheet.hairlineWidth,
                   borderBottomColor: colors.border,
-                  backgroundColor: highVar ? "#FEF3C7" : "transparent",
+                  backgroundColor: pressed
+                    ? colors.border + "60"
+                    : highVar
+                    ? "#FEF3C7"
+                    : "transparent",
                   marginHorizontal: -4,
                   paddingHorizontal: 4,
                   borderRadius: 4,
-                }}
+                })}
               >
                 <Text style={{ flex: 1.2, fontSize: 12, fontFamily: "Inter_500Medium", color: colors.foreground }}>
                   {fmtDate(entry.date)}
@@ -402,7 +411,7 @@ export default function StaffProfile() {
                 }}>
                   {entry.variancePct != null ? `${entry.variancePct}%` : "—"}
                 </Text>
-              </View>
+              </Pressable>
             );
           })}
         </View>
@@ -531,6 +540,20 @@ export default function StaffProfile() {
         Field Staff Manager · v1.0.3
       </Text>
     </ScrollView>
+
+    <KmDayDetailSheet
+      visible={selectedKmDay != null}
+      date={selectedKmDay ?? ""}
+      staffId={user?.id ?? ""}
+      vehicleType={user?.vehicleType}
+      kmEntry={
+        selectedKmDay != null
+          ? (kmHistoryData?.entries ?? []).find((e) => e.date === selectedKmDay) ?? null
+          : null
+      }
+      onClose={() => setSelectedKmDay(null)}
+    />
+    </>
   );
 }
 
