@@ -103,7 +103,7 @@ function getStatusLabel(staff: LiveStaff): "active" | "idle" | "offline" {
 
 // ─── Custom map markers ───────────────────────────────────────────────────────
 
-function createMarkerIcon(status: "active" | "idle" | "offline", isOnShift: boolean) {
+function createMarkerIcon(status: "active" | "idle" | "offline", isOnShift: boolean, outsideFence = false) {
   const colors = {
     active: { bg: "#22c55e", border: "#16a34a", ring: "rgba(34,197,94,0.3)" },
     idle:   { bg: "#f59e0b", border: "#d97706", ring: "rgba(245,158,11,0.3)" },
@@ -118,16 +118,22 @@ function createMarkerIcon(status: "active" | "idle" | "offline", isOnShift: bool
     ? `<div style="position:absolute;inset:-6px;border-radius:50%;background:${colors.ring};animation:ping 2s cubic-bezier(0,0,0.2,1) infinite;"></div>`
     : "";
 
+  const fenceBadge = outsideFence
+    ? `<div style="position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);background:#f59e0b;border:1.5px solid #92400e;border-radius:3px;width:14px;height:12px;display:flex;align-items:center;justify-content:center;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,0.4);">
+         <span style="color:#fff;font-size:9px;font-weight:900;line-height:1;">!</span>
+       </div>`
+    : "";
+
   return L.divIcon({
     className: "",
-    iconSize: [28, 28],
-    iconAnchor: [14, 28],
+    iconSize: [28, outsideFence ? 40 : 28],
+    iconAnchor: [14, outsideFence ? 40 : 28],
     popupAnchor: [0, -30],
     html: `
       <style>
         @keyframes ping { 75%,100%{transform:scale(2);opacity:0} }
       </style>
-      <div style="position:relative;width:28px;height:28px;">
+      <div style="position:relative;width:28px;height:${outsideFence ? 40 : 28}px;">
         ${pulseRing}
         <div style="
           width:28px;height:28px;
@@ -139,6 +145,7 @@ function createMarkerIcon(status: "active" | "idle" | "offline", isOnShift: bool
           position:relative;z-index:1;
         "></div>
         ${shiftDot}
+        ${fenceBadge}
       </div>
     `,
   });
@@ -771,7 +778,7 @@ export default function LiveMapPage() {
                 <Marker
                   key={staff.staffId}
                   position={[staff.lastLat!, staff.lastLng!]}
-                  icon={createMarkerIcon(status, staff.isOnShift)}
+                  icon={createMarkerIcon(status, staff.isOnShift, isOutsideFence(staff, geoFence))}
                   ref={(ref) => {
                     if (ref) markerRefs.current[staff.staffId] = ref;
                   }}
