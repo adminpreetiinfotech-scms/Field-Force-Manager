@@ -391,14 +391,22 @@ export default function LiveMapPage() {
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "offline" | "outside-fence">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [geoFence, setGeoFence] = useState<GeoFence | null>(null);
-  const [outsideCollapsed, setOutsideCollapsed] = useState(false);
-  const [insideCollapsed, setInsideCollapsed] = useState(false);
+  const [outsideCollapsed, setOutsideCollapsed] = useState(() => {
+    try { return localStorage.getItem("livemap:outsideCollapsed") === "true"; } catch { return false; }
+  });
+  const [insideCollapsed, setInsideCollapsed] = useState(() => {
+    try { return localStorage.getItem("livemap:insideCollapsed") === "true"; } catch { return false; }
+  });
   const markerRefs = useRef<Record<string, L.Marker>>({});
   const [fenceChangeNotice, setFenceChangeNotice] = useState<string | null>(null);
   const prevOutsideFenceCountRef = useRef<number | null>(null);
   const filterStatusRef = useRef(filterStatus);
   const geoFenceRef = useRef(geoFence);
   const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Persist sidebar collapsed prefs to localStorage
+  useEffect(() => { try { localStorage.setItem("livemap:outsideCollapsed", String(outsideCollapsed)); } catch {} }, [outsideCollapsed]);
+  useEffect(() => { try { localStorage.setItem("livemap:insideCollapsed", String(insideCollapsed)); } catch {} }, [insideCollapsed]);
 
   // Keep refs in sync with latest state so fetchLocations can read them
   useEffect(() => { filterStatusRef.current = filterStatus; }, [filterStatus]);
