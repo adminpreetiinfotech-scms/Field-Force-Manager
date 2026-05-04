@@ -831,19 +831,26 @@ export default function Reports() {
                 Standalone sheet with staff attendance records, check-in/out times, and a per-center breakdown — no other report data included.
               </TooltipContent>
             </Tooltip>
-            <Button
-              variant="outline"
-              onClick={handleDownloadAttendanceSummary}
-              className="w-full gap-2 border-teal-600 text-teal-700 hover:bg-teal-50"
-              disabled={isDownloadingAttendanceSummary || (summary !== null && summary.uniqueStaff === 0)}
-            >
-              {isDownloadingAttendanceSummary ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
-              {isDownloadingAttendanceSummary
-                ? "Downloading..."
-                : selectedStaff
-                  ? `Export Attendance Summary for ${selectedStaff.name}`
-                  : "Export Attendance Summary"}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  onClick={handleDownloadAttendanceSummary}
+                  className="w-full gap-2 border-teal-600 text-teal-700 hover:bg-teal-50"
+                  disabled={isDownloadingAttendanceSummary || (summary !== null && summary.uniqueStaff === 0)}
+                >
+                  {isDownloadingAttendanceSummary ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+                  {isDownloadingAttendanceSummary
+                    ? "Downloading..."
+                    : selectedStaff
+                      ? `Export Attendance Summary for ${selectedStaff.name}`
+                      : "Export Attendance Summary"}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs text-center">
+                Per-staff attendance totals with average days attended, date-range summary, and a breakdown by center — one row per staff member.
+              </TooltipContent>
+            </Tooltip>
 
             {/* View on-screen report */}
             {!reportVisible ? (
