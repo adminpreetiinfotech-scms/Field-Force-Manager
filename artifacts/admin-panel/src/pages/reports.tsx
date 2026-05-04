@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -783,15 +784,26 @@ export default function Reports() {
               {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
               {isDownloading ? "Downloading..." : selectedStaff ? `Download Report for ${selectedStaff.name}` : "Download Excel Report"}
             </Button>
-            <Button
-              variant="outline"
-              onClick={handleDownloadVehicleKm}
-              className="w-full gap-2 border-green-600 text-green-700 hover:bg-green-50"
-              disabled={isDownloadingVehicleKm}
-            >
-              {isDownloadingVehicleKm ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
-              {isDownloadingVehicleKm ? "Downloading..." : selectedStaff ? `Export KM Summary for ${selectedStaff.name}` : "Export Vehicle KM Summary"}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  onClick={handleDownloadVehicleKm}
+                  className="w-full gap-2 border-green-600 text-green-700 hover:bg-green-50"
+                  disabled={isDownloadingVehicleKm}
+                >
+                  {isDownloadingVehicleKm ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+                  {isDownloadingVehicleKm
+                    ? "Downloading..."
+                    : selectedStaff
+                      ? `Download Daily Vehicle KM — ${selectedStaff.name}`
+                      : "Download Daily Vehicle KM"}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs text-center">
+                Standalone sheet with odometer readings, Vehicle KM, GPS KM, variance %, and flagged rows — no other report data included.
+              </TooltipContent>
+            </Tooltip>
             <Button
               variant="outline"
               onClick={handleDownloadFieldAttendance}
