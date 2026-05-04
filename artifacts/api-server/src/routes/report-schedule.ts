@@ -1,5 +1,5 @@
 import { db, reportSchedulesTable, reportDeliveryLogsTable, companiesTable } from "@workspace/db";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, count, desc, eq, isNull } from "drizzle-orm";
 import { Router } from "express";
 import { requireAdmin } from "./admin";
 import { isEmailConfigured } from "../lib/email";
@@ -240,22 +240,42 @@ router.post("/admin/report-schedule/send-now", requireAdmin, async (req, res, ne
 
 // ─── GET /api/admin/report-schedule/delivery-history ─────────────────────────
 
-router.get("/admin/report-schedule/delivery-history", requireAdmin, async (_req, res, next) => {
+router.get("/admin/report-schedule/delivery-history", requireAdmin, async (req, res, next) => {
   try {
     const companyId = res.locals.companyId as string | null;
 
-    const cond = companyId
+    const rawLimit = parseInt(String(req.query.limit ?? "10"), 10);
+    const rawOffset = parseInt(String(req.query.offset ?? "0"), 10);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 100) : 10;
+    const offset = Number.isFinite(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
+
+    const statusFilter = req.query.status as string | undefined;
+    const filterSuccess =
+      statusFilter === "success" ? true : statusFilter === "failure" ? false : undefined;
+
+    const companyCond = companyId
       ? eq(reportDeliveryLogsTable.companyId, companyId)
       : isNull(reportDeliveryLogsTable.companyId);
+
+    const whereCond =
+      filterSuccess !== undefined
+        ? and(companyCond, eq(reportDeliveryLogsTable.success, filterSuccess))
+        : companyCond;
+
+    const [{ total }] = await db
+      .select({ total: count() })
+      .from(reportDeliveryLogsTable)
+      .where(whereCond);
 
     const rows = await db
       .select()
       .from(reportDeliveryLogsTable)
-      .where(cond)
+      .where(whereCond)
       .orderBy(desc(reportDeliveryLogsTable.sentAt))
-      .limit(10);
+      .limit(limit)
+      .offset(offset);
 
-    res.json({ history: rows });
+    res.json({ history: rows, total: Number(total) });
   } catch (err) {
     next(err);
   }

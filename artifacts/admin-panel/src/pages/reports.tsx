@@ -202,6 +202,7 @@ export default function Reports() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [staffLoading, setStaffLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const historyAbortRef = useRef<AbortController | null>(null);
 
   // Attendance summary state
   const [summary, setSummary] = useState<AttendanceSummary | null>(null);
@@ -230,6 +231,12 @@ export default function Reports() {
   // Delivery history state
   const [deliveryHistory, setDeliveryHistory] = useState<DeliveryLogEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyTotal, setHistoryTotal] = useState(0);
+  const [historyOffset, setHistoryOffset] = useState(0);
+  const [historyLoadingMore, setHistoryLoadingMore] = useState(false);
+  type HistoryStatusFilter = "all" | "success" | "failure";
+  const [historyStatusFilter, setHistoryStatusFilter] = useState<HistoryStatusFilter>("all");
+  const HISTORY_PAGE_SIZE = 10;
   const [schedFrequency, setSchedFrequency] = useState<"daily" | "weekly" | "monthly">("weekly");
   const [schedDayOfWeek, setSchedDayOfWeek] = useState(1);
   const [schedDayOfMonth, setSchedDayOfMonth] = useState(1);
@@ -481,17 +488,47 @@ export default function Reports() {
 
   // ─── Email schedule functions ───────────────────────────────────────────────
 
-  const fetchDeliveryHistory = useCallback(async () => {
+  const fetchDeliveryHistory = useCallback(async (statusFilter: HistoryStatusFilter = "all") => {
+    historyAbortRef.current?.abort();
+    const controller = new AbortController();
+    historyAbortRef.current = controller;
+
     setHistoryLoading(true);
+    setHistoryOffset(0);
     try {
-      const res = await fetchWithAuth("/api/admin/report-schedule/delivery-history");
+      const params = new URLSearchParams({ limit: String(HISTORY_PAGE_SIZE), offset: "0" });
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      const res = await fetch(`/api/admin/report-schedule/delivery-history?${params}`, {
+        headers: { "x-admin-phone": getAdminPhone() },
+        signal: controller.signal,
+      });
       if (res.ok) {
-        const data = await res.json() as { history: DeliveryLogEntry[] };
+        const data = await res.json() as { history: DeliveryLogEntry[]; total: number };
         setDeliveryHistory(data.history ?? []);
+        setHistoryTotal(data.total ?? 0);
+        setHistoryOffset(data.history?.length ?? 0);
+      }
+    } catch (err) {
+      if ((err as any)?.name === "AbortError") return;
+    }
+    setHistoryLoading(false);
+  }, [HISTORY_PAGE_SIZE]);
+
+  const loadMoreHistory = async () => {
+    setHistoryLoadingMore(true);
+    try {
+      const params = new URLSearchParams({ limit: String(HISTORY_PAGE_SIZE), offset: String(historyOffset) });
+      if (historyStatusFilter !== "all") params.set("status", historyStatusFilter);
+      const res = await fetchWithAuth(`/api/admin/report-schedule/delivery-history?${params}`);
+      if (res.ok) {
+        const data = await res.json() as { history: DeliveryLogEntry[]; total: number };
+        setDeliveryHistory(prev => [...prev, ...(data.history ?? [])]);
+        setHistoryTotal(data.total ?? 0);
+        setHistoryOffset(prev => prev + (data.history?.length ?? 0));
       }
     } catch { /* ignore */ }
-    setHistoryLoading(false);
-  }, []);
+    setHistoryLoadingMore(false);
+  };
 
   const fetchSchedule = useCallback(async () => {
     setScheduleLoading(true);
@@ -514,7 +551,7 @@ export default function Reports() {
     setScheduleLoading(false);
   }, []);
 
-  useEffect(() => { fetchSchedule(); fetchDeliveryHistory(); }, [fetchSchedule, fetchDeliveryHistory]);
+  useEffect(() => { fetchSchedule(); fetchDeliveryHistory("all"); }, [fetchSchedule, fetchDeliveryHistory]);
 
   const startEditing = () => {
     if (schedule) {
@@ -660,7 +697,7 @@ export default function Reports() {
       const reportLabels = REPORT_TYPE_OPTIONS.filter(o => reportTypes.includes(o.value)).map(o => o.label);
       toast({ title: "Reports sent", description: `${reportLabels.join(", ")} emailed to ${recipients.join(", ")}.` });
       await fetchSchedule();
-      await fetchDeliveryHistory();
+      await fetchDeliveryHistory(historyStatusFilter);
     } catch (err: any) {
       toast({ title: "Send failed", description: err.message, variant: "destructive" });
     } finally {
@@ -1256,66 +1293,117 @@ export default function Reports() {
       {emailConfigured && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <History className="h-4 w-4 text-teal-600" />
-              Delivery History
-              {historyLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-            </CardTitle>
-            <CardDescription>Last 10 email sends — scheduled and manual</CardDescription>
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <History className="h-4 w-4 text-teal-600" />
+                  Delivery History
+                  {historyLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+                </CardTitle>
+                <CardDescription>
+                  {historyTotal > 0
+                    ? `Showing ${deliveryHistory.length} of ${historyTotal} send${historyTotal !== 1 ? "s" : ""} — scheduled and manual`
+                    : "Scheduled and manual email sends"}
+                </CardDescription>
+              </div>
+              {/* Status filter */}
+              <div className="flex items-center gap-1 shrink-0">
+                {(["all", "success", "failure"] as const).map((opt) => (
+                  <button
+                    key={opt}
+                    onClick={() => {
+                      setHistoryStatusFilter(opt);
+                      fetchDeliveryHistory(opt);
+                    }}
+                    className={`text-xs px-2 py-1 rounded border transition-colors ${
+                      historyStatusFilter === opt
+                        ? opt === "failure"
+                          ? "bg-destructive text-white border-destructive"
+                          : opt === "success"
+                            ? "bg-green-600 text-white border-green-600"
+                            : "bg-teal-600 text-white border-teal-600"
+                        : "border-border text-muted-foreground hover:border-teal-400 hover:text-teal-700"
+                    }`}
+                  >
+                    {opt === "all" ? "All" : opt === "success" ? "Success" : "Failed"}
+                  </button>
+                ))}
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {!historyLoading && deliveryHistory.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">No delivery records yet. They will appear here after the first send.</p>
+              <p className="text-sm text-muted-foreground text-center py-6">
+                {historyStatusFilter !== "all"
+                  ? `No ${historyStatusFilter === "success" ? "successful" : "failed"} sends found.`
+                  : "No delivery records yet. They will appear here after the first send."}
+              </p>
             ) : (
-              <div className="divide-y rounded-md border overflow-hidden">
-                {deliveryHistory.map((entry) => {
-                  const reportLabels = entry.reportTypes.map(t => {
-                    const opt = REPORT_TYPE_OPTIONS.find(o => o.value === t);
-                    return opt?.label ?? t;
-                  });
-                  return (
-                    <div key={entry.id} className={`flex items-start gap-3 px-3 py-2.5 text-sm ${entry.success ? "" : "bg-destructive/5"}`}>
-                      <div className="mt-0.5 shrink-0">
-                        {entry.success ? (
-                          <CheckCircle2 className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <XCircle className="h-4 w-4 text-destructive" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0 space-y-0.5">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium text-foreground">
-                            {new Date(entry.sentAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })} IST
-                          </span>
-                          <Badge
-                            variant="secondary"
-                            className={`text-[10px] px-1.5 py-0 ${entry.triggeredBy === "manual" ? "bg-blue-100 text-blue-700 border-blue-200" : "bg-muted text-muted-foreground"}`}
-                          >
-                            {entry.triggeredBy === "manual" ? "Manual" : "Scheduled"}
-                          </Badge>
-                          {!entry.success && (
-                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-destructive/10 text-destructive border-destructive/20">
-                              Failed
-                            </Badge>
+              <div className="space-y-3">
+                <div className="divide-y rounded-md border overflow-hidden">
+                  {deliveryHistory.map((entry) => {
+                    const reportLabels = entry.reportTypes.map(t => {
+                      const opt = REPORT_TYPE_OPTIONS.find(o => o.value === t);
+                      return opt?.label ?? t;
+                    });
+                    return (
+                      <div key={entry.id} className={`flex items-start gap-3 px-3 py-2.5 text-sm ${entry.success ? "" : "bg-destructive/5"}`}>
+                        <div className="mt-0.5 shrink-0">
+                          {entry.success ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <XCircle className="h-4 w-4 text-destructive" />
                           )}
                         </div>
-                        <div className="flex flex-wrap gap-1">
-                          {reportLabels.map(l => (
-                            <span key={l} className="text-[10px] px-1.5 py-0 rounded bg-teal-50 text-teal-700 border border-teal-200 font-medium">{l}</span>
-                          ))}
-                        </div>
-                        <p className="text-xs text-muted-foreground truncate">
-                          To: {entry.recipients.join(", ")}
-                        </p>
-                        {!entry.success && entry.errorMessage && (
-                          <p className="text-xs text-destructive bg-destructive/10 rounded px-2 py-1 mt-1 break-words">
-                            {entry.errorMessage}
+                        <div className="flex-1 min-w-0 space-y-0.5">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium text-foreground">
+                              {new Date(entry.sentAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })} IST
+                            </span>
+                            <Badge
+                              variant="secondary"
+                              className={`text-[10px] px-1.5 py-0 ${entry.triggeredBy === "manual" ? "bg-blue-100 text-blue-700 border-blue-200" : "bg-muted text-muted-foreground"}`}
+                            >
+                              {entry.triggeredBy === "manual" ? "Manual" : "Scheduled"}
+                            </Badge>
+                            {!entry.success && (
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-destructive/10 text-destructive border-destructive/20">
+                                Failed
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {reportLabels.map(l => (
+                              <span key={l} className="text-[10px] px-1.5 py-0 rounded bg-teal-50 text-teal-700 border border-teal-200 font-medium">{l}</span>
+                            ))}
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate">
+                            To: {entry.recipients.join(", ")}
                           </p>
-                        )}
+                          {!entry.success && entry.errorMessage && (
+                            <p className="text-xs text-destructive bg-destructive/10 rounded px-2 py-1 mt-1 break-words">
+                              {entry.errorMessage}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
+                {deliveryHistory.length < historyTotal && (
+                  <div className="flex justify-center pt-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={loadMoreHistory}
+                      disabled={historyLoadingMore}
+                      className="gap-1.5 text-xs"
+                    >
+                      {historyLoadingMore ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                      {historyLoadingMore ? "Loading…" : `Load more (${historyTotal - deliveryHistory.length} remaining)`}
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
