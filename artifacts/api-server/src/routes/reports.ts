@@ -118,23 +118,20 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
       : [];
     const staffMap = new Map(staffRows.map(s => [s.id, s]));
 
-    // ── 4. Fetch checkin/checkout events in range for odometer data ───────────
+    // ── 4. Fetch checkin/checkout events in range (odometer data + attendance sheet) ───────────
     const attendConds = [
       inArray(activityEventsTable.kind, ["checkin", "checkout"]),
       gte(activityEventsTable.occurredAt, startOfFrom),
       lt(activityEventsTable.occurredAt, new Date(endOfTo.getTime() + 1)),
     ] as ReturnType<typeof eq>[];
     if (rawStaffId)   attendConds.push(eq(activityEventsTable.staffId, rawStaffId));
-    else if (uniqueIds.length) attendConds.push(inArray(activityEventsTable.staffId, uniqueIds));
     if (rawCompanyId) attendConds.push(eq(activityEventsTable.companyId, rawCompanyId));
 
-    const attendRows = completed.length
-      ? await db
-          .select()
-          .from(activityEventsTable)
-          .where(and(...attendConds))
-          .orderBy(activityEventsTable.occurredAt)
-      : [];
+    const attendRows = await db
+      .select()
+      .from(activityEventsTable)
+      .where(and(...attendConds))
+      .orderBy(activityEventsTable.occurredAt);
 
     // Build: staffId → date (IST) → { startOdometerKm, endOdometerKm }
     type OdometerDay = { startOdometerKm: number | null; endOdometerKm: number | null };
@@ -150,6 +147,39 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
         existing.endOdometerKm = payload.endOdometerKm;
       }
       odometerMap.set(key, existing);
+    }
+
+    // Build attendance summary: staffId::date → { staffName, firstCheckin, lastCheckout }
+    type AttendDay = {
+      staffId: string;
+      staffName: string;
+      date: string;
+      firstCheckin: Date | null;
+      lastCheckout: Date | null;
+    };
+    const attendDayMap = new Map<string, AttendDay>();
+    for (const row of attendRows) {
+      const t = new Date(row.occurredAt as Date);
+      const date = toIST(t);
+      const key = `${row.staffId}::${date}`;
+      const existing = attendDayMap.get(key) ?? { staffId: row.staffId, staffName: row.staffName, date, firstCheckin: null, lastCheckout: null };
+      if (row.kind === "checkin") {
+        if (!existing.firstCheckin || t < existing.firstCheckin) existing.firstCheckin = t;
+      }
+      if (row.kind === "checkout") {
+        if (!existing.lastCheckout || t > existing.lastCheckout) existing.lastCheckout = t;
+      }
+      attendDayMap.set(key, existing);
+    }
+
+    // Ensure staffMap covers all staff appearing in attendance rows
+    const attendStaffIds = [...new Set(attendRows.map(r => r.staffId))].filter(id => !staffMap.has(id));
+    if (attendStaffIds.length > 0) {
+      const extraStaff = await db
+        .select({ id: staffTable.id, empCode: staffTable.empCode, phone: staffTable.phone, name: staffTable.name })
+        .from(staffTable)
+        .where(inArray(staffTable.id, attendStaffIds));
+      for (const s of extraStaff) staffMap.set(s.id, s);
     }
 
     // ── 5. Build rows ─────────────────────────────────────────────────────────
@@ -581,7 +611,127 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
       dRowNum++;
     }
 
-    // ── 9. Stream response ────────────────────────────────────────────────────
+    // ── 9. Build "Attendance" sheet (only when data exists) ──────────────────
+    if (attendDayMap.size > 0) {
+      const PURPLE = "FF4F46E5";
+      const PURPLE_DK = "FF3730A3";
+
+      // Build sorted attendance rows
+      type AttendRow = {
+        staffName: string; empCode: string; mobile: string; date: string;
+        checkIn: string; checkOut: string; durationHours: string;
+      };
+      const attendSheetRows: AttendRow[] = [];
+      for (const a of attendDayMap.values()) {
+        const staff = staffMap.get(a.staffId);
+        const checkIn  = a.firstCheckin  ? toISTTime(a.firstCheckin)  : "";
+        const checkOut = a.lastCheckout  ? toISTTime(a.lastCheckout)  : "";
+        let durationHours = "";
+        if (a.firstCheckin && a.lastCheckout && a.lastCheckout > a.firstCheckin) {
+          const diffMs = a.lastCheckout.getTime() - a.firstCheckin.getTime();
+          const hrs = diffMs / (1000 * 60 * 60);
+          durationHours = `${Math.floor(hrs)}h ${Math.round((hrs % 1) * 60)}m`;
+        }
+        attendSheetRows.push({
+          staffName:   a.staffName,
+          empCode:     staff?.empCode ?? "",
+          mobile:      staff?.phone   ?? "",
+          date:        a.date,
+          checkIn,
+          checkOut,
+          durationHours,
+        });
+      }
+      attendSheetRows.sort((a, b) => a.date.localeCompare(b.date) || a.staffName.localeCompare(b.staffName));
+
+      const A_COLS = 7;
+      const ws3 = wb.addWorksheet("Attendance", { properties: { tabColor: { argb: PURPLE } } });
+      ws3.columns = [
+        { width: 24 }, // Staff Name
+        { width: 13 }, // EMP ID
+        { width: 14 }, // Mobile
+        { width: 12 }, // Date
+        { width: 14 }, // Check-In
+        { width: 14 }, // Check-Out
+        { width: 14 }, // Hours on Duty
+      ];
+
+      // Header rows
+      ws3.mergeCells(1, 1, 1, A_COLS);
+      const a1 = ws3.getCell(1, 1);
+      a1.value = organization ?? "Jharkhand Skill Development Mission Society (JSDMS) / DDU-KK";
+      a1.font  = { bold: true, size: 13, color: { argb: WHITE }, name: "Calibri" };
+      a1.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: PURPLE } };
+      a1.alignment = { horizontal: "center", vertical: "middle" };
+      ws3.getRow(1).height = 26;
+
+      ws3.mergeCells(2, 1, 2, A_COLS);
+      const a2 = ws3.getCell(2, 1);
+      a2.value = "FIELD ATTENDANCE SUMMARY";
+      a2.font  = { bold: true, size: 14, color: { argb: AMBER }, name: "Calibri" };
+      a2.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: PURPLE } };
+      a2.alignment = { horizontal: "center", vertical: "middle" };
+      ws3.getRow(2).height = 26;
+
+      ws3.mergeCells(3, 1, 3, A_COLS);
+      const a3 = ws3.getCell(3, 1);
+      a3.value = `${staffPart}Period: ${rawFrom}  →  ${rawTo}   |   ${attendSheetRows.length} attendance record(s)`;
+      a3.font  = { bold: true, size: 10, color: { argb: WHITE }, name: "Calibri" };
+      a3.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: PURPLE_DK } };
+      a3.alignment = { horizontal: "center", vertical: "middle" };
+      ws3.getRow(3).height = 18;
+
+      // Spacer
+      ws3.getRow(4).height = 8;
+
+      // Column headers (row 5)
+      const A_HDRS = ["Staff Name", "EMP ID", "Mobile No.", "Date", "Check-In\nTime", "Check-Out\nTime", "Hours on\nDuty"];
+      const ahRow = ws3.getRow(5);
+      ahRow.height = 32;
+      A_HDRS.forEach((h, ci) => {
+        const cell = ahRow.getCell(ci + 1);
+        cell.value = h;
+        cell.font  = { bold: true, size: 9, color: { argb: WHITE }, name: "Calibri" };
+        cell.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: PURPLE } };
+        cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+        cell.border = { bottom: { style: "thin", color: { argb: AMBER } } };
+      });
+
+      // Data rows
+      const aAltFill: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: LGRAY } };
+      const aPartialFill: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEF3C7" } };
+      let aRowNum = 6;
+      for (const [idx, r] of attendSheetRows.entries()) {
+        const ar = ws3.getRow(aRowNum);
+        ar.height = 16;
+        const isPartial = !r.checkIn || !r.checkOut;
+        const fill = isPartial ? aPartialFill : idx % 2 === 1 ? aAltFill : undefined;
+        const cells = [r.staffName, r.empCode, r.mobile, r.date, r.checkIn, r.checkOut, r.durationHours];
+        cells.forEach((val, ci) => {
+          const cell = ar.getCell(ci + 1);
+          cell.value = val;
+          cell.font  = { size: 9, name: "Calibri", color: { argb: "FF111827" } };
+          cell.alignment = { horizontal: ci >= 4 ? "center" : "left", vertical: "middle" };
+          if (fill) cell.fill = fill;
+          cell.border = { bottom: { style: "hair", color: { argb: "FFD1D5DB" } } };
+        });
+        aRowNum++;
+      }
+
+      // Footer summary
+      aRowNum++;
+      const totalPresent = attendSheetRows.length;
+      const totalWithCheckout = attendSheetRows.filter(r => r.checkIn && r.checkOut).length;
+      ws3.mergeCells(aRowNum, 1, aRowNum, A_COLS);
+      const aFooter = ws3.getCell(aRowNum, 1);
+      aFooter.value = `Total: ${totalPresent} attendance record(s)   |   ${totalWithCheckout} with complete check-in/check-out   |   ${totalPresent - totalWithCheckout} check-out pending`;
+      aFooter.font  = { bold: true, size: 9, color: { argb: WHITE } };
+      aFooter.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: PURPLE } };
+      aFooter.alignment = { horizontal: "center" };
+      ws3.getRow(aRowNum).height = 18;
+    }
+
+    // ── 10. Stream response ───────────────────────────────────────────────────
     const fname = `ride-report-${rawFrom}-to-${rawTo}.xlsx`;
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename="${fname}"`);
