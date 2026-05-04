@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Download, FileSpreadsheet, Loader2, X, Search, Users, CalendarCheck, ChevronDown, ChevronUp, Camera, ExternalLink } from "lucide-react";
 import { format, subMonths } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -89,6 +90,13 @@ interface OdometerPhotoProps {
 function OdometerPhoto({ url, label }: OdometerPhotoProps) {
   const [imgError, setImgError] = useState(false);
 
+  const isCheckin = label.toLowerCase().includes("check-in");
+  const borderClass = isCheckin ? "border-blue-200 group-hover:border-blue-500" : "border-green-200 group-hover:border-green-500";
+  const ringClass = isCheckin ? "focus-visible:ring-blue-500" : "focus-visible:ring-green-500";
+  const hoverBorderClass = isCheckin ? "border-blue-200" : "border-green-200";
+  const labelTextClass = isCheckin ? "text-blue-600" : "text-green-600";
+  const shortLabel = isCheckin ? "Check-in" : "Check-out";
+
   if (imgError) {
     return (
       <a
@@ -104,20 +112,32 @@ function OdometerPhoto({ url, label }: OdometerPhotoProps) {
   }
 
   return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      title={`Open ${label} photo`}
-      className="inline-block rounded overflow-hidden border border-border hover:ring-2 hover:ring-primary/50 transition-all"
-    >
-      <img
-        src={url}
-        alt={label}
-        className="w-10 h-10 object-cover"
-        onError={() => setImgError(true)}
-      />
-    </a>
+    <HoverCard openDelay={200} closeDelay={100}>
+      <HoverCardTrigger asChild>
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={`Open ${label} photo`}
+          className={`group inline-block rounded overflow-hidden border transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 ${borderClass} ${ringClass}`}
+        >
+          <img
+            src={url}
+            alt={label}
+            className="w-10 h-10 object-cover"
+            onError={() => setImgError(true)}
+          />
+        </a>
+      </HoverCardTrigger>
+      <HoverCardContent side="top" className={`w-auto p-1.5 ${hoverBorderClass}`}>
+        <img
+          src={url}
+          alt={`${label} preview`}
+          className="w-[120px] h-[90px] object-cover rounded"
+        />
+        <p className={`text-[9px] text-center mt-0.5 ${labelTextClass}`}>{shortLabel}</p>
+      </HoverCardContent>
+    </HoverCard>
   );
 }
 
