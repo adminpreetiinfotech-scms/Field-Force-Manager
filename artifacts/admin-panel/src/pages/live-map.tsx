@@ -243,6 +243,13 @@ function StaffCard({
     offline: { label: "Offline",  cls: "bg-slate-100 text-slate-600 border-slate-200" },
   }[status];
   const outsideFence = isOutsideFence(staff, geoFence);
+  const outsideMeters =
+    outsideFence && geoFence && staff.lastLat != null && staff.lastLng != null
+      ? Math.round(
+          haversineMeters(staff.lastLat, staff.lastLng, geoFence.centerLat, geoFence.centerLng) -
+            geoFence.centerRadiusMeters
+        )
+      : null;
 
   return (
     <div
@@ -276,6 +283,11 @@ function StaffCard({
             <span className="text-[10px] font-semibold text-amber-700 uppercase tracking-wide">
               Outside fence
             </span>
+            {outsideMeters != null && (
+              <span className="text-[10px] text-amber-600 font-medium">
+                · {outsideMeters}m outside
+              </span>
+            )}
           </div>
           <a
             href={`${import.meta.env.BASE_URL}settings#geo-fence`}
