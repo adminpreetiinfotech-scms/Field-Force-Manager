@@ -186,6 +186,14 @@ export default function AutoScanCamera({
     }
   }, [visible]);
 
+  // Fallback: if DocProcessorBridge doesn't signal ready within 6s, unlock anyway
+  // (capture will use raw photo fallback path which is perfectly usable)
+  useEffect(() => {
+    if (bridgeReady) return;
+    const t = setTimeout(() => setBridgeReady(true), 6000);
+    return () => clearTimeout(t);
+  }, [bridgeReady]);
+
   // Animate processing steps
   useEffect(() => {
     if (phase !== "processing") { setStepIdx(0); return; }

@@ -199,8 +199,8 @@ export default DocProcessorBridge;
 const styles = StyleSheet.create({
   hidden: {
     position:   "absolute",
-    width:      1,
-    height:     1,
+    width:      10,
+    height:     10,
     overflow:   "hidden",
     opacity:    0,
   },
