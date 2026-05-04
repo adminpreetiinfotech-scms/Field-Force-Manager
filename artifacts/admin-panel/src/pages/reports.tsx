@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Download, FileSpreadsheet, Loader2, X, Search, Users, CalendarCheck, ChevronDown, ChevronUp } from "lucide-react";
+import { Download, FileSpreadsheet, Loader2, X, Search, Users, CalendarCheck, ChevronDown, ChevronUp, Camera, ExternalLink } from "lucide-react";
 import { format, subMonths } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
@@ -32,6 +32,21 @@ interface AttendanceSummary {
   staffBreakdown: { staffId: string; staffName: string; empCode: string; checkInDays: number }[];
 }
 
+interface TripReportRow {
+  tripRef: string;
+  staffId: string;
+  staffName: string;
+  staffPhone: string;
+  rideDate: string;
+  startTime: string;
+  endTime: string;
+  startLocation?: string | null;
+  endLocation?: string | null;
+  distanceKm?: number | null;
+  checkinPhotoUrl?: string | null;
+  checkoutPhotoUrl?: string | null;
+}
+
 async function fetchWithAuth(url: string) {
   return fetch(url, { headers: { "x-admin-phone": getAdminPhone() } });
 }
@@ -48,6 +63,62 @@ async function downloadBlob(url: string, filename: string) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(a.href);
+}
+
+function toIst(iso: string): string {
+  return new Date(iso).toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "Asia/Kolkata",
+  });
+}
+
+function fmtDate(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00");
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return `${days[d.getDay()]} ${String(d.getDate()).padStart(2,"0")} ${months[d.getMonth()]}`;
+}
+
+interface OdometerPhotoProps {
+  url: string;
+  label: string;
+}
+
+function OdometerPhoto({ url, label }: OdometerPhotoProps) {
+  const [imgError, setImgError] = useState(false);
+
+  if (imgError) {
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={`Open ${label} photo`}
+        className="inline-flex items-center justify-center w-10 h-10 rounded border border-border bg-muted text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+      >
+        <ExternalLink className="h-4 w-4" />
+      </a>
+    );
+  }
+
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={`Open ${label} photo`}
+      className="inline-block rounded overflow-hidden border border-border hover:ring-2 hover:ring-primary/50 transition-all"
+    >
+      <img
+        src={url}
+        alt={label}
+        className="w-10 h-10 object-cover"
+        onError={() => setImgError(true)}
+      />
+    </a>
+  );
 }
 
 export default function Reports() {
@@ -71,6 +142,12 @@ export default function Reports() {
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryExpanded, setSummaryExpanded] = useState(false);
 
+  // Trip report viewer state
+  const [tripRows, setTripRows] = useState<TripReportRow[] | null>(null);
+  const [tripLoading, setTripLoading] = useState(false);
+  const [tripError, setTripError] = useState<string | null>(null);
+  const [reportVisible, setReportVisible] = useState(false);
+
   const fetchSummary = useCallback(async (from: string, to: string, staffId?: string) => {
     setSummaryLoading(true);
     try {
@@ -92,6 +169,43 @@ export default function Reports() {
   useEffect(() => {
     fetchSummary(fromDate, toDate, selectedStaff?.id);
   }, [fromDate, toDate, selectedStaff, fetchSummary]);
+
+  // Single fetch path: runs whenever the viewer is visible and filters change
+  useEffect(() => {
+    if (!reportVisible) return;
+    loadTripReport(fromDate, toDate, selectedStaff?.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportVisible, fromDate, toDate, selectedStaff]);
+
+  const loadTripReport = useCallback(async (from: string, to: string, staffId?: string) => {
+    setTripLoading(true);
+    setTripError(null);
+    try {
+      const params = new URLSearchParams({ from, to });
+      if (staffId) params.set("staffId", staffId);
+      const res = await fetchWithAuth(`/api/activity/trip-report?${params}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as any).title || `Error ${res.status}`);
+      }
+      const data: TripReportRow[] = await res.json();
+      setTripRows(data);
+    } catch (err: any) {
+      setTripError(err.message || "Failed to load report.");
+      setTripRows(null);
+    }
+    setTripLoading(false);
+  }, []);
+
+  const handleViewReport = () => {
+    setReportVisible(true);
+  };
+
+  const handleHideReport = () => {
+    setReportVisible(false);
+    setTripRows(null);
+    setTripError(null);
+  };
 
   // Fetch staff list when user types
   useEffect(() => {
@@ -187,7 +301,7 @@ export default function Reports() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-5xl">
       <h1 className="text-3xl font-bold tracking-tight">Reports & Exports</h1>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -347,6 +461,28 @@ export default function Reports() {
               {isDownloadingVehicleKm ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
               {isDownloadingVehicleKm ? "Downloading..." : "Export Vehicle KM Summary"}
             </Button>
+
+            {/* View on-screen report */}
+            {!reportVisible ? (
+              <Button
+                variant="ghost"
+                onClick={handleViewReport}
+                className="w-full gap-2 text-muted-foreground hover:text-foreground"
+                disabled={tripLoading}
+              >
+                {tripLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                View Ride Report with Photos
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                onClick={handleHideReport}
+                className="w-full gap-2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+                Hide Ride Report
+              </Button>
+            )}
           </CardContent>
         </Card>
 
@@ -383,6 +519,101 @@ export default function Reports() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Ride Report Viewer ── */}
+      {reportVisible && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Camera className="h-5 w-5 text-indigo-600" />
+                  Ride Report
+                  {selectedStaff && (
+                    <span className="text-base font-normal text-muted-foreground">— {selectedStaff.name}</span>
+                  )}
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  {fromDate} to {toDate}
+                  {tripRows && !tripLoading && (
+                    <span className="ml-2 text-xs font-medium bg-muted px-1.5 py-0.5 rounded">
+                      {tripRows.length} {tripRows.length === 1 ? "trip" : "trips"}
+                    </span>
+                  )}
+                </CardDescription>
+              </div>
+              {tripLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {tripError && (
+              <div className="text-sm text-destructive bg-destructive/10 rounded-md px-4 py-3">
+                {tripError}
+              </div>
+            )}
+            {tripLoading && (
+              <div className="flex items-center justify-center py-12 text-muted-foreground text-sm gap-2">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Loading trips…
+              </div>
+            )}
+            {!tripLoading && tripRows && tripRows.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-10">
+                No completed trips found for this date range.
+              </p>
+            )}
+            {!tripLoading && tripRows && tripRows.length > 0 && (
+              <div className="overflow-x-auto rounded-md border">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-muted/50 border-b text-xs text-muted-foreground uppercase tracking-wide">
+                      <th className="px-3 py-2.5 text-left font-semibold">Date</th>
+                      <th className="px-3 py-2.5 text-left font-semibold">Staff</th>
+                      <th className="px-3 py-2.5 text-left font-semibold">Start</th>
+                      <th className="px-3 py-2.5 text-left font-semibold">End</th>
+                      <th className="px-3 py-2.5 text-right font-semibold">KM</th>
+                      <th className="px-3 py-2.5 text-center font-semibold">Check-in Photo</th>
+                      <th className="px-3 py-2.5 text-center font-semibold">Check-out Photo</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {tripRows.map((row) => (
+                      <tr key={row.tripRef} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-3 py-2.5 whitespace-nowrap font-medium text-foreground">
+                          {fmtDate(row.rideDate)}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <div className="font-medium truncate max-w-[140px]">{row.staffName}</div>
+                          <div className="text-xs text-muted-foreground">{row.staffPhone}</div>
+                        </td>
+                        <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">
+                          {toIst(row.startTime)}
+                        </td>
+                        <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">
+                          {toIst(row.endTime)}
+                        </td>
+                        <td className="px-3 py-2.5 text-right whitespace-nowrap font-medium">
+                          {row.distanceKm != null ? `${row.distanceKm.toFixed(1)} km` : "—"}
+                        </td>
+                        <td className="px-3 py-2.5 text-center">
+                          {row.checkinPhotoUrl ? (
+                            <OdometerPhoto url={row.checkinPhotoUrl} label="check-in odometer" />
+                          ) : null}
+                        </td>
+                        <td className="px-3 py-2.5 text-center">
+                          {row.checkoutPhotoUrl ? (
+                            <OdometerPhoto url={row.checkoutPhotoUrl} label="check-out odometer" />
+                          ) : null}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
