@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import GeoFenceMapPicker from "@/components/geo-fence-map-picker";
 import { DASHBOARD_HINT_PREFIX } from "@/lib/dashboard-hints";
+import { useGetDismissedHints, useResetDismissedHints, getGetDismissedHintsQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface CompanyProfile {
   id: string;
@@ -27,8 +29,10 @@ interface CompanyProfile {
   centerRadiusMeters: number | null;
 }
 
-function countDismissedHints(): number {
-  return Object.keys(localStorage).filter(k => k.startsWith(DASHBOARD_HINT_PREFIX)).length;
+function clearLocalHints(): void {
+  Object.keys(localStorage)
+    .filter(k => k.startsWith(DASHBOARD_HINT_PREFIX))
+    .forEach(k => localStorage.removeItem(k));
 }
 
 function getAdminPhone(): string {
@@ -76,13 +80,27 @@ export default function CompanySettings() {
   const [profile, setProfile] = useState<CompanyProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [dismissedHintCount, setDismissedHintCount] = useState(() => countDismissedHints());
+
+  const queryClient = useQueryClient();
+  const { data: serverHints } = useGetDismissedHints();
+  const { mutate: resetHintsOnServer, isPending: resettingHints } = useResetDismissedHints();
+
+  const dismissedHintCount = serverHints?.dismissedHints.length ?? 0;
 
   const handleResetHints = () => {
-    const keys = Object.keys(localStorage).filter(k => k.startsWith(DASHBOARD_HINT_PREFIX));
-    keys.forEach(k => localStorage.removeItem(k));
-    setDismissedHintCount(0);
-    toast({ title: "Dashboard hints restored", description: "All dashboard hints will reappear on your next visit." });
+    resetHintsOnServer(undefined, {
+      onSuccess: (data) => {
+        // Clear localStorage only after the server confirms success to avoid divergence on error.
+        clearLocalHints();
+        // Update query cache immediately so the hint count shows 0 and the
+        // dashboard re-enables hints without waiting for the next refetch.
+        queryClient.setQueryData(getGetDismissedHintsQueryKey(), data);
+        toast({ title: "Dashboard hints restored", description: "All dashboard hints will reappear on your next visit." });
+      },
+      onError: () => {
+        toast({ title: "Failed to reset hints", variant: "destructive" });
+      },
+    });
   };
 
   const [name, setName] = useState("");
@@ -531,11 +549,15 @@ export default function CompanySettings() {
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={dismissedHintCount === 0}
+                disabled={dismissedHintCount === 0 || resettingHints}
                 onClick={handleResetHints}
                 className="gap-1.5 shrink-0"
               >
-                <RotateCcw className="h-3.5 w-3.5" />
+                {resettingHints ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RotateCcw className="h-3.5 w-3.5" />
+                )}
                 Reset all hints
               </Button>
             </div>

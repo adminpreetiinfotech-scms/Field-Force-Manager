@@ -51,6 +51,8 @@ export const staffTable = pgTable("staff", {
   staffCategory: text("staff_category", { enum: ["field", "center"] }).notNull().default("field"),
   /** Role label for center staff (e.g. trainer, centerHead, cook, securityGuard). */
   centerStaffRole: text("center_staff_role"),
+  /** JSON-encoded array of dismissed dashboard hint keys (e.g. ["dashboard_hint_center"]). */
+  dismissedHints: text("dismissed_hints"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

@@ -729,6 +729,34 @@ export const LoginMpinResponse = zod.object({
 
 
 /**
+ * @summary Get the list of dismissed dashboard hint keys for the current admin
+ */
+export const GetDismissedHintsResponse = zod.object({
+  "dismissedHints": zod.array(zod.string()).describe('List of dismissed dashboard hint keys')
+})
+
+
+/**
+ * @summary Reset (clear) all dismissed dashboard hints for the current admin
+ */
+export const ResetDismissedHintsResponse = zod.object({
+  "dismissedHints": zod.array(zod.string()).describe('List of dismissed dashboard hint keys')
+})
+
+
+/**
+ * @summary Mark a dashboard hint as dismissed for the current admin
+ */
+export const DismissHintBody = zod.object({
+  "key": zod.string().describe('The hint key to dismiss (e.g. \"dashboard_hint_center\")')
+})
+
+export const DismissHintResponse = zod.object({
+  "dismissedHints": zod.array(zod.string()).describe('List of dismissed dashboard hint keys')
+})
+
+
+/**
  * @summary Get admin dashboard summary statistics
  */
 export const GetDashboardStatsResponse = zod.object({

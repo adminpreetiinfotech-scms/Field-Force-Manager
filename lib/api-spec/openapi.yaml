@@ -784,6 +784,60 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
 
+  /admin/hints:
+    get:
+      operationId: getDismissedHints
+      tags: [admin]
+      summary: Get the list of dismissed dashboard hint keys for the current admin
+      responses:
+        "200":
+          description: Dismissed hint keys
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DismissedHints"
+    delete:
+      operationId: resetDismissedHints
+      tags: [admin]
+      summary: Reset (clear) all dismissed dashboard hints for the current admin
+      responses:
+        "200":
+          description: Hints reset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DismissedHints"
+
+  /admin/hints/dismiss:
+    post:
+      operationId: dismissHint
+      tags: [admin]
+      summary: Mark a dashboard hint as dismissed for the current admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                key:
+                  type: string
+                  description: The hint key to dismiss (e.g. "dashboard_hint_center")
+              required: [key]
+      responses:
+        "200":
+          description: Hint dismissed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DismissedHints"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
   /admin/dashboard/stats:
     get:
       operationId: getDashboardStats
@@ -2286,6 +2340,16 @@ components:
           nullable: true
           description: Distance from training center at check-out, in metres.
       required: [staffId, staffName, empCode, date, status]
+
+    DismissedHints:
+      type: object
+      properties:
+        dismissedHints:
+          type: array
+          items:
+            type: string
+          description: List of dismissed dashboard hint keys
+      required: [dismissedHints]
 
     ProblemDetails:
       type: object

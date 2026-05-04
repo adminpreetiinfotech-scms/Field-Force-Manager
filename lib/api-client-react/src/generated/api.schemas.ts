@@ -629,6 +629,11 @@ export interface CenterAttendanceRow {
   checkOutDistanceM?: number | null;
 }
 
+export interface DismissedHints {
+  /** List of dismissed dashboard hint keys */
+  dismissedHints: string[];
+}
+
 export interface ProblemDetails {
   title: string;
   detail?: string;
@@ -812,6 +817,11 @@ export type CheckPhoneBody = {
 export type LoginMpinBody = {
   phone: string;
   mpin: string;
+};
+
+export type DismissHintBody = {
+  /** The hint key to dismiss (e.g. "dashboard_hint_center") */
+  key: string;
 };
 
 export type GetCenterAttendanceParams = {

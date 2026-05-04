@@ -31,6 +31,8 @@ export * from './createActivityInput';
 export * from './dashboardStats';
 export * from './deleteCandidate200';
 export * from './deleteCompany200';
+export * from './dismissedHints';
+export * from './dismissHintBody';
 export * from './distanceStats';
 export * from './geoPoint';
 export * from './getAttendanceCalendarParams';

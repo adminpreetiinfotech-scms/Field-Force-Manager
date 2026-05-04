@@ -37,6 +37,8 @@ import type {
   DashboardStats,
   DeleteCandidate200,
   DeleteCompany200,
+  DismissHintBody,
+  DismissedHints,
   DistanceStats,
   GetAttendanceCalendarParams,
   GetCenterAttendanceParams,
@@ -2095,6 +2097,224 @@ export const useLoginMpin = <TError = ErrorType<ProblemDetails>,
         TContext
       > => {
       return useMutation(getLoginMpinMutationOptions(options));
+    }
+
+/**
+ * @summary Get the list of dismissed dashboard hint keys for the current admin
+ */
+export const getGetDismissedHintsUrl = () => {
+
+
+
+
+  return `/api/admin/hints`
+}
+
+export const getDismissedHints = async ( options?: RequestInit): Promise<DismissedHints> => {
+
+  return customFetch<DismissedHints>(getGetDismissedHintsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDismissedHintsQueryKey = () => {
+    return [
+    `/api/admin/hints`
+    ] as const;
+    }
+
+
+export const getGetDismissedHintsQueryOptions = <TData = Awaited<ReturnType<typeof getDismissedHints>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDismissedHints>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDismissedHintsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDismissedHints>>> = ({ signal }) => getDismissedHints({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDismissedHints>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDismissedHintsQueryResult = NonNullable<Awaited<ReturnType<typeof getDismissedHints>>>
+export type GetDismissedHintsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get the list of dismissed dashboard hint keys for the current admin
+ */
+
+export function useGetDismissedHints<TData = Awaited<ReturnType<typeof getDismissedHints>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDismissedHints>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDismissedHintsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+/**
+ * @summary Reset (clear) all dismissed dashboard hints for the current admin
+ */
+export const getResetDismissedHintsUrl = () => {
+
+
+
+
+  return `/api/admin/hints`
+}
+
+export const resetDismissedHints = async ( options?: RequestInit): Promise<DismissedHints> => {
+
+  return customFetch<DismissedHints>(getResetDismissedHintsUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getResetDismissedHintsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetDismissedHints>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resetDismissedHints>>, TError,void, TContext> => {
+
+const mutationKey = ['resetDismissedHints'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resetDismissedHints>>, void> = () => {
+
+
+          return  resetDismissedHints(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResetDismissedHintsMutationResult = NonNullable<Awaited<ReturnType<typeof resetDismissedHints>>>
+
+    export type ResetDismissedHintsMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Reset (clear) all dismissed dashboard hints for the current admin
+ */
+export const useResetDismissedHints = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetDismissedHints>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resetDismissedHints>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getResetDismissedHintsMutationOptions(options));
+    }
+
+/**
+ * @summary Mark a dashboard hint as dismissed for the current admin
+ */
+export const getDismissHintUrl = () => {
+
+
+
+
+  return `/api/admin/hints/dismiss`
+}
+
+export const dismissHint = async (dismissHintBody: DismissHintBody, options?: RequestInit): Promise<DismissedHints> => {
+
+  return customFetch<DismissedHints>(getDismissHintUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      dismissHintBody,)
+  }
+);}
+
+
+
+
+export const getDismissHintMutationOptions = <TError = ErrorType<ProblemDetails>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof dismissHint>>, TError,{data: BodyType<DismissHintBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof dismissHint>>, TError,{data: BodyType<DismissHintBody>}, TContext> => {
+
+const mutationKey = ['dismissHint'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof dismissHint>>, {data: BodyType<DismissHintBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  dismissHint(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DismissHintMutationResult = NonNullable<Awaited<ReturnType<typeof dismissHint>>>
+    export type DismissHintMutationBody = BodyType<DismissHintBody>
+    export type DismissHintMutationError = ErrorType<ProblemDetails>
+
+    /**
+ * @summary Mark a dashboard hint as dismissed for the current admin
+ */
+export const useDismissHint = <TError = ErrorType<ProblemDetails>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof dismissHint>>, TError,{data: BodyType<DismissHintBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof dismissHint>>,
+        TError,
+        {data: BodyType<DismissHintBody>},
+        TContext
+      > => {
+      return useMutation(getDismissHintMutationOptions(options));
     }
 
 /**
