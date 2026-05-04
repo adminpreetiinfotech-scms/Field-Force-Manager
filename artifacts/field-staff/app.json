@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Field Staff Manager",
+    "name": "SCMS",
     "slug": "field-staff",
     "version": "1.0.5",
     "orientation": "portrait",
@@ -45,14 +45,14 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow Field Staff Manager to access your camera for selfie check-ins and odometer photos.",
+          "cameraPermission": "Allow SCMS to access your camera for selfie check-ins and odometer photos.",
           "recordAudioAndroid": false
         }
       ],
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow Field Staff Manager to use your location to stamp check-ins and auto-track field trips."
+          "locationAlwaysAndWhenInUsePermission": "Allow SCMS to use your location to stamp check-ins and auto-track field trips."
         }
       ]
     ],

@@ -1,6 +1,6 @@
 kind = "mobile"
 previewPath = "/"
-title = "Field Staff Manager"
+title = "SCMS Field App"
 version = "1.0.0"
 id = "artifacts/field-staff"
 router = "expo-domain"

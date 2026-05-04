@@ -110,8 +110,8 @@ export default function PhoneScreen() {
                 <Feather name="map-pin" size={20} color="#FCD34D" />
               </View>
               <View>
-                <Text style={styles.brandTitle}>Field Staff Manager</Text>
-                <Text style={styles.brandSub}>Operations command for the field</Text>
+                <Text style={styles.brandTitle}>SCMS</Text>
+                <Text style={styles.brandSub}>Skill Center Management System</Text>
               </View>
             </View>
 

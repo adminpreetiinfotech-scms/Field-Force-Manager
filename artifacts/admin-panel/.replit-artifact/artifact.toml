@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/admin-panel/"
-title = "Nistha Skill Admin Panel"
+title = "SCMS Admin Panel"
 version = "1.0.0"
 id = "artifacts/admin-panel"
 router = "path"

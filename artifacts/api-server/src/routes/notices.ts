@@ -137,7 +137,7 @@ router.post("/notices/admin/create", requireAdmin, async (req, res, next) => {
               ? "[IMPORTANT] "
               : "";
 
-        const smsBody = `${priorityTag}Nistha Skill Notice:\n${notice.title}\n${notice.message}`.slice(0, 320);
+        const smsBody = `${priorityTag}SCMS Notice:\n${notice.title}\n${notice.message}`.slice(0, 320);
 
         await Promise.allSettled(
           phones.map(({ phone }) => sendSmsSilent(phone, smsBody, req.log.warn.bind(req.log))),

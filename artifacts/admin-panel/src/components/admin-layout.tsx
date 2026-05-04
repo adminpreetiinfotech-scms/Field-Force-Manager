@@ -59,10 +59,10 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       <aside className="w-64 border-r bg-card flex flex-col hidden md:flex">
         <div className="p-6 border-b">
           <div className="flex items-center gap-2 font-bold text-xl text-primary">
-            <div className="w-8 h-8 rounded bg-primary text-primary-foreground flex items-center justify-center text-xs">NS</div>
-            Nistha Skill
+            <div className="w-8 h-8 rounded bg-primary text-primary-foreground flex items-center justify-center text-xs">SC</div>
+            SCMS
           </div>
-          <div className="mt-1 text-xs text-muted-foreground">Admin Portal</div>
+          <div className="mt-1 text-xs text-muted-foreground">Skill Center Management System</div>
           {isSuperAdmin && (
             <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-medium">
               <ShieldCheck className="h-3 w-3" />
@@ -110,8 +110,8 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         {/* Mobile Header */}
         <header className="h-14 border-b bg-card flex items-center px-4 md:hidden justify-between">
           <div className="font-bold text-primary flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-primary text-primary-foreground flex items-center justify-center text-xs">NS</div>
-            Nistha Skill
+            <div className="w-6 h-6 rounded bg-primary text-primary-foreground flex items-center justify-center text-xs">SC</div>
+            SCMS
             {isSuperAdmin && <span className="text-xs text-amber-600 font-normal">(Super Admin)</span>}
           </div>
           <Button variant="ghost" size="icon" onClick={handleLogout}>

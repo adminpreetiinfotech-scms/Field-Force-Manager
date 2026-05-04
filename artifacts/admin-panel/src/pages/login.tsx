@@ -61,10 +61,10 @@ export default function Login() {
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <div className="mx-auto w-12 h-12 bg-primary text-primary-foreground rounded-lg flex items-center justify-center text-xl font-bold mb-4">
-            NS
+            SC
           </div>
           <CardTitle className="text-2xl">Admin Login</CardTitle>
-          <CardDescription>Nistha Skill Admin Panel</CardDescription>
+          <CardDescription>SCMS — Skill Center Management System</CardDescription>
         </CardHeader>
         <CardContent>
           {step === "phone" ? (
