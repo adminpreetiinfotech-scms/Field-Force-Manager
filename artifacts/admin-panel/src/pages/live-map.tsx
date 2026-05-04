@@ -715,6 +715,7 @@ export default function LiveMapPage() {
     if (!geoFence) {
       if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
       setFenceChangeNotice(null);
+      prevOutsideFenceCountRef.current = null;
     }
   }, [geoFence]);
 
