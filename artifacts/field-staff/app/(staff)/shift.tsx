@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   getGetDistanceStatsQueryKey,
   useGetDistanceStats,
+  useGetStaffKmHistory,
 } from "@workspace/api-client-react";
 
 import { Button } from "@/components/Button";
@@ -259,6 +260,17 @@ export default function StaffHome() {
       enabled: !!user?.id,
       refetchInterval: 30_000,
       staleTime: 15_000,
+    },
+  });
+
+  const kmHistoryParams = { staffId: user?.id ?? "", days: 7 };
+  const {
+    data: kmHistoryData,
+    isLoading: kmHistoryLoading,
+  } = useGetStaffKmHistory(kmHistoryParams, {
+    query: {
+      enabled: !!user?.id && !!user?.vehicleType,
+      staleTime: 60_000,
     },
   });
 
@@ -652,6 +664,92 @@ export default function StaffHome() {
               ))
             )}
           </View>
+
+          {/* KM History — only shown for vehicle users */}
+          {!!user?.vehicleType && (
+            <View
+              style={[
+                styles.section,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  borderRadius: colors.radius + 4,
+                },
+              ]}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                <Feather name="activity" size={15} color={colors.primary} />
+                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                  KM History
+                </Text>
+              </View>
+              <Text style={[styles.sectionSub, { color: colors.mutedForeground, marginBottom: 12 }]}>
+                Last 7 days of odometer readings
+              </Text>
+
+              {/* Header row */}
+              <View style={[kmStyles.headerRow, { borderBottomColor: colors.border }]}>
+                <Text style={[kmStyles.colDate, { color: colors.mutedForeground }]}>Date</Text>
+                <Text style={[kmStyles.colOdo, { color: colors.mutedForeground }]}>Start km</Text>
+                <Text style={[kmStyles.colOdo, { color: colors.mutedForeground }]}>End km</Text>
+                <Text style={[kmStyles.colKm, { color: colors.mutedForeground }]}>Vehicle km</Text>
+              </View>
+
+              {kmHistoryLoading ? (
+                <View style={{ paddingVertical: 16, alignItems: "center" }}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                </View>
+              ) : !kmHistoryData?.entries?.length ? (
+                <Text style={{ color: colors.mutedForeground, fontSize: 13, fontFamily: "Inter_400Regular", paddingVertical: 12 }}>
+                  No odometer readings in the last 7 days.
+                </Text>
+              ) : (
+                kmHistoryData.entries.map((entry, idx) => {
+                  const isLast = idx === kmHistoryData.entries.length - 1;
+                  const vehicleKm = entry.vehicleKm;
+                  const hasReading = entry.startOdometerKm != null || entry.endOdometerKm != null;
+                  return (
+                    <View
+                      key={entry.date}
+                      style={[
+                        kmStyles.dataRow,
+                        {
+                          borderBottomColor: colors.border,
+                          borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth,
+                        },
+                      ]}
+                    >
+                      <Text style={[kmStyles.colDate, { color: colors.foreground }]}>
+                        {formatShortDate(entry.date)}
+                      </Text>
+                      <Text style={[kmStyles.colOdo, { color: hasReading ? colors.foreground : colors.mutedForeground }]}>
+                        {entry.startOdometerKm != null ? entry.startOdometerKm.toLocaleString("en-IN") : "—"}
+                      </Text>
+                      <Text style={[kmStyles.colOdo, { color: hasReading ? colors.foreground : colors.mutedForeground }]}>
+                        {entry.endOdometerKm != null ? entry.endOdometerKm.toLocaleString("en-IN") : "—"}
+                      </Text>
+                      <View style={[kmStyles.colKm, { alignItems: "flex-end" }]}>
+                        {vehicleKm != null ? (
+                          <View style={{
+                            backgroundColor: colors.primary + "18",
+                            paddingHorizontal: 8,
+                            paddingVertical: 2,
+                            borderRadius: 6,
+                          }}>
+                            <Text style={{ color: colors.primary, fontFamily: "Inter_700Bold", fontSize: 12 }}>
+                              {vehicleKm.toFixed(1)} km
+                            </Text>
+                          </View>
+                        ) : (
+                          <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12 }}>—</Text>
+                        )}
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -1015,6 +1113,11 @@ function ReportStatBox({
   );
 }
 
+function formatShortDate(dateStr: string) {
+  const d = new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+}
+
 function getGreeting() {
   const h = new Date().getHours();
   if (h < 12) return "Good morning";
@@ -1162,5 +1265,35 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 9,
     fontFamily: "Inter_700Bold",
+  },
+});
+
+const kmStyles = StyleSheet.create({
+  headerRow: {
+    flexDirection: "row",
+    paddingBottom: 6,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    marginBottom: 2,
+  },
+  dataRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 9,
+  },
+  colDate: {
+    flex: 2,
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+  },
+  colOdo: {
+    flex: 2,
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    textAlign: "right",
+  },
+  colKm: {
+    flex: 2,
+    flexDirection: "row",
+    justifyContent: "flex-end",
   },
 });
