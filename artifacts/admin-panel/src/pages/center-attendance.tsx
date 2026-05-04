@@ -227,7 +227,7 @@ export default function CenterAttendance() {
           </Button>
           <Button variant="outline" size="sm" onClick={exportExcel} disabled={!filteredRows.length}>
             <Download className="h-4 w-4 mr-1.5" />
-            Export Excel
+            Export Excel ({filteredRows.length} {filteredRows.length === 1 ? "row" : "rows"})
           </Button>
         </div>
       </div>
