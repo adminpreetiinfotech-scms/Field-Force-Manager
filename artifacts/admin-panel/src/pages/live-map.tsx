@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocalStorageBool } from "@/hooks/useLocalStorageBool";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -689,16 +690,15 @@ export default function LiveMapPage() {
   const [staffList, setStaffList] = useState<LiveStaff[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
-  const [search, setSearch] = useState(() => {
-    try { return localStorage.getItem("livemap:search") ?? ""; } catch { return ""; }
-  });
-  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "offline" | "outside-fence">(() => {
-    try {
-      const saved = localStorage.getItem("livemap:filterStatus");
-      if (saved === "active" || saved === "offline" || saved === "outside-fence") return saved;
-    } catch {}
-    return "all";
-  });
+  const [search, setSearch] = useLocalStorage<string>("livemap:search", "");
+  const [filterStatus, setFilterStatus] = useLocalStorage<"all" | "active" | "offline" | "outside-fence">(
+    "livemap:filterStatus",
+    "all",
+    (s) => {
+      if (s === "all" || s === "active" || s === "offline" || s === "outside-fence") return s;
+      return undefined;
+    },
+  );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [geoFence, setGeoFence] = useState<GeoFence | null>(null);
   const [outsideCollapsed, setOutsideCollapsed] = useLocalStorageBool("livemap:outsideCollapsed", false);
@@ -709,10 +709,6 @@ export default function LiveMapPage() {
   const filterStatusRef = useRef(filterStatus);
   const geoFenceRef = useRef(geoFence);
   const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Persist filter and search prefs to localStorage
-  useEffect(() => { try { localStorage.setItem("livemap:filterStatus", filterStatus); } catch {} }, [filterStatus]);
-  useEffect(() => { try { localStorage.setItem("livemap:search", search); } catch {} }, [search]);
 
   // Keep refs in sync with latest state so fetchLocations can read them
   useEffect(() => { filterStatusRef.current = filterStatus; }, [filterStatus]);
