@@ -375,7 +375,7 @@ export default function LiveMapPage() {
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "offline">("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "offline" | "outside-fence">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [geoFence, setGeoFence] = useState<GeoFence | null>(null);
   const markerRefs = useRef<Record<string, L.Marker>>({});
@@ -438,6 +438,7 @@ export default function LiveMapPage() {
     }
     if (filterStatus === "active") return isActive(s);
     if (filterStatus === "offline") return !isActive(s);
+    if (filterStatus === "outside-fence") return isOutsideFence(s, geoFence);
     return true;
   });
 
@@ -488,13 +489,22 @@ export default function LiveMapPage() {
               <Users className="h-3.5 w-3.5" />
               {staffList.length} total
             </span>
-            {outsideFenceCount > 0 && (
+            {(outsideFenceCount > 0 || filterStatus === "outside-fence") && (
               <>
                 <span className="text-muted-foreground">·</span>
-                <span className="flex items-center gap-1 text-amber-600 font-medium">
+                <button
+                  type="button"
+                  onClick={() => setFilterStatus(f => f === "outside-fence" ? "all" : "outside-fence")}
+                  className={`flex items-center gap-1 font-medium rounded px-1 py-0.5 transition-colors cursor-pointer ${
+                    filterStatus === "outside-fence"
+                      ? "bg-amber-200 text-amber-800"
+                      : "text-amber-600 hover:bg-amber-100"
+                  }`}
+                  title={filterStatus === "outside-fence" ? "Clear outside-fence filter" : "Show only outside-fence staff"}
+                >
                   <AlertTriangle className="h-3.5 w-3.5" />
                   {outsideFenceCount} outside fence
-                </span>
+                </button>
               </>
             )}
           </div>
@@ -537,6 +547,7 @@ export default function LiveMapPage() {
                 <SelectItem value="all">All Staff</SelectItem>
                 <SelectItem value="active">Active Only (last 60 min)</SelectItem>
                 <SelectItem value="offline">Offline Only</SelectItem>
+                {geoFence && <SelectItem value="outside-fence">Outside Fence Only</SelectItem>}
               </SelectContent>
             </Select>
           </div>
