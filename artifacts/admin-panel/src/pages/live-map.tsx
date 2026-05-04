@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, RefreshCw, MapPin, Clock, Wifi, WifiOff, Users, AlertTriangle, Pencil, ChevronDown, ChevronUp, BookOpen } from "lucide-react";
+import { Search, RefreshCw, MapPin, Clock, Wifi, WifiOff, Users, AlertTriangle, Pencil, ChevronDown, ChevronUp, BookOpen, X } from "lucide-react";
 import { format, formatDistanceToNow, differenceInMinutes } from "date-fns";
 
 // ─── Fix leaflet default icon issue with Vite ─────────────────────────────────
@@ -926,6 +926,19 @@ export default function LiveMapPage() {
                 {geoFence && <SelectItem value="outside-fence">Outside Fence Only</SelectItem>}
               </SelectContent>
             </Select>
+            {(filterStatus !== "all" || search !== "") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterStatus("all");
+                  setSearch("");
+                }}
+                className="w-full flex items-center justify-center gap-1.5 h-7 rounded-md border border-dashed border-muted-foreground/40 text-xs text-muted-foreground hover:border-muted-foreground/70 hover:text-foreground transition-colors"
+              >
+                <X className="h-3 w-3" />
+                Clear filters
+              </button>
+            )}
           </div>
 
           {/* Outside-fence change notice */}
