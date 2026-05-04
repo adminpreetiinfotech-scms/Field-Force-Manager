@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, RefreshCw, MapPin, Clock, Wifi, WifiOff, Users, AlertTriangle, Pencil, ChevronDown } from "lucide-react";
+import { Search, RefreshCw, MapPin, Clock, Wifi, WifiOff, Users, AlertTriangle, Pencil, ChevronDown, ChevronUp, BookOpen } from "lucide-react";
 import { format, formatDistanceToNow, differenceInMinutes } from "date-fns";
 
 // ─── Fix leaflet default icon issue with Vite ─────────────────────────────────
@@ -375,6 +375,241 @@ function PopupContent({ staff }: { staff: LiveStaff }) {
   );
 }
 
+// ─── Marker pin mini-visual ───────────────────────────────────────────────────
+
+function MiniPin({ color, border }: { color: string; border: string }) {
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        width: 12,
+        height: 12,
+        background: color,
+        border: `2px solid ${border}`,
+        borderRadius: "50% 50% 50% 0",
+        transform: "rotate(-45deg)",
+        flexShrink: 0,
+      }}
+    />
+  );
+}
+
+// ─── Sidebar legend (always-visible) ─────────────────────────────────────────
+
+function MapLegendSidebar({ geoFence }: { geoFence: GeoFence | null }) {
+  const [collapsed, setCollapsed] = useState(false);
+
+  return (
+    <div className="border-t shrink-0 bg-muted/20">
+      <button
+        type="button"
+        onClick={() => setCollapsed((v) => !v)}
+        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/40 transition-colors text-left"
+      >
+        <BookOpen className="h-3 w-3 text-muted-foreground shrink-0" />
+        <span className="text-xs font-semibold text-muted-foreground flex-1">MAP LEGEND</span>
+        {collapsed
+          ? <ChevronUp className="h-3 w-3 text-muted-foreground shrink-0" />
+          : <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
+        }
+      </button>
+
+      {!collapsed && (
+        <div className="px-3 pb-3 space-y-1.5">
+          {/* Activity status */}
+          <p className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-wide pt-0.5">
+            Marker colour
+          </p>
+          {([
+            { color: "#22c55e", border: "#16a34a", label: "Active — updated within 15 min" },
+            { color: "#f59e0b", border: "#d97706", label: "Idle — 15–60 min ago" },
+            { color: "#94a3b8", border: "#64748b", label: "Offline — no data or >60 min" },
+          ] as const).map(({ color, border, label }) => (
+            <div key={label} className="flex items-center gap-2 text-xs text-muted-foreground">
+              <MiniPin color={color} border={border} />
+              <span>{label}</span>
+            </div>
+          ))}
+
+          {/* On-shift dot */}
+          <p className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-wide pt-1">
+            Badges
+          </p>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span
+              style={{
+                display: "inline-block",
+                width: 9,
+                height: 9,
+                background: "#3b82f6",
+                border: "1.5px solid white",
+                borderRadius: "50%",
+                flexShrink: 0,
+                boxShadow: "0 0 0 1.5px #3b82f6",
+              }}
+            />
+            <span>Blue dot — currently on shift</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-amber-700">
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 13,
+                height: 11,
+                background: "#f59e0b",
+                border: "1.5px solid #92400e",
+                borderRadius: 3,
+                flexShrink: 0,
+                fontSize: 8,
+                fontWeight: 900,
+                color: "#fff",
+                lineHeight: 1,
+              }}
+            >
+              !
+            </span>
+            <span>Amber badge — outside geo-fence</span>
+          </div>
+
+          {/* Geo-fence circle */}
+          {geoFence && (
+            <>
+              <p className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-wide pt-1">
+                Map overlay
+              </p>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span
+                  style={{
+                    display: "inline-block",
+                    width: 12,
+                    height: 12,
+                    border: "2px dashed #6366f1",
+                    borderRadius: "50%",
+                    flexShrink: 0,
+                  }}
+                />
+                <span>Dashed circle — geo-fence boundary</span>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Map overlay legend (collapsible, positioned on map) ──────────────────────
+
+function MapLegendOverlay({ geoFence }: { geoFence: GeoFence | null }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div
+      className="absolute bottom-8 left-2 z-[1000]"
+      style={{ maxWidth: 220 }}
+    >
+      {open ? (
+        <div className="bg-white/95 backdrop-blur-sm border border-gray-200 rounded-lg shadow-lg text-xs overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="w-full flex items-center gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors border-b border-gray-200 text-left"
+          >
+            <BookOpen className="h-3 w-3 text-gray-500 shrink-0" />
+            <span className="font-semibold text-gray-600 flex-1 text-[11px] uppercase tracking-wide">
+              Map Legend
+            </span>
+            <ChevronDown className="h-3 w-3 text-gray-400 shrink-0" />
+          </button>
+          <div className="px-3 py-2.5 space-y-1.5">
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Marker colour</p>
+            {([
+              { color: "#22c55e", border: "#16a34a", label: "Active (< 15 min)" },
+              { color: "#f59e0b", border: "#d97706", label: "Idle (15 – 60 min)" },
+              { color: "#94a3b8", border: "#64748b", label: "Offline (> 60 min)" },
+            ] as const).map(({ color, border, label }) => (
+              <div key={label} className="flex items-center gap-2 text-gray-600">
+                <MiniPin color={color} border={border} />
+                <span>{label}</span>
+              </div>
+            ))}
+
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide pt-1">Badges</p>
+            <div className="flex items-center gap-2 text-gray-600">
+              <span
+                style={{
+                  display: "inline-block",
+                  width: 9,
+                  height: 9,
+                  background: "#3b82f6",
+                  border: "1.5px solid white",
+                  borderRadius: "50%",
+                  flexShrink: 0,
+                  boxShadow: "0 0 0 1.5px #3b82f6",
+                }}
+              />
+              <span>Blue dot — on shift</span>
+            </div>
+            <div className="flex items-center gap-2 text-amber-700">
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 13,
+                  height: 11,
+                  background: "#f59e0b",
+                  border: "1.5px solid #92400e",
+                  borderRadius: 3,
+                  flexShrink: 0,
+                  fontSize: 8,
+                  fontWeight: 900,
+                  color: "#fff",
+                  lineHeight: 1,
+                }}
+              >
+                !
+              </span>
+              <span>Outside geo-fence</span>
+            </div>
+
+            {geoFence && (
+              <>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide pt-1">Overlay</p>
+                <div className="flex items-center gap-2 text-gray-600">
+                  <span
+                    style={{
+                      display: "inline-block",
+                      width: 12,
+                      height: 12,
+                      border: "2px dashed #6366f1",
+                      borderRadius: "50%",
+                      flexShrink: 0,
+                    }}
+                  />
+                  <span>Geo-fence boundary</span>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="flex items-center gap-1.5 bg-white/95 backdrop-blur-sm border border-gray-200 rounded-lg shadow-md px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50 transition-colors font-medium"
+          title="Show map legend"
+        >
+          <BookOpen className="h-3.5 w-3.5 text-gray-500 shrink-0" />
+          Legend
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const REFRESH_INTERVAL_MS = 30_000;
@@ -711,37 +946,7 @@ export default function LiveMapPage() {
           </div>
 
           {/* Legend */}
-          <div className="p-3 border-t shrink-0 bg-muted/20">
-            <p className="text-xs font-semibold text-muted-foreground mb-2">MAP LEGEND</p>
-            <div className="space-y-1">
-              {[
-                { color: "bg-green-500", label: "Active (last 15 min)" },
-                { color: "bg-amber-400", label: "Idle (15–60 min ago)" },
-                { color: "bg-slate-400", label: "Offline (>60 min or no data)" },
-              ].map(({ color, label }) => (
-                <div key={label} className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${color}`} />
-                  {label}
-                </div>
-              ))}
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                <span className="w-2.5 h-2.5 rounded-full shrink-0 bg-blue-500" />
-                Blue dot = On Shift
-              </div>
-              {geoFence && (
-                <>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                    <span className="w-2.5 h-2.5 shrink-0 rounded-full border-2 border-dashed border-indigo-500" />
-                    Geo-fence boundary
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-orange-600 mt-1">
-                    <AlertTriangle className="w-2.5 h-2.5 shrink-0" />
-                    Outside fence
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
+          <MapLegendSidebar geoFence={geoFence} />
         </aside>
 
         {/* Map */}
@@ -809,6 +1014,9 @@ export default function LiveMapPage() {
               );
             })}
           </MapContainer>
+
+          {/* Map legend overlay */}
+          <MapLegendOverlay geoFence={geoFence} />
 
           {/* Auto-refresh countdown badge */}
           <div className="absolute bottom-4 right-4 z-[1000] bg-card/90 backdrop-blur-sm border rounded-full px-3 py-1 text-xs text-muted-foreground shadow">
