@@ -1,4 +1,4 @@
-import { candidatesTable, companiesTable, db, staffTable, activityEventsTable } from "@workspace/db";
+import { candidatesTable, centersTable, companiesTable, db, staffTable, activityEventsTable } from "@workspace/db";
 import { eq, and, gte, lt, isNull, sql, inArray } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import crypto from "node:crypto";
@@ -29,6 +29,7 @@ export function toStaffDTO(r: typeof staffTable.$inferSelect) {
     disabledAt: r.disabledAt?.toISOString() ?? null,
     staffCategory: r.staffCategory ?? "field",
     centerStaffRole: r.centerStaffRole ?? null,
+    centerId: r.centerId ?? null,
   };
 }
 
@@ -45,7 +46,7 @@ router.post("/staff/register", async (req, res, next) => {
   try {
     const {
       kind, name, phone, organization, centerName, projectName, email, state, district,
-      empCode, area, adminCode, adminRegistrationKey, companyId, staffCategory, centerStaffRole,
+      empCode, area, adminCode, adminRegistrationKey, companyId, staffCategory, centerStaffRole, centerId,
     } = req.body as {
       kind?: string;
       name?: string;
@@ -63,6 +64,7 @@ router.post("/staff/register", async (req, res, next) => {
       companyId?: string | null;
       staffCategory?: "field" | "center" | null;
       centerStaffRole?: string | null;
+      centerId?: string | null;
     };
 
     if (!kind || !["admin", "staff"].includes(kind)) {
@@ -205,6 +207,7 @@ router.post("/staff/register", async (req, res, next) => {
         approvalStatus: "pending",
         staffCategory: staffCategory === "center" ? "center" : "field",
         centerStaffRole: staffCategory === "center" ? (centerStaffRole?.trim() || null) : null,
+        centerId: centerId?.trim() || null,
       })
       .returning();
 

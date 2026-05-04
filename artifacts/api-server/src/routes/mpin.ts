@@ -81,6 +81,7 @@ function toUserDTO(row: typeof staffTable.$inferSelect) {
     vehicleNumber: row.vehicleNumber ?? null,
     staffCategory: row.staffCategory ?? "field",
     centerStaffRole: row.centerStaffRole ?? null,
+    centerId: row.centerId ?? null,
   };
 }
 

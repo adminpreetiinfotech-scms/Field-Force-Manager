@@ -7,8 +7,9 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Building2, Save, Loader2, Upload, X, ImageIcon,
   MapPin, Layers, GitBranch, RefreshCw, AlertTriangle, Navigation, RotateCcw, SlidersHorizontal,
-  Eye, EyeOff,
+  Eye, EyeOff, School,
 } from "lucide-react";
+import TrainingCenters from "./training-centers";
 import GeoFenceMapPicker, { type GeoFenceMapPickerHandle } from "@/components/geo-fence-map-picker";
 import { DASHBOARD_HINT_PREFIX, DASHBOARD_HINT_KEYS, DASHBOARD_HINT_LABELS, DASHBOARD_HINT_DESCRIPTIONS, type HintKey } from "@/lib/dashboard-hints";
 import { useGetDismissedHints, useResetDismissedHints, useRestoreHint, useDismissHint, getGetDismissedHintsQueryKey } from "@workspace/api-client-react";
@@ -76,8 +77,11 @@ function fileToBase64(file: File): Promise<{ base64: string; mime: string }> {
   });
 }
 
+type Tab = "general" | "centers";
+
 export default function CompanySettings() {
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<Tab>("general");
   const [profile, setProfile] = useState<CompanyProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -298,12 +302,43 @@ export default function CompanySettings() {
           <h1 className="text-3xl font-bold tracking-tight">Company Settings</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Update your organization's profile and branding</p>
         </div>
-        <Button variant="ghost" size="icon" onClick={loadProfile} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-        </Button>
+        {activeTab === "general" && (
+          <Button variant="ghost" size="icon" onClick={loadProfile} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          </Button>
+        )}
       </div>
 
-      {!loading && !tcId.trim() && (
+      {/* Tabs */}
+      <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
+        <button
+          onClick={() => setActiveTab("general")}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            activeTab === "general"
+              ? "bg-background shadow-sm text-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Building2 className="h-3.5 w-3.5" />
+          General Settings
+        </button>
+        <button
+          onClick={() => setActiveTab("centers")}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            activeTab === "centers"
+              ? "bg-background shadow-sm text-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <School className="h-3.5 w-3.5" />
+          Training Centers
+        </button>
+      </div>
+
+      {/* Training Centers Tab */}
+      {activeTab === "centers" && <TrainingCenters />}
+
+      {activeTab === "general" && !loading && !tcId.trim() && (
         <div className="flex items-start gap-3 rounded-xl border border-amber-400 bg-amber-50 dark:bg-amber-950/30 p-4">
           <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
           <div>
@@ -315,11 +350,11 @@ export default function CompanySettings() {
         </div>
       )}
 
-      {loading ? (
+      {activeTab === "general" && loading ? (
         <div className="space-y-4">
           {[1,2,3,4].map(i => <Skeleton key={i} className="h-16 rounded-xl" />)}
         </div>
-      ) : (
+      ) : activeTab === "general" ? (
         <div className="space-y-6">
           {/* Logo */}
           <div className="border rounded-xl p-6 bg-card space-y-4">
@@ -667,7 +702,7 @@ export default function CompanySettings() {
             </Button>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

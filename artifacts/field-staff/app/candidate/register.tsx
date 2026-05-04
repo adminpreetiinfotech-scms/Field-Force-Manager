@@ -765,9 +765,26 @@ export default function CandidateRegisterScreen() {
   const [pin, setPin] = useState("");
   const [area, setArea] = useState("");
 
-  // ─ Course
+  // ─ Course (populated from center if centerId is set)
   const [course, setCourse] = useState("");
   const [skillCentreName, setSkillCentreName] = useState("");
+  const [centerCourses, setCenterCourses] = useState<string[]>([]);
+  const [showCoursePicker, setShowCoursePicker] = useState(false);
+
+  // Fetch center data on mount if user has a centerId
+  useEffect(() => {
+    const centerId = user?.centerId;
+    if (!centerId) return;
+    const base = getApiBase();
+    fetch(`${base}/api/centers/${centerId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { name?: string; courses?: string[] } | null) => {
+        if (!data) return;
+        if (data.courses && data.courses.length > 0) setCenterCourses(data.courses);
+        if (data.name) setSkillCentreName((prev) => (prev ? prev : data.name ?? ""));
+      })
+      .catch(() => {});
+  }, [user?.centerId]);
 
   // ─ Identity
   const [aadhaarNumber, setAadhaarNumber] = useState("");
@@ -1314,7 +1331,37 @@ export default function CandidateRegisterScreen() {
           {/* Course + Photo row */}
           <View style={[styles.borderRow, { alignItems: "flex-start" }]}>
             <View style={{ flex: 1, paddingRight: 8 }}>
-              <TextBox label="Course Name / कोर्स का नाम" value={course} onChangeText={setCourse} placeholder="e.g. Tailoring, Computer" />
+              {/* Course — dropdown if center has courses, else free-text */}
+              {centerCourses.length > 0 ? (
+                <View style={{ marginBottom: 8 }}>
+                  <Text style={[styles.fieldLabel, { color: LABEL_COLOR }]}>Course Name / कोर्स का नाम</Text>
+                  <TouchableOpacity
+                    onPress={() => setShowCoursePicker((p) => !p)}
+                    style={[styles.coursePickerBtn, { borderColor: course ? ACCENT : BORDER }]}
+                  >
+                    <Text style={{ flex: 1, color: course ? VALUE_COLOR : MUTED, fontFamily: F_ENG_REG, fontSize: 13 }}>
+                      {course || "Course chunein..."}
+                    </Text>
+                    <Feather name={showCoursePicker ? "chevron-up" : "chevron-down"} size={14} color={MUTED} />
+                  </TouchableOpacity>
+                  {showCoursePicker && (
+                    <View style={styles.courseDropdown}>
+                      {centerCourses.map((c) => (
+                        <TouchableOpacity
+                          key={c}
+                          onPress={() => { setCourse(c); setShowCoursePicker(false); }}
+                          style={[styles.courseOption, course === c && { backgroundColor: ACCENT + "15" }]}
+                        >
+                          {course === c && <Feather name="check" size={13} color={ACCENT} style={{ marginRight: 4 }} />}
+                          <Text style={{ color: course === c ? ACCENT : VALUE_COLOR, fontFamily: course === c ? F_ENG_MED : F_ENG_REG, fontSize: 13 }}>{c}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              ) : (
+                <TextBox label="Course Name / कोर्स का नाम" value={course} onChangeText={setCourse} placeholder="e.g. Tailoring, Computer" />
+              )}
               <TextBox label="Skill Centre Name / कौशल केंद्र का नाम" value={skillCentreName} onChangeText={setSkillCentreName} />
             </View>
             <PhotoBox
@@ -1938,6 +1985,32 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     fontFamily: F_ENG_SEM,
     color: "#1a1a2e",
+  },
+  coursePickerBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: BORDER,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginTop: 3,
+    backgroundColor: "#fff",
+    minHeight: 36,
+  },
+  courseDropdown: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: BORDER,
+    borderTopWidth: 0,
+    backgroundColor: "#fff",
+    marginBottom: 4,
+  },
+  courseOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#e0e0e0",
   },
   fieldLabelEng: {
     fontSize: 10.5,

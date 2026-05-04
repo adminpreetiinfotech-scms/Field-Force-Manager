@@ -421,5 +421,208 @@ router.patch("/companies/:id/profile", async (req, res, next) => {
   }
 });
 
+// ─── Centers helper ────────────────────────────────────────────────────────────
+
+function toCenterDTO(c: typeof centersTable.$inferSelect) {
+  return {
+    id: c.id,
+    companyId: c.companyId,
+    name: c.name,
+    tcId: c.tcId ?? null,
+    courses: (c.courses as string[] | null) ?? [],
+    state: c.state ?? null,
+    district: c.district ?? null,
+    block: c.block ?? null,
+    pinCode: c.pinCode ?? null,
+    lat: c.lat ?? null,
+    lng: c.lng ?? null,
+    radiusMeters: c.radiusMeters ?? 200,
+    createdAt: c.createdAt?.toISOString() ?? null,
+  };
+}
+
+// ─── GET /api/companies/:id/centers ────────────────────────────────────────────
+// List all training centers for a company.
+
+router.get("/companies/:id/centers", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (!isValidUUID(id)) { res.status(400).json({ title: "Invalid company id", status: 400 }); return; }
+    const centers = await db
+      .select()
+      .from(centersTable)
+      .where(eq(centersTable.companyId, id))
+      .orderBy(centersTable.createdAt);
+    res.json(centers.map(toCenterDTO));
+  } catch (err) { next(err); }
+});
+
+// ─── GET /api/centers/:centerId ────────────────────────────────────────────────
+// Public endpoint: fetch a single center by its UUID (used by candidate form).
+
+router.get("/centers/:centerId", async (req, res, next) => {
+  try {
+    const { centerId } = req.params;
+    if (!isValidUUID(centerId)) { res.status(400).json({ title: "Invalid center id", status: 400 }); return; }
+    const [center] = await db.select().from(centersTable).where(eq(centersTable.id, centerId)).limit(1);
+    if (!center) { res.status(404).json({ title: "Center not found", status: 404 }); return; }
+    res.json(toCenterDTO(center));
+  } catch (err) { next(err); }
+});
+
+// ─── GET /api/centers?adminCode=XX ─────────────────────────────────────────────
+// Public endpoint: mobile staff registration picks a center by admin code.
+
+router.get("/centers", async (req, res, next) => {
+  try {
+    const { adminCode, companyId } = req.query as { adminCode?: string; companyId?: string };
+    let resolvedCompanyId: string | null = null;
+    if (companyId && isValidUUID(companyId)) {
+      resolvedCompanyId = companyId;
+    } else if (adminCode?.trim()) {
+      const [admin] = await db
+        .select({ companyId: staffTable.companyId })
+        .from(staffTable)
+        .where(and(eq(staffTable.adminCode, adminCode.trim().toUpperCase()), eq(staffTable.role, "admin")))
+        .limit(1);
+      resolvedCompanyId = admin?.companyId ?? null;
+    }
+    if (!resolvedCompanyId) { res.json([]); return; }
+    const centers = await db
+      .select()
+      .from(centersTable)
+      .where(eq(centersTable.companyId, resolvedCompanyId))
+      .orderBy(centersTable.name);
+    res.json(centers.map(toCenterDTO));
+  } catch (err) { next(err); }
+});
+
+// ─── POST /api/companies/:id/centers ───────────────────────────────────────────
+// Create a new training center for a company.
+
+router.post("/companies/:id/centers", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (!isValidUUID(id)) { res.status(400).json({ title: "Invalid company id", status: 400 }); return; }
+    const phone = req.headers["x-admin-phone"] as string | undefined;
+    if (!phone) { res.status(401).json({ title: "Unauthorized", status: 401 }); return; }
+    const adminInfo = await getAdminCompanyId(phone);
+    if (!adminInfo) { res.status(403).json({ title: "Forbidden", status: 403 }); return; }
+    if (adminInfo.role !== "super_admin" && adminInfo.companyId !== id) {
+      res.status(403).json({ title: "Forbidden: not your company", status: 403 }); return;
+    }
+    const { name, tcId, courses, state, district, block, pinCode, lat, lng, radiusMeters } = req.body as {
+      name?: string;
+      tcId?: string | null;
+      courses?: string[];
+      state?: string | null;
+      district?: string | null;
+      block?: string | null;
+      pinCode?: string | null;
+      lat?: number | null;
+      lng?: number | null;
+      radiusMeters?: number | null;
+    };
+    if (!name || name.trim().length < 2) {
+      res.status(400).json({ title: "Center name required (min 2 chars)", status: 400 }); return;
+    }
+    const [inserted] = await db.insert(centersTable).values({
+      companyId: id,
+      name: name.trim(),
+      tcId: tcId?.trim() || null,
+      courses: Array.isArray(courses) ? courses.filter(Boolean).map(c => c.trim()) : [],
+      state: state?.trim() || null,
+      district: district?.trim() || null,
+      block: block?.trim() || null,
+      pinCode: pinCode?.trim() || null,
+      lat: typeof lat === "number" ? lat : null,
+      lng: typeof lng === "number" ? lng : null,
+      radiusMeters: typeof radiusMeters === "number" ? Math.max(50, Math.round(radiusMeters)) : 200,
+    }).returning();
+    res.status(201).json(toCenterDTO(inserted));
+  } catch (err) { next(err); }
+});
+
+// ─── PATCH /api/companies/:id/centers/:centerId ────────────────────────────────
+// Update an existing training center.
+
+router.patch("/companies/:id/centers/:centerId", async (req, res, next) => {
+  try {
+    const { id, centerId } = req.params;
+    if (!isValidUUID(id) || !isValidUUID(centerId)) {
+      res.status(400).json({ title: "Invalid id", status: 400 }); return;
+    }
+    const phone = req.headers["x-admin-phone"] as string | undefined;
+    if (!phone) { res.status(401).json({ title: "Unauthorized", status: 401 }); return; }
+    const adminInfo = await getAdminCompanyId(phone);
+    if (!adminInfo) { res.status(403).json({ title: "Forbidden", status: 403 }); return; }
+    if (adminInfo.role !== "super_admin" && adminInfo.companyId !== id) {
+      res.status(403).json({ title: "Forbidden: not your company", status: 403 }); return;
+    }
+    const { name, tcId, courses, state, district, block, pinCode, lat, lng, radiusMeters } = req.body as {
+      name?: string;
+      tcId?: string | null;
+      courses?: string[];
+      state?: string | null;
+      district?: string | null;
+      block?: string | null;
+      pinCode?: string | null;
+      lat?: number | null;
+      lng?: number | null;
+      radiusMeters?: number | null;
+    };
+    const updates: Partial<typeof centersTable.$inferInsert> = {};
+    if (name !== undefined) {
+      if (!name.trim() || name.trim().length < 2) {
+        res.status(400).json({ title: "Center name required (min 2 chars)", status: 400 }); return;
+      }
+      updates.name = name.trim();
+    }
+    if (tcId !== undefined) updates.tcId = tcId?.trim() || null;
+    if (courses !== undefined) updates.courses = Array.isArray(courses) ? courses.filter(Boolean).map(c => c.trim()) : [];
+    if (state !== undefined) updates.state = state?.trim() || null;
+    if (district !== undefined) updates.district = district?.trim() || null;
+    if (block !== undefined) updates.block = block?.trim() || null;
+    if (pinCode !== undefined) updates.pinCode = pinCode?.trim() || null;
+    if (lat !== undefined) updates.lat = typeof lat === "number" ? lat : null;
+    if (lng !== undefined) updates.lng = typeof lng === "number" ? lng : null;
+    if (radiusMeters !== undefined) updates.radiusMeters = typeof radiusMeters === "number" ? Math.max(50, Math.round(radiusMeters)) : 200;
+
+    if (Object.keys(updates).length === 0) {
+      const [existing] = await db.select().from(centersTable).where(and(eq(centersTable.id, centerId), eq(centersTable.companyId, id))).limit(1);
+      if (!existing) { res.status(404).json({ title: "Center not found", status: 404 }); return; }
+      res.json(toCenterDTO(existing)); return;
+    }
+    const [updated] = await db.update(centersTable).set(updates)
+      .where(and(eq(centersTable.id, centerId), eq(centersTable.companyId, id)))
+      .returning();
+    if (!updated) { res.status(404).json({ title: "Center not found", status: 404 }); return; }
+    res.json(toCenterDTO(updated));
+  } catch (err) { next(err); }
+});
+
+// ─── DELETE /api/companies/:id/centers/:centerId ────────────────────────────────
+
+router.delete("/companies/:id/centers/:centerId", async (req, res, next) => {
+  try {
+    const { id, centerId } = req.params;
+    if (!isValidUUID(id) || !isValidUUID(centerId)) {
+      res.status(400).json({ title: "Invalid id", status: 400 }); return;
+    }
+    const phone = req.headers["x-admin-phone"] as string | undefined;
+    if (!phone) { res.status(401).json({ title: "Unauthorized", status: 401 }); return; }
+    const adminInfo = await getAdminCompanyId(phone);
+    if (!adminInfo) { res.status(403).json({ title: "Forbidden", status: 403 }); return; }
+    if (adminInfo.role !== "super_admin" && adminInfo.companyId !== id) {
+      res.status(403).json({ title: "Forbidden: not your company", status: 403 }); return;
+    }
+    const deleted = await db.delete(centersTable)
+      .where(and(eq(centersTable.id, centerId), eq(centersTable.companyId, id)))
+      .returning({ id: centersTable.id });
+    if (!deleted.length) { res.status(404).json({ title: "Center not found", status: 404 }); return; }
+    res.json({ success: true, id: deleted[0]!.id });
+  } catch (err) { next(err); }
+});
+
 export { toCompanyDTO };
 export default router;

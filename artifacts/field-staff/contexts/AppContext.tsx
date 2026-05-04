@@ -46,6 +46,8 @@ export type User = {
   companyCenterLat?: number | null;
   companyCenterLng?: number | null;
   companyCenterRadiusMeters?: number | null;
+  /** Training center this staff member is linked to */
+  centerId?: string | null;
 };
 
 export type VehicleType = "2-wheeler" | "4-wheeler";
@@ -115,6 +117,9 @@ export type RegisterData = {
   area?: string;
   adminCode?: string;
   adminRegistrationKey?: string;
+  staffCategory?: "field" | "center" | null;
+  centerStaffRole?: string | null;
+  centerId?: string | null;
 };
 
 type AppState = {
@@ -522,6 +527,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       adminRegistrationKey: data.adminRegistrationKey ?? null,
       staffCategory: data.staffCategory ?? null,
       centerStaffRole: data.centerStaffRole ?? null,
+      centerId: data.centerId ?? null,
     } as Parameters<typeof registerStaff>[0]);
     const user: User = {
       id: staff.id,
@@ -664,6 +670,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         companyCenterLat?: number | null;
         companyCenterLng?: number | null;
         companyCenterRadiusMeters?: number | null;
+        centerId?: string | null;
       };
     };
     const user: User = {
@@ -690,6 +697,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       companyCenterLat: dto.companyCenterLat ?? null,
       companyCenterLng: dto.companyCenterLng ?? null,
       companyCenterRadiusMeters: dto.companyCenterRadiusMeters ?? null,
+      centerId: dto.centerId ?? null,
     };
     setState((s) => ({ ...s, user, pendingPhone: null, pendingCompanyName: null, pendingRegistration: null }));
     return user;

@@ -1,5 +1,6 @@
 import { boolean, doublePrecision, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { companiesTable } from "./companies";
+import { centersTable } from "./centers";
 
 export const staffTable = pgTable("staff", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -51,6 +52,8 @@ export const staffTable = pgTable("staff", {
   staffCategory: text("staff_category", { enum: ["field", "center"] }).notNull().default("field"),
   /** Role label for center staff (e.g. trainer, centerHead, cook, securityGuard). */
   centerStaffRole: text("center_staff_role"),
+  /** Training center this staff member is linked to (nullable). */
+  centerId: uuid("center_id").references(() => centersTable.id, { onDelete: "set null" }),
   /** JSON-encoded array of dismissed dashboard hint keys (e.g. ["dashboard_hint_center"]). */
   dismissedHints: text("dismissed_hints"),
   createdAt: timestamp("created_at", { withTimezone: true })

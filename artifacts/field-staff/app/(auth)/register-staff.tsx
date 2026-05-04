@@ -1,9 +1,10 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -32,6 +33,31 @@ const CENTER_ROLES = [
   "Other",
 ];
 
+interface Center {
+  id: string;
+  name: string;
+  tcId: string | null;
+  state: string | null;
+  district: string | null;
+  block: string | null;
+  courses: string[];
+}
+
+const API_BASE =
+  Platform.OS === "web"
+    ? ""
+    : process.env.EXPO_PUBLIC_API_BASE ?? "";
+
+async function fetchCentersByAdminCode(code: string): Promise<Center[]> {
+  try {
+    const res = await fetch(`${API_BASE}/api/centers?adminCode=${encodeURIComponent(code)}`);
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+}
+
 export default function RegisterStaffScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -50,6 +76,13 @@ export default function RegisterStaffScreen() {
   const [showRolePicker, setShowRolePicker] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Center picker state
+  const [centers, setCenters] = useState<Center[]>([]);
+  const [centerId, setCenterId] = useState<string | null>(null);
+  const [centersLoading, setCentersLoading] = useState(false);
+  const [showCenterPicker, setShowCenterPicker] = useState(false);
+  const [centersLoaded, setCentersLoaded] = useState(false);
+
   const phoneRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
   const centerRef = useRef<TextInput>(null);
@@ -57,6 +90,47 @@ export default function RegisterStaffScreen() {
   const stateRef = useRef<TextInput>(null);
   const districtRef = useRef<TextInput>(null);
   const adminCodeRef = useRef<TextInput>(null);
+
+  // Fetch centers when admin code has 6 chars
+  useEffect(() => {
+    const code = adminCode.trim().toUpperCase();
+    if (code.length !== 6) {
+      if (centersLoaded) {
+        setCenters([]);
+        setCenterId(null);
+        setCentersLoaded(false);
+      }
+      return;
+    }
+    let cancelled = false;
+    setCentersLoading(true);
+    fetchCentersByAdminCode(code).then((data) => {
+      if (cancelled) return;
+      setCenters(data);
+      setCentersLoaded(true);
+      setCentersLoading(false);
+      // Reset center selection when code changes
+      setCenterId(null);
+    });
+    return () => { cancelled = true; };
+  }, [adminCode]);
+
+  const selectCenter = (c: Center) => {
+    setCenterId(c.id);
+    setCenterName(c.name);
+    if (c.state) setState_(c.state);
+    if (c.district) setDistrict(c.district);
+    setShowCenterPicker(false);
+  };
+
+  const clearCenter = () => {
+    setCenterId(null);
+    setCenterName("");
+    setState_("");
+    setDistrict("");
+  };
+
+  const selectedCenter = centers.find((c) => c.id === centerId) ?? null;
 
   const isValidEmail = (e: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
@@ -87,6 +161,7 @@ export default function RegisterStaffScreen() {
         adminCode: adminCode.trim().toUpperCase() || undefined,
         staffCategory,
         centerStaffRole: staffCategory === "center" ? centerStaffRole.trim() : undefined,
+        centerId: centerId ?? undefined,
       });
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(
@@ -400,7 +475,7 @@ export default function RegisterStaffScreen() {
               onChangeText={setEmail}
               placeholder="ramesh@example.com"
               returnKeyType="next"
-              onSubmitEditing={() => centerRef.current?.focus()}
+              onSubmitEditing={() => adminCodeRef.current?.focus()}
               colors={colors}
               autoCapitalize="none"
               keyboardType="email-address"
@@ -412,12 +487,132 @@ export default function RegisterStaffScreen() {
             )}
           </View>
 
+          {/* Admin code — moved up so centers load before org section */}
+          <SectionHeader label="LINK TO ADMIN (OPTIONAL)" colors={colors} />
+          <View style={[styles.form]}>
+            <View>
+              <Text style={[styles.label, { color: colors.mutedForeground }]}>
+                ADMIN INVITE CODE
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <TextInput
+                  ref={adminCodeRef}
+                  value={adminCode}
+                  onChangeText={(t) =>
+                    setAdminCode(t.replace(/[^a-zA-Z0-9]/g, "").slice(0, 6))
+                  }
+                  placeholder="e.g. A3BZ90"
+                  placeholderTextColor={colors.mutedForeground}
+                  returnKeyType="done"
+                  autoCapitalize="characters"
+                  style={[
+                    styles.textField,
+                    {
+                      flex: 1,
+                      color: colors.foreground,
+                      borderColor: centersLoaded && centers.length > 0 ? colors.primary : colors.border,
+                      borderRadius: colors.radius,
+                      backgroundColor: colors.background,
+                      fontFamily: "Inter_500Medium",
+                      letterSpacing: 3,
+                    },
+                  ]}
+                />
+                {centersLoading && (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                )}
+                {centersLoaded && centers.length > 0 && !centersLoading && (
+                  <View style={{ width: 32, height: 32, borderRadius: 999, backgroundColor: colors.primary + "18", alignItems: "center", justifyContent: "center" }}>
+                    <Feather name="check" size={16} color={colors.primary} />
+                  </View>
+                )}
+              </View>
+              <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
+                {centersLoaded && centers.length > 0
+                  ? `✓ ${centers.length} training center${centers.length > 1 ? "s" : ""} available — neeche choose karein`
+                  : "Admin ka 6-character invite code daalen apna account link karne ke liye."}
+              </Text>
+            </View>
+          </View>
+
           {/* Section: Organization Details */}
           <SectionHeader label="ORGANIZATION DETAILS" colors={colors} />
           <View style={[styles.form]}>
+
+            {/* Center picker — show when centers are loaded */}
+            {centersLoaded && centers.length > 0 && (
+              <View>
+                <Text style={[styles.label, { color: colors.mutedForeground }]}>
+                  TRAINING CENTER CHUNEIN *
+                </Text>
+
+                {selectedCenter ? (
+                  /* Selected center card */
+                  <View style={[styles.centerCard, { borderColor: colors.primary, backgroundColor: colors.primary + "0A", borderRadius: colors.radius }]}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: colors.primary, fontFamily: "Inter_700Bold", fontSize: 14 }}>{selectedCenter.name}</Text>
+                      {selectedCenter.tcId && (
+                        <Text style={{ color: colors.primary + "AA", fontFamily: "Inter_500Medium", fontSize: 11, marginTop: 2 }}>TC ID: {selectedCenter.tcId}</Text>
+                      )}
+                      <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>
+                        {[selectedCenter.district, selectedCenter.state].filter(Boolean).join(", ")}
+                      </Text>
+                    </View>
+                    <Pressable onPress={clearCenter} hitSlop={8}>
+                      <Feather name="x" size={18} color={colors.mutedForeground} />
+                    </Pressable>
+                  </View>
+                ) : (
+                  /* Center picker trigger */
+                  <Pressable
+                    onPress={() => setShowCenterPicker((p) => !p)}
+                    style={[
+                      styles.roleSelector,
+                      {
+                        borderColor: colors.primary + "44",
+                        backgroundColor: colors.background,
+                        borderRadius: colors.radius,
+                      },
+                    ]}
+                  >
+                    <Feather name="home" size={16} color={colors.primary} />
+                    <Text style={{ flex: 1, color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 15, marginLeft: 6 }}>
+                      Center chunein...
+                    </Text>
+                    <Feather name={showCenterPicker ? "chevron-up" : "chevron-down"} size={16} color={colors.mutedForeground} />
+                  </Pressable>
+                )}
+
+                {showCenterPicker && !selectedCenter && (
+                  <View style={[styles.roleDropdown, { borderColor: colors.border, backgroundColor: colors.card, borderRadius: colors.radius }]}>
+                    {centers.map((c) => (
+                      <Pressable
+                        key={c.id}
+                        onPress={() => selectCenter(c)}
+                        style={({ pressed }) => [
+                          styles.roleOption,
+                          { backgroundColor: pressed ? colors.primary + "10" : "transparent", paddingVertical: 14 },
+                        ]}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>{c.name}</Text>
+                          {(c.district || c.state) && (
+                            <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>
+                              {[c.district, c.state].filter(Boolean).join(", ")}
+                            </Text>
+                          )}
+                        </View>
+                        <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
+
             <FieldInput
               ref={centerRef}
-              label="CENTER / BRANCH NAME *"
+              label={centersLoaded && centers.length > 0 ? "CENTER / BRANCH NAME (auto-fill ya manual)" : "CENTER / BRANCH NAME *"}
               value={centerName}
               onChangeText={setCenterName}
               placeholder="e.g. Ranchi Training Center"
@@ -461,49 +656,11 @@ export default function RegisterStaffScreen() {
               value={district}
               onChangeText={setDistrict}
               placeholder="e.g. Ranchi"
-              returnKeyType="next"
-              onSubmitEditing={() => adminCodeRef.current?.focus()}
+              returnKeyType="done"
+              onSubmitEditing={onRegister}
               colors={colors}
               autoCapitalize="words"
             />
-          </View>
-
-          {/* Admin code */}
-          <SectionHeader label="LINK TO ADMIN (OPTIONAL)" colors={colors} />
-          <View style={[styles.form]}>
-            <View>
-              <Text style={[styles.label, { color: colors.mutedForeground }]}>
-                ADMIN INVITE CODE
-              </Text>
-              <TextInput
-                ref={adminCodeRef}
-                value={adminCode}
-                onChangeText={(t) =>
-                  setAdminCode(t.replace(/[^a-zA-Z0-9]/g, "").slice(0, 6))
-                }
-                placeholder="e.g. A3BZ90"
-                placeholderTextColor={colors.mutedForeground}
-                returnKeyType="done"
-                onSubmitEditing={onRegister}
-                autoCapitalize="characters"
-                style={[
-                  styles.textField,
-                  {
-                    color: colors.foreground,
-                    borderColor: colors.border,
-                    borderRadius: colors.radius,
-                    backgroundColor: colors.background,
-                    fontFamily: "Inter_500Medium",
-                    letterSpacing: 3,
-                  },
-                ]}
-              />
-              <Text
-                style={[styles.fieldHint, { color: colors.mutedForeground }]}
-              >
-                Admin ka 6-character invite code daalen apna account link karne ke liye.
-              </Text>
-            </View>
           </View>
 
           <Button
@@ -713,5 +870,12 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 14,
     paddingVertical: 12,
+  },
+  centerCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 14,
+    borderWidth: 1.5,
+    gap: 10,
   },
 });
