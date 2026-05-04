@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, RefreshCw, MapPin, Clock, Wifi, WifiOff, Users, AlertTriangle, Pencil } from "lucide-react";
+import { Search, RefreshCw, MapPin, Clock, Wifi, WifiOff, Users, AlertTriangle, Pencil, ChevronDown } from "lucide-react";
 import { format, formatDistanceToNow, differenceInMinutes } from "date-fns";
 
 // ─── Fix leaflet default icon issue with Vite ─────────────────────────────────
@@ -384,6 +384,8 @@ export default function LiveMapPage() {
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "offline" | "outside-fence">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [geoFence, setGeoFence] = useState<GeoFence | null>(null);
+  const [outsideCollapsed, setOutsideCollapsed] = useState(false);
+  const [insideCollapsed, setInsideCollapsed] = useState(false);
   const markerRefs = useRef<Record<string, L.Marker>>({});
 
   // Fetch geo-fence config once on mount
@@ -573,15 +575,21 @@ export default function LiveMapPage() {
               <>
                 {outsideStaff.length > 0 && (
                   <>
-                    <div className="px-3 py-1.5 bg-amber-50 border-b border-amber-200 flex items-center gap-1.5">
+                    <button
+                      className="w-full px-3 py-1.5 bg-amber-50 border-b border-amber-200 flex items-center gap-1.5 cursor-pointer hover:bg-amber-100 transition-colors text-left"
+                      onClick={() => setOutsideCollapsed((v) => !v)}
+                    >
+                      <ChevronDown
+                        className={`h-3.5 w-3.5 text-amber-600 transition-transform ${outsideCollapsed ? "-rotate-90" : ""}`}
+                      />
                       <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">
                         Outside Fence
                       </span>
                       <span className="ml-auto text-xs font-medium bg-amber-200 text-amber-800 rounded-full px-1.5 py-0.5 leading-none">
                         {outsideStaff.length}
                       </span>
-                    </div>
-                    {outsideStaff.map((s) => (
+                    </button>
+                    {!outsideCollapsed && outsideStaff.map((s) => (
                       <StaffCard
                         key={s.staffId}
                         staff={s}
@@ -594,15 +602,21 @@ export default function LiveMapPage() {
                 )}
                 {insideStaff.length > 0 && (
                   <>
-                    <div className="px-3 py-1.5 bg-muted/40 border-b flex items-center gap-1.5">
+                    <button
+                      className="w-full px-3 py-1.5 bg-muted/40 border-b flex items-center gap-1.5 cursor-pointer hover:bg-muted/60 transition-colors text-left"
+                      onClick={() => setInsideCollapsed((v) => !v)}
+                    >
+                      <ChevronDown
+                        className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${insideCollapsed ? "-rotate-90" : ""}`}
+                      />
                       <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                         All Staff
                       </span>
                       <span className="ml-auto text-xs font-medium bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 leading-none">
                         {insideStaff.length}
                       </span>
-                    </div>
-                    {insideStaff.map((s) => (
+                    </button>
+                    {!insideCollapsed && insideStaff.map((s) => (
                       <StaffCard
                         key={s.staffId}
                         staff={s}
