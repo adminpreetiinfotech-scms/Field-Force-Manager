@@ -625,6 +625,9 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
     const dAltFill: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: LGRAY } };
     const dVarFill: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFED7AA" } };
     let dRowNum = 6;
+    let totalVehicleKm = 0;
+    let totalGpsKm     = 0;
+    let flaggedCount   = 0;
     for (const [idx, r] of dayRows.entries()) {
       const dr = ws2.getRow(dRowNum);
       dr.height = 16;
@@ -653,8 +656,38 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
         if (fill) cell.fill = fill;
         cell.border = { bottom: { style: "hair", color: { argb: "FFD1D5DB" } } };
       });
+      if (r.vehicleKm !== null) totalVehicleKm += r.vehicleKm;
+      totalGpsKm += r.gpsKm;
+      if (highVar) flaggedCount++;
       dRowNum++;
     }
+
+    // TOTALS footer row
+    const dtRow = ws2.getRow(dRowNum);
+    dtRow.height = 18;
+    ws2.mergeCells(dRowNum, 1, dRowNum, 6);
+    const dtLabel = dtRow.getCell(1);
+    dtLabel.value = "TOTALS";
+    dtLabel.font      = { bold: true, size: 10, name: "Calibri", color: { argb: WHITE } };
+    dtLabel.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: NAVY } };
+    dtLabel.alignment = { horizontal: "center", vertical: "middle" };
+    const dtVehicle = dtRow.getCell(7);
+    dtVehicle.value     = `${Math.round(totalVehicleKm * 10) / 10} km`;
+    dtVehicle.font      = { bold: true, size: 10, name: "Calibri", color: { argb: WHITE } };
+    dtVehicle.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: NAVY } };
+    dtVehicle.alignment = { horizontal: "center", vertical: "middle" };
+    const dtGps = dtRow.getCell(8);
+    dtGps.value     = `${Math.round(totalGpsKm * 10) / 10} km`;
+    dtGps.font      = { bold: true, size: 10, name: "Calibri", color: { argb: WHITE } };
+    dtGps.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: NAVY } };
+    dtGps.alignment = { horizontal: "center", vertical: "middle" };
+    const dtVarCell = dtRow.getCell(9);
+    dtVarCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: NAVY } };
+    const dtFlag = dtRow.getCell(10);
+    dtFlag.value     = flaggedCount > 0 ? `⚠ ${flaggedCount} flagged` : "—";
+    dtFlag.font      = { bold: true, size: 10, name: "Calibri", color: { argb: WHITE } };
+    dtFlag.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: NAVY } };
+    dtFlag.alignment = { horizontal: "center", vertical: "middle" };
 
     // ── 9. Build "Attendance" sheet (only when data exists) ──────────────────
     if (attendDayMap.size > 0) {
