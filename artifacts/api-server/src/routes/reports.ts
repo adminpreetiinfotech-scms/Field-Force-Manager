@@ -916,15 +916,35 @@ router.get("/admin/reports/attendance-summary/xlsx", requireAdmin, async (req, r
       .where(and(...conds))
       .orderBy(activityEventsTable.occurredAt);
 
-    // Count distinct check-in days per staff
-    type StaffSummary = { staffId: string; staffName: string; days: Set<string> };
+    // Count distinct check-in days per staff (also track per-month)
+    type StaffSummary = { staffId: string; staffName: string; days: Set<string>; monthDays: Map<string, Set<string>> };
     const staffMapLocal = new Map<string, StaffSummary>();
     for (const row of checkinRows) {
-      const date = toIST(new Date(row.occurredAt as Date));
-      const existing = staffMapLocal.get(row.staffId) ?? { staffId: row.staffId, staffName: row.staffName, days: new Set() };
+      const date  = toIST(new Date(row.occurredAt as Date));
+      const month = date.slice(0, 7); // YYYY-MM
+      const existing = staffMapLocal.get(row.staffId) ?? { staffId: row.staffId, staffName: row.staffName, days: new Set(), monthDays: new Map() };
       existing.days.add(date);
+      const mDays = existing.monthDays.get(month) ?? new Set<string>();
+      mDays.add(date);
+      existing.monthDays.set(month, mDays);
       staffMapLocal.set(row.staffId, existing);
     }
+
+    // Compute ordered list of calendar months covered by the selected range
+    function getMonthsInRange(from: string, to: string): string[] {
+      const months: string[] = [];
+      let y = parseInt(from.slice(0, 4), 10);
+      let mo = parseInt(from.slice(5, 7), 10);
+      const toY  = parseInt(to.slice(0, 4), 10);
+      const toMo = parseInt(to.slice(5, 7), 10);
+      while (y < toY || (y === toY && mo <= toMo)) {
+        months.push(`${y}-${String(mo).padStart(2, "0")}`);
+        mo++;
+        if (mo > 12) { mo = 1; y++; }
+      }
+      return months;
+    }
+    const monthsInRange = getMonthsInRange(rawFrom, rawTo);
 
     // Enrich with empCode
     const staffIds = [...staffMapLocal.keys()];
@@ -941,6 +961,7 @@ router.get("/admin/reports/attendance-summary/xlsx", requireAdmin, async (req, r
         staffName:   s.staffName,
         empCode:     empCodeMap.get(s.staffId) ?? "",
         checkInDays: s.days.size,
+        monthDays:   s.monthDays,
       }))
       .sort((a, b) => b.checkInDays - a.checkInDays || a.staffName.localeCompare(b.staffName));
 
@@ -1067,6 +1088,156 @@ router.get("/admin/reports/attendance-summary/xlsx", requireAdmin, async (req, r
     ftDays.font  = { bold: true, size: 10, color: { argb: WHITE }, name: "Calibri" };
     ftDays.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: TEAL } };
     ftDays.alignment = { horizontal: "center", vertical: "middle" };
+
+    // ── Build "Monthly Breakdown" worksheet ──────────────────────────────────
+    const TEAL_MB = "FF0F766E";
+    const MB_COLS = 2 + monthsInRange.length + 1; // Staff Name + EMP ID + months + Total
+
+    const wsM = wb.addWorksheet("Monthly Breakdown", { properties: { tabColor: { argb: TEAL_MB } } });
+
+    // Column widths: Staff Name (28), EMP ID (14), one per month (12), Total (12)
+    wsM.columns = [
+      { width: 28 },
+      { width: 14 },
+      ...monthsInRange.map(() => ({ width: 12 })),
+      { width: 12 },
+    ];
+
+    // Helper: format "YYYY-MM" → "Mon YYYY" (e.g. "2025-04" → "Apr 2025")
+    const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    function fmtMonth(ym: string): string {
+      const y = ym.slice(0, 4);
+      const m = parseInt(ym.slice(5, 7), 10) - 1;
+      return `${MONTH_NAMES[m]} ${y}`;
+    }
+
+    // Row 1 — Org header
+    wsM.mergeCells(1, 1, 1, MB_COLS);
+    const mr1 = wsM.getCell(1, 1);
+    mr1.value = orgLine;
+    mr1.font  = { bold: true, size: 13, color: { argb: WHITE }, name: "Calibri" };
+    mr1.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: TEAL_MB } };
+    mr1.alignment = { horizontal: "center", vertical: "middle" };
+    wsM.getRow(1).height = 26;
+
+    // Row 2 — Report title
+    wsM.mergeCells(2, 1, 2, MB_COLS);
+    const mr2 = wsM.getCell(2, 1);
+    mr2.value = "STAFF ATTENDANCE — MONTHLY BREAKDOWN";
+    mr2.font  = { bold: true, size: 14, color: { argb: AMBER }, name: "Calibri" };
+    mr2.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: TEAL_MB } };
+    mr2.alignment = { horizontal: "center", vertical: "middle" };
+    wsM.getRow(2).height = 26;
+
+    // Row 3 — Period info
+    wsM.mergeCells(3, 1, 3, MB_COLS);
+    const mr3 = wsM.getCell(3, 1);
+    mr3.value = `${staffPart}Period: ${rawFrom}  →  ${rawTo}   |   ${uniqueStaff} staff   |   ${monthsInRange.length} month(s)`;
+    mr3.font  = { bold: true, size: 10, color: { argb: WHITE }, name: "Calibri" };
+    mr3.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0D9488" } };
+    mr3.alignment = { horizontal: "center", vertical: "middle" };
+    wsM.getRow(3).height = 18;
+
+    // Spacer
+    wsM.getRow(4).height = 8;
+
+    // Row 5 — Column headers
+    const mHRow = wsM.getRow(5);
+    mHRow.height = 30;
+    const mHeaders = ["Staff Name", "EMP ID", ...monthsInRange.map(fmtMonth), "Total"];
+    mHeaders.forEach((h, ci) => {
+      const cell = mHRow.getCell(ci + 1);
+      cell.value = h;
+      cell.font  = { bold: true, size: 9, color: { argb: WHITE }, name: "Calibri" };
+      cell.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: TEAL_MB } };
+      cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+      cell.border = { bottom: { style: "thin", color: { argb: AMBER } } };
+    });
+
+    // Data rows starting at row 6
+    const mAltFill: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: LGRAY } };
+    let mDataRow = 6;
+    // Monthly column totals accumulator
+    const monthTotals = new Array<number>(monthsInRange.length).fill(0);
+
+    for (const [idx, s] of staffBreakdown.entries()) {
+      const dr = wsM.getRow(mDataRow);
+      dr.height = 16;
+      const isAlt = idx % 2 === 1;
+
+      // Staff Name (col 1)
+      const nameCell = dr.getCell(1);
+      nameCell.value = s.staffName;
+      nameCell.font  = { size: 9, name: "Calibri", color: { argb: "FF111827" } };
+      nameCell.alignment = { horizontal: "left", vertical: "middle" };
+      if (isAlt) nameCell.fill = mAltFill;
+      nameCell.border = { bottom: { style: "hair", color: { argb: "FFD1D5DB" } } };
+
+      // EMP ID (col 2)
+      const empCell = dr.getCell(2);
+      empCell.value = s.empCode;
+      empCell.font  = { size: 9, name: "Calibri", color: { argb: "FF111827" } };
+      empCell.alignment = { horizontal: "center", vertical: "middle" };
+      if (isAlt) empCell.fill = mAltFill;
+      empCell.border = { bottom: { style: "hair", color: { argb: "FFD1D5DB" } } };
+
+      // One column per month
+      let rowTotal = 0;
+      for (let mi = 0; mi < monthsInRange.length; mi++) {
+        const month = monthsInRange[mi]!;
+        const days  = s.monthDays.get(month)?.size ?? 0;
+        rowTotal += days;
+        monthTotals[mi]! += days;
+        const mc = dr.getCell(3 + mi);
+        mc.value = days > 0 ? days : "";
+        mc.font  = { size: 9, name: "Calibri", color: { argb: days > 0 ? "FF111827" : "FFD1D5DB" } };
+        mc.alignment = { horizontal: "center", vertical: "middle" };
+        if (isAlt) mc.fill = mAltFill;
+        mc.border = { bottom: { style: "hair", color: { argb: "FFD1D5DB" } } };
+      }
+
+      // Total (last col)
+      const totalCol = 3 + monthsInRange.length;
+      const totCell  = dr.getCell(totalCol);
+      totCell.value  = rowTotal;
+      totCell.font   = { bold: true, size: 9, name: "Calibri", color: { argb: TEAL_MB } };
+      totCell.alignment = { horizontal: "center", vertical: "middle" };
+      if (isAlt) totCell.fill = mAltFill;
+      totCell.border = { bottom: { style: "hair", color: { argb: "FFD1D5DB" } } };
+
+      mDataRow++;
+    }
+
+    // Footer totals row
+    const ftMRow  = wsM.getRow(mDataRow);
+    ftMRow.height = 18;
+
+    // Label spanning cols 1-2
+    wsM.mergeCells(mDataRow, 1, mDataRow, 2);
+    const ftMLabel = ftMRow.getCell(1);
+    ftMLabel.value = `MONTHLY TOTALS  (${uniqueStaff} staff)`;
+    ftMLabel.font  = { bold: true, size: 9, color: { argb: WHITE }, name: "Calibri" };
+    ftMLabel.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: TEAL_MB } };
+    ftMLabel.alignment = { horizontal: "center", vertical: "middle" };
+
+    // One total per month
+    let grandTotal = 0;
+    for (let mi = 0; mi < monthsInRange.length; mi++) {
+      const mt = monthTotals[mi]!;
+      grandTotal += mt;
+      const mc = ftMRow.getCell(3 + mi);
+      mc.value = mt;
+      mc.font  = { bold: true, size: 9, color: { argb: WHITE }, name: "Calibri" };
+      mc.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: TEAL_MB } };
+      mc.alignment = { horizontal: "center", vertical: "middle" };
+    }
+
+    // Grand total (last col)
+    const ftGrandCell = ftMRow.getCell(3 + monthsInRange.length);
+    ftGrandCell.value = grandTotal;
+    ftGrandCell.font  = { bold: true, size: 9, color: { argb: WHITE }, name: "Calibri" };
+    ftGrandCell.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: TEAL_MB } };
+    ftGrandCell.alignment = { horizontal: "center", vertical: "middle" };
 
     // Stream response
     const suffix = staffNameHdr ? `-${staffNameHdr.replace(/\s+/g, "-")}` : "-all-staff";
