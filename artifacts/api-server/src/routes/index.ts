@@ -10,6 +10,7 @@ import reportsRouter from "./reports";
 import noticesRouter from "./notices";
 import companiesRouter from "./companies";
 import superAdminRouter from "./super-admin";
+import reportScheduleRouter from "./report-schedule";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(adminRouter);
 router.use(candidatesRouter);
 router.use(reportsRouter);
 router.use(noticesRouter);
+router.use(reportScheduleRouter);
 
 export default router;

@@ -4,7 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { Download, FileSpreadsheet, Loader2, X, Search, Users, CalendarCheck, TrendingUp, ChevronDown, ChevronUp, Camera, ExternalLink } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Download, FileSpreadsheet, Loader2, X, Search, Users, CalendarCheck, TrendingUp, ChevronDown, ChevronUp, Camera, ExternalLink, Mail, Clock, Bell, Plus, Send, Trash2 } from "lucide-react";
 import { format, subMonths } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
@@ -52,6 +55,18 @@ interface TripReportRow {
   variancePct?: number | null;
   startOdometer?: number | null;
   endOdometer?: number | null;
+}
+
+interface ReportSchedule {
+  id: string;
+  frequency: "daily" | "weekly" | "monthly";
+  recipients: string[];
+  enabled: boolean;
+  dayOfWeek: number | null;
+  dayOfMonth: number | null;
+  hourUtc: number;
+  lastSentAt: string | null;
+  updatedAt: string;
 }
 
 async function fetchWithAuth(url: string) {
@@ -176,6 +191,20 @@ export default function Reports() {
   const [tripLoading, setTripLoading] = useState(false);
   const [tripError, setTripError] = useState<string | null>(null);
   const [reportVisible, setReportVisible] = useState(false);
+
+  // Email schedule state
+  const [schedule, setSchedule] = useState<ReportSchedule | null>(null);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [emailConfigured, setEmailConfigured] = useState(false);
+  const [scheduleEditing, setScheduleEditing] = useState(false);
+  const [schedFrequency, setSchedFrequency] = useState<"daily" | "weekly" | "monthly">("weekly");
+  const [schedDayOfWeek, setSchedDayOfWeek] = useState(1);
+  const [schedDayOfMonth, setSchedDayOfMonth] = useState(1);
+  const [schedHourUtc, setSchedHourUtc] = useState(2);
+  const [schedRecipients, setSchedRecipients] = useState<string[]>([]);
+  const [schedEmailInput, setSchedEmailInput] = useState("");
+  const [schedSaving, setSchedSaving] = useState(false);
+  const [schedSendingNow, setSchedSendingNow] = useState(false);
 
   const fetchSummary = useCallback(async (from: string, to: string, staffId?: string) => {
     setSummaryLoading(true);
@@ -372,6 +401,163 @@ export default function Reports() {
       toast({ title: "Download failed", description: err.message || "Could not download attendance summary.", variant: "destructive" });
     } finally {
       setIsDownloadingAttendanceSummary(false);
+    }
+  };
+
+  // ─── Email schedule functions ───────────────────────────────────────────────
+
+  const fetchSchedule = useCallback(async () => {
+    setScheduleLoading(true);
+    try {
+      const res = await fetchWithAuth("/api/admin/report-schedule");
+      if (res.ok) {
+        const data = await res.json() as { schedule: ReportSchedule | null; emailConfigured: boolean };
+        setSchedule(data.schedule);
+        setEmailConfigured(data.emailConfigured);
+        if (data.schedule) {
+          setSchedFrequency(data.schedule.frequency);
+          setSchedDayOfWeek(data.schedule.dayOfWeek ?? 1);
+          setSchedDayOfMonth(data.schedule.dayOfMonth ?? 1);
+          setSchedHourUtc(data.schedule.hourUtc);
+          setSchedRecipients(data.schedule.recipients);
+        }
+      }
+    } catch { /* ignore */ }
+    setScheduleLoading(false);
+  }, []);
+
+  useEffect(() => { fetchSchedule(); }, [fetchSchedule]);
+
+  const startEditing = () => {
+    if (schedule) {
+      setSchedFrequency(schedule.frequency);
+      setSchedDayOfWeek(schedule.dayOfWeek ?? 1);
+      setSchedDayOfMonth(schedule.dayOfMonth ?? 1);
+      setSchedHourUtc(schedule.hourUtc);
+      setSchedRecipients([...schedule.recipients]);
+    } else {
+      setSchedFrequency("weekly");
+      setSchedDayOfWeek(1);
+      setSchedDayOfMonth(1);
+      setSchedHourUtc(2);
+      setSchedRecipients([]);
+    }
+    setSchedEmailInput("");
+    setScheduleEditing(true);
+  };
+
+  const addEmail = () => {
+    const email = schedEmailInput.trim();
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRe.test(email)) {
+      toast({ title: "Invalid email", description: "Please enter a valid email address.", variant: "destructive" });
+      return;
+    }
+    if (schedRecipients.includes(email)) {
+      toast({ title: "Already added", description: `${email} is already in the list.`, variant: "destructive" });
+      return;
+    }
+    setSchedRecipients(prev => [...prev, email]);
+    setSchedEmailInput("");
+  };
+
+  const removeEmail = (email: string) => {
+    setSchedRecipients(prev => prev.filter(e => e !== email));
+  };
+
+  const handleSaveSchedule = async () => {
+    if (schedRecipients.length === 0) {
+      toast({ title: "No recipients", description: "Add at least one recipient email.", variant: "destructive" });
+      return;
+    }
+    setSchedSaving(true);
+    try {
+      const body = {
+        frequency: schedFrequency,
+        recipients: schedRecipients,
+        enabled: true,
+        dayOfWeek: schedFrequency === "weekly" ? schedDayOfWeek : null,
+        dayOfMonth: schedFrequency === "monthly" ? schedDayOfMonth : null,
+        hourUtc: schedHourUtc,
+      };
+      const res = await fetch("/api/admin/report-schedule", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-admin-phone": getAdminPhone() },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as any).title || `Error ${res.status}`);
+      }
+      const data = await res.json() as { schedule: ReportSchedule };
+      setSchedule(data.schedule);
+      setScheduleEditing(false);
+      toast({ title: "Schedule saved", description: "Email delivery schedule has been configured." });
+    } catch (err: any) {
+      toast({ title: "Save failed", description: err.message, variant: "destructive" });
+    } finally {
+      setSchedSaving(false);
+    }
+  };
+
+  const handleToggleSchedule = async (enabled: boolean) => {
+    if (!schedule) return;
+    try {
+      if (enabled) {
+        const body = {
+          frequency: schedule.frequency,
+          recipients: schedule.recipients,
+          enabled: true,
+          dayOfWeek: schedule.dayOfWeek,
+          dayOfMonth: schedule.dayOfMonth,
+          hourUtc: schedule.hourUtc,
+        };
+        const res = await fetch("/api/admin/report-schedule", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", "x-admin-phone": getAdminPhone() },
+          body: JSON.stringify(body),
+        });
+        if (res.ok) {
+          const data = await res.json() as { schedule: ReportSchedule };
+          setSchedule(data.schedule);
+          toast({ title: "Schedule enabled" });
+        }
+      } else {
+        const res = await fetch("/api/admin/report-schedule", {
+          method: "DELETE",
+          headers: { "x-admin-phone": getAdminPhone() },
+        });
+        if (res.ok) {
+          setSchedule(prev => prev ? { ...prev, enabled: false } : null);
+          toast({ title: "Schedule paused" });
+        }
+      }
+    } catch { /* ignore */ }
+  };
+
+  const handleSendNow = async () => {
+    if (schedRecipients.length === 0 && (!schedule || schedule.recipients.length === 0)) {
+      toast({ title: "No recipients", description: "Configure recipients first.", variant: "destructive" });
+      return;
+    }
+    const recipients = scheduleEditing ? schedRecipients : (schedule?.recipients ?? []);
+    setSchedSendingNow(true);
+    try {
+      const res = await fetch("/api/admin/report-schedule/send-now", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-phone": getAdminPhone() },
+        body: JSON.stringify({ recipients }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as any).title || `Error ${res.status}`);
+      }
+      toast({ title: "Report sent", description: `Attendance summary emailed to ${recipients.join(", ")}.` });
+      await fetchSchedule();
+    } catch (err: any) {
+      toast({ title: "Send failed", description: err.message, variant: "destructive" });
+    } finally {
+      setSchedSendingNow(false);
     }
   };
 
@@ -642,6 +828,248 @@ export default function Reports() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Email Schedule ── */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Mail className="h-5 w-5 text-teal-600" />
+                Scheduled Email Delivery
+                {schedule?.enabled && (
+                  <Badge variant="secondary" className="bg-teal-100 text-teal-800 border-teal-200 text-xs">Active</Badge>
+                )}
+              </CardTitle>
+              <CardDescription className="mt-1">
+                Automatically email the Attendance Summary report on a recurring schedule.
+              </CardDescription>
+            </div>
+            {schedule && !scheduleEditing && (
+              <Switch
+                checked={schedule.enabled}
+                onCheckedChange={handleToggleSchedule}
+                aria-label="Toggle schedule"
+              />
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {scheduleLoading ? (
+            <div className="flex items-center gap-2 text-muted-foreground text-sm py-4 justify-center">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading…
+            </div>
+          ) : !emailConfigured ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 space-y-1">
+              <p className="text-sm font-medium text-amber-800 flex items-center gap-1.5">
+                <Bell className="h-4 w-4" /> SMTP not configured
+              </p>
+              <p className="text-xs text-amber-700">
+                Set the <code className="font-mono bg-amber-100 px-1 rounded">SMTP_HOST</code>,{" "}
+                <code className="font-mono bg-amber-100 px-1 rounded">SMTP_USER</code>, and{" "}
+                <code className="font-mono bg-amber-100 px-1 rounded">SMTP_PASS</code> environment variables to enable email delivery.
+                Optionally set <code className="font-mono bg-amber-100 px-1 rounded">SMTP_PORT</code> (default 587) and{" "}
+                <code className="font-mono bg-amber-100 px-1 rounded">SMTP_FROM</code>.
+              </p>
+            </div>
+          ) : !scheduleEditing ? (
+            schedule ? (
+              <div className="space-y-3">
+                <div className="rounded-lg border bg-muted/40 px-4 py-3 space-y-2">
+                  <div className="flex items-center gap-3 text-sm">
+                    <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <div>
+                      <span className="font-medium capitalize">{schedule.frequency}</span>
+                      {schedule.frequency === "weekly" && schedule.dayOfWeek !== null && (
+                        <span className="text-muted-foreground ml-1">
+                          — every {["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][schedule.dayOfWeek]}
+                        </span>
+                      )}
+                      {schedule.frequency === "monthly" && schedule.dayOfMonth !== null && (
+                        <span className="text-muted-foreground ml-1">
+                          — on the {schedule.dayOfMonth}{["st","nd","rd"][schedule.dayOfMonth - 1] ?? "th"} of each month
+                        </span>
+                      )}
+                      <span className="text-muted-foreground ml-1">at {String(schedule.hourUtc).padStart(2,"0")}:00 UTC</span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 text-sm">
+                    <Mail className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                    <div className="flex flex-wrap gap-1">
+                      {schedule.recipients.map(r => (
+                        <Badge key={r} variant="secondary" className="text-xs font-mono">{r}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                  {schedule.lastSentAt && (
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <Send className="h-3.5 w-3.5 shrink-0" />
+                      Last sent: {new Date(schedule.lastSentAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })} IST
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={startEditing} className="gap-1.5">
+                    Edit Schedule
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSendNow}
+                    disabled={schedSendingNow}
+                    className="gap-1.5 border-teal-600 text-teal-700 hover:bg-teal-50"
+                  >
+                    {schedSendingNow ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                    {schedSendingNow ? "Sending…" : "Send Now"}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  No schedule configured yet. Set one up to receive the Attendance Summary automatically by email.
+                </p>
+                <Button variant="outline" size="sm" onClick={startEditing} className="gap-1.5">
+                  <Plus className="h-4 w-4" />
+                  Configure Schedule
+                </Button>
+              </div>
+            )
+          ) : (
+            /* ── Editing form ── */
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Frequency</Label>
+                  <Select value={schedFrequency} onValueChange={(v) => setSchedFrequency(v as "daily" | "weekly" | "monthly")}>
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daily">Daily</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Send Time (UTC hour)</Label>
+                  <Select value={String(schedHourUtc)} onValueChange={(v) => setSchedHourUtc(Number(v))}>
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 24 }, (_, i) => (
+                        <SelectItem key={i} value={String(i)}>{String(i).padStart(2,"0")}:00 UTC</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {schedFrequency === "weekly" && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Day of Week</Label>
+                  <Select value={String(schedDayOfWeek)} onValueChange={(v) => setSchedDayOfWeek(Number(v))}>
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"].map((d, i) => (
+                        <SelectItem key={i} value={String(i)}>{d}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {schedFrequency === "monthly" && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Day of Month (1–28)</Label>
+                  <Select value={String(schedDayOfMonth)} onValueChange={(v) => setSchedDayOfMonth(Number(v))}>
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
+                        <SelectItem key={d} value={String(d)}>{d}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Recipients */}
+              <div className="space-y-2">
+                <Label className="text-xs">Recipients</Label>
+                {schedRecipients.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {schedRecipients.map(r => (
+                      <Badge key={r} variant="secondary" className="text-xs font-mono gap-1 pr-1">
+                        {r}
+                        <button
+                          onClick={() => removeEmail(r)}
+                          className="ml-0.5 hover:text-destructive transition-colors"
+                          aria-label={`Remove ${r}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Input
+                    type="email"
+                    placeholder="recipient@example.com"
+                    value={schedEmailInput}
+                    onChange={e => setSchedEmailInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addEmail(); } }}
+                    className="h-8 text-sm flex-1"
+                  />
+                  <Button variant="outline" size="sm" onClick={addEmail} className="h-8 gap-1">
+                    <Plus className="h-3.5 w-3.5" />
+                    Add
+                  </Button>
+                </div>
+                {schedRecipients.length === 0 && (
+                  <p className="text-xs text-muted-foreground">Add at least one recipient email address.</p>
+                )}
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <Button
+                  size="sm"
+                  onClick={handleSaveSchedule}
+                  disabled={schedSaving || schedRecipients.length === 0}
+                  className="gap-1.5"
+                >
+                  {schedSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                  {schedSaving ? "Saving…" : "Save Schedule"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSendNow}
+                  disabled={schedSendingNow || schedRecipients.length === 0}
+                  className="gap-1.5 border-teal-600 text-teal-700 hover:bg-teal-50"
+                >
+                  {schedSendingNow ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                  {schedSendingNow ? "Sending…" : "Test Send Now"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setScheduleEditing(false)}
+                  disabled={schedSaving || schedSendingNow}
+                  className="text-muted-foreground"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* ── Ride Report Viewer ── */}
       {reportVisible && (
