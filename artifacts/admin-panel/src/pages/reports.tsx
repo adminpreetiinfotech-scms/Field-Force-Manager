@@ -146,7 +146,9 @@ export default function Reports() {
   const [toDate, setToDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [isDownloading, setIsDownloading] = useState(false);
   const [isDownloadingVehicleKm, setIsDownloadingVehicleKm] = useState(false);
+  const [isDownloadingAttendance, setIsDownloadingAttendance] = useState(false);
   const [isDownloadingCsv, setIsDownloadingCsv] = useState(false);
+  const [attendanceRowCount, setAttendanceRowCount] = useState<number | null>(null);
   const { toast } = useToast();
 
   // Staff filter state
@@ -189,6 +191,26 @@ export default function Reports() {
   useEffect(() => {
     fetchSummary(fromDate, toDate, selectedStaff?.id);
   }, [fromDate, toDate, selectedStaff, fetchSummary]);
+
+  const fetchAttendanceCount = useCallback(async (from: string, to: string, staffId?: string) => {
+    try {
+      const params = new URLSearchParams({ dateFrom: from, dateTo: to });
+      if (staffId) params.set("staffId", staffId);
+      const res = await fetchWithAuth(`/api/admin/field-attendance?${params}`);
+      if (res.ok) {
+        const data: unknown = await res.json();
+        setAttendanceRowCount(Array.isArray(data) ? data.length : null);
+      } else {
+        setAttendanceRowCount(null);
+      }
+    } catch {
+      setAttendanceRowCount(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAttendanceCount(fromDate, toDate, selectedStaff?.id);
+  }, [fromDate, toDate, selectedStaff, fetchAttendanceCount]);
 
   // Single fetch path: runs whenever the viewer is visible and filters change
   useEffect(() => {
@@ -302,6 +324,26 @@ export default function Reports() {
       toast({ title: "Download failed", description: err.message || "Could not download report.", variant: "destructive" });
     } finally {
       setIsDownloadingVehicleKm(false);
+    }
+  };
+
+  const handleDownloadFieldAttendance = async () => {
+    setIsDownloadingAttendance(true);
+    try {
+      const params = new URLSearchParams({ dateFrom: fromDate, dateTo: toDate });
+      if (selectedStaff) {
+        params.set("staffId", selectedStaff.id);
+      }
+      const suffix = selectedStaff ? `-${selectedStaff.name.replace(/\s+/g, "-")}` : "-all-staff";
+      await downloadBlob(
+        `/api/admin/field-attendance/xlsx?${params}`,
+        `field-attendance-${fromDate}-to-${toDate}${suffix}.xlsx`
+      );
+      toast({ title: "Download started", description: "Field attendance Excel is being downloaded." });
+    } catch (err: any) {
+      toast({ title: "Download failed", description: err.message || "Could not download field attendance.", variant: "destructive" });
+    } finally {
+      setIsDownloadingAttendance(false);
     }
   };
 
@@ -480,6 +522,19 @@ export default function Reports() {
             >
               {isDownloadingVehicleKm ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
               {isDownloadingVehicleKm ? "Downloading..." : selectedStaff ? `Export KM Summary for ${selectedStaff.name}` : "Export Vehicle KM Summary"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleDownloadFieldAttendance}
+              className="w-full gap-2 border-purple-600 text-purple-700 hover:bg-purple-50"
+              disabled={isDownloadingAttendance || attendanceRowCount === 0}
+            >
+              {isDownloadingAttendance ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              {isDownloadingAttendance
+                ? "Downloading..."
+                : attendanceRowCount != null
+                  ? `Export Field Attendance Excel (${attendanceRowCount} ${attendanceRowCount === 1 ? "row" : "rows"})`
+                  : "Export Field Attendance Excel"}
             </Button>
 
             {/* View on-screen report */}
