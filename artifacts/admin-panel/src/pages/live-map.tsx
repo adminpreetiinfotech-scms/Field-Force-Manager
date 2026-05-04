@@ -730,6 +730,7 @@ export default function LiveMapPage() {
     if (filterStatus !== "outside-fence") {
       if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
       setFenceChangeNotice(null);
+      prevOutsideFenceCountRef.current = null;
     }
   }, [filterStatus]);
 
