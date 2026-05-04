@@ -1,5 +1,4 @@
-import { useGetDashboardStats, useGetDismissedHints, useDismissHint, getGetDismissedHintsQueryKey } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useGetDashboardStats } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,8 +9,8 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
-import { useEffect, useState, useCallback } from "react";
-import { DASHBOARD_HINT_KEYS } from "@/lib/dashboard-hints";
+import { useEffect, useState } from "react";
+import { DASHBOARD_HINT_KEYS, useDashboardHint } from "@/lib/dashboard-hints";
 
 interface SubscriptionInfo {
   plan: string | null;
@@ -132,44 +131,7 @@ export default function Dashboard() {
   const todayIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const [subInfo, setSubInfo] = useState<SubscriptionInfo | null>(null);
 
-  // Optimistic local state — initialise from localStorage for instant render,
-  // then override with the authoritative server value once it loads.
-  const [centerHintDismissed, setCenterHintDismissed] = useState(
-    () => localStorage.getItem(DASHBOARD_HINT_KEYS.centerStaff) === "true"
-  );
-
-  const queryClient = useQueryClient();
-  const { data: serverHints } = useGetDismissedHints();
-  const { mutate: dismissHintOnServer } = useDismissHint();
-
-  // Sync from server: once hints load, override the local optimistic state.
-  useEffect(() => {
-    if (!serverHints) return;
-    const serverDismissed = serverHints.dismissedHints.includes(DASHBOARD_HINT_KEYS.centerStaff);
-    // Keep localStorage in sync with server value.
-    if (serverDismissed) {
-      localStorage.setItem(DASHBOARD_HINT_KEYS.centerStaff, "true");
-    } else {
-      localStorage.removeItem(DASHBOARD_HINT_KEYS.centerStaff);
-    }
-    setCenterHintDismissed(serverDismissed);
-  }, [serverHints]);
-
-  const dismissCenterHint = useCallback(() => {
-    // Optimistic update — hide the hint immediately.
-    localStorage.setItem(DASHBOARD_HINT_KEYS.centerStaff, "true");
-    setCenterHintDismissed(true);
-    // Persist to server and update the query cache so settings page reflects the new count.
-    dismissHintOnServer({ data: { key: DASHBOARD_HINT_KEYS.centerStaff } }, {
-      onSuccess: (data) => {
-        queryClient.setQueryData(getGetDismissedHintsQueryKey(), data);
-      },
-      onError: () => {
-        // On failure, invalidate so the next fetch re-syncs state from server.
-        queryClient.invalidateQueries({ queryKey: getGetDismissedHintsQueryKey() });
-      },
-    });
-  }, [dismissHintOnServer, queryClient]);
+  const [centerHintDismissed, dismissCenterHint] = useDashboardHint(DASHBOARD_HINT_KEYS.centerStaff);
 
   useEffect(() => {
     const phone = getAdminPhone();
