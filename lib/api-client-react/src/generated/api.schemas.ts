@@ -410,6 +410,10 @@ export interface TripReportRow {
   endLocation?: string | null;
   /** Total distance travelled in kilometres. */
   distanceKm?: number | null;
+  /** URL of the odometer photo taken at check-in, if available. */
+  checkinPhotoUrl?: string | null;
+  /** URL of the odometer photo taken at check-out, if available. */
+  checkoutPhotoUrl?: string | null;
 }
 
 /**
@@ -506,6 +510,8 @@ export interface DashboardStats {
   fieldAbsentToday: number;
   /** Number of field staff who checked in but have not yet checked out today. */
   fieldPartialToday: number;
+  /** Total number of staff with staffCategory = field. Used to distinguish "all absent" from "none configured". */
+  totalFieldStaff: number;
 }
 
 export type CompanyStatus = typeof CompanyStatus[keyof typeof CompanyStatus];

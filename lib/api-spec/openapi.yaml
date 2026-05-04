@@ -2197,6 +2197,9 @@ components:
         fieldPartialToday:
           type: integer
           description: Number of field staff who checked in but have not yet checked out today.
+        totalFieldStaff:
+          type: integer
+          description: Total number of staff with staffCategory = field. Used to distinguish "all absent" from "none configured".
       required:
         - totalCandidates
         - pendingCandidates
@@ -2215,6 +2218,7 @@ components:
         - fieldPresentToday
         - fieldAbsentToday
         - fieldPartialToday
+        - totalFieldStaff
 
     Company:
       type: object

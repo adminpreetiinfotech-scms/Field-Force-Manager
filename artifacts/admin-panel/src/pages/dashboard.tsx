@@ -132,6 +132,7 @@ export default function Dashboard() {
   const [subInfo, setSubInfo] = useState<SubscriptionInfo | null>(null);
 
   const [centerHintDismissed, dismissCenterHint] = useDashboardHint(DASHBOARD_HINT_KEYS.centerStaff);
+  const [fieldHintDismissed, dismissFieldHint] = useDashboardHint(DASHBOARD_HINT_KEYS.fieldStaff);
 
   useEffect(() => {
     const phone = getAdminPhone();
@@ -285,6 +286,27 @@ export default function Dashboard() {
           <MapPin className="h-4 w-4 text-muted-foreground" />
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Field Staff — Today</h2>
         </div>
+        {stats.totalFieldStaff === 0 && !fieldHintDismissed && (
+          <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 mb-3">
+            <AlertCircle className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-blue-800">No field staff set up yet</p>
+              <p className="text-xs text-blue-700 mt-0.5">
+                These counts will remain 0 until staff are categorised as <span className="font-semibold">Field</span> in their profile.{" "}
+                <Link href="/staff" className="underline underline-offset-2 hover:text-blue-900">
+                  Go to Staff page to set up field staff.
+                </Link>
+              </p>
+            </div>
+            <button
+              onClick={dismissFieldHint}
+              className="text-blue-400 hover:text-blue-600 transition-colors shrink-0 -mt-0.5"
+              aria-label="Dismiss hint"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <StatCard
             title="Present Today"

@@ -28,4 +28,8 @@ export interface TripReportRow {
   endLocation?: string | null;
   /** Total distance travelled in kilometres. */
   distanceKm?: number | null;
+  /** URL of the odometer photo taken at check-in, if available. */
+  checkinPhotoUrl?: string | null;
+  /** URL of the odometer photo taken at check-out, if available. */
+  checkoutPhotoUrl?: string | null;
 }

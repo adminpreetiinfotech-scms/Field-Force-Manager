@@ -338,7 +338,9 @@ export const GetTripReportResponseItem = zod.object({
   "endTime": zod.coerce.date().describe('When the trip ended (ISO-8601 UTC).'),
   "startLocation": zod.string().nullish().describe('Human-readable start coords, e.g. \'28.6139, 77.2090\'.'),
   "endLocation": zod.string().nullish().describe('Human-readable end coords, e.g. \'28.5355, 77.3910\'.'),
-  "distanceKm": zod.number().nullish().describe('Total distance travelled in kilometres.')
+  "distanceKm": zod.number().nullish().describe('Total distance travelled in kilometres.'),
+  "checkinPhotoUrl": zod.string().nullish().describe('URL of the odometer photo taken at check-in, if available.'),
+  "checkoutPhotoUrl": zod.string().nullish().describe('URL of the odometer photo taken at check-out, if available.')
 }).describe('A single completed trip for the ride report \/ CSV export.')
 export const GetTripReportResponse = zod.array(GetTripReportResponseItem)
 
@@ -788,7 +790,8 @@ export const GetDashboardStatsResponse = zod.object({
   "totalCenterStaff": zod.number().describe('Total number of staff with staffCategory = center (approved or not). Used to distinguish \"all present\" from \"none configured\".'),
   "fieldPresentToday": zod.number().describe('Number of field staff who have both checked in and checked out today.'),
   "fieldAbsentToday": zod.number().describe('Number of field staff with no check-in today.'),
-  "fieldPartialToday": zod.number().describe('Number of field staff who checked in but have not yet checked out today.')
+  "fieldPartialToday": zod.number().describe('Number of field staff who checked in but have not yet checked out today.'),
+  "totalFieldStaff": zod.number().describe('Total number of staff with staffCategory = field. Used to distinguish \"all absent\" from \"none configured\".')
 })
 
 

@@ -31,4 +31,6 @@ export interface DashboardStats {
   fieldAbsentToday: number;
   /** Number of field staff who checked in but have not yet checked out today. */
   fieldPartialToday: number;
+  /** Total number of staff with staffCategory = field. Used to distinguish "all absent" from "none configured". */
+  totalFieldStaff: number;
 }
