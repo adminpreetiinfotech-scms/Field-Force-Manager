@@ -500,6 +500,16 @@ export interface DashboardStats {
   centerViolationsToday: number;
   /** Total number of staff with staffCategory = center (approved or not). Used to distinguish "all present" from "none configured". */
   totalCenterStaff: number;
+  /** Number of field staff who have both checked in and checked out today. */
+  fieldPresentToday: number;
+  /** Number of field staff with no check-in today. */
+  fieldAbsentToday: number;
+  /** Number of field staff who checked in but have not yet checked out today. */
+  fieldPartialToday: number;
+  /** Total number of staff with staffCategory = field. Used to distinguish "all absent" from "none configured". */
+  totalFieldStaff: number;
+  /** True when the company has a center geo-fence origin (centerLat/centerLng) configured. Used to show a hint when center staff exist but no geo-fence is set up. */
+  geofenceConfigured: boolean;
 }
 
 export type CompanyStatus = typeof CompanyStatus[keyof typeof CompanyStatus];

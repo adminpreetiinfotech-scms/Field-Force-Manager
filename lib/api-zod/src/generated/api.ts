@@ -785,7 +785,8 @@ export const GetDashboardStatsResponse = zod.object({
   "centerPresentToday": zod.number().describe('Number of center staff who have checked in today.'),
   "centerAbsentToday": zod.number().describe('Number of center staff with no check-in today.'),
   "centerViolationsToday": zod.number().describe('Number of center staff who checked in outside the geo-fence today.'),
-  "totalCenterStaff": zod.number().describe('Total number of staff with staffCategory = center (approved or not). Used to distinguish \"all present\" from \"none configured\".')
+  "totalCenterStaff": zod.number().describe('Total number of staff with staffCategory = center (approved or not). Used to distinguish \"all present\" from \"none configured\".'),
+  "geofenceConfigured": zod.boolean().describe('True when the company has a center geo-fence origin (centerLat/centerLng) configured. Used to show a hint when center staff exist but no geo-fence is set up.')
 })
 
 

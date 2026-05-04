@@ -690,6 +690,17 @@ router.get("/admin/dashboard/stats", requireAdmin, async (_req, res, next) => {
       if (row.approvalStatus === "pending") pendingApprovals += row.count;
     }
 
+    // ── Company geofence configuration ────────────────────────────────────────
+    // Super-admin has no single company, so the hint is not meaningful — default true.
+    let geofenceConfigured = companyId == null;
+    if (companyId) {
+      const [companyRow] = await db
+        .select({ centerLat: companiesTable.centerLat, centerLng: companiesTable.centerLng })
+        .from(companiesTable)
+        .where(eq(companiesTable.id, companyId));
+      geofenceConfigured = companyRow?.centerLat != null && companyRow?.centerLng != null;
+    }
+
     // ── Center staff attendance summary for today (IST) ──────────────────────
     // IST = UTC + 5h30m
     const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
@@ -809,6 +820,7 @@ router.get("/admin/dashboard/stats", requireAdmin, async (_req, res, next) => {
       centerViolationsToday,
       totalCenterStaff: centerStaffList.length,
       totalFieldStaff: fieldStaffList.length,
+      geofenceConfigured,
       fieldPresentToday,
       fieldAbsentToday,
       fieldPartialToday,

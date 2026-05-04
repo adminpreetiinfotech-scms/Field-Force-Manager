@@ -133,6 +133,7 @@ export default function Dashboard() {
 
   const [centerHintDismissed, dismissCenterHint] = useDashboardHint(DASHBOARD_HINT_KEYS.centerStaff);
   const [fieldHintDismissed, dismissFieldHint] = useDashboardHint(DASHBOARD_HINT_KEYS.fieldStaff);
+  const [centerNoGeofenceHintDismissed, dismissCenterNoGeofenceHint] = useDashboardHint(DASHBOARD_HINT_KEYS.centerNoGeofence);
 
   useEffect(() => {
     const phone = getAdminPhone();
@@ -356,6 +357,27 @@ export default function Dashboard() {
             <button
               onClick={dismissCenterHint}
               className="text-blue-400 hover:text-blue-600 transition-colors shrink-0 -mt-0.5"
+              aria-label="Dismiss hint"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+        {stats.totalCenterStaff > 0 && !stats.geofenceConfigured && !centerNoGeofenceHintDismissed && (
+          <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 mb-3">
+            <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-amber-800">Geofence zone not configured</p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                Geofence violations will always show 0 until a center location is set up.{" "}
+                <Link href="/settings" className="underline underline-offset-2 hover:text-amber-900">
+                  Go to Settings to configure the geofence zone.
+                </Link>
+              </p>
+            </div>
+            <button
+              onClick={dismissCenterNoGeofenceHint}
+              className="text-amber-400 hover:text-amber-600 transition-colors shrink-0 -mt-0.5"
               aria-label="Dismiss hint"
             >
               <X className="h-4 w-4" />

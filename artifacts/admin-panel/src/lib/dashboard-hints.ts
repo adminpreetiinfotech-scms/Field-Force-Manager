@@ -11,6 +11,7 @@ export const DASHBOARD_HINT_PREFIX = "dashboard_hint_";
 export const DASHBOARD_HINT_KEYS = {
   centerStaff: `${DASHBOARD_HINT_PREFIX}center`,
   fieldStaff: `${DASHBOARD_HINT_PREFIX}field`,
+  centerNoGeofence: `${DASHBOARD_HINT_PREFIX}center_no_geofence`,
 } as const;
 
 export type HintKey = (typeof DASHBOARD_HINT_KEYS)[keyof typeof DASHBOARD_HINT_KEYS];
@@ -18,11 +19,13 @@ export type HintKey = (typeof DASHBOARD_HINT_KEYS)[keyof typeof DASHBOARD_HINT_K
 export const DASHBOARD_HINT_LABELS: Record<HintKey, string> = {
   [DASHBOARD_HINT_KEYS.centerStaff]: "Center Staff Map Tip",
   [DASHBOARD_HINT_KEYS.fieldStaff]: "Field Staff Setup Tip",
+  [DASHBOARD_HINT_KEYS.centerNoGeofence]: "Center Geofence Not Configured",
 };
 
 export const DASHBOARD_HINT_DESCRIPTIONS: Record<HintKey, string> = {
   [DASHBOARD_HINT_KEYS.centerStaff]: "Tip shown on the dashboard map explaining how to center the view on a staff member's location. Appears above the staff list until dismissed.",
   [DASHBOARD_HINT_KEYS.fieldStaff]: "Hint shown on the dashboard when no field staff are configured. Guides admins to set up staff with the Field category.",
+  [DASHBOARD_HINT_KEYS.centerNoGeofence]: "Hint shown on the dashboard when center staff exist but no geo-fence zone has been configured. Guides admins to set up the geofence so violations can be detected.",
 };
 
 /**
