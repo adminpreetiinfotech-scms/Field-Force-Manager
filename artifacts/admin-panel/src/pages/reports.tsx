@@ -7,7 +7,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Download, FileSpreadsheet, Loader2, X, Search, Users, CalendarCheck, TrendingUp, ChevronDown, ChevronUp, Camera, ExternalLink, Mail, Clock, Bell, Plus, Send, Trash2 } from "lucide-react";
+import { Download, FileSpreadsheet, Loader2, X, Search, Users, CalendarCheck, TrendingUp, ChevronDown, ChevronUp, Camera, ExternalLink, Mail, Clock, Bell, Plus, Send, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ImageOff, ImageIcon, Filter } from "lucide-react";
 import { format, subMonths } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
@@ -192,6 +192,13 @@ export default function Reports() {
   const [tripError, setTripError] = useState<string | null>(null);
   const [reportVisible, setReportVisible] = useState(false);
 
+  // Sort + filter state (session-local)
+  type SortCol = "date" | "staff" | "km";
+  const [sortCol, setSortCol] = useState<SortCol>("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  type PhotoFilter = "all" | "has" | "missing";
+  const [photoFilter, setPhotoFilter] = useState<PhotoFilter>("all");
+
   // Email schedule state
   const [schedule, setSchedule] = useState<ReportSchedule | null>(null);
   const [scheduleLoading, setScheduleLoading] = useState(false);
@@ -284,6 +291,47 @@ export default function Reports() {
     setTripRows(null);
     setTripError(null);
   };
+
+  const handleSortCol = (col: "date" | "staff" | "km") => {
+    if (sortCol === col) {
+      setSortDir(d => d === "asc" ? "desc" : "asc");
+    } else {
+      setSortCol(col);
+      setSortDir("asc");
+    }
+  };
+
+  const displayedRows = (() => {
+    if (!tripRows) return null;
+    let rows = [...tripRows];
+    // Photo filter
+    // "has" = both check-in AND check-out photos present (fully documented)
+    // "missing" = either check-in OR check-out photo is absent (needs attention)
+    if (photoFilter === "has") {
+      rows = rows.filter(r => !!r.checkinPhotoUrl && !!r.checkoutPhotoUrl);
+    } else if (photoFilter === "missing") {
+      rows = rows.filter(r => !r.checkinPhotoUrl || !r.checkoutPhotoUrl);
+    }
+    // Sort
+    rows.sort((a, b) => {
+      let cmp = 0;
+      if (sortCol === "date") {
+        cmp = a.rideDate.localeCompare(b.rideDate) || a.startTime.localeCompare(b.startTime);
+      } else if (sortCol === "staff") {
+        cmp = a.staffName.localeCompare(b.staffName);
+      } else if (sortCol === "km") {
+        // Push rows with no KM data to the bottom regardless of sort direction
+        const aKm = a.gpsKm ?? a.distanceKm;
+        const bKm = b.gpsKm ?? b.distanceKm;
+        if (aKm == null && bKm == null) return 0;
+        if (aKm == null) return 1;
+        if (bKm == null) return -1;
+        cmp = aKm - bKm;
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return rows;
+  })();
 
   // Fetch staff list when user types
   useEffect(() => {
@@ -1087,9 +1135,16 @@ export default function Reports() {
                 <CardDescription className="mt-1">
                   {fromDate} to {toDate}
                   {tripRows && !tripLoading && (
-                    <span className="ml-2 text-xs font-medium bg-muted px-1.5 py-0.5 rounded">
-                      {tripRows.length} {tripRows.length === 1 ? "trip" : "trips"}
-                    </span>
+                    <>
+                      <span className="ml-2 text-xs font-medium bg-muted px-1.5 py-0.5 rounded">
+                        {tripRows.length} {tripRows.length === 1 ? "trip" : "trips"}
+                      </span>
+                      {displayedRows && displayedRows.length !== tripRows.length && (
+                        <span className="ml-1.5 text-xs font-medium bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded">
+                          {displayedRows.length} shown
+                        </span>
+                      )}
+                    </>
                   )}
                 </CardDescription>
               </div>
@@ -1114,77 +1169,147 @@ export default function Reports() {
               </p>
             )}
             {!tripLoading && tripRows && tripRows.length > 0 && (
-              <div className="overflow-x-auto rounded-md border">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-muted/50 border-b text-xs text-muted-foreground uppercase tracking-wide">
-                      <th className="px-3 py-2.5 text-left font-semibold">Date</th>
-                      <th className="px-3 py-2.5 text-left font-semibold">Staff</th>
-                      <th className="px-3 py-2.5 text-left font-semibold">Start</th>
-                      <th className="px-3 py-2.5 text-left font-semibold">End</th>
-                      <th className="px-3 py-2.5 text-right font-semibold">GPS KM</th>
-                      <th className="px-3 py-2.5 text-right font-semibold">Vehicle KM</th>
-                      <th className="px-3 py-2.5 text-right font-semibold">Variance</th>
-                      <th className="px-3 py-2.5 text-center font-semibold">Check-in Photo</th>
-                      <th className="px-3 py-2.5 text-center font-semibold">Check-out Photo</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {tripRows.map((row) => {
-                      const highVariance = row.variancePct != null && row.variancePct > 20;
-                      return (
-                      <tr key={row.tripRef} className={`hover:bg-muted/30 transition-colors ${highVariance ? "bg-amber-50" : ""}`}>
-                        <td className="px-3 py-2.5 whitespace-nowrap font-medium text-foreground">
-                          {fmtDate(row.rideDate)}
-                        </td>
-                        <td className="px-3 py-2.5">
-                          <div className="font-medium truncate max-w-[140px]">{row.staffName}</div>
-                          <div className="text-xs text-muted-foreground">{row.staffPhone}</div>
-                        </td>
-                        <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">
-                          {toIst(row.startTime)}
-                        </td>
-                        <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">
-                          {toIst(row.endTime)}
-                        </td>
-                        <td className="px-3 py-2.5 text-right whitespace-nowrap font-medium">
-                          {row.gpsKm != null ? `${row.gpsKm.toFixed(1)} km` : row.distanceKm != null ? `${row.distanceKm.toFixed(1)} km` : "—"}
-                        </td>
-                        <td className="px-3 py-2.5 text-right whitespace-nowrap">
-                          {row.vehicleKm != null ? (
-                            <span className="font-medium">
-                              {row.vehicleKm.toFixed(1)} km
-                              {row.startOdometer != null && row.endOdometer != null && (
-                                <span className="block text-xs text-muted-foreground">
-                                  {row.startOdometer.toLocaleString("en-IN")} → {row.endOdometer.toLocaleString("en-IN")}
-                                </span>
-                              )}
-                            </span>
-                          ) : "—"}
-                        </td>
-                        <td className="px-3 py-2.5 text-right whitespace-nowrap">
-                          {row.variancePct != null ? (
-                            <span className={`font-medium px-1.5 py-0.5 rounded text-xs ${highVariance ? "bg-amber-100 text-amber-700" : "text-muted-foreground"}`}>
-                              {row.variancePct.toFixed(1)}%
-                            </span>
-                          ) : "—"}
-                        </td>
-                        <td className="px-3 py-2.5 text-center">
-                          {row.checkinPhotoUrl ? (
-                            <OdometerPhoto url={row.checkinPhotoUrl} label="check-in odometer" />
-                          ) : null}
-                        </td>
-                        <td className="px-3 py-2.5 text-center">
-                          {row.checkoutPhotoUrl ? (
-                            <OdometerPhoto url={row.checkoutPhotoUrl} label="check-out odometer" />
-                          ) : null}
-                        </td>
+              <>
+                {/* Photo filter toolbar */}
+                <div className="flex items-center gap-2 mb-3">
+                  <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-xs text-muted-foreground">Photos:</span>
+                  {(["all", "has", "missing"] as const).map((opt) => (
+                    <button
+                      key={opt}
+                      onClick={() => setPhotoFilter(opt)}
+                      className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded border transition-colors ${
+                        photoFilter === opt
+                          ? "bg-indigo-600 text-white border-indigo-600"
+                          : "border-border text-muted-foreground hover:border-indigo-400 hover:text-indigo-600"
+                      }`}
+                    >
+                      {opt === "all" && "All"}
+                      {opt === "has" && <><ImageIcon className="h-3 w-3" /> Has photo</>}
+                      {opt === "missing" && <><ImageOff className="h-3 w-3" /> Missing photo</>}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="overflow-x-auto rounded-md border">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-muted/50 border-b text-xs text-muted-foreground uppercase tracking-wide">
+                        {/* Sortable: Date */}
+                        <th className="px-3 py-2.5 text-left font-semibold">
+                          <button
+                            onClick={() => handleSortCol("date")}
+                            className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+                          >
+                            Date
+                            {sortCol === "date" ? (
+                              sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                            ) : (
+                              <ArrowUpDown className="h-3 w-3 opacity-40" />
+                            )}
+                          </button>
+                        </th>
+                        {/* Sortable: Staff */}
+                        <th className="px-3 py-2.5 text-left font-semibold">
+                          <button
+                            onClick={() => handleSortCol("staff")}
+                            className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+                          >
+                            Staff
+                            {sortCol === "staff" ? (
+                              sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                            ) : (
+                              <ArrowUpDown className="h-3 w-3 opacity-40" />
+                            )}
+                          </button>
+                        </th>
+                        <th className="px-3 py-2.5 text-left font-semibold">Start</th>
+                        <th className="px-3 py-2.5 text-left font-semibold">End</th>
+                        {/* Sortable: KM */}
+                        <th className="px-3 py-2.5 text-right font-semibold">
+                          <button
+                            onClick={() => handleSortCol("km")}
+                            className="inline-flex items-center gap-1 hover:text-foreground transition-colors ml-auto"
+                          >
+                            GPS KM
+                            {sortCol === "km" ? (
+                              sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                            ) : (
+                              <ArrowUpDown className="h-3 w-3 opacity-40" />
+                            )}
+                          </button>
+                        </th>
+                        <th className="px-3 py-2.5 text-right font-semibold">Vehicle KM</th>
+                        <th className="px-3 py-2.5 text-right font-semibold">Variance</th>
+                        <th className="px-3 py-2.5 text-center font-semibold">Check-in Photo</th>
+                        <th className="px-3 py-2.5 text-center font-semibold">Check-out Photo</th>
                       </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y">
+                      {displayedRows && displayedRows.length === 0 ? (
+                        <tr>
+                          <td colSpan={9} className="px-3 py-10 text-center text-sm text-muted-foreground">
+                            No trips match the current filter.
+                          </td>
+                        </tr>
+                      ) : (
+                        displayedRows?.map((row) => {
+                          const highVariance = row.variancePct != null && row.variancePct > 20;
+                          return (
+                            <tr key={row.tripRef} className={`hover:bg-muted/30 transition-colors ${highVariance ? "bg-amber-50" : ""}`}>
+                              <td className="px-3 py-2.5 whitespace-nowrap font-medium text-foreground">
+                                {fmtDate(row.rideDate)}
+                              </td>
+                              <td className="px-3 py-2.5">
+                                <div className="font-medium truncate max-w-[140px]">{row.staffName}</div>
+                                <div className="text-xs text-muted-foreground">{row.staffPhone}</div>
+                              </td>
+                              <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">
+                                {toIst(row.startTime)}
+                              </td>
+                              <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground">
+                                {toIst(row.endTime)}
+                              </td>
+                              <td className="px-3 py-2.5 text-right whitespace-nowrap font-medium">
+                                {row.gpsKm != null ? `${row.gpsKm.toFixed(1)} km` : row.distanceKm != null ? `${row.distanceKm.toFixed(1)} km` : "—"}
+                              </td>
+                              <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                                {row.vehicleKm != null ? (
+                                  <span className="font-medium">
+                                    {row.vehicleKm.toFixed(1)} km
+                                    {row.startOdometer != null && row.endOdometer != null && (
+                                      <span className="block text-xs text-muted-foreground">
+                                        {row.startOdometer.toLocaleString("en-IN")} → {row.endOdometer.toLocaleString("en-IN")}
+                                      </span>
+                                    )}
+                                  </span>
+                                ) : "—"}
+                              </td>
+                              <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                                {row.variancePct != null ? (
+                                  <span className={`font-medium px-1.5 py-0.5 rounded text-xs ${highVariance ? "bg-amber-100 text-amber-700" : "text-muted-foreground"}`}>
+                                    {row.variancePct.toFixed(1)}%
+                                  </span>
+                                ) : "—"}
+                              </td>
+                              <td className="px-3 py-2.5 text-center">
+                                {row.checkinPhotoUrl ? (
+                                  <OdometerPhoto url={row.checkinPhotoUrl} label="check-in odometer" />
+                                ) : null}
+                              </td>
+                              <td className="px-3 py-2.5 text-center">
+                                {row.checkoutPhotoUrl ? (
+                                  <OdometerPhoto url={row.checkoutPhotoUrl} label="check-out odometer" />
+                                ) : null}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
