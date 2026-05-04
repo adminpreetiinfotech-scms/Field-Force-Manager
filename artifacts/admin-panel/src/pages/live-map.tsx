@@ -412,7 +412,13 @@ function MiniPin({ color, border }: { color: string; border: string }) {
 // ─── Sidebar legend (always-visible) ─────────────────────────────────────────
 
 function MapLegendSidebar({ geoFence }: { geoFence: GeoFence | null }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem("livemap:legendCollapsed") === "true"; } catch { return false; }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem("livemap:legendCollapsed", String(collapsed)); } catch {}
+  }, [collapsed]);
 
   return (
     <div className="border-t shrink-0 bg-muted/20">
