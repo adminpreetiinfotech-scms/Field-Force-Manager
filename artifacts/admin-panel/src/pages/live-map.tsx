@@ -387,6 +387,46 @@ export default function LiveMapPage() {
   const [outsideCollapsed, setOutsideCollapsed] = useState(false);
   const [insideCollapsed, setInsideCollapsed] = useState(false);
   const markerRefs = useRef<Record<string, L.Marker>>({});
+  const [fenceChangeNotice, setFenceChangeNotice] = useState<string | null>(null);
+  const prevOutsideFenceCountRef = useRef<number | null>(null);
+  const filterStatusRef = useRef(filterStatus);
+  const geoFenceRef = useRef(geoFence);
+  const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Keep refs in sync with latest state so fetchLocations can read them
+  useEffect(() => { filterStatusRef.current = filterStatus; }, [filterStatus]);
+  useEffect(() => { geoFenceRef.current = geoFence; }, [geoFence]);
+
+  // Clean up notice timer on unmount
+  useEffect(() => {
+    return () => {
+      if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+    };
+  }, []);
+
+  // Detect outside-fence count changes on every staffList update
+  useEffect(() => {
+    const fence = geoFenceRef.current;
+    if (!fence) return;
+    const newCount = staffList.filter(s => isOutsideFence(s, fence)).length;
+    const prev = prevOutsideFenceCountRef.current;
+    if (prev !== null && filterStatusRef.current === "outside-fence" && newCount !== prev) {
+      const delta = newCount - prev;
+      let msg: string;
+      if (delta > 0) {
+        msg = `${delta} more staff moved outside the fence.`;
+      } else {
+        const returned = Math.abs(delta);
+        msg = returned === 1
+          ? "1 staff member moved back inside the fence."
+          : `${returned} staff members moved back inside the fence.`;
+      }
+      setFenceChangeNotice(msg);
+      if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+      noticeTimerRef.current = setTimeout(() => setFenceChangeNotice(null), 5000);
+    }
+    prevOutsideFenceCountRef.current = newCount;
+  }, [staffList]);
 
   // Fetch geo-fence config once on mount
   useEffect(() => {
@@ -559,6 +599,22 @@ export default function LiveMapPage() {
               </SelectContent>
             </Select>
           </div>
+
+          {/* Outside-fence change notice */}
+          {fenceChangeNotice && (
+            <div className="px-3 py-2 bg-amber-50 border-b border-amber-200 flex items-start gap-2">
+              <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-800 leading-snug">{fenceChangeNotice}</p>
+              <button
+                type="button"
+                className="ml-auto text-amber-500 hover:text-amber-700 shrink-0"
+                onClick={() => setFenceChangeNotice(null)}
+                aria-label="Dismiss"
+              >
+                ×
+              </button>
+            </div>
+          )}
 
           {/* Staff list */}
           <div className="flex-1 overflow-y-auto">
