@@ -58,6 +58,14 @@ interface TripReportRow {
   endOdometer?: number | null;
 }
 
+type ReportType = "attendance" | "rideReport" | "vehicleKm";
+
+const REPORT_TYPE_OPTIONS: { value: ReportType; label: string; description: string }[] = [
+  { value: "attendance", label: "Attendance Summary", description: "Staff-wise check-in day counts" },
+  { value: "rideReport", label: "Staff Ride Report", description: "Trip details with odometer & GPS KM" },
+  { value: "vehicleKm", label: "Vehicle KM Summary", description: "Daily vehicle vs GPS KM with variance" },
+];
+
 interface ReportSchedule {
   id: string;
   frequency: "daily" | "weekly" | "monthly";
@@ -66,6 +74,7 @@ interface ReportSchedule {
   dayOfWeek: number | null;
   dayOfMonth: number | null;
   hourUtc: number;
+  reportTypes: ReportType[];
   lastSentAt: string | null;
   updatedAt: string;
 }
@@ -209,6 +218,7 @@ export default function Reports() {
   const [schedDayOfWeek, setSchedDayOfWeek] = useState(1);
   const [schedDayOfMonth, setSchedDayOfMonth] = useState(1);
   const [schedHourUtc, setSchedHourUtc] = useState(2);
+  const [schedReportTypes, setSchedReportTypes] = useState<ReportType[]>(["attendance"]);
   const [schedRecipients, setSchedRecipients] = useState<string[]>([]);
   const [schedEmailInput, setSchedEmailInput] = useState("");
   const [schedSaving, setSchedSaving] = useState(false);
@@ -468,6 +478,7 @@ export default function Reports() {
           setSchedDayOfWeek(data.schedule.dayOfWeek ?? 1);
           setSchedDayOfMonth(data.schedule.dayOfMonth ?? 1);
           setSchedHourUtc(data.schedule.hourUtc);
+          setSchedReportTypes(data.schedule.reportTypes ?? ["attendance"]);
           setSchedRecipients(data.schedule.recipients);
         }
       }
@@ -483,16 +494,26 @@ export default function Reports() {
       setSchedDayOfWeek(schedule.dayOfWeek ?? 1);
       setSchedDayOfMonth(schedule.dayOfMonth ?? 1);
       setSchedHourUtc(schedule.hourUtc);
+      setSchedReportTypes(schedule.reportTypes ?? ["attendance"]);
       setSchedRecipients([...schedule.recipients]);
     } else {
       setSchedFrequency("weekly");
       setSchedDayOfWeek(1);
       setSchedDayOfMonth(1);
       setSchedHourUtc(2);
+      setSchedReportTypes(["attendance"]);
       setSchedRecipients([]);
     }
     setSchedEmailInput("");
     setScheduleEditing(true);
+  };
+
+  const toggleReportType = (type: ReportType) => {
+    setSchedReportTypes(prev =>
+      prev.includes(type)
+        ? prev.filter(t => t !== type)
+        : [...prev, type]
+    );
   };
 
   const addEmail = () => {
@@ -519,6 +540,10 @@ export default function Reports() {
       toast({ title: "No recipients", description: "Add at least one recipient email.", variant: "destructive" });
       return;
     }
+    if (schedReportTypes.length === 0) {
+      toast({ title: "No reports selected", description: "Select at least one report type.", variant: "destructive" });
+      return;
+    }
     setSchedSaving(true);
     try {
       const body = {
@@ -528,6 +553,7 @@ export default function Reports() {
         dayOfWeek: schedFrequency === "weekly" ? schedDayOfWeek : null,
         dayOfMonth: schedFrequency === "monthly" ? schedDayOfMonth : null,
         hourUtc: schedHourUtc,
+        reportTypes: schedReportTypes,
       };
       const res = await fetch("/api/admin/report-schedule", {
         method: "PUT",
@@ -560,6 +586,7 @@ export default function Reports() {
           dayOfWeek: schedule.dayOfWeek,
           dayOfMonth: schedule.dayOfMonth,
           hourUtc: schedule.hourUtc,
+          reportTypes: schedule.reportTypes ?? ["attendance"],
         };
         const res = await fetch("/api/admin/report-schedule", {
           method: "PUT",
@@ -590,18 +617,20 @@ export default function Reports() {
       return;
     }
     const recipients = scheduleEditing ? schedRecipients : (schedule?.recipients ?? []);
+    const reportTypes = scheduleEditing ? schedReportTypes : (schedule?.reportTypes ?? ["attendance"]);
     setSchedSendingNow(true);
     try {
       const res = await fetch("/api/admin/report-schedule/send-now", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-admin-phone": getAdminPhone() },
-        body: JSON.stringify({ recipients }),
+        body: JSON.stringify({ recipients, reportTypes }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error((err as any).title || `Error ${res.status}`);
       }
-      toast({ title: "Report sent", description: `Attendance summary emailed to ${recipients.join(", ")}.` });
+      const reportLabels = REPORT_TYPE_OPTIONS.filter(o => reportTypes.includes(o.value)).map(o => o.label);
+      toast({ title: "Reports sent", description: `${reportLabels.join(", ")} emailed to ${recipients.join(", ")}.` });
       await fetchSchedule();
     } catch (err: any) {
       toast({ title: "Send failed", description: err.message, variant: "destructive" });
@@ -930,7 +959,7 @@ export default function Reports() {
                 )}
               </CardTitle>
               <CardDescription className="mt-1">
-                Automatically email the Attendance Summary report on a recurring schedule.
+                Automatically email selected reports (Attendance Summary, Staff Ride Report, Vehicle KM Summary) on a recurring schedule.
               </CardDescription>
             </div>
             {schedule && !scheduleEditing && (
@@ -983,6 +1012,17 @@ export default function Reports() {
                     </div>
                   </div>
                   <div className="flex items-start gap-3 text-sm">
+                    <FileSpreadsheet className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                    <div className="flex flex-wrap gap-1">
+                      {(schedule.reportTypes ?? ["attendance"]).map(t => {
+                        const opt = REPORT_TYPE_OPTIONS.find(o => o.value === t);
+                        return opt ? (
+                          <Badge key={t} variant="secondary" className="text-xs">{opt.label}</Badge>
+                        ) : null;
+                      })}
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 text-sm">
                     <Mail className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                     <div className="flex flex-wrap gap-1">
                       {schedule.recipients.map(r => (
@@ -1016,7 +1056,7 @@ export default function Reports() {
             ) : (
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  No schedule configured yet. Set one up to receive the Attendance Summary automatically by email.
+                  No schedule configured yet. Set one up to automatically receive selected reports by email.
                 </p>
                 <Button variant="outline" size="sm" onClick={startEditing} className="gap-1.5">
                   <Plus className="h-4 w-4" />
@@ -1086,6 +1126,30 @@ export default function Reports() {
                 </div>
               )}
 
+              {/* Report Types */}
+              <div className="space-y-2">
+                <Label className="text-xs">Reports to Include</Label>
+                <div className="space-y-2">
+                  {REPORT_TYPE_OPTIONS.map(opt => (
+                    <label key={opt.value} className="flex items-start gap-2.5 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={schedReportTypes.includes(opt.value)}
+                        onChange={() => toggleReportType(opt.value)}
+                        className="mt-0.5 h-3.5 w-3.5 rounded border-border accent-teal-600"
+                      />
+                      <span>
+                        <span className="text-sm font-medium group-hover:text-teal-700 transition-colors">{opt.label}</span>
+                        <span className="block text-xs text-muted-foreground">{opt.description}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                {schedReportTypes.length === 0 && (
+                  <p className="text-xs text-destructive">Select at least one report type.</p>
+                )}
+              </div>
+
               {/* Recipients */}
               <div className="space-y-2">
                 <Label className="text-xs">Recipients</Label>
@@ -1128,7 +1192,7 @@ export default function Reports() {
                 <Button
                   size="sm"
                   onClick={handleSaveSchedule}
-                  disabled={schedSaving || schedRecipients.length === 0}
+                  disabled={schedSaving || schedRecipients.length === 0 || schedReportTypes.length === 0}
                   className="gap-1.5"
                 >
                   {schedSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
@@ -1138,7 +1202,7 @@ export default function Reports() {
                   variant="outline"
                   size="sm"
                   onClick={handleSendNow}
-                  disabled={schedSendingNow || schedRecipients.length === 0}
+                  disabled={schedSendingNow || schedRecipients.length === 0 || schedReportTypes.length === 0}
                   className="gap-1.5 border-teal-600 text-teal-700 hover:bg-teal-50"
                 >
                   {schedSendingNow ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}

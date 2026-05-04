@@ -3,12 +3,13 @@ import { and, eq, isNull } from "drizzle-orm";
 import { Router } from "express";
 import { requireAdmin } from "./admin";
 import { isEmailConfigured } from "../lib/email";
-import { buildAndSendAttendanceSummary } from "../services/reportScheduler";
+import { buildAndSendScheduledReports, type ReportType } from "../services/reportScheduler";
 
 const router = Router();
 
+const VALID_REPORT_TYPES: ReportType[] = ["attendance", "rideReport", "vehicleKm"];
+
 // ─── GET /api/admin/report-schedule ─────────────────────────────────────────
-// Returns the current schedule config for this admin's company.
 
 router.get("/admin/report-schedule", requireAdmin, async (_req, res, next) => {
   try {
@@ -34,7 +35,6 @@ router.get("/admin/report-schedule", requireAdmin, async (_req, res, next) => {
 });
 
 // ─── PUT /api/admin/report-schedule ─────────────────────────────────────────
-// Create or update the schedule for this company.
 
 router.put("/admin/report-schedule", requireAdmin, async (req, res, next) => {
   try {
@@ -47,6 +47,7 @@ router.put("/admin/report-schedule", requireAdmin, async (req, res, next) => {
       dayOfWeek,
       dayOfMonth,
       hourUtc,
+      reportTypes,
     } = req.body as {
       frequency?: "daily" | "weekly" | "monthly";
       recipients?: string[];
@@ -54,6 +55,7 @@ router.put("/admin/report-schedule", requireAdmin, async (req, res, next) => {
       dayOfWeek?: number | null;
       dayOfMonth?: number | null;
       hourUtc?: number;
+      reportTypes?: string[];
     };
 
     if (!frequency || !["daily", "weekly", "monthly"].includes(frequency)) {
@@ -84,6 +86,15 @@ router.put("/admin/report-schedule", requireAdmin, async (req, res, next) => {
       return;
     }
 
+    const resolvedReportTypes: ReportType[] = Array.isArray(reportTypes) && reportTypes.length > 0
+      ? reportTypes.filter((t): t is ReportType => VALID_REPORT_TYPES.includes(t as ReportType))
+      : ["attendance"];
+
+    if (resolvedReportTypes.length === 0) {
+      res.status(400).json({ title: "at least one report type must be selected", status: 400 });
+      return;
+    }
+
     const cond = companyId
       ? eq(reportSchedulesTable.companyId, companyId)
       : isNull(reportSchedulesTable.companyId);
@@ -101,6 +112,7 @@ router.put("/admin/report-schedule", requireAdmin, async (req, res, next) => {
       dayOfWeek: frequency === "weekly" ? (dayOfWeek ?? null) : null,
       dayOfMonth: frequency === "monthly" ? (dayOfMonth ?? null) : null,
       hourUtc: hourUtc ?? 2,
+      reportTypes: resolvedReportTypes,
       updatedAt: new Date(),
     };
 
@@ -125,7 +137,6 @@ router.put("/admin/report-schedule", requireAdmin, async (req, res, next) => {
 });
 
 // ─── DELETE /api/admin/report-schedule ───────────────────────────────────────
-// Disable (soft-delete) the schedule.
 
 router.delete("/admin/report-schedule", requireAdmin, async (_req, res, next) => {
   try {
@@ -146,12 +157,14 @@ router.delete("/admin/report-schedule", requireAdmin, async (_req, res, next) =>
 });
 
 // ─── POST /api/admin/report-schedule/send-now ────────────────────────────────
-// Manually trigger an immediate send for this company's schedule.
 
 router.post("/admin/report-schedule/send-now", requireAdmin, async (req, res, next) => {
   try {
     const companyId = res.locals.companyId as string | null;
-    const { recipients } = req.body as { recipients?: string[] };
+    const { recipients, reportTypes } = req.body as {
+      recipients?: string[];
+      reportTypes?: string[];
+    };
 
     if (!isEmailConfigured()) {
       res.status(503).json({
@@ -173,7 +186,15 @@ router.post("/admin/report-schedule/send-now", requireAdmin, async (req, res, ne
       }
     }
 
-    // Resolve organization name
+    const resolvedReportTypes: ReportType[] = Array.isArray(reportTypes) && reportTypes.length > 0
+      ? reportTypes.filter((t): t is ReportType => VALID_REPORT_TYPES.includes(t as ReportType))
+      : ["attendance"];
+
+    if (resolvedReportTypes.length === 0) {
+      res.status(400).json({ title: "At least one valid report type is required", status: 400 });
+      return;
+    }
+
     let organization: string | null = null;
     if (companyId) {
       try {
@@ -188,19 +209,19 @@ router.post("/admin/report-schedule/send-now", requireAdmin, async (req, res, ne
       } catch { /* non-fatal */ }
     }
 
-    // Last 30 days
     const to = new Date().toISOString().slice(0, 10);
     const fromDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-    await buildAndSendAttendanceSummary({
+    await buildAndSendScheduledReports({
       companyId,
       organization,
       from: fromDate,
       to,
       recipients,
+      reportTypes: resolvedReportTypes,
     });
 
-    res.json({ success: true, sentTo: recipients });
+    res.json({ success: true, sentTo: recipients, reportTypes: resolvedReportTypes });
   } catch (err) {
     next(err);
   }

@@ -13,6 +13,7 @@ export const reportSchedulesTable = pgTable(
     dayOfWeek: integer("day_of_week"),
     dayOfMonth: integer("day_of_month"),
     hourUtc: integer("hour_utc").notNull().default(2),
+    reportTypes: text("report_types").array().notNull().default(sql`ARRAY['attendance']::text[]`),
     lastSentAt: timestamp("last_sent_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

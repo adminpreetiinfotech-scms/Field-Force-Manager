@@ -37,6 +37,20 @@ export async function sendEmailWithAttachment(opts: {
   attachmentBuffer: Buffer;
   attachmentFilename: string;
 }): Promise<void> {
+  return sendEmailWithAttachments({
+    to: opts.to,
+    subject: opts.subject,
+    html: opts.html,
+    attachments: [{ buffer: opts.attachmentBuffer, filename: opts.attachmentFilename }],
+  });
+}
+
+export async function sendEmailWithAttachments(opts: {
+  to: string[];
+  subject: string;
+  html: string;
+  attachments: Array<{ buffer: Buffer; filename: string }>;
+}): Promise<void> {
   const conn = getTransporter();
   if (!conn) {
     throw new Error(
@@ -51,18 +65,16 @@ export async function sendEmailWithAttachment(opts: {
     to: opts.to.join(", "),
     subject: opts.subject,
     html: opts.html,
-    attachments: [
-      {
-        filename: opts.attachmentFilename,
-        content: opts.attachmentBuffer,
-        contentType:
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      },
-    ],
+    attachments: opts.attachments.map((a) => ({
+      filename: a.filename,
+      content: a.buffer,
+      contentType:
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    })),
   });
 
   logger.info(
-    { to: opts.to, subject: opts.subject },
+    { to: opts.to, subject: opts.subject, attachmentCount: opts.attachments.length },
     "Email sent successfully",
   );
 }
