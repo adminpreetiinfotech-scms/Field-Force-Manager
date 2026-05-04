@@ -102,6 +102,7 @@ export default function FieldAttendance() {
   const [dateTo, setDateTo] = useState(initDateTo);
   const [selectedStaffId, setSelectedStaffId] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>(initStatus);
+  const [categoryFilter, setCategoryFilter] = useState<string>("");
 
   const loadStaff = useCallback(async () => {
     setStaffLoading(true);
@@ -136,10 +137,21 @@ export default function FieldAttendance() {
   useEffect(() => { loadStaff(); }, []);
   useEffect(() => { if (!staffLoading) loadAttendance(); }, [staffLoading, loadAttendance]);
 
+  const categories = Array.from(new Set(staffList.map((s) => s.staffCategory).filter(Boolean))).sort();
+
+  const staffCategoryMap = new Map(staffList.map((s) => [s.id, s.staffCategory]));
+
+  const visibleStaff = categoryFilter
+    ? staffList.filter((s) => s.staffCategory === categoryFilter)
+    : staffList;
+
   const filteredRows = rows.filter((r) => {
-    if (!statusFilter) return true;
-    return r.status === statusFilter;
+    if (statusFilter && r.status !== statusFilter) return false;
+    if (categoryFilter && staffCategoryMap.get(r.staffId) !== categoryFilter) return false;
+    return true;
   });
+
+  const isFiltered = !!(statusFilter || categoryFilter);
 
   const exportExcel = () => {
     if (!filteredRows.length) return;
@@ -158,7 +170,8 @@ export default function FieldAttendance() {
     ws["!cols"] = [12, 22, 10, 10, 16, 16].map((w) => ({ wch: w }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Attendance");
-    const filterSuffix = statusFilter ? `-${statusFilter}` : "";
+    const suffixes = [categoryFilter, statusFilter].filter(Boolean).join("-");
+    const filterSuffix = suffixes ? `-${suffixes}` : "";
     XLSX.writeFile(wb, `field-attendance${filterSuffix}-${dateFrom}-to-${dateTo}.xlsx`);
   };
 
@@ -209,6 +222,25 @@ export default function FieldAttendance() {
           />
         </div>
         <div className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Category</label>
+          <div className="relative">
+            <select
+              value={categoryFilter}
+              onChange={(e) => {
+                setCategoryFilter(e.target.value);
+                setSelectedStaffId("");
+              }}
+              className="border rounded-lg pl-3 pr-8 py-2 text-sm bg-background appearance-none focus:outline-none focus:ring-2 focus:ring-primary min-w-[160px]"
+            >
+              <option value="">All Categories</option>
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+            <ChevronDown className="h-4 w-4 absolute right-2 top-2.5 text-muted-foreground pointer-events-none" />
+          </div>
+        </div>
+        <div className="space-y-1">
           <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Staff</label>
           <div className="relative">
             <select
@@ -216,8 +248,8 @@ export default function FieldAttendance() {
               onChange={(e) => setSelectedStaffId(e.target.value)}
               className="border rounded-lg pl-3 pr-8 py-2 text-sm bg-background appearance-none focus:outline-none focus:ring-2 focus:ring-primary min-w-[180px]"
             >
-              <option value="">All Field Staff</option>
-              {staffList.map((s) => (
+              <option value="">All{categoryFilter ? "" : " Staff"}</option>
+              {visibleStaff.map((s) => (
                 <option key={s.id} value={s.id}>{s.name} ({s.empCode})</option>
               ))}
             </select>
@@ -246,7 +278,7 @@ export default function FieldAttendance() {
       </div>
 
       {/* Filter row count info */}
-      {statusFilter && rows.length > 0 && (
+      {isFiltered && rows.length > 0 && (
         <p className="text-sm text-muted-foreground">
           Showing <span className="font-semibold text-foreground">{filteredRows.length}</span> of{" "}
           <span className="font-semibold text-foreground">{rows.length}</span> records
@@ -281,9 +313,9 @@ export default function FieldAttendance() {
           <p className="font-medium">No attendance records found</p>
           <p className="text-sm mt-1">
             {staffList.length === 0
-              ? "No field staff found. Add staff with category 'Field' to see attendance here."
-              : statusFilter
-              ? "No records match the selected status filter. Try changing or clearing the status."
+              ? "No staff found. Add field staff to see attendance here."
+              : isFiltered
+              ? "No records match the selected filters. Try changing or clearing the category or status."
               : "Try adjusting the date range or staff filter."}
           </p>
         </div>
