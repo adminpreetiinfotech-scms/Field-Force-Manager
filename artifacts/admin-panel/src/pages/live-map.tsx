@@ -458,6 +458,15 @@ export default function LiveMapPage() {
     }
   };
 
+  const statusOrder = { active: 0, idle: 1, offline: 2 } as const;
+  const sortByStatus = (a: (typeof filtered)[0], b: (typeof filtered)[0]) => {
+    const sa = getStatusLabel(a);
+    const sb = getStatusLabel(b);
+    return statusOrder[sa] - statusOrder[sb];
+  };
+  const outsideStaff = filtered.filter((s) => isOutsideFence(s, geoFence)).sort(sortByStatus);
+  const insideStaff = filtered.filter((s) => !isOutsideFence(s, geoFence)).sort(sortByStatus);
+
   return (
     <div className="flex flex-col h-full -m-4 md:-m-8">
       {/* Header */}
@@ -544,25 +553,50 @@ export default function LiveMapPage() {
                 <p className="text-sm">No staff found</p>
               </div>
             ) : (
-              filtered
-                .sort((a, b) => {
-                  const aOutside = isOutsideFence(a, geoFence) ? 0 : 1;
-                  const bOutside = isOutsideFence(b, geoFence) ? 0 : 1;
-                  if (aOutside !== bOutside) return aOutside - bOutside;
-                  const sa = getStatusLabel(a);
-                  const sb = getStatusLabel(b);
-                  const order = { active: 0, idle: 1, offline: 2 };
-                  return order[sa] - order[sb];
-                })
-                .map((s) => (
-                  <StaffCard
-                    key={s.staffId}
-                    staff={s}
-                    selected={selectedId === s.staffId}
-                    onClick={() => handleSidebarClick(s)}
-                    geoFence={geoFence}
-                  />
-                ))
+              <>
+                {outsideStaff.length > 0 && (
+                  <>
+                    <div className="px-3 py-1.5 bg-amber-50 border-b border-amber-200 flex items-center gap-1.5">
+                      <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">
+                        Outside Fence
+                      </span>
+                      <span className="ml-auto text-xs font-medium bg-amber-200 text-amber-800 rounded-full px-1.5 py-0.5 leading-none">
+                        {outsideStaff.length}
+                      </span>
+                    </div>
+                    {outsideStaff.map((s) => (
+                      <StaffCard
+                        key={s.staffId}
+                        staff={s}
+                        selected={selectedId === s.staffId}
+                        onClick={() => handleSidebarClick(s)}
+                        geoFence={geoFence}
+                      />
+                    ))}
+                  </>
+                )}
+                {insideStaff.length > 0 && (
+                  <>
+                    <div className="px-3 py-1.5 bg-muted/40 border-b flex items-center gap-1.5">
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        All Staff
+                      </span>
+                      <span className="ml-auto text-xs font-medium bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 leading-none">
+                        {insideStaff.length}
+                      </span>
+                    </div>
+                    {insideStaff.map((s) => (
+                      <StaffCard
+                        key={s.staffId}
+                        staff={s}
+                        selected={selectedId === s.staffId}
+                        onClick={() => handleSidebarClick(s)}
+                        geoFence={geoFence}
+                      />
+                    ))}
+                  </>
+                )}
+              </>
             )}
           </div>
 
