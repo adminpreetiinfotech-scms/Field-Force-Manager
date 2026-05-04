@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type RefObject } from "react";
 import { MapContainer, TileLayer, Marker, Circle, Tooltip, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -27,6 +27,10 @@ const HANDLE_ICON = L.divIcon({
 function edgeHandlePos(lat: number, lng: number, radiusMeters: number): [number, number] {
   const lngDeg = radiusMeters / (Math.cos((lat * Math.PI) / 180) * 111320);
   return [lat, lng + lngDeg];
+}
+
+export interface GeoFenceMapPickerHandle {
+  clearHint: () => void;
 }
 
 interface Props {
@@ -161,9 +165,9 @@ function EdgeHandle({
 const DEFAULT_CENTER: [number, number] = [23.3565, 85.3095];
 const DEFAULT_ZOOM = 14;
 
-export default function GeoFenceMapPicker({
+const GeoFenceMapPicker = forwardRef<GeoFenceMapPickerHandle, Props>(function GeoFenceMapPicker({
   lat, lng, radiusMeters, onLocationChange, onRadiusChange,
-}: Props) {
+}, ref) {
   const hasCoords = lat != null && lng != null;
   const center: [number, number] = hasCoords ? [lat, lng] : DEFAULT_CENTER;
   const [showDragHint, setShowDragHint] = useState(true);
@@ -171,6 +175,13 @@ export default function GeoFenceMapPicker({
   const isDragMoveRef = useRef(false);
   const prevLatRef = useRef<number | null>(null);
   const prevLngRef = useRef<number | null>(null);
+
+  useImperativeHandle(ref, () => ({
+    clearHint() {
+      if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+      setShowDragHint(false);
+    },
+  }));
 
   useEffect(() => {
     const wasNull = prevLatRef.current == null || prevLngRef.current == null;
@@ -249,4 +260,6 @@ export default function GeoFenceMapPicker({
       </MapContainer>
     </div>
   );
-}
+});
+
+export default GeoFenceMapPicker;

@@ -8,7 +8,7 @@ import {
   Building2, Save, Loader2, Upload, X, ImageIcon,
   MapPin, Layers, GitBranch, RefreshCw, AlertTriangle, Navigation, RotateCcw, SlidersHorizontal,
 } from "lucide-react";
-import GeoFenceMapPicker from "@/components/geo-fence-map-picker";
+import GeoFenceMapPicker, { type GeoFenceMapPickerHandle } from "@/components/geo-fence-map-picker";
 import { DASHBOARD_HINT_PREFIX } from "@/lib/dashboard-hints";
 import { useGetDismissedHints, useResetDismissedHints, getGetDismissedHintsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -118,6 +118,7 @@ export default function CompanySettings() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const geoFencePickerRef = useRef<GeoFenceMapPickerHandle>(null);
 
   const user = getAdminUser();
   const companyId = user?.companyId ?? null;
@@ -183,6 +184,7 @@ export default function CompanySettings() {
       toast({ title: "Company name is required", variant: "destructive" });
       return;
     }
+    geoFencePickerRef.current?.clearHint();
     setSaving(true);
     try {
       const latNum = centerLat.trim() ? parseFloat(centerLat.trim()) : null;
@@ -432,6 +434,7 @@ export default function CompanySettings() {
 
             {/* Map picker */}
             <GeoFenceMapPicker
+              ref={geoFencePickerRef}
               lat={(() => { const v = parseFloat(centerLat); return Number.isFinite(v) ? v : null; })()}
               lng={(() => { const v = parseFloat(centerLng); return Number.isFinite(v) ? v : null; })()}
               radiusMeters={(() => { const r = parseInt(centerRadius || "200", 10); return Number.isFinite(r) && r > 0 ? r : 200; })()}
