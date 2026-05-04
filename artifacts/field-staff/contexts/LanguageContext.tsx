@@ -14,7 +14,7 @@ const strings = {
   en: {
     // Welcome
     developedBy: "Developed by Anil Yadav",
-    welcomeTitle: "Welcome to the Skill Development Registration Portal",
+    welcomeTitle: "Welcome to the Skill Center Management System",
     welcomeSub: "Please log in or register your account.",
     login: "Login",
     register: "Register",
@@ -90,7 +90,7 @@ const strings = {
   hi: {
     // Welcome
     developedBy: "Developed by Anil Yadav",
-    welcomeTitle: "कौशल विकास पंजीकरण पोर्टल में आपका स्वागत है",
+    welcomeTitle: "स्किल सेंटर मैनेजमेंट सिस्टम में आपका स्वागत है",
     welcomeSub: "कृपया लॉगिन करें या अपना खाता पंजीकृत करें।",
     login: "लॉगिन",
     register: "रजिस्टर",
