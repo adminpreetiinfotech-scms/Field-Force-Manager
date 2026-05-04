@@ -343,6 +343,13 @@ function PopupContent({ staff, geoFence }: { staff: LiveStaff; geoFence: GeoFenc
     offline: { label: "Offline", cls: "bg-slate-100 text-slate-600" },
   }[status];
   const outsideFence = isOutsideFence(staff, geoFence);
+  const outsideMeters =
+    outsideFence && geoFence && staff.lastLat != null && staff.lastLng != null
+      ? Math.round(
+          haversineMeters(staff.lastLat, staff.lastLng, geoFence.centerLat, geoFence.centerLng) -
+            geoFence.centerRadiusMeters
+        )
+      : null;
 
   return (
     <div className="min-w-[180px] text-sm space-y-1.5">
@@ -357,7 +364,7 @@ function PopupContent({ staff, geoFence }: { staff: LiveStaff; geoFence: GeoFenc
       {outsideFence && (
         <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
           <AlertTriangle className="h-3 w-3 shrink-0" />
-          Outside
+          Outside{outsideMeters !== null ? ` (${outsideMeters}m)` : ""}
           <a
             href={`${import.meta.env.BASE_URL}settings#geo-fence`}
             className="text-[10px] text-indigo-600 hover:text-indigo-800 hover:underline font-medium"
