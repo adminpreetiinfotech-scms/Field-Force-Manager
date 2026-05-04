@@ -1,8 +1,10 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import path from "path";
+import fs from "fs";
 
 const app: Express = express();
 
@@ -30,5 +32,90 @@ app.use(express.json({ limit: "25mb" }));
 app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 
 app.use("/api", router);
+
+// ─── Production static serving ────────────────────────────────────────────────
+// In production this single process serves:
+//   /admin-panel/* → React SPA (artifacts/admin-panel/dist/public)
+//   /              → Field-staff Expo landing page + manifests + static bundles
+// This makes the API server the single Autoscale entry point on port 8080.
+
+if (process.env.NODE_ENV === "production") {
+  const root = process.cwd();
+
+  // ── Admin panel (React SPA) ──────────────────────────────────────────────
+  const adminDist = path.join(root, "artifacts/admin-panel/dist/public");
+  if (fs.existsSync(adminDist)) {
+    app.use("/admin-panel", express.static(adminDist, { index: false }));
+    // SPA fallback — all unknown /admin-panel/* routes serve index.html
+    app.get("/admin-panel/*", (_req: Request, res: Response) => {
+      res.sendFile(path.join(adminDist, "index.html"));
+    });
+  }
+
+  // ── Field-staff Expo static build ────────────────────────────────────────
+  const fieldRoot = path.join(root, "artifacts/field-staff/static-build");
+  const templatePath = path.join(
+    root,
+    "artifacts/field-staff/server/templates/landing-page.html",
+  );
+
+  let landingHtml = "";
+  let appName = "SCMS Field App";
+
+  if (fs.existsSync(templatePath)) {
+    landingHtml = fs.readFileSync(templatePath, "utf-8");
+  }
+  try {
+    const appJsonPath = path.join(root, "artifacts/field-staff/app.json");
+    const appJson = JSON.parse(fs.readFileSync(appJsonPath, "utf-8")) as {
+      expo?: { name?: string };
+    };
+    appName = appJson.expo?.name ?? appName;
+  } catch {
+    // keep default name
+  }
+
+  // /status — lightweight health check (also used by Expo app)
+  app.get("/status", (_req: Request, res: Response) => {
+    res.json({ ok: true });
+  });
+
+  // / and /manifest — Expo platform manifest or landing page
+  app.get(["/", "/manifest"], (req: Request, res: Response) => {
+    const platform = req.headers["expo-platform"] as string | undefined;
+
+    if (platform === "ios" || platform === "android") {
+      const manifestPath = path.join(fieldRoot, platform, "manifest.json");
+      if (!fs.existsSync(manifestPath)) {
+        res.status(404).json({ error: `Manifest not found for: ${platform}` });
+        return;
+      }
+      res.setHeader("expo-protocol-version", "1");
+      res.setHeader("expo-sfv-version", "0");
+      res.setHeader("content-type", "application/json");
+      res.send(fs.readFileSync(manifestPath, "utf-8"));
+      return;
+    }
+
+    if (req.path === "/" && landingHtml) {
+      const proto = req.headers["x-forwarded-proto"] ?? "https";
+      const host = req.headers["x-forwarded-host"] ?? req.headers["host"] ?? "";
+      const html = landingHtml
+        .replace(/BASE_URL_PLACEHOLDER/g, `${proto}://${host}`)
+        .replace(/EXPS_URL_PLACEHOLDER/g, String(host))
+        .replace(/APP_NAME_PLACEHOLDER/g, appName);
+      res.setHeader("content-type", "text/html; charset=utf-8");
+      res.send(html);
+      return;
+    }
+
+    res.status(404).send("Not found");
+  });
+
+  // Field-staff static assets (JS bundles, images, etc.)
+  if (fs.existsSync(fieldRoot)) {
+    app.use(express.static(fieldRoot));
+  }
+}
 
 export default app;

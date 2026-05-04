@@ -841,24 +841,41 @@ router.get("/activity/trip-report", async (req, res, next) => {
       return;
     }
 
-    // Build staffId::date → { checkinPhotoUri, checkoutPhotoUri } from checkin/checkout events.
+    // Build staffId::date → { checkinPhotoUri, checkoutPhotoUri, startOdometerKm, endOdometerKm }
     const IST_OFFSET = 5.5 * 60 * 60 * 1000;
     const toISTDate = (d: Date) =>
       new Date(d.getTime() + IST_OFFSET).toISOString().slice(0, 10);
 
-    type PhotoDay = { checkinPhotoUri: string | null; checkoutPhotoUri: string | null };
+    type PhotoDay = {
+      checkinPhotoUri: string | null;
+      checkoutPhotoUri: string | null;
+      startOdometerKm: number | null;
+      endOdometerKm: number | null;
+    };
     const photoMap = new Map<string, PhotoDay>();
     for (const row of attendRows) {
       const key = `${row.staffId}::${toISTDate(row.occurredAt as Date)}`;
       const p = (row.payload || {}) as ActivityPayload;
-      const existing = photoMap.get(key) ?? { checkinPhotoUri: null, checkoutPhotoUri: null };
-      if (row.kind === "checkin" && p.vehicleMeterPhotoUri) {
-        existing.checkinPhotoUri = p.vehicleMeterPhotoUri;
+      const existing = photoMap.get(key) ?? { checkinPhotoUri: null, checkoutPhotoUri: null, startOdometerKm: null, endOdometerKm: null };
+      if (row.kind === "checkin") {
+        if (p.vehicleMeterPhotoUri) existing.checkinPhotoUri = p.vehicleMeterPhotoUri;
+        if (typeof p.startOdometerKm === "number") existing.startOdometerKm = p.startOdometerKm;
       }
-      if (row.kind === "checkout" && p.vehicleMeterPhotoUri) {
-        existing.checkoutPhotoUri = p.vehicleMeterPhotoUri;
+      if (row.kind === "checkout") {
+        if (p.vehicleMeterPhotoUri) existing.checkoutPhotoUri = p.vehicleMeterPhotoUri;
+        if (typeof p.endOdometerKm === "number") existing.endOdometerKm = p.endOdometerKm;
       }
       photoMap.set(key, existing);
+    }
+
+    // Build staffId::date → total GPS KM (sum of all completed trip distanceKm that day)
+    const dayGpsMap = new Map<string, number>();
+    for (const { start, end } of completed) {
+      const rideDate = new Date((start.occurredAt as Date).getTime() + IST_OFFSET).toISOString().slice(0, 10);
+      const key = `${start.staffId}::${rideDate}`;
+      const ep = (end.payload || {}) as ActivityPayload;
+      const km = typeof ep.distanceKm === "number" ? ep.distanceKm : 0;
+      dayGpsMap.set(key, (dayGpsMap.get(key) ?? 0) + km);
     }
 
     // Fetch phone numbers for each unique staffId in the results.
@@ -887,12 +904,28 @@ router.get("/activity/trip-report", async (req, res, next) => {
       return local.toISOString().slice(0, 10);
     };
 
+    const round1 = (n: number) => Math.round(n * 10) / 10;
+
     const report = completed.map(({ tripRef, start, end }) => {
       const startPayload = (start.payload || {}) as ActivityPayload;
       const endPayload = (end.payload || {}) as ActivityPayload;
       const rideDate = toIST(start.occurredAt as Date);
-      const photoKey = `${start.staffId}::${rideDate}`;
-      const photos = photoMap.get(photoKey) ?? { checkinPhotoUri: null, checkoutPhotoUri: null };
+      const dayKey = `${start.staffId}::${rideDate}`;
+      const photos = photoMap.get(dayKey) ?? { checkinPhotoUri: null, checkoutPhotoUri: null, startOdometerKm: null, endOdometerKm: null };
+
+      const tripGpsKm = typeof endPayload.distanceKm === "number" ? round1(endPayload.distanceKm) : null;
+      const dayGpsKm = dayGpsMap.get(dayKey) ?? 0;
+
+      let vehicleKm: number | null = null;
+      if (photos.startOdometerKm != null && photos.endOdometerKm != null && photos.endOdometerKm >= photos.startOdometerKm) {
+        vehicleKm = round1(photos.endOdometerKm - photos.startOdometerKm);
+      }
+
+      let variancePct: number | null = null;
+      if (vehicleKm != null && vehicleKm > 0 && dayGpsKm > 0) {
+        variancePct = round1(Math.abs(vehicleKm - dayGpsKm) / vehicleKm * 100);
+      }
+
       return {
         tripRef,
         staffId: start.staffId,
@@ -907,12 +940,14 @@ router.get("/activity/trip-report", async (req, res, next) => {
         endLocation:
           formatCoords(endPayload, "destination") ??
           formatCoords(endPayload, "location"),
-        distanceKm:
-          typeof endPayload.distanceKm === "number"
-            ? Math.round(endPayload.distanceKm * 10) / 10
-            : null,
+        distanceKm: tripGpsKm,
+        gpsKm: tripGpsKm,
         checkinPhotoUrl: photos.checkinPhotoUri ?? null,
         checkoutPhotoUrl: photos.checkoutPhotoUri ?? null,
+        vehicleKm,
+        startOdometer: photos.startOdometerKm,
+        endOdometer: photos.endOdometerKm,
+        variancePct,
       };
     });
 
