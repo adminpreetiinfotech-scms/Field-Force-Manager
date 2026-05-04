@@ -82,6 +82,13 @@ function geofenceBadge(outside: boolean | null, distM: number | null) {
       <span className="inline-flex items-center gap-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
         <XCircle className="h-3 w-3" />
         Outside {distM != null ? `(${distM}m)` : ""}
+        <a
+          href={`${import.meta.env.BASE_URL}settings#geo-fence`}
+          className="text-[10px] text-indigo-600 hover:text-indigo-800 hover:underline font-medium"
+          onClick={(e) => e.stopPropagation()}
+        >
+          Edit fence
+        </a>
       </span>
     );
   }
