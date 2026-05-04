@@ -5,15 +5,12 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-
 /**
  * present = checkin + checkout; partial = checkin only; absent = no checkin (past days only).
  */
 export type AttendanceCalendarDayStatus = typeof AttendanceCalendarDayStatus[keyof typeof AttendanceCalendarDayStatus];
-
-
 export const AttendanceCalendarDayStatus = {
-  present: 'present',
-  partial: 'partial',
-  absent: 'absent',
+present: "present" as const,
+    partial: "partial" as const,
+    absent: "absent" as const,
 } as const;

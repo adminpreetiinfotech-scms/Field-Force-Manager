@@ -5,34 +5,31 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-
 export interface DashboardStats {
-  totalCandidates: number;
-  pendingCandidates: number;
-  verifiedCandidates: number;
-  enrolledCandidates: number;
-  rejectedCandidates: number;
-  totalStaff: number;
-  activeStaff: number;
-  pendingApprovals: number;
-  todayRegistrations: number;
-  thisMonthRegistrations: number;
-  /** Number of center staff who have checked in today. */
-  centerPresentToday: number;
-  /** Number of center staff with no check-in today. */
-  centerAbsentToday: number;
-  /** Number of center staff who checked in outside the geo-fence today. */
-  centerViolationsToday: number;
-  /** Total number of staff with staffCategory = center (approved or not). Used to distinguish "all present" from "none configured". */
-  totalCenterStaff: number;
-  /** Total number of staff with staffCategory = field (approved or not). Used to distinguish "all present" from "none configured". */
-  totalFieldStaff: number;
-  /** Number of field staff who have both checked in and checked out today. */
-  fieldPresentToday: number;
-  /** Number of field staff with no check-in today. */
-  fieldAbsentToday: number;
-  /** Number of field staff who checked in but have not yet checked out today. */
-  fieldPartialToday: number;
-  /** Total number of staff with staffCategory = field. Used to distinguish "all absent" from "none configured". */
-  totalFieldStaff: number;
+    totalCandidates: number;
+    pendingCandidates: number;
+    verifiedCandidates: number;
+    enrolledCandidates: number;
+    rejectedCandidates: number;
+    totalStaff: number;
+    activeStaff: number;
+    pendingApprovals: number;
+    todayRegistrations: number;
+    thisMonthRegistrations: number;
+    /** Number of center staff who have checked in today. */
+    centerPresentToday: number;
+    /** Number of center staff with no check-in today. */
+    centerAbsentToday: number;
+    /** Number of center staff who checked in outside the geo-fence today. */
+    centerViolationsToday: number;
+    /** Total number of staff with staffCategory = center (approved or not). Used to distinguish "all present" from "none configured". */
+    totalCenterStaff: number;
+    /** Number of field staff who have both checked in and checked out today. */
+    fieldPresentToday: number;
+    /** Number of field staff with no check-in today. */
+    fieldAbsentToday: number;
+    /** Number of field staff who checked in but have not yet checked out today. */
+    fieldPartialToday: number;
+    /** Total number of staff with staffCategory = field. Used to distinguish "all absent" from "none configured". */
+    totalFieldStaff: number;
 }

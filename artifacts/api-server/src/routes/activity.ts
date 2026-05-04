@@ -23,6 +23,8 @@ const ALLOWED_KINDS: readonly ActivityKind[] = [
   "trip-end",
 ];
 
+type GpsWaypoint = { lat: number; lng: number; t: number };
+
 type ActivityPayload = {
   location?: { latitude: number; longitude: number; accuracy?: number } | null;
   consumerNo?: string | null;
@@ -48,6 +50,8 @@ type ActivityPayload = {
   outsideGeofence?: boolean | null;
   /** Straight-line distance in meters from the center geo-fence origin. */
   distanceFromCenterM?: number | null;
+  /** Ordered GPS waypoints recorded during the trip (stored with trip-end events). */
+  gpsPath?: GpsWaypoint[] | null;
 };
 
 /** Haversine distance in meters between two lat/lng points. */
@@ -110,6 +114,8 @@ function summarize(
       const km = payload.distanceKm?.toFixed(1) ?? "0.0";
       return `${staffName} ended a trip · ${km} km`;
     }
+    default:
+      return `${staffName} logged an activity`;
   }
 }
 
@@ -680,6 +686,69 @@ router.get("/activity/leaderboard", async (req, res, next) => {
   }
 });
 
+router.get("/activity/trip-route/:tripRef", async (req, res, next) => {
+  try {
+    const { tripRef } = req.params;
+    if (!tripRef || !/^[0-9a-fA-F-]{36}$/.test(tripRef)) {
+      res.status(400).json({ title: "Invalid tripRef", detail: "tripRef must be a UUID", status: 400 });
+      return;
+    }
+
+    const rows = await db
+      .select({
+        kind: activityEventsTable.kind,
+        occurredAt: activityEventsTable.occurredAt,
+        payload: activityEventsTable.payload,
+      })
+      .from(activityEventsTable)
+      .where(
+        and(
+          eq(activityEventsTable.tripRef, tripRef),
+          or(
+            eq(activityEventsTable.kind, "trip-start"),
+            eq(activityEventsTable.kind, "trip-end"),
+          ),
+        ),
+      )
+      .orderBy(activityEventsTable.occurredAt);
+
+    const startRow = rows.find((r) => r.kind === "trip-start");
+    const endRow = rows.find((r) => r.kind === "trip-end");
+
+    if (!startRow && !endRow) {
+      res.status(404).json({ title: "Trip not found", detail: `No events found for tripRef ${tripRef}`, status: 404 });
+      return;
+    }
+
+    const startPayload = (startRow?.payload || {}) as ActivityPayload;
+    const endPayload = (endRow?.payload || {}) as ActivityPayload;
+
+    const waypoints: GpsWaypoint[] = endPayload.gpsPath ?? [];
+
+    const firstWp = waypoints[0] ?? null;
+    const lastWp = waypoints[waypoints.length - 1] ?? null;
+
+    const startLat = startPayload.origin?.latitude ?? firstWp?.lat ?? null;
+    const startLng = startPayload.origin?.longitude ?? firstWp?.lng ?? null;
+    const endLat = endPayload.destination?.latitude ?? lastWp?.lat ?? null;
+    const endLng = endPayload.destination?.longitude ?? lastWp?.lng ?? null;
+
+    res.json({
+      tripRef,
+      startTime: startRow?.occurredAt ?? null,
+      endTime: endRow?.occurredAt ?? null,
+      startLat,
+      startLng,
+      endLat,
+      endLng,
+      distanceKm: typeof endPayload.distanceKm === "number" ? endPayload.distanceKm : null,
+      waypoints,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get("/activity/trip-report", async (req, res, next) => {
   try {
     const rawFrom = req.query.from as string | undefined;
@@ -1001,6 +1070,19 @@ router.post("/activity", async (req, res, next) => {
     const input = parsed.data;
     const occurredAt = input.occurredAt ?? new Date();
 
+    const rawGpsPath = (req.body as Record<string, unknown>).gpsPath;
+    const gpsPath: GpsWaypoint[] | null =
+      Array.isArray(rawGpsPath)
+        ? (rawGpsPath as unknown[]).filter(
+            (p): p is GpsWaypoint =>
+              typeof p === "object" &&
+              p !== null &&
+              typeof (p as Record<string, unknown>).lat === "number" &&
+              typeof (p as Record<string, unknown>).lng === "number" &&
+              typeof (p as Record<string, unknown>).t === "number",
+          )
+        : null;
+
     const payload: ActivityPayload = {
       location: input.location ?? null,
       consumerNo: input.consumerNo ?? null,
@@ -1015,6 +1097,7 @@ router.post("/activity", async (req, res, next) => {
       startOdometerKm: input.startOdometerKm ?? null,
       endOdometerKm: input.endOdometerKm ?? null,
       vehicleMeterPhotoUri: input.vehicleMeterPhotoUri ?? null,
+      gpsPath: gpsPath && gpsPath.length > 0 ? gpsPath : null,
     };
 
     // Look up the staff's company_id and staffCategory

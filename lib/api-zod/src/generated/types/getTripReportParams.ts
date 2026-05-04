@@ -5,18 +5,17 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-
 export type GetTripReportParams = {
-/**
- * Start date, inclusive (YYYY-MM-DD).
- */
-from: string;
-/**
- * End date, inclusive (YYYY-MM-DD).
- */
-to: string;
-/**
- * Filter to a single staff member. Omit for all staff.
- */
-staffId?: string;
+    /**
+     * Start date, inclusive (YYYY-MM-DD).
+     */
+    from: string;
+    /**
+     * End date, inclusive (YYYY-MM-DD).
+     */
+    to: string;
+    /**
+     * Filter to a single staff member. Omit for all staff.
+     */
+    staffId?: string;
 };

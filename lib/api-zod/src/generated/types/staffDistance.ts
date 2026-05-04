@@ -5,10 +5,9 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-
 export interface StaffDistance {
-  staffId: string;
-  staffName: string;
-  totalKm: number;
-  tripCount: number;
+    staffId: string;
+    staffName: string;
+    totalKm: number;
+    tripCount: number;
 }

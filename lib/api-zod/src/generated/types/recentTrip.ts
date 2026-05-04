@@ -5,20 +5,19 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-
 /**
  * A single completed trip for the profile recent-trips list.
  */
 export interface RecentTrip {
-  tripRef: string;
-  rideDate: string;
-  startTime: Date;
-  endTime: Date;
-  distanceKm?: number | null;
-  startLocation?: string | null;
-  endLocation?: string | null;
-  /** URI of the odometer photo taken at check-in on this day. */
-  checkinMeterPhotoUri?: string | null;
-  /** URI of the odometer photo taken at check-out on this day. */
-  checkoutMeterPhotoUri?: string | null;
+    tripRef: string;
+    rideDate: string;
+    startTime: Date;
+    endTime: Date;
+    distanceKm?: number | null;
+    startLocation?: string | null;
+    endLocation?: string | null;
+    /** URI of the odometer photo taken at check-in on this day. */
+    checkinMeterPhotoUri?: string | null;
+    /** URI of the odometer photo taken at check-out on this day. */
+    checkoutMeterPhotoUri?: string | null;
 }

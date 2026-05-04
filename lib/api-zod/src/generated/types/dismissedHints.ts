@@ -5,8 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-
 export interface DismissedHints {
-  /** List of dismissed dashboard hint keys */
-  dismissedHints: string[];
+    /** List of dismissed dashboard hint keys */
+    dismissedHints: string[];
 }

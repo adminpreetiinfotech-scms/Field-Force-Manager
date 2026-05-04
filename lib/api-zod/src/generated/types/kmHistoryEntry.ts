@@ -5,21 +5,20 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-
 /**
  * Per-day vehicle KM vs GPS KM summary for a staff member.
  */
 export interface KmHistoryEntry {
-  /** IST date (YYYY-MM-DD). */
-  date: string;
-  startOdometerKm?: number | null;
-  endOdometerKm?: number | null;
-  /** endOdometerKm - startOdometerKm. Null if either reading is missing. */
-  vehicleKm?: number | null;
-  /** Number of GPS trips recorded that day. */
-  tripCount: number;
-  /** Sum of GPS KM across all trips that day. */
-  gpsKm: number;
-  /** Absolute variance between vehicleKm and gpsKm as a percentage of vehicleKm. */
-  variancePct?: number | null;
+    /** IST date (YYYY-MM-DD). */
+    date: string;
+    startOdometerKm?: number | null;
+    endOdometerKm?: number | null;
+    /** endOdometerKm - startOdometerKm. Null if either reading is missing. */
+    vehicleKm?: number | null;
+    /** Number of GPS trips recorded that day. */
+    tripCount: number;
+    /** Sum of GPS KM across all trips that day. */
+    gpsKm: number;
+    /** Absolute variance between vehicleKm and gpsKm as a percentage of vehicleKm. */
+    variancePct?: number | null;
 }

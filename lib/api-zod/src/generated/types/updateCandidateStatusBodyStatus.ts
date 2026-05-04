@@ -5,13 +5,10 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-
 export type UpdateCandidateStatusBodyStatus = typeof UpdateCandidateStatusBodyStatus[keyof typeof UpdateCandidateStatusBodyStatus];
-
-
 export const UpdateCandidateStatusBodyStatus = {
-  pending: 'pending',
-  verified: 'verified',
-  rejected: 'rejected',
-  enrolled: 'enrolled',
+pending: "pending" as const,
+    verified: "verified" as const,
+    rejected: "rejected" as const,
+    enrolled: "enrolled" as const,
 } as const;

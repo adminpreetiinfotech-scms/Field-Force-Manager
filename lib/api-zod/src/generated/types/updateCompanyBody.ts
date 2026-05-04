@@ -6,12 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { UpdateCompanyBodyStatus } from './updateCompanyBodyStatus';
-
 export type UpdateCompanyBody = {
-  status?: UpdateCompanyBodyStatus;
-  subscriptionActive?: boolean;
-  name?: string;
-  projectName?: string | null;
-  state?: string | null;
-  district?: string | null;
+    status?: UpdateCompanyBodyStatus;
+    subscriptionActive?: boolean;
+    name?: string;
+    projectName?: string | null;
+    state?: string | null;
+    district?: string | null;
 };

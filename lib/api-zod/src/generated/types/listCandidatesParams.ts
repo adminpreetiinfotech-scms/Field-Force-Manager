@@ -6,17 +6,16 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ListCandidatesStatus } from './listCandidatesStatus';
-
 export type ListCandidatesParams = {
-/**
- * Search by name or phone number
- */
-search?: string;
-status?: ListCandidatesStatus;
-/**
- * Filter by mobilizer/staff name
- */
-mobilizer?: string;
-village?: string;
-course?: string;
+    /**
+     * Search by name or phone number
+     */
+    search?: string;
+    status?: ListCandidatesStatus;
+    /**
+     * Filter by mobilizer/staff name
+     */
+    mobilizer?: string;
+    village?: string;
+    course?: string;
 };

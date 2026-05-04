@@ -504,6 +504,73 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
 
+  /activity/trip-route/{tripRef}:
+    get:
+      operationId: getTripRoute
+      tags: [activity]
+      summary: Get GPS waypoints for a completed trip
+      parameters:
+        - in: path
+          name: tripRef
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: GPS route data for the trip
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tripRef:
+                    type: string
+                    format: uuid
+                  startTime:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  endTime:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  startLat:
+                    type: number
+                    nullable: true
+                  startLng:
+                    type: number
+                    nullable: true
+                  endLat:
+                    type: number
+                    nullable: true
+                  endLng:
+                    type: number
+                    nullable: true
+                  distanceKm:
+                    type: number
+                    nullable: true
+                  waypoints:
+                    type: array
+                    description: Ordered GPS waypoints (lat/lng/t) stored on trip-end.
+                    items:
+                      type: object
+                      properties:
+                        lat:
+                          type: number
+                        lng:
+                          type: number
+                        t:
+                          type: integer
+                      required: [lat, lng, t]
+                required: [tripRef, waypoints]
+        "404":
+          description: Trip not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+
   /activity/{id}:
     get:
       operationId: getActivity
@@ -1654,6 +1721,21 @@ components:
           type: string
           nullable: true
           description: Photo URI of vehicle odometer meter.
+        gpsPath:
+          type: array
+          nullable: true
+          description: Ordered GPS waypoints recorded during the trip (lat/lng/timestamp).
+          items:
+            type: object
+            properties:
+              lat:
+                type: number
+              lng:
+                type: number
+              t:
+                type: integer
+                description: Unix timestamp in milliseconds.
+            required: [lat, lng, t]
       required: [kind, staffId, staffName]
 
     StaffDistance:

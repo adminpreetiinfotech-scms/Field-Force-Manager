@@ -5,14 +5,11 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-
 export type ActivityKind = typeof ActivityKind[keyof typeof ActivityKind];
-
-
 export const ActivityKind = {
-  checkin: 'checkin',
-  checkout: 'checkout',
-  meter: 'meter',
-  'trip-start': 'trip-start',
-  'trip-end': 'trip-end',
+checkin: "checkin" as const,
+    checkout: "checkout" as const,
+    meter: "meter" as const,
+    'trip-start': "trip-start" as const,
+    'trip-end': "trip-end" as const,
 } as const;

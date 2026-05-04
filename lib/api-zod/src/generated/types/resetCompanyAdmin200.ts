@@ -5,9 +5,8 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-
 export type ResetCompanyAdmin200 = {
-  message: string;
-  adminId: string;
-  phone: string;
+    message: string;
+    adminId: string;
+    phone: string;
 };

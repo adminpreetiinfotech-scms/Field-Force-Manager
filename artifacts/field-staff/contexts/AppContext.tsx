@@ -897,6 +897,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const durationSec = activeTrip
         ? Math.round((endedAt - activeTrip.startedAt) / 1000)
         : undefined;
+      const gpsPath =
+        activeTrip && activeTrip.path.length > 0
+          ? activeTrip.path.map((p) => ({ lat: p.latitude, lng: p.longitude, t: p.t }))
+          : undefined;
       enqueueActivity({
         kind: "trip-end",
         staffId: user.id,
@@ -906,6 +910,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         destination: end,
         distanceKm: km,
         durationSec,
+        gpsPath,
       }).catch(() => {});
     }
   }, []);

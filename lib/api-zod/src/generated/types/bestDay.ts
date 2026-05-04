@@ -5,13 +5,12 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-
 /**
  * The single day with the most rides.
  */
 export interface BestDay {
-  /** YYYY-MM-DD in IST. */
-  date: string;
-  rideCount: number;
-  totalKm: number;
+    /** YYYY-MM-DD in IST. */
+    date: string;
+    rideCount: number;
+    totalKm: number;
 }

@@ -5,8 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-
 export type UpdateStaffNotes200 = {
-  staffId: string;
-  notes: string | null;
+    staffId: string;
+    notes: string | null;
 };

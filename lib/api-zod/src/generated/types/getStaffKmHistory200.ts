@@ -6,7 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { KmHistoryEntry } from './kmHistoryEntry';
-
 export type GetStaffKmHistory200 = {
-  entries: KmHistoryEntry[];
+    entries: KmHistoryEntry[];
 };

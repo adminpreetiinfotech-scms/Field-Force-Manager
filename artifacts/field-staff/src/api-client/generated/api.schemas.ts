@@ -130,6 +130,12 @@ export interface ActivityPage {
   serverTime: string;
 }
 
+export interface GpsWaypoint {
+  lat: number;
+  lng: number;
+  t: number;
+}
+
 export interface CreateActivityInput {
   kind: ActivityKind;
   staffId: string;
@@ -146,6 +152,8 @@ export interface CreateActivityInput {
   durationSec?: number | null;
   origin?: GeoPoint | null;
   destination?: GeoPoint | null;
+  /** Ordered GPS waypoints recorded during the trip. Sent with trip-end events. */
+  gpsPath?: GpsWaypoint[] | null;
 }
 
 export interface StaffDistance {

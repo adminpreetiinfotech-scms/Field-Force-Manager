@@ -5,11 +5,10 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-
 /**
  * Ride stats for a specific time window.
  */
 export interface PeriodStats {
-  rides: number;
-  km: number;
+    rides: number;
+    km: number;
 }

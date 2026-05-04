@@ -6,7 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { Staff } from './staff';
-
 export interface LoginResult {
-  user: Staff;
+    user: Staff;
 }

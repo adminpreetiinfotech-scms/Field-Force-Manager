@@ -6,24 +6,23 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CompanyStatus } from './companyStatus';
-
 export interface Company {
-  id: string;
-  name: string;
-  adminName?: string | null;
-  phone?: string | null;
-  email?: string | null;
-  state?: string | null;
-  district?: string | null;
-  projectName?: string | null;
-  logoUrl?: string | null;
-  status: CompanyStatus;
-  subscriptionActive: boolean;
-  createdAt?: Date | null;
-  /** Latitude of the training center geo-fence origin. */
-  centerLat?: number | null;
-  /** Longitude of the training center geo-fence origin. */
-  centerLng?: number | null;
-  /** Geo-fence radius in metres. */
-  centerRadiusMeters?: number | null;
+    id: string;
+    name: string;
+    adminName?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    state?: string | null;
+    district?: string | null;
+    projectName?: string | null;
+    logoUrl?: string | null;
+    status: CompanyStatus;
+    subscriptionActive: boolean;
+    createdAt?: Date | null;
+    /** Latitude of the training center geo-fence origin. */
+    centerLat?: number | null;
+    /** Longitude of the training center geo-fence origin. */
+    centerLng?: number | null;
+    /** Geo-fence radius in metres. */
+    centerRadiusMeters?: number | null;
 }

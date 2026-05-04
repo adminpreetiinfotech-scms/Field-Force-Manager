@@ -5,9 +5,8 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-
 export interface GeoPoint {
-  latitude: number;
-  longitude: number;
-  accuracy?: number;
+    latitude: number;
+    longitude: number;
+    accuracy?: number;
 }

@@ -5,9 +5,8 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-
 export type CompanyStatsStats = {
-  staffCount: number;
-  candidateCount: number;
-  activityCount: number;
+    staffCount: number;
+    candidateCount: number;
+    activityCount: number;
 };

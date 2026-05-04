@@ -5,15 +5,14 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-
 export type GetDistanceStatsParams = {
-/**
- * Date in YYYY-MM-DD format (defaults to today in UTC).
- * @pattern ^\d{4}-\d{2}-\d{2}$
- */
-date?: string;
-/**
- * Filter to a single staff member (UUID).
- */
-staffId?: string;
+    /**
+     * Date in YYYY-MM-DD format (defaults to today in UTC).
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+    date?: string;
+    /**
+     * Filter to a single staff member (UUID).
+     */
+    staffId?: string;
 };

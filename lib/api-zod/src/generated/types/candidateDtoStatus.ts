@@ -5,16 +5,13 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-
 /**
  * Workflow status: pending, verified, rejected, enrolled
  */
 export type CandidateDtoStatus = typeof CandidateDtoStatus[keyof typeof CandidateDtoStatus];
-
-
 export const CandidateDtoStatus = {
-  pending: 'pending',
-  verified: 'verified',
-  rejected: 'rejected',
-  enrolled: 'enrolled',
+pending: "pending" as const,
+    verified: "verified" as const,
+    rejected: "rejected" as const,
+    enrolled: "enrolled" as const,
 } as const;

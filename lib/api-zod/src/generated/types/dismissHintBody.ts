@@ -5,8 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-
 export type DismissHintBody = {
-  /** The hint key to dismiss (e.g. "dashboard_hint_center") */
-  key: string;
+    /** The hint key to dismiss (e.g. "dashboard_hint_center") */
+    key: string;
 };

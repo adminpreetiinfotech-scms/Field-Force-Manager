@@ -6,10 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ActivityEvent } from './activityEvent';
-
 export interface ActivityPage {
-  items: ActivityEvent[];
-  nextCursor: string | null;
-  /** Server clock at response — clients should send this back as `since` on the next poll. */
-  serverTime: Date;
+    items: ActivityEvent[];
+    nextCursor: string | null;
+    /** Server clock at response — clients should send this back as `since` on the next poll. */
+    serverTime: Date;
 }

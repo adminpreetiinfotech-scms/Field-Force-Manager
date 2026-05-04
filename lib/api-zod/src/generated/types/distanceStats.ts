@@ -6,13 +6,12 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { StaffDistance } from './staffDistance';
-
 export interface DistanceStats {
-  /** The date these stats cover (YYYY-MM-DD). */
-  date: string;
-  /** Total km ridden across all staff. */
-  totalKm: number;
-  /** Number of completed trips contributing to the total. */
-  tripCount: number;
-  perStaff: StaffDistance[];
+    /** The date these stats cover (YYYY-MM-DD). */
+    date: string;
+    /** Total km ridden across all staff. */
+    totalKm: number;
+    /** Number of completed trips contributing to the total. */
+    tripCount: number;
+    perStaff: StaffDistance[];
 }

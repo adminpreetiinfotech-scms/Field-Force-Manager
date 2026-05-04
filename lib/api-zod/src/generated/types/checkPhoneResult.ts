@@ -5,8 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-
 export interface CheckPhoneResult {
-  exists: boolean;
-  hasMpin: boolean;
+    exists: boolean;
+    hasMpin: boolean;
 }

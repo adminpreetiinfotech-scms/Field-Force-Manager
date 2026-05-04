@@ -5,14 +5,11 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-
 /**
  * Vehicle type used for field visits.
  */
 export type StaffProfileStatsVehicleType = typeof StaffProfileStatsVehicleType[keyof typeof StaffProfileStatsVehicleType] | null;
-
-
 export const StaffProfileStatsVehicleType = {
-  '2-wheeler': '2-wheeler',
-  '4-wheeler': '4-wheeler',
+'2-wheeler': "2-wheeler" as const,
+    '4-wheeler': "4-wheeler" as const,
 } as const;

@@ -5,12 +5,9 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-
 export type GetLeaderboardPeriod = typeof GetLeaderboardPeriod[keyof typeof GetLeaderboardPeriod];
-
-
 export const GetLeaderboardPeriod = {
-  daily: 'daily',
-  weekly: 'weekly',
-  monthly: 'monthly',
+daily: "daily" as const,
+    weekly: "weekly" as const,
+    monthly: "monthly" as const,
 } as const;
