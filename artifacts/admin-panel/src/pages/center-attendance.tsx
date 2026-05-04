@@ -312,7 +312,7 @@ export default function CenterAttendance() {
       {outsideCount > 0 && (
         <div className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-4">
           <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-          <div>
+          <div className="flex-1">
             <p className="text-sm font-semibold text-amber-800 dark:text-amber-400">
               {outsideCount} record{outsideCount !== 1 ? "s" : ""} with geo-fence violations
             </p>
@@ -320,6 +320,12 @@ export default function CenterAttendance() {
               These staff members checked in/out from outside the company's defined geo-fence radius. Rows highlighted in red.
             </p>
           </div>
+          <a
+            href={`${import.meta.env.BASE_URL}settings#geo-fence`}
+            className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline font-medium shrink-0 mt-0.5"
+          >
+            Edit fence
+          </a>
         </div>
       )}
 
