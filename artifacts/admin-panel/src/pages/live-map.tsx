@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocalStorageBool } from "@/hooks/useLocalStorageBool";
-import { MapContainer, TileLayer, Marker, Popup, Circle, Tooltip, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useLocation } from "wouter";
@@ -90,7 +90,31 @@ function fenceEastEdge(lat: number, lng: number, radiusMeters: number): [number,
   return [lat, lng + lngDeg];
 }
 
-const FENCE_LABEL_ICON = L.divIcon({ className: "", html: "", iconSize: [0, 0], iconAnchor: [0, 0] });
+function createFenceLabelIcon(radiusMeters: number) {
+  const showKm = radiusMeters >= 1000;
+  const label = showKm
+    ? `${(radiusMeters / 1000).toFixed(2)} km`
+    : `${radiusMeters.toLocaleString()} m`;
+  return L.divIcon({
+    className: "",
+    iconSize: [90, 24],
+    iconAnchor: [-6, 12],
+    html: `<div class="fence-radius-label" style="
+      display:inline-block;
+      background:white;
+      border:1px solid #c7d2fe;
+      border-radius:4px;
+      padding:2px 7px;
+      font-size:12px;
+      font-weight:500;
+      color:#4f46e5;
+      white-space:nowrap;
+      cursor:pointer;
+      box-shadow:0 1px 4px rgba(0,0,0,0.12);
+      user-select:none;
+    ">${label}</div>`,
+  });
+}
 
 // ─── Status helpers ───────────────────────────────────────────────────────────
 
@@ -1065,13 +1089,11 @@ export default function LiveMapPage() {
                 </Circle>
                 <Marker
                   position={fenceEastEdge(geoFence.centerLat, geoFence.centerLng, geoFence.centerRadiusMeters)}
-                  icon={FENCE_LABEL_ICON}
-                  interactive={false}
-                >
-                  <Tooltip permanent direction="right" offset={[6, 0]} className="fence-radius-label">
-                    {`${geoFence.centerRadiusMeters} m`}
-                  </Tooltip>
-                </Marker>
+                  icon={createFenceLabelIcon(geoFence.centerRadiusMeters)}
+                  eventHandlers={{
+                    click: () => navigate("/settings#geo-fence"),
+                  }}
+                />
               </>
             )}
 
