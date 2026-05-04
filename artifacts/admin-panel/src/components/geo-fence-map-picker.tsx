@@ -124,11 +124,13 @@ function EdgeHandle({
   lat,
   lng,
   radiusMeters,
+  onRadiusDrag,
   onRadiusChange,
 }: {
   lat: number;
   lng: number;
   radiusMeters: number;
+  onRadiusDrag: (radiusMeters: number) => void;
   onRadiusChange: (radiusMeters: number) => void;
 }) {
   const map = useMap();
@@ -143,6 +145,7 @@ function EdgeHandle({
           const handleLatLng = (e.target as L.Marker).getLatLng();
           const currentRadius = Math.round(centerLatLng.distanceTo(handleLatLng));
           const clamped = Math.min(1000, Math.max(50, currentRadius));
+          onRadiusDrag(clamped);
           const circleBounds = L.circle(centerLatLng, clamped).getBounds();
           map.fitBounds(circleBounds, {
             animate: true,
@@ -171,10 +174,15 @@ const GeoFenceMapPicker = forwardRef<GeoFenceMapPickerHandle, Props>(function Ge
   const hasCoords = lat != null && lng != null;
   const center: [number, number] = hasCoords ? [lat, lng] : DEFAULT_CENTER;
   const [showDragHint, setShowDragHint] = useState(true);
+  const [liveRadius, setLiveRadius] = useState(radiusMeters);
   const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isDragMoveRef = useRef(false);
   const prevLatRef = useRef<number | null>(null);
   const prevLngRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    setLiveRadius(radiusMeters);
+  }, [radiusMeters]);
 
   useImperativeHandle(ref, () => ({
     clearHint() {
@@ -240,7 +248,7 @@ const GeoFenceMapPicker = forwardRef<GeoFenceMapPickerHandle, Props>(function Ge
             {/* Radius circle */}
             <Circle
               center={[lat, lng]}
-              radius={radiusMeters}
+              radius={liveRadius}
               pathOptions={{
                 color: "#6366f1",
                 fillColor: "#6366f1",
@@ -252,7 +260,8 @@ const GeoFenceMapPicker = forwardRef<GeoFenceMapPickerHandle, Props>(function Ge
             <EdgeHandle
               lat={lat}
               lng={lng}
-              radiusMeters={radiusMeters}
+              radiusMeters={liveRadius}
+              onRadiusDrag={setLiveRadius}
               onRadiusChange={onRadiusChange}
             />
           </>
