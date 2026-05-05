@@ -7,13 +7,13 @@ id = "3B4_FFSkEVBkAeYMFRJ2e"
 [[services]]
 localPort = 8080
 name = "API Server"
-paths = ["/api", "/admin-panel", "/"]
+paths = ["/api", "/"]
 
 [services.development]
 run = "pnpm --filter @workspace/api-server run dev"
 
 [services.production.build]
-args = ["sh", "-c", "pnpm --filter @workspace/admin-panel run build && pnpm --filter @workspace/field-staff run build && pnpm --filter @workspace/api-server run build && pnpm --filter @workspace/db run push-force"]
+args = ["sh", "-c", "pnpm --filter @workspace/field-staff run build && pnpm --filter @workspace/api-server run build && pnpm --filter @workspace/db run push-force"]
 
 [services.production.build.env]
 NODE_ENV = "production"

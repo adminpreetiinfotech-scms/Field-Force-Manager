@@ -34,23 +34,13 @@ app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 app.use("/api", router);
 
 // ─── Production static serving ────────────────────────────────────────────────
-// In production this single process serves:
-//   /admin-panel/* → React SPA (artifacts/admin-panel/dist/public)
-//   /              → Field-staff Expo landing page + manifests + static bundles
-// This makes the API server the single Autoscale entry point on port 8080.
+// In production this process serves:
+//   /api/*  → Express API routes (router above)
+//   /       → Field-staff Expo landing page + manifests + static bundles
+// Admin-panel is served as a separate static artifact (its own publicDir).
 
 if (process.env.NODE_ENV === "production") {
   const root = process.cwd();
-
-  // ── Admin panel (React SPA) ──────────────────────────────────────────────
-  const adminDist = path.join(root, "artifacts/admin-panel/dist/public");
-  if (fs.existsSync(adminDist)) {
-    app.use("/admin-panel", express.static(adminDist, { index: false }));
-    // SPA fallback — all unknown /admin-panel/* routes serve index.html
-    app.get("/admin-panel/*splat", (_req: Request, res: Response) => {
-      res.sendFile(path.join(adminDist, "index.html"));
-    });
-  }
 
   // ── Field-staff Expo static build ────────────────────────────────────────
   const fieldRoot = path.join(root, "artifacts/field-staff/static-build");
