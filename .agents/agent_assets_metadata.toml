@@ -17,3 +17,9 @@ id = "-yJwGPh_3i59kuIdEADNP"
 uri = "file://SCMS_User_Guide.md"
 type = "text"
 title = "SCMS User Guide — Updated May 2026"
+
+[[outputs]]
+id = "HIZd-0CGfnwUCudTl8uAZ"
+uri = "file://SCMS-User-Guide.md"
+type = "text"
+title = "SCMS User Guide"
