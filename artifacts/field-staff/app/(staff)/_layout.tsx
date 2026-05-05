@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { Tabs } from "expo-router";
-import React from "react";
+import React, { useEffect } from "react";
 import { Platform, StyleSheet, Text, View, useColorScheme } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
@@ -13,8 +13,14 @@ export default function StaffTabsLayout() {
   const scheme = useColorScheme();
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
-  const { user } = useApp();
+  const { user, validateSession } = useApp();
   const { unreadCount } = useNotices({ phone: user?.phone, pollIntervalMs: 30_000 });
+
+  useEffect(() => {
+    validateSession();
+    const interval = setInterval(validateSession, 30_000);
+    return () => clearInterval(interval);
+  }, [validateSession]);
 
   return (
     <Tabs

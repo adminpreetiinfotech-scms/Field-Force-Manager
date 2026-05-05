@@ -168,6 +168,8 @@ type AppActions = {
   /** Set the MPIN for a registered user (first-time or after registration). Returns user + approvalStatus. */
   setupMpin: (phone: string, mpin: string) => Promise<{ user: User; approvalStatus: string }>;
   signOut: () => Promise<void>;
+  /** Validate the current session against the server. Forces logout if account was deleted/disabled. */
+  validateSession: () => Promise<void>;
   addAttendance: (
     record: Omit<AttendanceRecord, "id" | "synced">,
   ) => Promise<AttendanceRecord>;
@@ -1116,6 +1118,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  const validateSession = useCallback(async () => {
+    const user = stateRef.current.user;
+    if (!user?.phone) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/check-phone`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: user.phone }),
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { exists: boolean; approvalStatus: string | null };
+      if (!data.exists || data.approvalStatus === "rejected") {
+        setState((s) => ({
+          ...s,
+          user: null,
+          pendingPhone: null,
+          pendingCompanyName: null,
+          activeTripId: null,
+        }));
+        await AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+      }
+    } catch {
+      // Offline — do not logout.
+    }
+  }, []);
+
   const value = useMemo<AppContextValue>(
     () => ({
       ...state,
@@ -1126,6 +1154,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       loginWithMpin,
       setupMpin,
       signOut,
+      validateSession,
       addAttendance,
       startTrip,
       endTrip,
@@ -1145,6 +1174,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       loginWithMpin,
       setupMpin,
       signOut,
+      validateSession,
       addAttendance,
       startTrip,
       endTrip,
