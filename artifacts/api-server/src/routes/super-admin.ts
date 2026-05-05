@@ -1089,10 +1089,20 @@ router.patch("/super-admin/profile", requireSuperAdmin, async (req, res, next) =
       if (conflict) { res.status(409).json({ title: "This phone number is already in use", status: 409 }); return; }
     }
 
-    // If changing MPIN, verify current MPIN first
+    // If changing MPIN, verify current MPIN first (stored as scrypt hash)
     if (mpin) {
       if (!currentMpin) { res.status(400).json({ title: "Current MPIN required to change MPIN", status: 400 }); return; }
-      if (existing.mpin !== currentMpin) { res.status(403).json({ title: "Current MPIN is incorrect", status: 403 }); return; }
+      const mpinOk = existing.mpinHash
+        ? (() => {
+            const [salt, hash] = existing.mpinHash.split(":");
+            if (!salt || !hash) return false;
+            try {
+              const derived = crypto.scryptSync(currentMpin, salt, 64);
+              return crypto.timingSafeEqual(derived, Buffer.from(hash, "hex"));
+            } catch { return false; }
+          })()
+        : false;
+      if (!mpinOk) { res.status(403).json({ title: "Current MPIN is incorrect", status: 403 }); return; }
       if (!/^\d{4,6}$/.test(mpin)) { res.status(400).json({ title: "New MPIN must be 4–6 digits", status: 400 }); return; }
     }
 
@@ -1100,7 +1110,12 @@ router.patch("/super-admin/profile", requireSuperAdmin, async (req, res, next) =
     if (name && name.trim().length >= 2) updates.name = name.trim();
     if (phone && phone.trim()) updates.phone = phone.trim();
     if (email !== undefined) updates.email = email?.trim() || null;
-    if (mpin) updates.mpin = mpin;
+    if (mpin) {
+      // Hash new MPIN with scrypt (same scheme as mpin.ts)
+      const salt = crypto.randomBytes(16).toString("hex");
+      const hash = crypto.scryptSync(mpin, salt, 64).toString("hex");
+      updates.mpinHash = `${salt}:${hash}`;
+    }
 
     if (Object.keys(updates).length === 0) {
       res.status(400).json({ title: "No valid fields to update", status: 400 }); return;
