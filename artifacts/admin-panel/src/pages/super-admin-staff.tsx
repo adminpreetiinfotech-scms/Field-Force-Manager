@@ -24,7 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Search, Download, Eye, UserX, UserCheck, ChevronLeft,
   ChevronRight, Loader2, Activity, Phone, Mail,
-  Building2, RefreshCw, Filter, ShieldCheck, ShieldOff,
+  Building2, RefreshCw, Filter, ShieldCheck, ShieldOff, Trash2,
 } from "lucide-react";
 import { format, formatDistanceToNow, differenceInMinutes } from "date-fns";
 
@@ -275,6 +275,7 @@ function RowActions({ staff, onRefresh }: { staff: SuperStaff; onRefresh: () => 
   const [showProfile, setShowProfile] = useState(false);
   const [confirmDisable, setConfirmDisable] = useState(false);
   const [confirmReject, setConfirmReject] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [loading, setLoading] = useState(false);
   const status = getEffectiveStatus(staff);
 
@@ -328,6 +329,19 @@ function RowActions({ staff, onRefresh }: { staff: SuperStaff; onRefresh: () => 
     } finally { setLoading(false); }
   };
 
+  const handleDelete = async () => {
+    setLoading(true);
+    try {
+      const res = await adminFetch(`/api/admin/staff/${staff.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).title ?? "Failed to delete");
+      toast({ title: "Deleted", description: `${staff.name} has been permanently removed.` });
+      setConfirmDelete(false);
+      onRefresh();
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    } finally { setLoading(false); }
+  };
+
   return (
     <>
       <div className="flex justify-end gap-1">
@@ -354,6 +368,11 @@ function RowActions({ staff, onRefresh }: { staff: SuperStaff; onRefresh: () => 
             {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserCheck className="h-3.5 w-3.5" />}
           </Button>
         )}
+        {staff.role === "staff" && (
+          <Button size="sm" variant="ghost" className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => setConfirmDelete(true)} disabled={loading} title="Delete Staff">
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        )}
       </div>
 
       {showProfile && <ViewProfileDialog staff={staff} onClose={() => setShowProfile(false)} />}
@@ -374,6 +393,15 @@ function RowActions({ staff, onRefresh }: { staff: SuperStaff; onRefresh: () => 
         loading={loading}
         onConfirm={handleRejectAdmin}
         onCancel={() => setConfirmReject(false)}
+      />
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Delete Staff Member?"
+        description={`This will permanently remove ${staff.name} (${staff.companyName ?? "no company"}) from the system. This cannot be undone.`}
+        confirmLabel="Yes, Delete"
+        loading={loading}
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDelete(false)}
       />
     </>
   );
