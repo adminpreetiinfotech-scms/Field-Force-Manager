@@ -42,7 +42,7 @@ export default function Login() {
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (mpin.length !== 4) return;
+    if (mpin.length < 4) return;
 
     try {
       const res = await loginMpin.mutateAsync({ data: { phone, mpin } });
@@ -88,15 +88,17 @@ export default function Login() {
             <form onSubmit={handleLoginSubmit} className="space-y-6">
               <div className="space-y-4 text-center">
                 <p className="text-sm text-muted-foreground">
-                  Enter 4-digit MPIN for <span className="font-medium text-foreground">{phone}</span>
+                  Enter MPIN for <span className="font-medium text-foreground">{phone}</span>
                 </p>
                 <div className="flex justify-center">
-                  <InputOTP maxLength={4} value={mpin} onChange={setMpin} autoFocus>
+                  <InputOTP maxLength={6} value={mpin} onChange={setMpin} autoFocus>
                     <InputOTPGroup>
                       <InputOTPSlot index={0} />
                       <InputOTPSlot index={1} />
                       <InputOTPSlot index={2} />
                       <InputOTPSlot index={3} />
+                      <InputOTPSlot index={4} />
+                      <InputOTPSlot index={5} />
                     </InputOTPGroup>
                   </InputOTP>
                 </div>
@@ -105,7 +107,7 @@ export default function Login() {
                 <Button type="button" variant="outline" className="flex-1" onClick={() => setStep("phone")}>
                   Back
                 </Button>
-                <Button type="submit" className="flex-1" disabled={loginMpin.isPending || mpin.length !== 4}>
+                <Button type="submit" className="flex-1" disabled={loginMpin.isPending || mpin.length < 4}>
                   {loginMpin.isPending ? <Loader2 className="animate-spin" /> : "Login"}
                 </Button>
               </div>
