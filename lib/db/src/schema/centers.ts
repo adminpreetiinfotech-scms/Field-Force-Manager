@@ -29,7 +29,7 @@ export const centersTable = pgTable("centers", {
   /** Approval status — Super Admin must approve before center is active */
   approvalStatus: text("approval_status", { enum: ["pending", "approved", "rejected"] })
     .notNull()
-    .default("approved"),
+    .default("pending"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
