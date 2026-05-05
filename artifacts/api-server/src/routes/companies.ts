@@ -349,7 +349,7 @@ router.patch("/companies/:id/profile", async (req, res, next) => {
       res.status(400).json({ title: "id must be a valid UUID", status: 400 });
       return;
     }
-    const { name, adminName, email, state, district, projectName, centerName, tcId, adminPhone } = req.body as {
+    const { name, adminName, email, state, district, projectName, centerName, tcId, adminPhone, contactPersonName, phone: companyPhone, officeAddress, pinCode } = req.body as {
       name?: string;
       adminName?: string;
       email?: string | null;
@@ -359,6 +359,10 @@ router.patch("/companies/:id/profile", async (req, res, next) => {
       centerName?: string | null;
       tcId?: string | null;
       adminPhone?: string;
+      contactPersonName?: string | null;
+      phone?: string | null;
+      officeAddress?: string | null;
+      pinCode?: string | null;
     };
     const phone =
       (req.headers["x-admin-phone"] as string | undefined) ?? adminPhone;
@@ -390,6 +394,10 @@ router.patch("/companies/:id/profile", async (req, res, next) => {
     if (projectName !== undefined) updates.projectName = projectName?.trim() || null;
     if (centerName !== undefined) updates.centerName = centerName?.trim() || null;
     if (tcId !== undefined) updates.tcId = tcId?.trim() || null;
+    if (contactPersonName !== undefined) updates.contactPersonName = contactPersonName?.trim() || null;
+    if (companyPhone !== undefined) updates.phone = companyPhone?.trim() || null;
+    if (officeAddress !== undefined) updates.officeAddress = officeAddress?.trim() || null;
+    if (pinCode !== undefined) updates.pinCode = pinCode?.trim() || null;
     if (centerLat !== undefined) {
       if (typeof centerLat === "number" && (centerLat < -90 || centerLat > 90)) {
         res.status(400).json({ title: "centerLat must be between -90 and 90", status: 400 });
