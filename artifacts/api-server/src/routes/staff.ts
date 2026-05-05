@@ -1,5 +1,5 @@
 import { candidatesTable, centersTable, companiesTable, db, staffTable, activityEventsTable } from "@workspace/db";
-import { eq, and, gte, lt, isNull, sql, inArray } from "drizzle-orm";
+import { eq, and, gte, lt, isNull, ne, sql, inArray } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import crypto from "node:crypto";
 import { requireAdmin } from "./admin";
@@ -39,7 +39,11 @@ export function toStaffDTO(r: typeof staffTable.$inferSelect) {
 
 router.get("/staff", async (_req, res, next) => {
   try {
-    const rows = await db.select().from(staffTable).orderBy(staffTable.name);
+    const rows = await db
+      .select()
+      .from(staffTable)
+      .where(and(ne(staffTable.role, "super_admin"), isNull(staffTable.deletedAt)))
+      .orderBy(staffTable.name);
     res.json(rows.map(toStaffDTO));
   } catch (err) {
     next(err);
