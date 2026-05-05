@@ -1,6 +1,6 @@
 import { Link, Redirect, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { LayoutDashboard, Users, UserSquare2, FileText, LogOut, Building2, ShieldCheck, Bell, Map, Settings, UserPlus, UserCheck, ClipboardList, CreditCard } from "lucide-react";
+import { LayoutDashboard, Users, UserSquare2, FileText, LogOut, Building2, ShieldCheck, Bell, Map, Settings, UserPlus, UserCheck, ClipboardList, CreditCard, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const navItems = [
@@ -20,6 +20,7 @@ const superAdminItems = [
   { href: "/super-admin/subscriptions", label: "Subscription Plans", icon: CreditCard },
   { href: "/super-admin/staff", label: "All Staff", icon: Users },
   { href: "/super-admin/create-admin", label: "Create Company Admin", icon: UserPlus },
+  { href: "/super-admin/profile", label: "My Profile", icon: UserCog },
 ];
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {

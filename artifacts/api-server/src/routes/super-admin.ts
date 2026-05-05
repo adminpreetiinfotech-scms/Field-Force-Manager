@@ -1038,4 +1038,82 @@ router.delete(
   },
 );
 
+// ─── GET /api/super-admin/profile ─────────────────────────────────────────────
+// Get current super admin's own profile
+
+router.get("/super-admin/profile", requireSuperAdmin, async (req, res, next) => {
+  try {
+    const phone = req.headers["x-admin-phone"] as string;
+    const [row] = await db
+      .select({ id: staffTable.id, name: staffTable.name, phone: staffTable.phone, email: staffTable.email, empCode: staffTable.empCode })
+      .from(staffTable)
+      .where(and(eq(staffTable.phone, phone.trim()), isNull(staffTable.deletedAt)))
+      .limit(1);
+    if (!row) { res.status(404).json({ title: "Profile not found", status: 404 }); return; }
+    res.json(row);
+  } catch (err) { next(err); }
+});
+
+// ─── PATCH /api/super-admin/profile ───────────────────────────────────────────
+// Update super admin's own name, phone, email, MPIN
+
+router.patch("/super-admin/profile", requireSuperAdmin, async (req, res, next) => {
+  try {
+    const currentPhone = req.headers["x-admin-phone"] as string;
+    const { name, phone, email, mpin, currentMpin } = req.body as {
+      name?: string;
+      phone?: string;
+      email?: string | null;
+      mpin?: string;
+      currentMpin?: string;
+    };
+
+    const [existing] = await db
+      .select()
+      .from(staffTable)
+      .where(and(eq(staffTable.phone, currentPhone.trim()), isNull(staffTable.deletedAt)))
+      .limit(1);
+
+    if (!existing) { res.status(404).json({ title: "Profile not found", status: 404 }); return; }
+
+    // If changing phone, check it's not taken
+    if (phone && phone.trim() !== currentPhone.trim()) {
+      if (!/^\d{10}$/.test(phone.trim())) {
+        res.status(400).json({ title: "Phone must be 10 digits", status: 400 }); return;
+      }
+      const [conflict] = await db
+        .select({ id: staffTable.id })
+        .from(staffTable)
+        .where(and(eq(staffTable.phone, phone.trim()), isNull(staffTable.deletedAt)))
+        .limit(1);
+      if (conflict) { res.status(409).json({ title: "This phone number is already in use", status: 409 }); return; }
+    }
+
+    // If changing MPIN, verify current MPIN first
+    if (mpin) {
+      if (!currentMpin) { res.status(400).json({ title: "Current MPIN required to change MPIN", status: 400 }); return; }
+      if (existing.mpin !== currentMpin) { res.status(403).json({ title: "Current MPIN is incorrect", status: 403 }); return; }
+      if (!/^\d{4,6}$/.test(mpin)) { res.status(400).json({ title: "New MPIN must be 4–6 digits", status: 400 }); return; }
+    }
+
+    const updates: Record<string, unknown> = {};
+    if (name && name.trim().length >= 2) updates.name = name.trim();
+    if (phone && phone.trim()) updates.phone = phone.trim();
+    if (email !== undefined) updates.email = email?.trim() || null;
+    if (mpin) updates.mpin = mpin;
+
+    if (Object.keys(updates).length === 0) {
+      res.status(400).json({ title: "No valid fields to update", status: 400 }); return;
+    }
+
+    const [updated] = await db
+      .update(staffTable)
+      .set(updates)
+      .where(eq(staffTable.id, existing.id))
+      .returning({ id: staffTable.id, name: staffTable.name, phone: staffTable.phone, email: staffTable.email, empCode: staffTable.empCode });
+
+    res.json({ message: "Profile updated", ...updated });
+  } catch (err) { next(err); }
+});
+
 export default router;
