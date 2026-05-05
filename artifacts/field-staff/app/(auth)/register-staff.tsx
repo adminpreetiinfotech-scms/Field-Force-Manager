@@ -20,6 +20,19 @@ import { Button } from "@/components/Button";
 import { useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
 
+// ── Scheme / Project options ──────────────────────────────────────────────────
+const SCHEME_OPTIONS = [
+  "DDU-GKY",
+  "JSDMS",
+  "PMKVY 3.0",
+  "PMKVY STT",
+  "ASDMS",
+  "RSLDC",
+  "MSDE",
+  "State Scheme",
+  "Other",
+];
+
 // ── Role lists ───────────────────────────────────────────────────────────────
 const ACADEMIC_ROLES = [
   "Center Head",
@@ -94,6 +107,7 @@ export default function RegisterStaffScreen() {
   // Organization fields
   const [centerName, setCenterName] = useState("");
   const [projectName, setProjectName] = useState("");
+  const [showSchemePicker, setShowSchemePicker] = useState(false);
   const [state, setState_] = useState("");
   const [district, setDistrict] = useState("");
   const [block, setBlock] = useState("");
@@ -151,6 +165,8 @@ export default function RegisterStaffScreen() {
     if (c.block) setBlock(c.block);
     setShowCenterPicker(false);
   };
+
+  const selectedTcId = centers.find((c) => c.id === centerId)?.tcId ?? null;
 
   const clearCenter = () => {
     setCenterId(null);
@@ -765,17 +781,122 @@ export default function RegisterStaffScreen() {
               autoCapitalize="words"
             />
 
-            <FieldInput
-              ref={projectRef}
-              label="SCHEME / PROJECT NAME *"
-              value={projectName}
-              onChangeText={setProjectName}
-              placeholder="e.g. DDU-GKY, JSDMS, PMKVY"
-              returnKeyType="next"
-              onSubmitEditing={() => stateRef.current?.focus()}
-              colors={colors}
-              autoCapitalize="words"
-            />
+            {/* TC ID — shown when a center with tcId is selected */}
+            {selectedTcId ? (
+              <View>
+                <Text style={[styles.label, { color: colors.mutedForeground }]}>
+                  TRAINING ID / TC ID
+                </Text>
+                <View
+                  style={[
+                    styles.textField,
+                    {
+                      borderColor: colors.primary + "44",
+                      backgroundColor: colors.primary + "08",
+                      borderRadius: colors.radius,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      height: 52,
+                      paddingHorizontal: 14,
+                      gap: 8,
+                    },
+                  ]}
+                >
+                  <Feather name="hash" size={14} color={colors.primary} />
+                  <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold", fontSize: 15, flex: 1 }}>
+                    {selectedTcId}
+                  </Text>
+                  <Text style={{ color: colors.primary + "88", fontFamily: "Inter_400Regular", fontSize: 11 }}>
+                    auto-filled
+                  </Text>
+                </View>
+                <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
+                  Selected center ke TC ID se auto-fill hua hai
+                </Text>
+              </View>
+            ) : null}
+
+            {/* Scheme / Project dropdown */}
+            <View>
+              <Text style={[styles.label, { color: colors.mutedForeground }]}>
+                SCHEME / PROJECT NAME *
+              </Text>
+              <Pressable
+                onPress={() => setShowSchemePicker((p) => !p)}
+                style={[
+                  styles.roleSelector,
+                  {
+                    borderColor: projectName ? colors.primary : colors.border,
+                    backgroundColor: colors.background,
+                    borderRadius: colors.radius,
+                  },
+                ]}
+              >
+                <Text
+                  style={{
+                    flex: 1,
+                    color: projectName ? colors.foreground : colors.mutedForeground,
+                    fontFamily: "Inter_400Regular",
+                    fontSize: 15,
+                  }}
+                >
+                  {projectName || "Scheme chunein... (DDU-GKY, JSDMS, PMKVY...)"}
+                </Text>
+                <Feather
+                  name={showSchemePicker ? "chevron-up" : "chevron-down"}
+                  size={16}
+                  color={colors.mutedForeground}
+                />
+              </Pressable>
+
+              {showSchemePicker && (
+                <View
+                  style={[
+                    styles.roleDropdown,
+                    {
+                      borderColor: colors.border,
+                      backgroundColor: colors.card,
+                      borderRadius: colors.radius,
+                    },
+                  ]}
+                >
+                  {SCHEME_OPTIONS.map((scheme) => (
+                    <Pressable
+                      key={scheme}
+                      onPress={() => {
+                        setProjectName(scheme);
+                        setShowSchemePicker(false);
+                      }}
+                      style={({ pressed }) => [
+                        styles.roleOption,
+                        {
+                          backgroundColor:
+                            projectName === scheme
+                              ? colors.primary + "15"
+                              : pressed
+                              ? colors.border + "40"
+                              : "transparent",
+                        },
+                      ]}
+                    >
+                      {projectName === scheme && (
+                        <Feather name="check" size={14} color={colors.primary} />
+                      )}
+                      <Text
+                        style={{
+                          color: projectName === scheme ? colors.primary : colors.foreground,
+                          fontFamily: projectName === scheme ? "Inter_600SemiBold" : "Inter_400Regular",
+                          fontSize: 14,
+                          marginLeft: projectName === scheme ? 0 : 18,
+                        }}
+                      >
+                        {scheme}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </View>
           </View>
 
           {/* ── Section: Location ─────────────────────────────────────────── */}

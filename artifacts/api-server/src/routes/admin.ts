@@ -4,6 +4,7 @@ import {
   candidatesTable,
   candidateNotificationsTable,
   companiesTable,
+  centersTable,
   db,
   staffTable,
 } from "@workspace/db";
@@ -331,7 +332,39 @@ router.get("/admin/staff-list", requireAdmin, async (_req, res, next) => {
           createdAt: r.createdAt?.toISOString() ?? null,
           staffCategory: r.staffCategory ?? "field",
           centerStaffRole: r.centerStaffRole ?? null,
+          centerId: r.centerId ?? null,
         })),
+    );
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── GET /api/admin/centers ───────────────────────────────────────────────────
+// Returns all training centers for the authenticated admin's company.
+
+router.get("/admin/centers", requireAdmin, async (_req, res, next) => {
+  try {
+    const companyId = res.locals.companyId as string | null;
+    if (!companyId) {
+      res.json([]);
+      return;
+    }
+    const rows = await db
+      .select()
+      .from(centersTable)
+      .where(eq(centersTable.companyId, companyId))
+      .orderBy(centersTable.name);
+    res.json(
+      rows.map((c) => ({
+        id: c.id,
+        name: c.name,
+        tcId: c.tcId ?? null,
+        state: c.state ?? null,
+        district: c.district ?? null,
+        block: c.block ?? null,
+        courses: c.courses ?? [],
+      })),
     );
   } catch (err) {
     next(err);
@@ -508,7 +541,7 @@ router.patch("/admin/staff/:id/profile", requireAdmin, async (req, res, next) =>
       return;
     }
     const companyId = res.locals.companyId as string | null;
-    const { name, email, organization, centerName, projectName, state, district, area, staffCategory, centerStaffRole } = req.body as {
+    const { name, email, organization, centerName, projectName, state, district, area, staffCategory, centerStaffRole, centerId } = req.body as {
       name?: string;
       email?: string | null;
       organization?: string | null;
@@ -519,6 +552,7 @@ router.patch("/admin/staff/:id/profile", requireAdmin, async (req, res, next) =>
       area?: string | null;
       staffCategory?: "field" | "center" | null;
       centerStaffRole?: string | null;
+      centerId?: string | null;
     };
 
     const filter = companyId
@@ -554,6 +588,7 @@ router.patch("/admin/staff/:id/profile", requireAdmin, async (req, res, next) =>
       updates.staffCategory = staffCategory;
     }
     if (centerStaffRole !== undefined) updates.centerStaffRole = centerStaffRole?.trim() || null;
+    if (centerId !== undefined) updates.centerId = centerId?.trim() || null;
     // Enforce: whenever effective final category is "center", role must be non-empty
     const effectiveCategory = updates.staffCategory ?? row.staffCategory ?? "field";
     const effectiveRole = (updates.centerStaffRole !== undefined ? updates.centerStaffRole : row.centerStaffRole)?.trim();

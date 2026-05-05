@@ -47,6 +47,18 @@ import { useQueryClient } from "@tanstack/react-query";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+const SCHEME_OPTIONS = [
+  "DDU-GKY",
+  "JSDMS",
+  "PMKVY 3.0",
+  "PMKVY STT",
+  "ASDMS",
+  "RSLDC",
+  "MSDE",
+  "State Scheme",
+  "Other",
+];
+
 const CENTER_STAFF_ROLES = [
   { value: "centerHead", label: "Center Head" },
   { value: "misExecutive", label: "MIS Executive" },
@@ -82,6 +94,15 @@ interface StaffMember {
   vehicleNumber?: string | null;
   staffCategory?: "field" | "center" | null;
   centerStaffRole?: string | null;
+  centerId?: string | null;
+}
+
+interface CenterOption {
+  id: string;
+  name: string;
+  tcId: string | null;
+  state: string | null;
+  district: string | null;
 }
 
 // ─── Auth helper ──────────────────────────────────────────────────────────────
@@ -203,8 +224,19 @@ function EditProfileDialog({
     area: staff.area ?? "",
     staffCategory: (staff.staffCategory ?? "field") as "field" | "center",
     centerStaffRole: staff.centerStaffRole ?? "",
+    centerId: staff.centerId ?? "",
   });
   const [saving, setSaving] = useState(false);
+  const [centers, setCenters] = useState<CenterOption[]>([]);
+
+  useEffect(() => {
+    adminFetch("/api/admin/centers")
+      .then((r) => r.ok ? r.json() : [])
+      .then((data: CenterOption[]) => setCenters(data))
+      .catch(() => {});
+  }, []);
+
+  const selectedCenter = centers.find((c) => c.id === form.centerId) ?? null;
 
   const handleSave = async () => {
     if (!form.name.trim() || form.name.trim().length < 2) {
@@ -226,6 +258,7 @@ function EditProfileDialog({
           area: form.area.trim() || null,
           staffCategory: form.staffCategory,
           centerStaffRole: form.staffCategory === "center" ? (form.centerStaffRole || null) : null,
+          centerId: form.centerId || null,
         }),
       });
       if (!res.ok) {
@@ -279,11 +312,87 @@ function EditProfileDialog({
               <Field id="email" label="Email" value={form.email} onChange={(v) => setForm(f => ({ ...f, email: v }))} type="email" />
             </div>
             <Field id="org" label="Organization" value={form.organization} onChange={(v) => setForm(f => ({ ...f, organization: v }))} />
-            <Field id="center" label="Center Name" value={form.centerName} onChange={(v) => setForm(f => ({ ...f, centerName: v }))} />
-            <Field id="project" label="Project Name" value={form.projectName} onChange={(v) => setForm(f => ({ ...f, projectName: v }))} />
             <Field id="area" label="Area / Territory" value={form.area} onChange={(v) => setForm(f => ({ ...f, area: v }))} />
             <Field id="state" label="State" value={form.state} onChange={(v) => setForm(f => ({ ...f, state: v }))} />
             <Field id="district" label="District" value={form.district} onChange={(v) => setForm(f => ({ ...f, district: v }))} />
+
+            {/* Training Center Dropdown */}
+            <div className="col-span-2 space-y-1.5">
+              <Label htmlFor="centerId">Training Center</Label>
+              <select
+                id="centerId"
+                value={form.centerId}
+                onChange={(e) => {
+                  const cid = e.target.value;
+                  const c = centers.find((x) => x.id === cid);
+                  setForm(f => ({
+                    ...f,
+                    centerId: cid,
+                    centerName: c ? c.name : f.centerName,
+                    state: c?.state ? c.state : f.state,
+                    district: c?.district ? c.district : f.district,
+                  }));
+                }}
+                className="w-full border rounded-md px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">— Select training center —</option>
+                {centers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}{c.tcId ? ` (${c.tcId})` : ""}
+                  </option>
+                ))}
+              </select>
+              {centers.length === 0 && (
+                <p className="text-xs text-muted-foreground">No centers registered yet. Add centers in Training Centers page.</p>
+              )}
+            </div>
+
+            {/* TC ID — read-only from selected center */}
+            {selectedCenter?.tcId && (
+              <div className="col-span-2">
+                <Label>Training ID / TC ID</Label>
+                <div className="mt-1.5 flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
+                  <span className="text-xs text-muted-foreground">#</span>
+                  <span className="text-sm font-semibold text-primary">{selectedCenter.tcId}</span>
+                  <span className="ml-auto text-xs text-muted-foreground">auto-filled from center</span>
+                </div>
+              </div>
+            )}
+
+            {/* Center Name (manual fallback) */}
+            <div className="col-span-2">
+              <Field id="center" label={form.centerId ? "Center Name (auto-filled)" : "Center Name"} value={form.centerName} onChange={(v) => setForm(f => ({ ...f, centerName: v }))} />
+            </div>
+
+            {/* Scheme / Project Dropdown */}
+            <div className="col-span-2 space-y-1.5">
+              <Label htmlFor="projectName">Scheme / Project</Label>
+              <select
+                id="projectName"
+                value={SCHEME_OPTIONS.includes(form.projectName) ? form.projectName : (form.projectName ? "Other" : "")}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setForm(f => ({ ...f, projectName: val === "Other" ? f.projectName : val }));
+                }}
+                className="w-full border rounded-md px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">— Select scheme —</option>
+                {SCHEME_OPTIONS.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+              {/* Manual input when value is not in preset list */}
+              {!SCHEME_OPTIONS.includes(form.projectName) && (
+                <input
+                  type="text"
+                  value={form.projectName}
+                  onChange={(e) => setForm(f => ({ ...f, projectName: e.target.value }))}
+                  placeholder="Ya manually likhein..."
+                  className="w-full border rounded-md px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary mt-1"
+                />
+              )}
+            </div>
+
             {/* Staff Category */}
             <div className="col-span-2 space-y-1.5">
               <Label>Staff Category</Label>
