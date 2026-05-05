@@ -717,8 +717,8 @@ router.get("/admin/dashboard/stats", requireAdmin, async (_req, res, next) => {
     const dayEndIST   = new Date(todayIST + "T23:59:59+05:30");
 
     const centerStaffFilter = companyId
-      ? and(eq(staffTable.companyId, companyId), eq(staffTable.staffCategory, "center"), isNull(staffTable.deletedAt))
-      : and(eq(staffTable.staffCategory, "center"), isNull(staffTable.deletedAt));
+      ? and(eq(staffTable.companyId, companyId), eq(staffTable.staffCategory, "center"), eq(staffTable.role, "staff"), isNull(staffTable.deletedAt))
+      : and(eq(staffTable.staffCategory, "center"), eq(staffTable.role, "staff"), isNull(staffTable.deletedAt));
 
     const centerStaffList = await db
       .select({ id: staffTable.id })
@@ -764,8 +764,8 @@ router.get("/admin/dashboard/stats", requireAdmin, async (_req, res, next) => {
 
     // ── Field staff attendance summary for today (IST) ────────────────────────
     const fieldStaffFilter = companyId
-      ? and(eq(staffTable.companyId, companyId), eq(staffTable.staffCategory, "field"), isNull(staffTable.deletedAt))
-      : and(eq(staffTable.staffCategory, "field"), isNull(staffTable.deletedAt));
+      ? and(eq(staffTable.companyId, companyId), eq(staffTable.staffCategory, "field"), eq(staffTable.role, "staff"), isNull(staffTable.deletedAt))
+      : and(eq(staffTable.staffCategory, "field"), eq(staffTable.role, "staff"), isNull(staffTable.deletedAt));
 
     const fieldStaffList = await db
       .select({ id: staffTable.id })
@@ -1157,8 +1157,8 @@ router.get("/admin/center-attendance", requireAdmin, async (req, res, next) => {
 
     // Fetch center staff
     const companyFilter = companyId
-      ? and(eq(staffTable.companyId, companyId), eq(staffTable.staffCategory, "center"))
-      : eq(staffTable.staffCategory, "center");
+      ? and(eq(staffTable.companyId, companyId), eq(staffTable.staffCategory, "center"), eq(staffTable.role, "staff"))
+      : and(eq(staffTable.staffCategory, "center"), eq(staffTable.role, "staff"));
     const staffFilter = normalizedStaffId
       ? and(companyFilter, eq(staffTable.id, normalizedStaffId))
       : companyFilter;
@@ -1325,8 +1325,8 @@ router.get("/admin/center-attendance/xlsx", requireAdmin, async (req, res, next)
     }
 
     const companyFilter = companyId
-      ? and(eq(staffTable.companyId, companyId), eq(staffTable.staffCategory, "center"))
-      : eq(staffTable.staffCategory, "center");
+      ? and(eq(staffTable.companyId, companyId), eq(staffTable.staffCategory, "center"), eq(staffTable.role, "staff"))
+      : and(eq(staffTable.staffCategory, "center"), eq(staffTable.role, "staff"));
     const staffFilter = normalizedStaffId
       ? and(companyFilter, eq(staffTable.id, normalizedStaffId))
       : companyFilter;
@@ -1575,8 +1575,8 @@ router.get("/admin/field-attendance", requireAdmin, async (req, res, next) => {
     }
 
     const companyFilter = companyId
-      ? and(eq(staffTable.companyId, companyId), eq(staffTable.staffCategory, "field"))
-      : eq(staffTable.staffCategory, "field");
+      ? and(eq(staffTable.companyId, companyId), eq(staffTable.staffCategory, "field"), eq(staffTable.role, "staff"))
+      : and(eq(staffTable.staffCategory, "field"), eq(staffTable.role, "staff"));
     const staffFilter = normalizedStaffId
       ? and(companyFilter, eq(staffTable.id, normalizedStaffId))
       : companyFilter;
@@ -1721,8 +1721,8 @@ router.get("/admin/field-attendance/xlsx", requireAdmin, async (req, res, next) 
     }
 
     const companyFilter = companyId
-      ? and(eq(staffTable.companyId, companyId), eq(staffTable.staffCategory, "field"))
-      : eq(staffTable.staffCategory, "field");
+      ? and(eq(staffTable.companyId, companyId), eq(staffTable.staffCategory, "field"), eq(staffTable.role, "staff"))
+      : and(eq(staffTable.staffCategory, "field"), eq(staffTable.role, "staff"));
     const staffFilter = normalizedStaffId
       ? and(companyFilter, eq(staffTable.id, normalizedStaffId))
       : companyFilter;
