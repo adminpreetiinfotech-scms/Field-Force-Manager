@@ -640,7 +640,9 @@ router.get("/admin/dashboard/stats", requireAdmin, async (_req, res, next) => {
   try {
     const companyId = res.locals.companyId as string | null;
     const candFilter = companyId ? eq(candidatesTable.companyId, companyId) : undefined;
-    const staffFilter = companyId ? eq(staffTable.companyId, companyId) : undefined;
+    const staffFilter = companyId
+      ? and(eq(staffTable.companyId, companyId), eq(staffTable.role, "staff"))
+      : eq(staffTable.role, "staff");
 
     // Candidate counts by status
     const statusCounts = await db
