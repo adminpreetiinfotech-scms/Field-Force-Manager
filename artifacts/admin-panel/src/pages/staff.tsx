@@ -41,6 +41,7 @@ import {
   Home,
   Users,
   Download,
+  UserPlus,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
@@ -183,6 +184,214 @@ function ConfirmDialog({
           <Button variant={confirmVariant} onClick={onConfirm} disabled={loading}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
             {confirmLabel}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Add Staff Dialog ─────────────────────────────────────────────────────────
+
+function AddStaffDialog({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
+  const [centers, setCenters] = useState<CenterOption[]>([]);
+  const [form, setForm] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    staffCategory: "field" as "field" | "center",
+    centerStaffRole: "",
+    centerId: "",
+    centerName: "",
+    projectName: "",
+    state: "",
+    district: "",
+    block: "",
+    designation: "",
+  });
+
+  useEffect(() => {
+    adminFetch("/api/admin/centers")
+      .then((r) => r.ok ? r.json() : [])
+      .then((data: CenterOption[]) => setCenters(data))
+      .catch(() => {});
+  }, []);
+
+  const selectedCenter = centers.find((c) => c.id === form.centerId) ?? null;
+
+  const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  const handleCreate = async () => {
+    if (!form.name.trim() || form.name.trim().length < 2) {
+      toast({ title: "Naam required", description: "Kam se kam 2 characters ka naam daalen.", variant: "destructive" });
+      return;
+    }
+    if (!/^\d{10}$/.test(form.phone.trim())) {
+      toast({ title: "Phone invalid", description: "10-digit mobile number daalen.", variant: "destructive" });
+      return;
+    }
+    if (form.staffCategory === "center" && !form.centerStaffRole.trim()) {
+      toast({ title: "Role required", description: "Center staff ka role chunein.", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await adminFetch("/api/admin/staff/create", {
+        method: "POST",
+        body: JSON.stringify({
+          name: form.name.trim(),
+          phone: form.phone.trim(),
+          email: form.email.trim() || null,
+          staffCategory: form.staffCategory,
+          centerStaffRole: form.staffCategory === "center" ? (form.centerStaffRole.trim() || null) : null,
+          centerId: form.centerId || null,
+          centerName: (selectedCenter?.name || form.centerName).trim() || null,
+          projectName: form.projectName.trim() || null,
+          state: form.state.trim() || null,
+          district: form.district.trim() || null,
+          block: form.block.trim() || null,
+          designation: form.designation.trim() || null,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as any).detail ?? (err as any).title ?? "Staff create karne mein error");
+      }
+      const created = await res.json();
+      toast({ title: "Staff added!", description: `${created.name} (${created.empCode}) successfully add ho gaye. Unhein apna MPIN set karna hoga.` });
+      onCreated();
+      onClose();
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const Field = ({ id, label, value, onChange, type = "text", placeholder = "" }: {
+    id: string; label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string;
+  }) => (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <Input id={id} type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
+    </div>
+  );
+
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <UserPlus className="h-4 w-4 text-muted-foreground" />
+            Add New Staff Member
+          </DialogTitle>
+          <DialogDescription>
+            Staff seedha approved ho jaayega. Pehli login par unhe MPIN set karna hoga.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="overflow-auto flex-1 space-y-4 pr-1 py-2">
+          {/* Staff Type */}
+          <div className="space-y-1.5">
+            <Label>Staff Type</Label>
+            <div className="flex gap-2">
+              {(["field", "center"] as const).map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, staffCategory: cat, centerStaffRole: "" }))}
+                  className={`flex-1 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
+                    form.staffCategory === cat
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:border-primary/40"
+                  }`}
+                >
+                  {cat === "field" ? "🏃 Field Staff" : "🏫 Center Staff"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Center Staff Role */}
+          {form.staffCategory === "center" && (
+            <div className="space-y-1.5">
+              <Label htmlFor="centerStaffRole">Role / Designation *</Label>
+              <select
+                id="centerStaffRole"
+                value={form.centerStaffRole}
+                onChange={(e) => set("centerStaffRole")(e.target.value)}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="">-- Role chunein --</option>
+                {CENTER_STAFF_ROLES.map((r) => (
+                  <option key={r.value} value={r.label}>{r.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <Field id="name" label="Naam *" value={form.name} onChange={set("name")} placeholder="Ramesh Kumar" />
+          <Field id="phone" label="Mobile Number *" value={form.phone} onChange={(v) => set("phone")(v.replace(/\D/g, "").slice(0, 10))} placeholder="9876543210" type="tel" />
+          <Field id="email" label="Email (optional)" value={form.email} onChange={set("email")} placeholder="ramesh@example.com" type="email" />
+
+          {/* Training Center */}
+          <div className="space-y-1.5">
+            <Label htmlFor="centerId">Training Center</Label>
+            {centers.length > 0 ? (
+              <select
+                id="centerId"
+                value={form.centerId}
+                onChange={(e) => {
+                  const c = centers.find((x) => x.id === e.target.value);
+                  setForm((f) => ({
+                    ...f,
+                    centerId: e.target.value,
+                    centerName: c?.name ?? "",
+                    state: c?.state ?? f.state,
+                    district: c?.district ?? f.district,
+                  }));
+                }}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="">-- Center chunein (optional) --</option>
+                {centers.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}{c.district ? ` — ${c.district}` : ""}</option>
+                ))}
+              </select>
+            ) : (
+              <p className="text-xs text-muted-foreground">Koi center registered nahi hai. Training Centers page par add karein.</p>
+            )}
+          </div>
+
+          {/* Scheme */}
+          <div className="space-y-1.5">
+            <Label htmlFor="projectName">Scheme / Project</Label>
+            <select
+              id="projectName"
+              value={form.projectName}
+              onChange={(e) => set("projectName")(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="">-- Scheme chunein (optional) --</option>
+              {SCHEME_OPTIONS.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field id="state" label="State" value={form.state} onChange={set("state")} placeholder="Jharkhand" />
+            <Field id="district" label="District" value={form.district} onChange={set("district")} placeholder="Ranchi" />
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button onClick={handleCreate} disabled={saving}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <UserPlus className="h-4 w-4 mr-1" />}
+            Add Staff
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -1112,6 +1321,7 @@ export default function StaffManagement() {
   const [categoryFilter, setCategoryFilter] = useState<"all" | "field" | "center">("all");
   const [allStaff, setAllStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAddStaff, setShowAddStaff] = useState(false);
 
   const fetchStaff = useCallback(async () => {
     setLoading(true);
@@ -1163,6 +1373,10 @@ export default function StaffManagement() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight">Staff Management</h1>
         <div className="flex items-center gap-2 flex-wrap justify-end">
+          <Button onClick={() => setShowAddStaff(true)} className="gap-1.5">
+            <UserPlus className="h-4 w-4" />
+            Add Staff
+          </Button>
           {/* Category filter toggle */}
           <div className="flex items-center rounded-lg border bg-muted p-1 gap-0.5 text-sm">
             {(["all", "field", "center"] as const).map((cat) => (
@@ -1228,6 +1442,13 @@ export default function StaffManagement() {
           <StaffTable staffList={filtered} isLoading={loading} onRefresh={fetchStaff} />
         </TabsContent>
       </Tabs>
+
+      {showAddStaff && (
+        <AddStaffDialog
+          onClose={() => setShowAddStaff(false)}
+          onCreated={fetchStaff}
+        />
+      )}
     </div>
   );
 }

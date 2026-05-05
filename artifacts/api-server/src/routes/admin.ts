@@ -371,6 +371,90 @@ router.get("/admin/centers", requireAdmin, async (_req, res, next) => {
   }
 });
 
+// ─── POST /api/admin/staff/create ────────────────────────────────────────────
+// Admin directly creates a new staff member (auto-approved, no self-registration needed).
+router.post("/admin/staff/create", requireAdmin, async (req, res, next) => {
+  try {
+    const companyId = res.locals.companyId as string | null;
+    if (!companyId) {
+      res.status(403).json({ title: "Super admins cannot use this endpoint", status: 403 });
+      return;
+    }
+    const {
+      name, phone, email, centerName, projectName, state, district, block,
+      staffCategory, centerStaffRole, centerId, staffCategoryGroup, designation,
+    } = req.body as {
+      name?: string;
+      phone?: string;
+      email?: string | null;
+      centerName?: string | null;
+      projectName?: string | null;
+      state?: string | null;
+      district?: string | null;
+      block?: string | null;
+      staffCategory?: "field" | "center";
+      centerStaffRole?: string | null;
+      centerId?: string | null;
+      staffCategoryGroup?: "academic" | "ground" | null;
+      designation?: string | null;
+    };
+
+    if (!name || name.trim().length < 2) {
+      res.status(400).json({ title: "Name required (min 2 chars)", status: 400 });
+      return;
+    }
+    if (!phone || !/^\d{10}$/.test(phone.trim())) {
+      res.status(400).json({ title: "Valid 10-digit phone required", status: 400 });
+      return;
+    }
+    if (email && email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      res.status(400).json({ title: "Invalid email address", status: 400 });
+      return;
+    }
+
+    const existing = await db
+      .select({ id: staffTable.id })
+      .from(staffTable)
+      .where(eq(staffTable.phone, phone.trim()))
+      .limit(1);
+    if (existing.length > 0) {
+      res.status(409).json({ title: "Phone already registered", detail: "Is phone number se pehle se account hai.", status: 409 });
+      return;
+    }
+
+    const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
+    const empCode = `FS-${suffix}`;
+
+    const [inserted] = await db
+      .insert(staffTable)
+      .values({
+        companyId,
+        empCode,
+        name: name.trim(),
+        phone: phone.trim(),
+        role: "staff",
+        email: email?.trim() || null,
+        centerName: centerName?.trim() || null,
+        projectName: projectName?.trim() || null,
+        state: state?.trim() || null,
+        district: district?.trim() || null,
+        block: block?.trim() || null,
+        staffCategory: staffCategory === "center" ? "center" : "field",
+        centerStaffRole: staffCategory === "center" ? (centerStaffRole?.trim() || null) : null,
+        centerId: centerId?.trim() || null,
+        staffCategoryGroup: staffCategory === "center" ? (staffCategoryGroup ?? null) : null,
+        designation: designation?.trim() || null,
+        approvalStatus: "approved",
+      })
+      .returning();
+
+    const { toStaffDTO } = await import("./staff");
+    res.status(201).json(toStaffDTO(inserted));
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ─── PATCH /api/admin/staff/:id/approve ──────────────────────────────────────
 
 router.patch("/admin/staff/:id/approve", requireAdmin, async (req, res, next) => {
