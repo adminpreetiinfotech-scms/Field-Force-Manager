@@ -7,7 +7,7 @@ import {
   db,
   staffTable,
 } from "@workspace/db";
-import { and, count, desc, eq, gte, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
 import ExcelJS from "exceljs";
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { isValidUUID } from "../lib/validation";
@@ -298,8 +298,11 @@ router.get("/admin/staff-list", requireAdmin, async (_req, res, next) => {
   try {
     const companyId = res.locals.companyId as string | null;
     const companyFilter = companyId
-      ? or(eq(staffTable.companyId, companyId), isNull(staffTable.companyId))
-      : undefined;
+      ? and(
+          ne(staffTable.role, "super_admin"),
+          eq(staffTable.companyId, companyId),
+        )
+      : ne(staffTable.role, "super_admin");
 
     const rows = await db
       .select()
