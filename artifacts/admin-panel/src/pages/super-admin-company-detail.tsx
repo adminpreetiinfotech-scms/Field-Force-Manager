@@ -40,6 +40,7 @@ import {
   KeyRound, MapPin, User, CalendarDays, Mail,
   Building2, CreditCard, ShieldOff, CheckCircle2,
   AlertTriangle, XCircle, Zap, CalendarClock, Plus, Wand2, Trash2,
+  School, Check, X, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { format, addDays, differenceInDays, isPast } from "date-fns";
 
@@ -244,6 +245,44 @@ function ExpiryBanner({ endDate, isExpired, daysLeft }: { endDate: string; isExp
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+type CenterRow = {
+  id: string;
+  name: string;
+  tcId?: string | null;
+  state?: string | null;
+  district?: string | null;
+  block?: string | null;
+  approvalStatus: string;
+  createdAt?: string | null;
+  courses?: string[];
+};
+
+function useCenters(companyId: string) {
+  const [data, setData] = useState<CenterRow[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const refetch = async () => {
+    setLoading(true);
+    try {
+      const phone = getAdminPhone();
+      const res = await adminFetchStatic(`/api/super-admin/companies/${companyId}/centers`, phone);
+      if (!res.ok) throw new Error("Failed");
+      setData(await res.json());
+    } catch { /* ignore */ } finally { setLoading(false); }
+  };
+  return { data, loading, refetch };
+}
+
+function adminFetchStatic(path: string, phone: string, opts: RequestInit = {}) {
+  return fetch(path, {
+    ...opts,
+    headers: {
+      "Content-Type": "application/json",
+      "x-admin-phone": phone,
+      ...(opts.headers ?? {}),
+    },
+  });
+}
+
 export default function SuperAdminCompanyDetail({ companyId }: Props) {
   const [, setLocation] = useLocation();
   const { data, isLoading, error, refetch } = useGetCompanyStats(companyId);
@@ -252,11 +291,34 @@ export default function SuperAdminCompanyDetail({ companyId }: Props) {
   const queryClient   = useQueryClient();
   const { toast }     = useToast();
   const [showSubDialog, setShowSubDialog] = useState(false);
+  const [centersExpanded, setCentersExpanded] = useState(false);
+  const [centerActionLoading, setCenterActionLoading] = useState<string | null>(null);
+  const centersHook = useCenters(companyId);
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: [`/api/super-admin/companies/${companyId}/stats`] });
     queryClient.invalidateQueries({ queryKey: ["/api/super-admin/companies"] });
     refetch();
+  };
+
+  const handleCenterAction = async (centerId: string, action: "approve" | "reject") => {
+    setCenterActionLoading(`${centerId}-${action}`);
+    try {
+      const res = await adminFetch(`/api/super-admin/centers/${centerId}/${action}`, { method: "POST" });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).title ?? "Failed");
+      toast({ title: action === "approve" ? "Center approved!" : "Center rejected" });
+      centersHook.refetch();
+      invalidate();
+    } catch (e: any) {
+      toast({ title: e.message, variant: "destructive" });
+    } finally { setCenterActionLoading(null); }
+  };
+
+  const handleToggleCenters = () => {
+    if (!centersExpanded && !centersHook.data) {
+      centersHook.refetch();
+    }
+    setCentersExpanded(v => !v);
   };
 
   const handleToggleStatus = async () => {
@@ -505,11 +567,12 @@ export default function SuperAdminCompanyDetail({ companyId }: Props) {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { icon: Users,       label: "Staff Members",   value: stats.staffCount,     textColor: "text-violet-600", bg: "bg-violet-50" },
-          { icon: UserSquare2, label: "Candidates",      value: stats.candidateCount, textColor: "text-blue-600",   bg: "bg-blue-50" },
-          { icon: Activity,    label: "Activity Events", value: stats.activityCount,  textColor: "text-pink-600",   bg: "bg-pink-50" },
+          { icon: Users,       label: "Staff Members",      value: stats.staffCount,                    textColor: "text-violet-600", bg: "bg-violet-50" },
+          { icon: UserSquare2, label: "Candidates",         value: stats.candidateCount,                textColor: "text-blue-600",   bg: "bg-blue-50" },
+          { icon: Activity,    label: "Activity Events",    value: stats.activityCount,                 textColor: "text-pink-600",   bg: "bg-pink-50" },
+          { icon: School,      label: "Training Centers",   value: (stats as any).centerCount ?? 0,     textColor: "text-teal-600",   bg: "bg-teal-50" },
         ].map(({ icon: Icon, label, value, textColor, bg }) => (
           <div key={label} className={`rounded-xl border p-4 ${bg}`}>
             <Icon className={`h-5 w-5 ${textColor} mb-2`} />
@@ -517,6 +580,105 @@ export default function SuperAdminCompanyDetail({ companyId }: Props) {
             <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
           </div>
         ))}
+      </div>
+
+      {/* ── Training Centers ────────────────────────────────────────────────── */}
+      <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+        <button
+          className="w-full px-6 py-4 border-b bg-muted/30 flex items-center justify-between hover:bg-muted/50 transition-colors"
+          onClick={handleToggleCenters}
+        >
+          <h2 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+            <School className="h-4 w-4" />
+            Training Centers
+            {(stats as any).centerCount > 0 && (
+              <span className="ml-1 rounded-full bg-teal-100 text-teal-800 text-xs font-bold px-1.5 py-0.5">
+                {(stats as any).centerCount}
+              </span>
+            )}
+            {centersHook.data && centersHook.data.some(c => c.approvalStatus === "pending") && (
+              <span className="ml-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold px-1.5 py-0.5">
+                {centersHook.data.filter(c => c.approvalStatus === "pending").length} pending
+              </span>
+            )}
+          </h2>
+          {centersExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+        </button>
+
+        {centersExpanded && (
+          <div className="divide-y">
+            {centersHook.loading && (
+              <div className="p-6 space-y-3">
+                {[1, 2].map(i => <div key={i} className="h-14 rounded-lg bg-muted animate-pulse" />)}
+              </div>
+            )}
+            {!centersHook.loading && centersHook.data && centersHook.data.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-8">No training centers registered yet.</p>
+            )}
+            {!centersHook.loading && centersHook.data && centersHook.data.map((center) => {
+              const statusColor =
+                center.approvalStatus === "approved" ? "bg-emerald-100 text-emerald-700 border-emerald-200" :
+                center.approvalStatus === "rejected" ? "bg-red-100 text-red-700 border-red-200" :
+                "bg-amber-100 text-amber-700 border-amber-200";
+              const isPending = center.approvalStatus === "pending";
+              return (
+                <div key={center.id} className="flex items-start justify-between gap-4 px-6 py-4">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className={`p-2 rounded-lg shrink-0 ${isPending ? "bg-amber-100 text-amber-600" : "bg-teal-100 text-teal-600"}`}>
+                      <School className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{center.name}</p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        {center.tcId && (
+                          <span className="text-xs text-muted-foreground font-mono">{center.tcId}</span>
+                        )}
+                        {(center.district || center.state) && (
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            {[center.district, center.state].filter(Boolean).join(", ")}
+                          </span>
+                        )}
+                        {center.createdAt && (
+                          <span className="text-xs text-muted-foreground">
+                            {format(new Date(center.createdAt), "dd MMM yyyy")}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge variant="outline" className={`text-xs ${statusColor}`}>
+                      {center.approvalStatus}
+                    </Badge>
+                    {isPending && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                          disabled={centerActionLoading !== null}
+                          onClick={() => handleCenterAction(center.id, "approve")}
+                        >
+                          {centerActionLoading === `${center.id}-approve` ? "..." : <><Check className="h-3 w-3 mr-1" />Approve</>}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 border-red-200 text-red-700 hover:bg-red-50"
+                          disabled={centerActionLoading !== null}
+                          onClick={() => handleCenterAction(center.id, "reject")}
+                        >
+                          {centerActionLoading === `${center.id}-reject` ? "..." : <><X className="h-3 w-3 mr-1" />Reject</>}
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* ── Subscription Details ────────────────────────────────────────────── */}

@@ -238,7 +238,7 @@ export default function SuperAdminCompanies() {
         {([
           { key: "all", label: "All Companies", icon: Building2 },
           { key: "pending-companies", label: "Pending Companies", icon: Clock, badge: pendingCount },
-          { key: "pending-centers", label: "Pending Centers", icon: Clock },
+          { key: "pending-centers", label: "Pending Centers", icon: Clock, badge: pendingCentersHook.data?.length ?? 0 },
         ] as { key: Tab; label: string; icon: any; badge?: number }[]).map(({ key, label, icon: Icon, badge }) => (
           <button
             key={key}

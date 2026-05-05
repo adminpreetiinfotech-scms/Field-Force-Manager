@@ -341,14 +341,57 @@ router.get("/super-admin/companies/:id/stats", requireSuperAdmin, async (req, re
       .from(activityEventsTable)
       .where(eq(activityEventsTable.companyId, id));
 
+    const [centerCount] = await db
+      .select({ count: count() })
+      .from(centersTable)
+      .where(eq(centersTable.companyId, id));
+
     res.json({
       company: toCompanyDTO(company),
       stats: {
         staffCount: Number(staffCount?.count ?? 0),
         candidateCount: Number(candidateCount?.count ?? 0),
         activityCount: Number(activityCount?.count ?? 0),
+        centerCount: Number(centerCount?.count ?? 0),
       },
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── GET /api/super-admin/companies/:id/centers ────────────────────────────────
+// List all training centers for a company (all approval statuses).
+
+router.get("/super-admin/companies/:id/centers", requireSuperAdmin, async (req, res, next) => {
+  try {
+    const id = req.params.id as string;
+    if (!isValidUUID(id)) {
+      res.status(400).json({ title: "Invalid company id", status: 400 });
+      return;
+    }
+    const rows = await db
+      .select({
+        id: centersTable.id,
+        companyId: centersTable.companyId,
+        name: centersTable.name,
+        tcId: centersTable.tcId,
+        state: centersTable.state,
+        district: centersTable.district,
+        block: centersTable.block,
+        pinCode: centersTable.pinCode,
+        courses: centersTable.courses,
+        approvalStatus: centersTable.approvalStatus,
+        createdAt: centersTable.createdAt,
+      })
+      .from(centersTable)
+      .where(eq(centersTable.companyId, id))
+      .orderBy(centersTable.createdAt);
+    res.json(rows.map((r) => ({
+      ...r,
+      courses: (r.courses as string[] | null) ?? [],
+      createdAt: r.createdAt?.toISOString() ?? null,
+    })));
   } catch (err) {
     next(err);
   }

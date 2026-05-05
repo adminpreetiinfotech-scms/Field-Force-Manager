@@ -561,6 +561,7 @@ router.post("/companies/:id/centers", async (req, res, next) => {
       lat: typeof lat === "number" ? lat : null,
       lng: typeof lng === "number" ? lng : null,
       radiusMeters: typeof radiusMeters === "number" ? Math.max(50, Math.round(radiusMeters)) : 200,
+      approvalStatus: "pending",
     }).returning();
     res.status(201).json(toCenterDTO(inserted));
   } catch (err) { next(err); }
