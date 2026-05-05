@@ -59,7 +59,7 @@ interface PendingEntry {
   timer:   ReturnType<typeof setTimeout>;
 }
 
-const TIMEOUT_MS = 15_000;
+const TIMEOUT_MS = 15_000;   // 15 s per-request timeout
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -93,7 +93,7 @@ const DocProcessorBridge = React.forwardRef<DocProcessorHandle, Props>(
         return new Promise<ProcessResult>((resolve, reject) => {
           const timer = setTimeout(() => {
             pending.current.delete(id);
-            reject(new Error("DocProcessor: timeout after 45s"));
+            reject(new Error("DocProcessor: timeout after 15s — try again"));
           }, TIMEOUT_MS);
 
           pending.current.set(id, { resolve, reject, timer });
@@ -186,7 +186,7 @@ const DocProcessorBridge = React.forwardRef<DocProcessorHandle, Props>(
     }, []);
 
     return (
-      <View style={styles.hidden}>
+      <View style={styles.hidden} pointerEvents="none">
         <WebView
           ref={wvRef}
           source={{ html: DOC_PROCESSOR_HTML }}
@@ -196,6 +196,7 @@ const DocProcessorBridge = React.forwardRef<DocProcessorHandle, Props>(
           scrollEnabled={false}
           domStorageEnabled={false}
           mixedContentMode="always"
+          androidLayerType="software"
         />
       </View>
     );
@@ -209,9 +210,12 @@ export default DocProcessorBridge;
 const styles = StyleSheet.create({
   hidden: {
     position:   "absolute",
-    width:      10,
-    height:     10,
+    width:      32,
+    height:     32,
     overflow:   "hidden",
     opacity:    0,
+    // Off-screen so it is never accidentally visible
+    top:        -9999,
+    left:       -9999,
   },
 });
