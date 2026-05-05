@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCheckPhone, useLoginMpin } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
-import { Loader2 } from "lucide-react";
+import { Loader2, GraduationCap, ArrowLeft, Phone, KeyRound } from "lucide-react";
 import { Link } from "wouter";
 
 export default function Login() {
@@ -27,7 +26,6 @@ export default function Login() {
       toast({ title: "Invalid Phone", description: "Please enter a valid 10-digit phone number.", variant: "destructive" });
       return;
     }
-
     try {
       const res = await checkPhone.mutateAsync({ data: { phone } });
       if (!res.exists || !res.hasMpin) {
@@ -43,7 +41,6 @@ export default function Login() {
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (mpin.length < 4) return;
-
     try {
       const res = await loginMpin.mutateAsync({ data: { phone, mpin } });
       if (res.user.role === "staff") {
@@ -58,38 +55,102 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <div className="mx-auto w-12 h-12 bg-primary text-primary-foreground rounded-lg flex items-center justify-center text-xl font-bold mb-4">
-            SC
+    <div
+      className="min-h-screen flex"
+      style={{
+        background: "linear-gradient(135deg, hsl(222,60%,12%) 0%, hsl(224,55%,10%) 50%, hsl(220,60%,14%) 100%)",
+      }}
+    >
+      {/* Left decorative panel — hidden on mobile */}
+      <div className="hidden lg:flex flex-col justify-between w-2/5 p-12 relative overflow-hidden">
+        {/* Background blobs */}
+        <div className="absolute -top-20 -left-20 w-72 h-72 rounded-full opacity-20"
+          style={{ background: "radial-gradient(circle, #06b6d4, transparent)" }} />
+        <div className="absolute bottom-10 right-0 w-56 h-56 rounded-full opacity-15"
+          style={{ background: "radial-gradient(circle, #6366f1, transparent)" }} />
+        <div className="absolute top-1/2 left-1/3 w-40 h-40 rounded-full opacity-10"
+          style={{ background: "radial-gradient(circle, #f97316, transparent)" }} />
+
+        <div className="relative z-10">
+          <div
+            className="w-12 h-12 rounded-2xl flex items-center justify-center mb-6 shadow-xl"
+            style={{ background: "linear-gradient(135deg, #06b6d4, #6366f1)" }}
+          >
+            <GraduationCap className="h-7 w-7 text-white" />
           </div>
-          <CardTitle className="text-2xl">Admin Login</CardTitle>
-          <CardDescription>SCMS — Skill Center Management System</CardDescription>
-        </CardHeader>
-        <CardContent>
+          <h1 className="text-3xl font-extrabold text-white leading-tight">
+            Skill Center<br />Management System
+          </h1>
+          <p className="mt-3 text-slate-400 text-sm leading-relaxed">
+            Praiaiti Infotech's white-label platform for DDU-GKY, JSDMS, PMKVY and other skill development programs.
+          </p>
+        </div>
+
+        <div className="relative z-10 space-y-4">
+          {[
+            { color: "#06b6d4", label: "Staff & Attendance Tracking" },
+            { color: "#6366f1", label: "Candidate Management" },
+            { color: "#f97316", label: "Live Field Map & Reports" },
+          ].map(({ color, label }) => (
+            <div key={label} className="flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
+              <span className="text-slate-400 text-sm">{label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Right login panel */}
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div
+          className="w-full max-w-sm rounded-2xl p-8 shadow-2xl"
+          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)", backdropFilter: "blur(12px)" }}
+        >
+          {/* Logo */}
+          <div className="flex flex-col items-center mb-8">
+            <div
+              className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 shadow-xl"
+              style={{ background: "linear-gradient(135deg, #06b6d4, #6366f1)" }}
+            >
+              <GraduationCap className="h-8 w-8 text-white" />
+            </div>
+            <h2 className="text-xl font-bold text-white">Admin Login</h2>
+            <p className="text-slate-400 text-sm mt-1">SCMS — Skill Center Management</p>
+          </div>
+
           {step === "phone" ? (
-            <form onSubmit={handlePhoneSubmit} className="space-y-4">
+            <form onSubmit={handlePhoneSubmit} className="space-y-5">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Phone Number</label>
+                <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
+                  <Phone className="h-3.5 w-3.5 text-cyan-400" />
+                  Phone Number
+                </label>
                 <Input
                   type="tel"
                   placeholder="Enter 10-digit number"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
                   autoFocus
+                  className="bg-white/8 border-white/15 text-white placeholder:text-slate-500 focus-visible:ring-cyan-500"
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={checkPhone.isPending || phone.length !== 10}>
-                {checkPhone.isPending ? <Loader2 className="animate-spin" /> : "Continue"}
+              <Button
+                type="submit"
+                className="w-full font-semibold text-sm h-10"
+                disabled={checkPhone.isPending || phone.length !== 10}
+                style={{ background: "linear-gradient(90deg, #06b6d4, #6366f1)", border: "none" }}
+              >
+                {checkPhone.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Continue"}
               </Button>
             </form>
           ) : (
             <form onSubmit={handleLoginSubmit} className="space-y-6">
               <div className="space-y-4 text-center">
-                <p className="text-sm text-muted-foreground">
-                  Enter MPIN for <span className="font-medium text-foreground">{phone}</span>
-                </p>
+                <div className="flex items-center gap-2 justify-center text-slate-400 text-sm">
+                  <KeyRound className="h-4 w-4 text-cyan-400" />
+                  Enter MPIN for{" "}
+                  <span className="font-semibold text-white">{phone}</span>
+                </div>
                 <div className="flex justify-center">
                   <InputOTP maxLength={6} value={mpin} onChange={setMpin} autoFocus>
                     <InputOTPGroup>
@@ -104,23 +165,35 @@ export default function Login() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button type="button" variant="outline" className="flex-1" onClick={() => setStep("phone")}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1 border-white/15 text-slate-300 hover:bg-white/8 gap-1.5"
+                  onClick={() => { setStep("phone"); setMpin(""); }}
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
                   Back
                 </Button>
-                <Button type="submit" className="flex-1" disabled={loginMpin.isPending || mpin.length < 4}>
-                  {loginMpin.isPending ? <Loader2 className="animate-spin" /> : "Login"}
+                <Button
+                  type="submit"
+                  className="flex-1 font-semibold"
+                  disabled={loginMpin.isPending || mpin.length < 4}
+                  style={{ background: "linear-gradient(90deg, #06b6d4, #6366f1)", border: "none" }}
+                >
+                  {loginMpin.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Login"}
                 </Button>
               </div>
             </form>
           )}
-        </CardContent>
-        <div className="px-6 pb-6 text-center text-sm text-muted-foreground">
-          Nayi training center?{" "}
-          <Link href="/company-register" className="text-primary underline font-medium">
-            Register karein
-          </Link>
+
+          <div className="mt-6 text-center text-sm text-slate-500">
+            Nayi training center?{" "}
+            <Link href="/company-register" className="text-cyan-400 hover:text-cyan-300 font-medium underline underline-offset-2">
+              Register karein
+            </Link>
+          </div>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }
