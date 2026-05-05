@@ -1,5 +1,5 @@
 import { centersTable, companiesTable, db, staffTable } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, ilike, or } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import { uploadLogoBuffer } from "../lib/logoStorage";
 import { isValidUUID } from "../lib/validation";
@@ -493,9 +493,35 @@ router.get("/centers/:centerId", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// ─── GET /api/centers?adminCode=XX ─────────────────────────────────────────────
-// Public endpoint: mobile staff registration picks a center by admin code.
+// ─── GET /api/companies/public-search?q=name ────────────────────────────────────
+// Public endpoint: find approved companies by name (for staff registration).
+// Returns minimal info only — id, name, projectName.
+router.get("/companies/public-search", async (req, res, next) => {
+  try {
+    const { q } = req.query as { q?: string };
+    const query = q?.trim() ?? "";
+    if (query.length < 2) { res.json([]); return; }
+    const rows = await db
+      .select({ id: companiesTable.id, name: companiesTable.name, projectName: companiesTable.projectName })
+      .from(companiesTable)
+      .where(
+        and(
+          eq(companiesTable.approvalStatus, "approved"),
+          or(
+            ilike(companiesTable.name, `%${query}%`),
+            ilike(companiesTable.projectName, `%${query}%`),
+          ),
+        ),
+      )
+      .orderBy(companiesTable.name)
+      .limit(10);
+    res.json(rows);
+  } catch (err) { next(err); }
+});
 
+// ─── GET /api/centers?adminCode=XX ─────────────────────────────────────────────
+// Public endpoint: mobile staff registration picks a center by admin code or companyId.
+// Only approved centers are returned.
 router.get("/centers", async (req, res, next) => {
   try {
     const { adminCode, companyId } = req.query as { adminCode?: string; companyId?: string };
@@ -514,7 +540,10 @@ router.get("/centers", async (req, res, next) => {
     const centers = await db
       .select()
       .from(centersTable)
-      .where(eq(centersTable.companyId, resolvedCompanyId))
+      .where(and(
+        eq(centersTable.companyId, resolvedCompanyId),
+        eq(centersTable.approvalStatus, "approved"),
+      ))
       .orderBy(centersTable.name);
     res.json(centers.map(toCenterDTO));
   } catch (err) { next(err); }

@@ -71,6 +71,12 @@ interface Center {
   courses: string[];
 }
 
+interface CompanyOption {
+  id: string;
+  name: string;
+  projectName: string | null;
+}
+
 const API_BASE =
   Platform.OS === "web"
     ? ""
@@ -79,6 +85,26 @@ const API_BASE =
 async function fetchCentersByAdminCode(code: string): Promise<Center[]> {
   try {
     const res = await fetch(`${API_BASE}/api/centers?adminCode=${encodeURIComponent(code)}`);
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+}
+
+async function fetchCentersByCompanyId(companyId: string): Promise<Center[]> {
+  try {
+    const res = await fetch(`${API_BASE}/api/centers?companyId=${encodeURIComponent(companyId)}`);
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+}
+
+async function searchCompanies(q: string): Promise<CompanyOption[]> {
+  try {
+    const res = await fetch(`${API_BASE}/api/companies/public-search?q=${encodeURIComponent(q)}`);
     if (!res.ok) return [];
     return await res.json();
   } catch {
@@ -113,6 +139,13 @@ export default function RegisterStaffScreen() {
   const [block, setBlock] = useState("");
   const [staffPinCode, setStaffPinCode] = useState("");
 
+  // Company search
+  const [companyQuery, setCompanyQuery] = useState("");
+  const [companySuggestions, setCompanySuggestions] = useState<CompanyOption[]>([]);
+  const [selectedCompany, setSelectedCompany] = useState<CompanyOption | null>(null);
+  const [companySearchLoading, setCompanySearchLoading] = useState(false);
+  const [showCompanySuggestions, setShowCompanySuggestions] = useState(false);
+
   // Admin code + center picker
   const [adminCode, setAdminCode] = useState("");
   const [centers, setCenters] = useState<Center[]>([]);
@@ -134,8 +167,63 @@ export default function RegisterStaffScreen() {
   const pinCodeRef = useRef<TextInput>(null);
   const adminCodeRef = useRef<TextInput>(null);
 
+  // ── Company name search (debounced 400ms) ────────────────────────────
+  useEffect(() => {
+    const q = companyQuery.trim();
+    if (q.length < 2) {
+      setCompanySuggestions([]);
+      setShowCompanySuggestions(false);
+      return;
+    }
+    if (selectedCompany && selectedCompany.name === q) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      setCompanySearchLoading(true);
+      searchCompanies(q).then((data) => {
+        if (cancelled) return;
+        setCompanySuggestions(data);
+        setShowCompanySuggestions(data.length > 0);
+        setCompanySearchLoading(false);
+      });
+    }, 400);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [companyQuery, selectedCompany]);
+
+  const selectCompany = (company: CompanyOption) => {
+    setSelectedCompany(company);
+    setCompanyQuery(company.name);
+    setShowCompanySuggestions(false);
+    if (company.projectName && !projectName) {
+      setProjectName(company.projectName);
+    }
+    setCentersLoading(true);
+    setCentersLoaded(false);
+    setCenterId(null);
+    setCenters([]);
+    fetchCentersByCompanyId(company.id).then((data) => {
+      setCenters(data);
+      setCentersLoaded(true);
+      setCentersLoading(false);
+    });
+  };
+
+  const clearCompany = () => {
+    setSelectedCompany(null);
+    setCompanyQuery("");
+    setCompanySuggestions([]);
+    setShowCompanySuggestions(false);
+    setCenters([]);
+    setCenterId(null);
+    setCentersLoaded(false);
+    setCenterName("");
+    setState_("");
+    setDistrict("");
+    setBlock("");
+  };
+
   // ── Fetch centers when admin code is 6 chars ─────────────────────────────
   useEffect(() => {
+    if (selectedCompany) return;
     const code = adminCode.trim().toUpperCase();
     if (code.length !== 6) {
       if (centersLoaded) {
@@ -155,7 +243,7 @@ export default function RegisterStaffScreen() {
       setCenterId(null);
     });
     return () => { cancelled = true; };
-  }, [adminCode]);
+  }, [adminCode, selectedCompany]);
 
   const selectCenter = (c: Center) => {
     setCenterId(c.id);
@@ -650,50 +738,140 @@ export default function RegisterStaffScreen() {
             </>
           )}
 
-          {/* ── Section: Link to Admin (optional) ────────────────────────── */}
-          <SectionHeader label="LINK TO ADMIN (OPTIONAL)" colors={colors} />
+          {/* ── Section: Find Organization ────────────────────────────── */}
+          <SectionHeader label="APNI ORGANIZATION DHUNDEIN *" colors={colors} />
           <View style={[styles.form]}>
             <View>
               <Text style={[styles.label, { color: colors.mutedForeground }]}>
-                ADMIN INVITE CODE
+                ORGANIZATION / COMPANY NAME
               </Text>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <TextInput
-                  ref={adminCodeRef}
-                  value={adminCode}
-                  onChangeText={(t) =>
-                    setAdminCode(t.replace(/[^a-zA-Z0-9]/g, "").slice(0, 6))
-                  }
-                  placeholder="e.g. A3BZ90"
-                  placeholderTextColor={colors.mutedForeground}
-                  returnKeyType="done"
-                  autoCapitalize="characters"
-                  style={[
-                    styles.textField,
-                    {
-                      flex: 1,
-                      color: colors.foreground,
-                      borderColor: centersLoaded && centers.length > 0 ? colors.primary : colors.border,
-                      borderRadius: colors.radius,
-                      backgroundColor: colors.background,
-                      fontFamily: "Inter_500Medium",
-                      letterSpacing: 3,
-                    },
-                  ]}
-                />
-                {centersLoading && <ActivityIndicator size="small" color={colors.primary} />}
-                {centersLoaded && centers.length > 0 && !centersLoading && (
-                  <View style={{ width: 32, height: 32, borderRadius: 999, backgroundColor: colors.primary + "18", alignItems: "center", justifyContent: "center" }}>
-                    <Feather name="check" size={16} color={colors.primary} />
+
+              {selectedCompany ? (
+                <View style={[styles.centerCard, { borderColor: colors.primary, backgroundColor: colors.primary + "0A", borderRadius: colors.radius }]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: colors.primary, fontFamily: "Inter_700Bold", fontSize: 14 }}>{selectedCompany.name}</Text>
+                    {selectedCompany.projectName && (
+                      <Text style={{ color: colors.primary + "99", fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>{selectedCompany.projectName}</Text>
+                    )}
+                    {centersLoading && (
+                      <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>Centers load ho rahe hain...</Text>
+                    )}
+                    {centersLoaded && centers.length > 0 && !centersLoading && (
+                      <Text style={{ color: colors.primary, fontFamily: "Inter_500Medium", fontSize: 12, marginTop: 2 }}>
+                        ✓ {centers.length} training center{centers.length > 1 ? "s" : ""} available
+                      </Text>
+                    )}
+                    {centersLoaded && centers.length === 0 && !centersLoading && (
+                      <Text style={{ color: "#F59E0B", fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>
+                        Koi approved center nahi mila — neeche manually likhein
+                      </Text>
+                    )}
                   </View>
-                )}
-              </View>
-              <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
-                {centersLoaded && centers.length > 0
-                  ? `✓ ${centers.length} training center${centers.length > 1 ? "s" : ""} available — neeche choose karein`
-                  : "Admin ka 6-character invite code daalen apna account link karne ke liye."}
-              </Text>
+                  <Pressable onPress={clearCompany} hitSlop={8}>
+                    <Feather name="x" size={18} color={colors.mutedForeground} />
+                  </Pressable>
+                </View>
+              ) : (
+                <>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <TextInput
+                      value={companyQuery}
+                      onChangeText={(t) => {
+                        setCompanyQuery(t);
+                        setSelectedCompany(null);
+                      }}
+                      placeholder="e.g. Nistha, Pratham, RSLDC..."
+                      placeholderTextColor={colors.mutedForeground}
+                      autoCapitalize="words"
+                      returnKeyType="search"
+                      style={[
+                        styles.textField,
+                        {
+                          flex: 1,
+                          color: colors.foreground,
+                          borderColor: colors.border,
+                          borderRadius: colors.radius,
+                          backgroundColor: colors.background,
+                          fontFamily: "Inter_400Regular",
+                        },
+                      ]}
+                    />
+                    {companySearchLoading && <ActivityIndicator size="small" color={colors.primary} />}
+                  </View>
+                  <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
+                    2+ aksharon ke baad apni company dhundhein — training centers auto-load honge
+                  </Text>
+
+                  {showCompanySuggestions && (
+                    <View style={[styles.roleDropdown, { borderColor: colors.border, backgroundColor: colors.card, borderRadius: colors.radius, marginTop: 4 }]}>
+                      {companySuggestions.map((co) => (
+                        <Pressable
+                          key={co.id}
+                          onPress={() => selectCompany(co)}
+                          style={({ pressed }) => [
+                            styles.roleOption,
+                            { backgroundColor: pressed ? colors.primary + "10" : "transparent", paddingVertical: 14 },
+                          ]}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>{co.name}</Text>
+                            {co.projectName && (
+                              <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 1 }}>{co.projectName}</Text>
+                            )}
+                          </View>
+                          <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
+                        </Pressable>
+                      ))}
+                    </View>
+                  )}
+                </>
+              )}
             </View>
+
+            {/* Admin invite code — secondary optional */}
+            {!selectedCompany && (
+              <View>
+                <Text style={[styles.label, { color: colors.mutedForeground }]}>
+                  ADMIN INVITE CODE (VIKALP)
+                </Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <TextInput
+                    ref={adminCodeRef}
+                    value={adminCode}
+                    onChangeText={(t) =>
+                      setAdminCode(t.replace(/[^a-zA-Z0-9]/g, "").slice(0, 6))
+                    }
+                    placeholder="e.g. A3BZ90"
+                    placeholderTextColor={colors.mutedForeground}
+                    returnKeyType="done"
+                    autoCapitalize="characters"
+                    style={[
+                      styles.textField,
+                      {
+                        flex: 1,
+                        color: colors.foreground,
+                        borderColor: centersLoaded && centers.length > 0 ? colors.primary : colors.border,
+                        borderRadius: colors.radius,
+                        backgroundColor: colors.background,
+                        fontFamily: "Inter_500Medium",
+                        letterSpacing: 3,
+                      },
+                    ]}
+                  />
+                  {centersLoading && <ActivityIndicator size="small" color={colors.primary} />}
+                  {centersLoaded && centers.length > 0 && !centersLoading && (
+                    <View style={{ width: 32, height: 32, borderRadius: 999, backgroundColor: colors.primary + "18", alignItems: "center", justifyContent: "center" }}>
+                      <Feather name="check" size={16} color={colors.primary} />
+                    </View>
+                  )}
+                </View>
+                <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
+                  {centersLoaded && centers.length > 0
+                    ? `✓ ${centers.length} training center${centers.length > 1 ? "s" : ""} available — neeche choose karein`
+                    : "Agar admin ne invite code diya ho toh yahan daalen (upar search se bhi ho sakta hai)"}
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* ── Section: Organization Details ────────────────────────────── */}
