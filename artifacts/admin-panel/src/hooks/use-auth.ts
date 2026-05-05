@@ -43,10 +43,14 @@ export const useAuth = () => {
   };
 
   const logout = () => {
-    localStorage.removeItem("admin_user");
-    currentUser = null;
-    listeners.forEach((listener) => listener(null));
+    logoutUser();
   };
 
   return { user, setUser, logout };
 };
+
+export function logoutUser(): void {
+  localStorage.removeItem("admin_user");
+  currentUser = null;
+  listeners.forEach((listener) => listener(null));
+}

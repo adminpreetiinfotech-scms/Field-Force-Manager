@@ -51,7 +51,7 @@ export default function Login() {
         return;
       }
       setUser(res.user);
-      setLocation("/dashboard");
+      setLocation((res.user.role as string) === "super_admin" ? "/super-admin/companies" : "/dashboard");
     } catch (err: any) {
       toast({ title: "Error", description: err.message || "Invalid MPIN.", variant: "destructive" });
     }

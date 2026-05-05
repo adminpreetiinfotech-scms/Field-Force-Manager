@@ -1,9 +1,10 @@
 import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
-import { setAdminPhoneGetter } from "@workspace/api-client-react";
+import { setAdminPhoneGetter, ApiError } from "@workspace/api-client-react";
+import { logoutUser } from "@/hooks/use-auth";
 import Login from "@/pages/login";
 import CandidateRegister from "@/pages/register";
 import CompanyRegister from "@/pages/company-register";
@@ -35,10 +36,21 @@ setAdminPhoneGetter(() => {
   }
 });
 
+function handle401(error: unknown) {
+  if (error instanceof ApiError && error.status === 401) {
+    logoutUser();
+  }
+}
+
 const queryClient = new QueryClient({
+  queryCache: new QueryCache({ onError: handle401 }),
+  mutationCache: new MutationCache({ onError: handle401 }),
   defaultOptions: {
     queries: {
-      retry: 1,
+      retry: (failureCount, error) => {
+        if (error instanceof ApiError && error.status === 401) return false;
+        return failureCount < 1;
+      },
       refetchOnWindowFocus: true,
       staleTime: 15_000,
     },
