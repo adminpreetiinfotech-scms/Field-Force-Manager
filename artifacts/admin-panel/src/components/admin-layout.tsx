@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/staff", label: "Staff Management", icon: Users },
+  { href: "/training-centers", label: "Training Centers", icon: Building2 },
   { href: "/center-attendance", label: "Center Attendance", icon: UserCheck },
   { href: "/field-attendance", label: "Field Attendance", icon: ClipboardList },
   { href: "/candidates", label: "Candidates", icon: UserSquare2 },

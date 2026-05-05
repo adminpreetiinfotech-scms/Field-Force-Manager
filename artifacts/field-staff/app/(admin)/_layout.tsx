@@ -88,6 +88,15 @@ export default function AdminTabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="centers"
+        options={{
+          title: "Centers",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="home" size={size - 2} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="records"
         options={{
           title: "Records",

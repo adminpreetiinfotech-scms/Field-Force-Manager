@@ -20,6 +20,7 @@ import SuperAdminCreateAdmin from "@/pages/super-admin-create-admin";
 import SuperAdminSubscriptions from "@/pages/super-admin-subscriptions";
 import SuperAdminProfile from "@/pages/super-admin-profile";
 import CompanySettings from "@/pages/company-settings";
+import TrainingCenters from "@/pages/training-centers";
 import LiveMap from "@/pages/live-map";
 import CenterAttendance from "@/pages/center-attendance";
 import FieldAttendance from "@/pages/field-attendance";
@@ -117,6 +118,7 @@ function Router() {
       <SuperAdminRoute path="/super-admin/staff" component={SuperAdminStaff} />
       <SuperAdminRoute path="/super-admin/create-admin" component={SuperAdminCreateAdmin} />
       <SuperAdminRoute path="/super-admin/profile" component={SuperAdminProfile} />
+      <ProtectedRoute path="/training-centers" component={TrainingCenters} />
       <ProtectedRoute path="/settings" component={CompanySettings} />
       <Route component={NotFound} />
     </Switch>
