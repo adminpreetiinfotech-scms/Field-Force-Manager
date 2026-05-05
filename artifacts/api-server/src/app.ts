@@ -33,6 +33,9 @@ app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 
 app.use("/api", router);
 
+// ─── Health check (used by field-staff expo workflow ensurePreviewReachable) ──
+app.get("/status", (_req, res) => { res.json({ ok: true }); });
+
 // ─── Production static serving ────────────────────────────────────────────────
 // In production this process serves:
 //   /api/*  → Express API routes (router above)
