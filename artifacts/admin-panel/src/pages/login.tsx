@@ -8,6 +8,7 @@ import { useCheckPhone, useLoginMpin } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Loader2 } from "lucide-react";
+import { Link } from "wouter";
 
 export default function Login() {
   const [phone, setPhone] = useState("");
@@ -111,6 +112,12 @@ export default function Login() {
             </form>
           )}
         </CardContent>
+        <div className="px-6 pb-6 text-center text-sm text-muted-foreground">
+          Nayi training center?{" "}
+          <Link href="/company-register" className="text-primary underline font-medium">
+            Register karein
+          </Link>
+        </div>
       </Card>
     </div>
   );

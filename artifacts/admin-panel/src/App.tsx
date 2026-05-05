@@ -6,6 +6,7 @@ import NotFound from "@/pages/not-found";
 import { setAdminPhoneGetter } from "@workspace/api-client-react";
 import Login from "@/pages/login";
 import CandidateRegister from "@/pages/register";
+import CompanyRegister from "@/pages/company-register";
 import Dashboard from "@/pages/dashboard";
 import StaffManagement from "@/pages/staff";
 import Candidates from "@/pages/candidates";
@@ -84,6 +85,7 @@ function Router() {
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/register" component={CandidateRegister} />
+      <Route path="/company-register" component={CompanyRegister} />
       <Route path="/" component={() => <Redirect to="/dashboard" />} />
       <ProtectedRoute path="/dashboard" component={Dashboard} />
       <ProtectedRoute path="/staff" component={StaffManagement} />

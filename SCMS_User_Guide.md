@@ -8,19 +8,20 @@
 
 1. [System Overview](#1-system-overview)
 2. [User Types / Role](#2-user-types)
-3. [Admin Panel — Login](#3-admin-panel-login)
-4. [Dashboard](#4-dashboard)
-5. [Training Centers](#5-training-centers)
-6. [Staff Management](#6-staff-management)
-7. [Candidates](#7-candidates)
-8. [Center Attendance](#8-center-attendance)
-9. [Field Attendance](#9-field-attendance)
-10. [Live Map](#10-live-map)
-11. [Reports](#11-reports)
-12. [Notices](#12-notices)
-13. [Company Settings](#13-company-settings)
-14. [Super Admin Features](#14-super-admin-features)
-15. [Field Staff Mobile App](#15-field-staff-mobile-app)
+3. [Nayi Training Center Register Karna](#3-nayi-training-center-register-karna)
+4. [Admin Panel — Login](#4-admin-panel-login)
+5. [Dashboard](#5-dashboard)
+6. [Training Centers](#6-training-centers)
+7. [Staff Management](#7-staff-management)
+8. [Candidates](#8-candidates)
+9. [Center Attendance](#9-center-attendance)
+10. [Field Attendance](#10-field-attendance)
+11. [Live Map](#11-live-map)
+12. [Reports](#12-reports)
+13. [Notices](#13-notices)
+14. [Company Settings](#14-company-settings)
+15. [Super Admin Features](#15-super-admin-features)
+16. [Field Staff Mobile App](#16-field-staff-mobile-app)
 
 ---
 
@@ -50,21 +51,77 @@ SCMS ek **white-label SaaS platform** hai jo DDU-GKY / JSDMS Training Centers ke
 
 ---
 
-## 3. Admin Panel — Login
+## 3. Nayi Training Center Register Karna
+
+> **Yeh section un training centers ke liye hai jo pehli baar SCMS par join kar rahe hain.**
+
+### Step 1 — Registration Key Prapt Karein
+
+Pehle **Praiaiti Infotech** se contact karein aur **Admin Registration Key** maangein. Bina is key ke registration possible nahi hai — yeh ek security measure hai.
+
+### Step 2 — Registration Form Bharein
+
+**URL:** `https://field-force-manager-mobilization.replit.app/admin-panel/company-register`
+
+Login page par bhi **"Nayi training center? Register karein"** ka link milega.
+
+Form mein yeh details bharein:
+
+| Field | Description |
+|-------|-------------|
+| **Training Center / Organization Name** | Apne organization ka poora naam (mandatory) |
+| **Project Name** | DDU-GKY / JSDMS (optional) |
+| **State** | Apna state (optional) |
+| **District** | Apna district (optional) |
+| **Organization Logo** | PNG/JPG logo upload karein (optional) |
+| **Admin Full Name** | Jo iss account ka admin hoga uska naam |
+| **Admin Phone Number** | 10-digit mobile — yahi login ke liye use hoga |
+| **Admin Email** | Optional — reports ke liye useful |
+| **Admin Registration Key** | Praiaiti Infotech se prapt secret key |
+
+### Step 3 — Submit Karein
+
+- **"Register Training Center"** button click karein
+- Success message milega jisme aapki company ka naam aur admin phone confirm hoga
+
+### Step 4 — Admin Panel Login Karein
+
+1. `https://field-force-manager-mobilization.replit.app/admin-panel/login` par jaayein
+2. Registered **Admin Phone Number** daalen
+3. **OTP** aayega — enter karein
+4. **4-digit MPIN** set karein (pehli baar)
+5. Dashboard open hoga
+
+### Step 5 — Training Center Setup Karein
+
+Registration ke baad aap Admin Panel mein yeh kaam karein:
+
+| Kaam | Kahan |
+|------|-------|
+| Apna training center add karein | **Training Centers** menu |
+| Geo-fence set karein | Training Center detail mein |
+| Staff add karein | **Staff** menu |
+| Candidates manage karein | **Candidates** menu |
+
+> **Important:** Ek company (training center organization) kai training centers operate kar sakti hai — sab ko **Training Centers** menu se add karein.
+
+---
+
+## 4. Admin Panel — Login
 
 **URL:** `https://field-force-manager-mobilization.replit.app/admin-panel/`
 
 ### Login Steps:
 1. Browser mein Admin Panel URL open karein
 2. **Phone Number** daalen (registered number)
-3. **OTP** ya **MPIN** se login karein
+3. **MPIN** se login karein
 4. Dashboard automatically open hoga
 
 > **Note:** Pehli baar login par MPIN set karna hoga. OTP registered phone par aayega.
 
 ---
 
-## 4. Dashboard
+## 5. Dashboard
 
 Dashboard par aapko ek nazar mein dikhai dega:
 
@@ -81,7 +138,7 @@ Dashboard par aapko ek nazar mein dikhai dega:
 
 ---
 
-## 5. Training Centers
+## 6. Training Centers
 
 **Menu:** `Training Centers`
 
@@ -121,7 +178,7 @@ Geo-fence se yeh decide hota hai ki staff ka check-in valid hai ya nahi (locatio
 
 ---
 
-## 6. Staff Management
+## 7. Staff Management
 
 **Menu:** `Staff`
 
@@ -150,7 +207,7 @@ Geo-fence se yeh decide hota hai ki staff ka check-in valid hai ya nahi (locatio
 
 ---
 
-## 7. Candidates
+## 8. Candidates
 
 **Menu:** `Candidates`
 
@@ -179,7 +236,7 @@ Geo-fence se yeh decide hota hai ki staff ka check-in valid hai ya nahi (locatio
 
 ---
 
-## 8. Center Attendance
+## 9. Center Attendance
 
 **Menu:** `Center Attendance`
 
@@ -198,7 +255,7 @@ Yahan center staff ki daily attendance track hoti hai (geo-fence ke andar check-
 
 ---
 
-## 9. Field Attendance
+## 10. Field Attendance
 
 **Menu:** `Field Attendance`
 
@@ -212,7 +269,7 @@ Field staff (jo bahar jaate hain) ki attendance aur trips yahan track hoti hain.
 
 ---
 
-## 10. Live Map
+## 11. Live Map
 
 **Menu:** `Live Map`
 
@@ -228,7 +285,7 @@ Real-time mein field staff ki location dekh sakte hain.
 
 ---
 
-## 11. Reports
+## 12. Reports
 
 **Menu:** `Reports`
 
@@ -251,7 +308,7 @@ Real-time mein field staff ki location dekh sakte hain.
 
 ---
 
-## 12. Notices
+## 13. Notices
 
 **Menu:** `Notices`
 
@@ -265,7 +322,7 @@ Staff ko mobile app par notification milegi.
 
 ---
 
-## 13. Company Settings
+## 14. Company Settings
 
 **Menu:** `Settings`
 
@@ -281,7 +338,7 @@ Staff ko mobile app par notification milegi.
 
 ---
 
-## 14. Super Admin Features
+## 15. Super Admin Features
 
 Super Admin ke liye extra features:
 
@@ -306,7 +363,7 @@ Super Admin ke liye extra features:
 
 ---
 
-## 15. Field Staff Mobile App
+## 16. Field Staff Mobile App
 
 **Download:** App link field staff ko WhatsApp/Email par share karein
 **URL:** `https://field-force-manager-mobilization.replit.app/`
