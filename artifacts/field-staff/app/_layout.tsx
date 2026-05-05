@@ -81,6 +81,10 @@ function RootLayoutNav() {
         name="account-settings"
         options={{ headerShown: false }}
       />
+      <Stack.Screen
+        name="alert-preferences"
+        options={{ headerShown: false }}
+      />
     </Stack>
   );
 }

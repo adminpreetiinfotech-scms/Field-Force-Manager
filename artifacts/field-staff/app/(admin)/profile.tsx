@@ -37,6 +37,14 @@ export default function AdminProfile() {
     ]);
   };
 
+  const onHelpSupport = () => {
+    Alert.alert(
+      "Help & Support",
+      "For technical support, contact:\n\nPraiaiti Infotech\nEmail: support@praiaiti.com\n\nApp Version: 1.0.3",
+      [{ text: "OK" }],
+    );
+  };
+
   const webBottomPad = Platform.OS === "web" ? 84 : 84;
   const webTop = Platform.OS === "web" ? 67 : 0;
 
@@ -154,11 +162,11 @@ export default function AdminProfile() {
         ]}
       >
         <Row icon="settings" label="Account Settings" colors={colors} onPress={() => router.push("/account-settings")} />
-        <Row icon="users" label="Manage field staff" colors={colors} />
-        <Row icon="download" label="Export records (CSV)" colors={colors} />
-        <Row icon="bell" label="Alert preferences" colors={colors} />
-        <Row icon="shield" label="Audit log" colors={colors} />
-        <Row icon="help-circle" label="Help & support" colors={colors} last />
+        <Row icon="users" label="Manage field staff" colors={colors} onPress={() => router.push("/(admin)/staff")} />
+        <Row icon="download" label="Export records (CSV)" colors={colors} onPress={() => router.push("/(admin)/reports")} />
+        <Row icon="bell" label="Alert preferences" colors={colors} onPress={() => router.push("/alert-preferences")} />
+        <Row icon="shield" label="Audit log" colors={colors} onPress={() => router.push("/(admin)/records")} />
+        <Row icon="help-circle" label="Help & support" colors={colors} onPress={onHelpSupport} last />
       </View>
 
       {/* ── Contact & Support ─────────────────────────────────────── */}
