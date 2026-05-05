@@ -14,6 +14,7 @@ import {
   enqueueActivity,
   initActivityQueue,
 } from "@/services/activitySync";
+import { AppState } from "react-native";
 
 export type UserRole = "staff" | "admin" | "super_admin";
 
@@ -542,6 +543,41 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }, 4000);
     return () => clearTimeout(t);
   }, [state.attendance, state.trips]);
+
+  // Validate session whenever app comes back to foreground.
+  // If account was deleted/disabled by admin, force logout immediately.
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", async (nextState) => {
+      if (nextState !== "active") return;
+      const user = stateRef.current.user;
+      if (!user?.phone) return;
+      try {
+        const checkRes = await fetch(`${API_BASE}/api/auth/check-phone`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone: user.phone }),
+        });
+        if (!checkRes.ok) return;
+        const checkData = (await checkRes.json()) as {
+          exists: boolean;
+          approvalStatus: string | null;
+        };
+        if (!checkData.exists || checkData.approvalStatus === "rejected") {
+          setState((s) => ({
+            ...s,
+            user: null,
+            pendingPhone: null,
+            pendingCompanyName: null,
+            activeTripId: null,
+          }));
+          await AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+        }
+      } catch {
+        // Offline — do not logout.
+      }
+    });
+    return () => subscription.remove();
+  }, []);
 
   const register = useCallback(async (data: RegisterData) => {
     const staff = await registerStaff({
