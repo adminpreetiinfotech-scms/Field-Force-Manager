@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useGetCompanyStats, useUpdateCompany, useResetCompanyAdmin } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -40,7 +40,7 @@ import {
   KeyRound, MapPin, User, CalendarDays, Mail,
   Building2, CreditCard, ShieldOff, CheckCircle2,
   AlertTriangle, XCircle, Zap, CalendarClock, Plus, Wand2, Trash2,
-  School, Check, X, ChevronDown, ChevronUp,
+  School, Check, X, ChevronDown, ChevronUp, Upload, ImageIcon,
 } from "lucide-react";
 import { format, addDays, differenceInDays, isPast } from "date-fns";
 
@@ -283,6 +283,18 @@ function adminFetchStatic(path: string, phone: string, opts: RequestInit = {}) {
   });
 }
 
+function fileToBase64(file: File): Promise<{ base64: string; mime: string }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve({ base64: result.split(",")[1], mime: file.type });
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function SuperAdminCompanyDetail({ companyId }: Props) {
   const [, setLocation] = useLocation();
   const { data, isLoading, error, refetch } = useGetCompanyStats(companyId);
@@ -294,6 +306,11 @@ export default function SuperAdminCompanyDetail({ companyId }: Props) {
   const [centersExpanded, setCentersExpanded] = useState(false);
   const [centerActionLoading, setCenterActionLoading] = useState<string | null>(null);
   const centersHook = useCenters(companyId);
+
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoFileRef = useRef<HTMLInputElement>(null);
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: [`/api/super-admin/companies/${companyId}/stats`] });
@@ -319,6 +336,49 @@ export default function SuperAdminCompanyDetail({ companyId }: Props) {
       centersHook.refetch();
     }
     setCentersExpanded(v => !v);
+  };
+
+  const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Only image files allowed", variant: "destructive" });
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: "Image must be under 2MB", variant: "destructive" });
+      return;
+    }
+    setLogoFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setLogoPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleUploadLogo = async () => {
+    if (!logoFile) return;
+    setUploadingLogo(true);
+    try {
+      const { base64, mime } = await fileToBase64(logoFile);
+      const res = await adminFetch(`/api/companies/${companyId}/logo`, {
+        method: "PATCH",
+        body: JSON.stringify({ logoBase64: base64, logoMime: mime }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).title ?? "Logo upload failed");
+      toast({ title: "Logo updated successfully" });
+      setLogoFile(null);
+      if (logoFileRef.current) logoFileRef.current.value = "";
+      invalidate();
+    } catch (e: any) {
+      toast({ title: "Upload failed", description: e.message, variant: "destructive" });
+    } finally {
+      setUploadingLogo(false); }
+  };
+
+  const handleRemoveLogo = () => {
+    setLogoFile(null);
+    setLogoPreview(null);
+    if (logoFileRef.current) logoFileRef.current.value = "";
   };
 
   const handleToggleStatus = async () => {
@@ -513,8 +573,12 @@ export default function SuperAdminCompanyDetail({ companyId }: Props) {
         <div className="p-6">
           <div className="flex items-start justify-between gap-4">
             <div className="flex gap-4 items-start">
-              <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-lg font-bold text-white shrink-0 ${subStatusColor}`}>
-                {company.name.slice(0, 2).toUpperCase()}
+              <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-lg font-bold text-white shrink-0 overflow-hidden ${(logoPreview || comp.logoUrl) ? "bg-white border" : subStatusColor}`}>
+                {(logoPreview || comp.logoUrl) ? (
+                  <img src={logoPreview ?? comp.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                ) : (
+                  company.name.slice(0, 2).toUpperCase()
+                )}
               </div>
               <div>
                 <h1 className="text-2xl font-bold tracking-tight">{company.name}</h1>
@@ -773,6 +837,73 @@ export default function SuperAdminCompanyDetail({ companyId }: Props) {
         </div>
 
         <div className="divide-y">
+          {/* Logo Upload */}
+          <div className="px-6 py-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-indigo-100 text-indigo-600 shrink-0 mt-0.5">
+                <ImageIcon className="h-4 w-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium">Company Logo</p>
+                <p className="text-xs text-muted-foreground mb-3">Upload or replace the logo shown on reports and the app</p>
+                <div className="flex items-center gap-3 flex-wrap">
+                  {(logoPreview || comp.logoUrl) && (
+                    <div className="w-12 h-12 rounded-lg border bg-muted/30 flex items-center justify-center overflow-hidden shrink-0">
+                      <img src={logoPreview ?? comp.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                    </div>
+                  )}
+                  <div className="flex gap-2 flex-wrap">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={() => logoFileRef.current?.click()}
+                    >
+                      <Upload className="h-3.5 w-3.5" />
+                      {comp.logoUrl ? "Change Logo" : "Upload Logo"}
+                    </Button>
+                    {logoFile && (
+                      <>
+                        <Button
+                          size="sm"
+                          className="gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white"
+                          onClick={handleUploadLogo}
+                          disabled={uploadingLogo}
+                        >
+                          {uploadingLogo ? "Uploading..." : <><Check className="h-3.5 w-3.5" />Save Logo</>}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="gap-1.5 text-muted-foreground"
+                          onClick={handleRemoveLogo}
+                          disabled={uploadingLogo}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                          Cancel
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+                {logoFile && (
+                  <p className="text-xs text-indigo-600 mt-2 flex items-center gap-1.5">
+                    <Upload className="h-3 w-3" />
+                    Ready to upload: {logoFile.name}
+                  </p>
+                )}
+                <input
+                  ref={logoFileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleLogoFileChange}
+                />
+                <p className="text-xs text-muted-foreground mt-1.5">JPG, PNG, WebP — max 2MB</p>
+              </div>
+            </div>
+          </div>
+
           {/* Status toggle */}
           <div className="flex items-center justify-between px-6 py-4">
             <div className="flex items-center gap-3">
