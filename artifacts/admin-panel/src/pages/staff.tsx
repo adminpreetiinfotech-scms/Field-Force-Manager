@@ -522,11 +522,21 @@ function ViewProfileDialog({ staff, onClose }: { staff: StaffMember; onClose: ()
                   <div className="mt-3">
                     <p className="text-xs font-semibold text-muted-foreground mb-1.5">Recent Trips</p>
                     <div className="border rounded-md divide-y text-xs max-h-64 overflow-y-auto">
-                      {stats.recentTrips.slice(0, 10).map((t) => (
-                        <div key={t.tripRef} className="flex items-center gap-2 px-3 py-2">
+                      {stats.recentTrips.slice(0, 10).map((t) => {
+                        const highVariance = t.variancePct != null && t.variancePct > 20;
+                        return (
+                        <div key={t.tripRef} className={`flex items-center gap-2 px-3 py-2 ${highVariance ? "bg-red-50" : ""}`}>
                           <span className="text-muted-foreground w-14 shrink-0">{format(new Date(t.rideDate), "dd MMM")}</span>
-                          <span className="flex-1 font-medium">{t.distanceKm != null ? `${t.distanceKm.toFixed(1)} km` : "—"}</span>
-                          <div className="flex items-center gap-2">
+                          <span className="w-16 shrink-0 font-medium">{t.distanceKm != null ? `${t.distanceKm.toFixed(1)}` : "—"} <span className="text-muted-foreground font-normal">GPS</span></span>
+                          {t.vehicleKm != null && (
+                            <span className="w-16 shrink-0 font-medium">{t.vehicleKm.toFixed(1)} <span className="text-muted-foreground font-normal">Veh</span></span>
+                          )}
+                          {t.variancePct != null && (
+                            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${highVariance ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
+                              {t.variancePct.toFixed(1)}%
+                            </span>
+                          )}
+                          <div className="flex items-center gap-2 ml-auto">
                             {t.checkinMeterPhotoUri ? (
                               <HoverCard openDelay={200} closeDelay={100}>
                                 <HoverCardTrigger asChild>
@@ -586,7 +596,8 @@ function ViewProfileDialog({ staff, onClose }: { staff: StaffMember; onClose: ()
                             )}
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}

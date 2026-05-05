@@ -1888,6 +1888,14 @@ components:
           type: string
           nullable: true
           description: URI of the odometer photo taken at check-out on this day.
+        vehicleKm:
+          type: number
+          nullable: true
+          description: Vehicle odometer km for this day (endOdometer − startOdometer).
+        variancePct:
+          type: number
+          nullable: true
+          description: Absolute variance between vehicleKm and total GPS km for the day, as a percentage of vehicleKm.
       required: [tripRef, rideDate, startTime, endTime]
 
     StaffProfileStats:

@@ -343,6 +343,18 @@ router.get("/staff/:staffId/profile-stats", async (req, res, next) => {
       photoByDate.set(dateStr, existing);
     }
 
+    // Build: dateStr (IST) → odometer readings from checkin/checkout payload
+    type OdoDay = { startOdometerKm: number | null; endOdometerKm: number | null };
+    const odoByDate = new Map<string, OdoDay>();
+    for (const ev of attendEvents) {
+      const dateStr = new Date((ev.occurredAt as Date).getTime() + IST_MS).toISOString().slice(0, 10);
+      const p = (ev.payload || {}) as { startOdometerKm?: number | null; endOdometerKm?: number | null };
+      const existing = odoByDate.get(dateStr) ?? { startOdometerKm: null, endOdometerKm: null };
+      if (ev.kind === "checkin"  && p.startOdometerKm != null) existing.startOdometerKm = p.startOdometerKm;
+      if (ev.kind === "checkout" && p.endOdometerKm   != null) existing.endOdometerKm   = p.endOdometerKm;
+      odoByDate.set(dateStr, existing);
+    }
+
     const startByRef = new Map(
       startEvents.map((e) => [e.tripRef, e]),
     );
@@ -437,6 +449,30 @@ router.get("/staff/:staffId/profile-stats", async (req, res, next) => {
       });
     }
 
+    // Per-day GPS km sum (needed for variance in recent trips)
+    const dayGpsKmMap = new Map<string, number>();
+    for (const ev of events) {
+      const dateStr = new Date((ev.occurredAt as Date).getTime() + IST_MS).toISOString().slice(0, 10);
+      const p = (ev.payload || {}) as { distanceKm?: number };
+      dayGpsKmMap.set(dateStr, (dayGpsKmMap.get(dateStr) ?? 0) + (typeof p.distanceKm === "number" ? p.distanceKm : 0));
+    }
+
+    // Per-day vehicleKm + variancePct (odometer vs GPS)
+    type VkmDay = { vehicleKm: number | null; variancePct: number | null };
+    const vehicleKmByDate = new Map<string, VkmDay>();
+    for (const [date, odo] of odoByDate.entries()) {
+      let vehicleKm: number | null = null;
+      if (odo.startOdometerKm != null && odo.endOdometerKm != null && odo.endOdometerKm >= odo.startOdometerKm) {
+        vehicleKm = round1(odo.endOdometerKm - odo.startOdometerKm);
+      }
+      let variancePct: number | null = null;
+      const dayGps = dayGpsKmMap.get(date) ?? 0;
+      if (vehicleKm != null && vehicleKm > 0 && dayGps > 0) {
+        variancePct = round1(Math.abs(vehicleKm - dayGps) / vehicleKm * 100);
+      }
+      vehicleKmByDate.set(date, { vehicleKm, variancePct });
+    }
+
     // Recent 10 trips (newest first)
     const sorted = [...events].sort(
       (a, b) =>
@@ -459,6 +495,7 @@ router.get("/staff/:staffId/profile-stats", async (req, res, next) => {
       const fmtLoc = (loc?: { latitude: number; longitude: number } | null) =>
         loc ? `${loc.latitude.toFixed(3)}, ${loc.longitude.toFixed(3)}` : null;
       const photos = photoByDate.get(dateStr) ?? { checkinPhotoUri: null, checkoutPhotoUri: null };
+      const vkm = vehicleKmByDate.get(dateStr) ?? { vehicleKm: null, variancePct: null };
       return {
         tripRef: ev.tripRef ?? "",
         rideDate: dateStr,
@@ -472,6 +509,8 @@ router.get("/staff/:staffId/profile-stats", async (req, res, next) => {
         endLocation: fmtLoc(endP.location),
         checkinMeterPhotoUri: photos.checkinPhotoUri,
         checkoutMeterPhotoUri: photos.checkoutPhotoUri,
+        vehicleKm: vkm.vehicleKm,
+        variancePct: vkm.variancePct,
       };
     });
 

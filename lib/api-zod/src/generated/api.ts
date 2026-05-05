@@ -242,7 +242,9 @@ export const GetStaffProfileStatsResponse = zod.object({
   "startLocation": zod.string().nullish(),
   "endLocation": zod.string().nullish(),
   "checkinMeterPhotoUri": zod.string().nullish().describe('URI of the odometer photo taken at check-in on this day.'),
-  "checkoutMeterPhotoUri": zod.string().nullish().describe('URI of the odometer photo taken at check-out on this day.')
+  "checkoutMeterPhotoUri": zod.string().nullish().describe('URI of the odometer photo taken at check-out on this day.'),
+  "vehicleKm": zod.number().nullish().describe('Vehicle odometer km for this day (endOdometer − startOdometer).'),
+  "variancePct": zod.number().nullish().describe('Absolute variance between vehicleKm and total GPS km for the day, as a percentage of vehicleKm.')
 }).describe('A single completed trip for the profile recent-trips list.')).describe('Most recent 10 completed trips, newest first.')
 }).describe('Full profile and ride stats for a single staff member.')
 

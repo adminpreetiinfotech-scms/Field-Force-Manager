@@ -286,6 +286,10 @@ export interface RecentTrip {
   checkinMeterPhotoUri?: string | null;
   /** URI of the odometer photo taken at check-out on this day. */
   checkoutMeterPhotoUri?: string | null;
+  /** Vehicle odometer km for this day (endOdometer − startOdometer). */
+  vehicleKm?: number | null;
+  /** Absolute variance between vehicleKm and total GPS km for the day, as a percentage of vehicleKm. */
+  variancePct?: number | null;
 }
 
 /**
