@@ -29,3 +29,4 @@ args = ["pnpm", "--filter", "@workspace/admin-panel", "run", "build"]
 
 [services.production.build.env]
 NODE_ENV = "production"
+BASE_PATH = "/admin-panel/"
