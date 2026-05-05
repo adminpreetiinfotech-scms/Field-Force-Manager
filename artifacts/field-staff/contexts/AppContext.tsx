@@ -120,6 +120,10 @@ export type RegisterData = {
   staffCategory?: "field" | "center" | null;
   centerStaffRole?: string | null;
   centerId?: string | null;
+  staffCategoryGroup?: "academic" | "ground" | null;
+  designation?: string | null;
+  block?: string | null;
+  staffPinCode?: string | null;
 };
 
 type AppState = {
@@ -528,6 +532,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       staffCategory: data.staffCategory ?? null,
       centerStaffRole: data.centerStaffRole ?? null,
       centerId: data.centerId ?? null,
+      staffCategoryGroup: (data as any).staffCategoryGroup ?? null,
+      designation: (data as any).designation ?? null,
+      block: (data as any).block ?? null,
+      staffPinCode: (data as any).staffPinCode ?? null,
     } as Parameters<typeof registerStaff>[0]);
     const user: User = {
       id: staff.id,

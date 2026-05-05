@@ -6,9 +6,19 @@ export const companiesTable = pgTable("companies", {
   adminName: text("admin_name"),
   phone: text("phone"),
   email: text("email"),
+  /** Contact person name (may differ from admin login name) */
+  contactPersonName: text("contact_person_name"),
   state: text("state"),
   district: text("district"),
+  /** Full head office address */
+  officeAddress: text("office_address"),
+  /** PIN code of head office */
+  pinCode: text("pin_code"),
   projectName: text("project_name"),
+  /** Approval status for new company registrations — Super Admin must approve */
+  approvalStatus: text("approval_status", { enum: ["pending", "approved", "rejected"] })
+    .notNull()
+    .default("approved"),
   logoPath: text("logo_path"),
   /** active | inactive */
   status: text("status", { enum: ["active", "inactive"] })

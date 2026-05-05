@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React from "react";
 import {
   Image,
   Platform,
@@ -25,7 +25,6 @@ export default function WelcomeScreen() {
   const insets = useSafeAreaInsets();
   const webTop = Platform.OS === "web" ? 67 : 0;
   const { lang, setLang, t } = useLanguage();
-  const [showRegister, setShowRegister] = useState(false);
 
   return (
     <View style={{ flex: 1, backgroundColor: "#F0F4FA" }}>
@@ -83,86 +82,52 @@ export default function WelcomeScreen() {
 
         {/* ── Action card ──────────────────────────────────────────── */}
         <View style={styles.card}>
-          {!showRegister ? (
-            <>
-              {/* Login */}
-              <Pressable
-                onPress={() => router.push("/(auth)/phone")}
-                style={({ pressed }) => [styles.primaryBtn, { opacity: pressed ? 0.85 : 1 }]}
-              >
-                <Feather name="log-in" size={18} color="#fff" />
-                <Text style={styles.primaryBtnText}>{t("login")}</Text>
-              </Pressable>
 
-              {/* Divider */}
-              <View style={styles.dividerRow}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>{t("or")}</Text>
-                <View style={styles.dividerLine} />
-              </View>
+          {/* 1. Login */}
+          <Pressable
+            onPress={() => router.push("/(auth)/phone")}
+            style={({ pressed }) => [styles.primaryBtn, { opacity: pressed ? 0.85 : 1 }]}
+          >
+            <Feather name="log-in" size={18} color="#fff" />
+            <Text style={styles.primaryBtnText}>{t("login")}</Text>
+          </Pressable>
 
-              {/* Register toggle */}
-              <Pressable
-                onPress={() => setShowRegister(true)}
-                style={({ pressed }) => [styles.secondaryBtn, { opacity: pressed ? 0.85 : 1 }]}
-              >
-                <Feather name="user-plus" size={18} color={ACCENT} />
-                <Text style={styles.secondaryBtnText}>{t("register")}</Text>
-              </Pressable>
-            </>
-          ) : (
-            <>
-              <TouchableOpacity style={styles.backLink} onPress={() => setShowRegister(false)}>
-                <Feather name="arrow-left" size={14} color={ACCENT} />
-                <Text style={styles.backLinkText}>{t("back")}</Text>
-              </TouchableOpacity>
+          {/* Divider */}
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>YA</Text>
+            <View style={styles.dividerLine} />
+          </View>
 
-              {/* Register New Company */}
-              <Pressable
-                onPress={() => router.push("/(auth)/register-company")}
-                style={({ pressed }) => [styles.roleCard, { opacity: pressed ? 0.9 : 1 }]}
-              >
-                <View style={[styles.roleIcon, { backgroundColor: "#FEF3C7" }]}>
-                  <Feather name="briefcase" size={20} color="#D97706" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.roleTitle}>New Company</Text>
-                  <Text style={styles.roleSub}>Register your organization & create admin account</Text>
-                </View>
-                <Feather name="chevron-right" size={16} color="#AAA" />
-              </Pressable>
+          {/* 2. Center Setup */}
+          <Pressable
+            onPress={() => router.push("/(auth)/register-company")}
+            style={({ pressed }) => [styles.roleCard, { opacity: pressed ? 0.9 : 1 }]}
+          >
+            <View style={[styles.roleIcon, { backgroundColor: "#FEF3C7" }]}>
+              <Feather name="briefcase" size={20} color="#D97706" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.roleTitle}>Center Setup</Text>
+              <Text style={styles.roleSub}>Apni organization register karein — Super Admin approval ke baad login milega</Text>
+            </View>
+            <Feather name="chevron-right" size={16} color="#AAA" />
+          </Pressable>
 
-              {/* Register as Admin (existing company) */}
-              <Pressable
-                onPress={() => router.push("/(auth)/register-admin")}
-                style={({ pressed }) => [styles.roleCard, { opacity: pressed ? 0.9 : 1 }]}
-              >
-                <View style={styles.roleIcon}>
-                  <Feather name="shield" size={20} color={ACCENT} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.roleTitle}>{t("registerAdmin")}</Text>
-                  <Text style={styles.roleSub}>Join as admin with registration key</Text>
-                </View>
-                <Feather name="chevron-right" size={16} color="#AAA" />
-              </Pressable>
-
-              {/* Register as Staff */}
-              <Pressable
-                onPress={() => router.push("/(auth)/register-staff")}
-                style={({ pressed }) => [styles.roleCard, { opacity: pressed ? 0.9 : 1 }]}
-              >
-                <View style={[styles.roleIcon, { backgroundColor: "#E8F5E9" }]}>
-                  <Feather name="user" size={20} color="#388E3C" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.roleTitle}>{t("registerStaff")}</Text>
-                  <Text style={styles.roleSub}>{t("registerStaffSub")}</Text>
-                </View>
-                <Feather name="chevron-right" size={16} color="#AAA" />
-              </Pressable>
-            </>
-          )}
+          {/* 3. Staff Registration */}
+          <Pressable
+            onPress={() => router.push("/(auth)/register-staff")}
+            style={({ pressed }) => [styles.roleCard, { opacity: pressed ? 0.9 : 1 }]}
+          >
+            <View style={[styles.roleIcon, { backgroundColor: "#E8F5E9" }]}>
+              <Feather name="user-plus" size={20} color="#388E3C" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.roleTitle}>Staff Registration</Text>
+              <Text style={styles.roleSub}>Academic / Ground staff — Admin code se apna account banayein</Text>
+            </View>
+            <Feather name="chevron-right" size={16} color="#AAA" />
+          </Pressable>
 
           {/* Demo hint */}
           <View style={styles.demoHint}>
@@ -293,39 +258,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#DDD",
   },
   dividerText: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#AAA",
-    fontFamily: "Inter_500Medium",
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 1,
   },
 
-  secondaryBtn: {
-    borderWidth: 1.5,
-    borderColor: ACCENT,
-    borderRadius: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    paddingVertical: 13,
-  },
-  secondaryBtnText: {
-    color: ACCENT,
-    fontSize: 16,
-    fontFamily: "Inter_700Bold",
-  },
-
-  // Register sub-panel
-  backLink: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginBottom: 2,
-  },
-  backLinkText: {
-    color: ACCENT,
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-  },
   roleCard: {
     flexDirection: "row",
     alignItems: "center",

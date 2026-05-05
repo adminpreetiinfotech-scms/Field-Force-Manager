@@ -57,9 +57,13 @@ function toCompanyDTO(c: typeof companiesTable.$inferSelect) {
     adminName: c.adminName ?? null,
     phone: c.phone ?? null,
     email: c.email ?? null,
+    contactPersonName: c.contactPersonName ?? null,
     state: c.state ?? null,
     district: c.district ?? null,
+    officeAddress: c.officeAddress ?? null,
+    pinCode: c.pinCode ?? null,
     projectName: c.projectName ?? null,
+    approvalStatus: c.approvalStatus ?? "approved",
     logoUrl: toLogoUrl(c.logoPath),
     status: c.status,
     subscriptionActive: c.subscriptionActive,
@@ -97,6 +101,9 @@ router.post("/companies/register", async (req, res, next) => {
       companyName,
       companyState,
       companyDistrict,
+      companyOfficeAddress,
+      companyPinCode,
+      contactPersonName,
       projectName,
       logoBase64,
       logoMime,
@@ -111,6 +118,9 @@ router.post("/companies/register", async (req, res, next) => {
       companyName?: string;
       companyState?: string;
       companyDistrict?: string;
+      companyOfficeAddress?: string | null;
+      companyPinCode?: string | null;
+      contactPersonName?: string | null;
       projectName?: string;
       logoBase64?: string | null;
       logoMime?: string | null;
@@ -162,7 +172,7 @@ router.post("/companies/register", async (req, res, next) => {
       return;
     }
 
-    // Create company row first (no logo yet)
+    // Create company row first (no logo yet) — approval is PENDING until Super Admin approves
     const [company] = await db
       .insert(companiesTable)
       .values({
@@ -170,9 +180,13 @@ router.post("/companies/register", async (req, res, next) => {
         adminName: adminName.trim(),
         phone: adminPhone.trim(),
         email: adminEmail?.trim() || null,
+        contactPersonName: contactPersonName?.trim() || null,
         state: companyState?.trim() || null,
         district: companyDistrict?.trim() || null,
+        officeAddress: companyOfficeAddress?.trim() || null,
+        pinCode: companyPinCode?.trim() || null,
         projectName: projectName?.trim() || null,
+        approvalStatus: "pending",
         status: "active",
         subscriptionActive: true,
       })
@@ -208,7 +222,7 @@ router.post("/companies/register", async (req, res, next) => {
         state: state?.trim() || companyState?.trim() || null,
         district: district?.trim() || companyDistrict?.trim() || null,
         adminCode,
-        approvalStatus: "approved",
+        approvalStatus: "pending",
       })
       .returning();
 
@@ -437,6 +451,7 @@ function toCenterDTO(c: typeof centersTable.$inferSelect) {
     lat: c.lat ?? null,
     lng: c.lng ?? null,
     radiusMeters: c.radiusMeters ?? 200,
+    approvalStatus: c.approvalStatus ?? "approved",
     createdAt: c.createdAt?.toISOString() ?? null,
   };
 }

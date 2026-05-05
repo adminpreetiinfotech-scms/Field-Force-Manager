@@ -47,6 +47,8 @@ export interface ProcessResult {
 export interface DocProcessorHandle {
   processImage(base64OrDataUri: string, opts: ProcessOptions): Promise<ProcessResult>;
   isReady(): boolean;
+  /** Force-resolve all pending waitReady callers so capture can proceed via raw-photo fallback. */
+  forceReady(): void;
 }
 
 // ─── Internal ─────────────────────────────────────────────────────────────────
@@ -57,7 +59,7 @@ interface PendingEntry {
   timer:   ReturnType<typeof setTimeout>;
 }
 
-const TIMEOUT_MS = 45_000;
+const TIMEOUT_MS = 15_000;
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -114,13 +116,21 @@ const DocProcessorBridge = React.forwardRef<DocProcessorHandle, Props>(
       [waitReady],
     );
 
+    const forceReady = useCallback(() => {
+      if (readyRef.current) return;
+      readyRef.current = true;
+      readyWaiters.current.forEach((w) => w.resolve());
+      readyWaiters.current = [];
+    }, []);
+
     useImperativeHandle(
       ref,
       () => ({
         processImage,
         isReady: () => readyRef.current,
+        forceReady,
       }),
-      [processImage],
+      [processImage, forceReady],
     );
 
     const handleMessage = useCallback(

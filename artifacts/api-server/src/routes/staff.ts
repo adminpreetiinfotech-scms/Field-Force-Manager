@@ -30,6 +30,10 @@ export function toStaffDTO(r: typeof staffTable.$inferSelect) {
     staffCategory: r.staffCategory ?? "field",
     centerStaffRole: r.centerStaffRole ?? null,
     centerId: r.centerId ?? null,
+    staffCategoryGroup: r.staffCategoryGroup ?? null,
+    designation: r.designation ?? null,
+    block: r.block ?? null,
+    staffPinCode: r.staffPinCode ?? null,
   };
 }
 
@@ -47,6 +51,7 @@ router.post("/staff/register", async (req, res, next) => {
     const {
       kind, name, phone, organization, centerName, projectName, email, state, district,
       empCode, area, adminCode, adminRegistrationKey, companyId, staffCategory, centerStaffRole, centerId,
+      staffCategoryGroup, designation, block, staffPinCode,
     } = req.body as {
       kind?: string;
       name?: string;
@@ -65,6 +70,10 @@ router.post("/staff/register", async (req, res, next) => {
       staffCategory?: "field" | "center" | null;
       centerStaffRole?: string | null;
       centerId?: string | null;
+      staffCategoryGroup?: "academic" | "ground" | null;
+      designation?: string | null;
+      block?: string | null;
+      staffPinCode?: string | null;
     };
 
     if (!kind || !["admin", "staff"].includes(kind)) {
@@ -208,6 +217,10 @@ router.post("/staff/register", async (req, res, next) => {
         staffCategory: staffCategory === "center" ? "center" : "field",
         centerStaffRole: staffCategory === "center" ? (centerStaffRole?.trim() || null) : null,
         centerId: centerId?.trim() || null,
+        staffCategoryGroup: staffCategory === "center" ? (staffCategoryGroup ?? null) : null,
+        designation: designation?.trim() || null,
+        block: block?.trim() || null,
+        staffPinCode: staffPinCode?.trim() || null,
       })
       .returning();
 

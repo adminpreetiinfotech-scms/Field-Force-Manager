@@ -26,6 +26,10 @@ export const centersTable = pgTable("centers", {
   lng: doublePrecision("lng"),
   /** Geo-fence radius in meters (default 200) */
   radiusMeters: integer("radius_meters").default(200),
+  /** Approval status — Super Admin must approve before center is active */
+  approvalStatus: text("approval_status", { enum: ["pending", "approved", "rejected"] })
+    .notNull()
+    .default("approved"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

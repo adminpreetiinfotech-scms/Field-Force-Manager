@@ -50,8 +50,16 @@ export const staffTable = pgTable("staff", {
   vehicleNumber: text("vehicle_number"),
   /** Staff category: field staff do field visits; center staff work at the training center. */
   staffCategory: text("staff_category", { enum: ["field", "center"] }).notNull().default("field"),
+  /** Sub-category for center staff: academic (teaching/training) or ground (support/operations). */
+  staffCategoryGroup: text("staff_category_group", { enum: ["academic", "ground"] }),
   /** Role label for center staff (e.g. trainer, centerHead, cook, securityGuard). */
   centerStaffRole: text("center_staff_role"),
+  /** Staff designation / job title */
+  designation: text("designation"),
+  /** Block / Taluka where staff is based */
+  block: text("block"),
+  /** PIN code of staff's base location */
+  staffPinCode: text("staff_pin_code"),
   /** Training center this staff member is linked to (nullable). */
   centerId: uuid("center_id").references(() => centersTable.id, { onDelete: "set null" }),
   /** JSON-encoded array of dismissed dashboard hint keys (e.g. ["dashboard_hint_center"]). */

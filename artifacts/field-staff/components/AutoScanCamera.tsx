@@ -186,11 +186,15 @@ export default function AutoScanCamera({
     }
   }, [visible]);
 
-  // Fallback: if DocProcessorBridge doesn't signal ready within 6s, unlock anyway
-  // (capture will use raw photo fallback path which is perfectly usable)
+  // Fallback: if DocProcessorBridge doesn't signal ready within 6s, unlock anyway.
+  // Also call forceReady() so any pending waitReady() promises resolve immediately
+  // (avoids a 15s hang when the WebView fails to load in nested-Modal contexts).
   useEffect(() => {
     if (bridgeReady) return;
-    const t = setTimeout(() => setBridgeReady(true), 6000);
+    const t = setTimeout(() => {
+      setBridgeReady(true);
+      processorRef.current?.forceReady?.();
+    }, 6000);
     return () => clearTimeout(t);
   }, [bridgeReady]);
 

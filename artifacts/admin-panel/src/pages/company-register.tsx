@@ -4,14 +4,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, CheckCircle2, Loader2, KeyRound, User, Phone, Mail, MapPin, Briefcase } from "lucide-react";
+import { Building2, Clock, KeyRound, Loader2, Mail, MapPin, Phone, User } from "lucide-react";
 import { Link } from "wouter";
+
+const PROJECT_OPTIONS = ["DDU-GKY", "JSDMS", "PMKVY", "UPSDM", "BSDM", "NULM", "Other"];
 
 type Fields = {
   companyName: string;
+  contactPersonName: string;
+  projectName: string;
   companyState: string;
   companyDistrict: string;
-  projectName: string;
+  companyOfficeAddress: string;
+  companyPinCode: string;
   adminName: string;
   adminPhone: string;
   adminEmail: string;
@@ -20,9 +25,12 @@ type Fields = {
 
 const EMPTY: Fields = {
   companyName: "",
+  contactPersonName: "",
+  projectName: "",
   companyState: "",
   companyDistrict: "",
-  projectName: "",
+  companyOfficeAddress: "",
+  companyPinCode: "",
   adminName: "",
   adminPhone: "",
   adminEmail: "",
@@ -39,6 +47,7 @@ export default function CompanyRegister() {
   const { toast } = useToast();
   const [fields, setFields] = useState<Fields>(EMPTY);
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [selectedProject, setSelectedProject] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [created, setCreated] = useState<CreatedInfo | null>(null);
 
@@ -53,13 +62,18 @@ export default function CompanyRegister() {
       reader.readAsDataURL(file);
     });
 
+  const handleProjectSelect = (opt: string) => {
+    const next = selectedProject === opt ? "" : opt;
+    setSelectedProject(next);
+    setFields((p) => ({ ...p, projectName: next }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
       let logoBase64: string | null = null;
       let logoMime: string | null = null;
-
       if (logoFile) {
         logoBase64 = await toBase64(logoFile);
         logoMime = logoFile.type;
@@ -70,9 +84,12 @@ export default function CompanyRegister() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           companyName: fields.companyName.trim(),
+          contactPersonName: fields.contactPersonName.trim() || null,
+          projectName: fields.projectName.trim() || null,
           companyState: fields.companyState.trim() || null,
           companyDistrict: fields.companyDistrict.trim() || null,
-          projectName: fields.projectName.trim() || null,
+          companyOfficeAddress: fields.companyOfficeAddress.trim() || null,
+          companyPinCode: fields.companyPinCode.trim() || null,
           adminName: fields.adminName.trim(),
           adminPhone: fields.adminPhone.trim(),
           adminEmail: fields.adminEmail.trim() || null,
@@ -97,6 +114,7 @@ export default function CompanyRegister() {
       });
       setFields(EMPTY);
       setLogoFile(null);
+      setSelectedProject("");
     } catch (err: any) {
       toast({
         title: "Registration failed",
@@ -113,38 +131,42 @@ export default function CompanyRegister() {
       <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <div className="mx-auto h-16 w-16 rounded-full bg-green-100 text-green-600 flex items-center justify-center mb-2">
-              <CheckCircle2 className="h-9 w-9" />
+            <div className="mx-auto h-16 w-16 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mb-2">
+              <Clock className="h-9 w-9" />
             </div>
-            <CardTitle className="text-2xl">Registration Successful!</CardTitle>
+            <CardTitle className="text-2xl">Request Submitted!</CardTitle>
             <CardDescription className="text-base mt-1">
-              <strong>{created.companyName}</strong> successfully registered on SCMS.
+              <strong>{created.companyName}</strong> ki registration request bheji gayi hai.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+              <p className="font-semibold mb-1">⏳ Super Admin Approval Pending</p>
+              <p>
+                Aapki request Praiaiti Infotech ke Super Admin ke paas bheji gayi hai. Approval milne ke baad hi aap login kar sakenge.
+              </p>
+            </div>
             <div className="rounded-lg bg-muted p-4 space-y-2 text-sm">
               <p className="font-semibold text-foreground">Aage kya karein / Next Steps:</p>
               <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                <li>Praiaiti Infotech se contact karein approval ke liye</li>
                 <li>
-                  Admin Panel mein login karein:{" "}
-                  <a
-                    href="/admin-panel/login"
-                    className="text-primary underline"
-                  >
+                  Approval milne ke baad login karein:{" "}
+                  <a href="/admin-panel/login" className="text-primary underline">
                     Admin Login
                   </a>
                 </li>
                 <li>
-                  Phone: <strong className="text-foreground">{created.adminPhone}</strong> se login karein
+                  Phone:{" "}
+                  <strong className="text-foreground">{created.adminPhone}</strong> se login karein
                 </li>
                 <li>OTP milega — enter karke MPIN set karein</li>
-                <li>Training Centers mein jaake apne center add karein</li>
-                <li>Staff add karein aur field operations shuru karein</li>
+                <li>Training Centers add karein aur staff onboard karein</li>
               </ol>
             </div>
             <Link href="/login">
-              <Button className="w-full" size="lg">
-                Admin Panel Login Karein
+              <Button variant="outline" className="w-full" size="lg">
+                Login Page Par Jaayein
               </Button>
             </Link>
           </CardContent>
@@ -160,9 +182,9 @@ export default function CompanyRegister() {
           <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-primary/10 text-primary mb-3">
             <Building2 className="h-7 w-7" />
           </div>
-          <h1 className="text-2xl font-bold">Training Center Registration</h1>
+          <h1 className="text-2xl font-bold">Organization Registration</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            SCMS par apna training center register karein — Praiaiti Infotech se Registration Key prapt karke yeh form bharein.
+            SCMS par apni organization register karein. Praiaiti Infotech se Registration Key prapt karke yeh form bharein.
           </p>
         </div>
 
@@ -170,29 +192,84 @@ export default function CompanyRegister() {
           <CardHeader>
             <CardTitle className="text-lg">Organization &amp; Admin Details</CardTitle>
             <CardDescription>
-              Ek baar register hone ke baad aap Admin Panel se apni organization manage kar sakte hain.
+              Registration ke baad Super Admin approve karega — phir aap login kar sakenge.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
 
+              {/* Organization Details */}
               <section className="space-y-3">
                 <SectionHeading icon={<Building2 className="h-3.5 w-3.5" />} title="Organization Details" />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <Field label="Training Center / Organization Name *" className="sm:col-span-2">
+                  <Field label="Organization / Training Center Name *" className="sm:col-span-2">
                     <Input
                       value={fields.companyName}
                       onChange={set("companyName")}
                       required
                       minLength={2}
-                      placeholder="e.g. Jharkhand Skills Academy"
+                      placeholder="e.g. Jharkhand Skills Academy Pvt. Ltd."
                     />
                   </Field>
-                  <Field label="Project Name">
+                  <Field label="Contact Person Name">
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        value={fields.contactPersonName}
+                        onChange={set("contactPersonName")}
+                        placeholder="e.g. Ramesh Kumar"
+                        className="pl-9"
+                      />
+                    </div>
+                  </Field>
+                  <Field label="Organization Logo (optional)">
                     <Input
-                      value={fields.projectName}
-                      onChange={set("projectName")}
-                      placeholder="e.g. DDU-GKY / JSDMS"
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      onChange={(e) => setLogoFile(e.target.files?.[0] ?? null)}
+                      className="cursor-pointer"
+                    />
+                  </Field>
+                </div>
+
+                {/* Project/Scheme selector */}
+                <Field label="Project / Scheme">
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {PROJECT_OPTIONS.map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => handleProjectSelect(opt)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                          selectedProject === opt
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-background border-border text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                  <Input
+                    value={fields.projectName}
+                    onChange={(e) => {
+                      setFields((p) => ({ ...p, projectName: e.target.value }));
+                      setSelectedProject("");
+                    }}
+                    placeholder="Ya custom project name type karein"
+                  />
+                </Field>
+              </section>
+
+              {/* Head Office Address */}
+              <section className="space-y-3">
+                <SectionHeading icon={<MapPin className="h-3.5 w-3.5" />} title="Head Office Address" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Field label="Office Address" className="sm:col-span-2">
+                    <Input
+                      value={fields.companyOfficeAddress}
+                      onChange={set("companyOfficeAddress")}
+                      placeholder="e.g. Plot 12, Industrial Area, Near Railway Station"
                     />
                   </Field>
                   <Field label="State">
@@ -209,21 +286,23 @@ export default function CompanyRegister() {
                       placeholder="e.g. Ranchi"
                     />
                   </Field>
-                  <Field label="Organization Logo (optional)">
+                  <Field label="PIN Code">
                     <Input
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      onChange={(e) => setLogoFile(e.target.files?.[0] ?? null)}
-                      className="cursor-pointer"
+                      value={fields.companyPinCode}
+                      onChange={set("companyPinCode")}
+                      placeholder="e.g. 834001"
+                      maxLength={6}
+                      inputMode="numeric"
                     />
                   </Field>
                 </div>
               </section>
 
+              {/* Admin Account */}
               <section className="space-y-3">
                 <SectionHeading icon={<User className="h-3.5 w-3.5" />} title="Admin Account" />
                 <p className="text-xs text-muted-foreground">
-                  Yeh details admin ke login ke liye use honge. Ek baar register hone ke baad is phone number se login karein.
+                  Yeh details admin ke login ke liye use honge. Approval ke baad is phone number se login karein.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field label="Admin Full Name *">
@@ -232,7 +311,7 @@ export default function CompanyRegister() {
                       onChange={set("adminName")}
                       required
                       minLength={2}
-                      placeholder="e.g. Ramesh Kumar"
+                      placeholder="e.g. Anita Sharma"
                     />
                   </Field>
                   <Field label="Admin Phone Number *">
@@ -266,10 +345,11 @@ export default function CompanyRegister() {
                 </div>
               </section>
 
+              {/* Registration Key */}
               <section className="space-y-3">
                 <SectionHeading icon={<KeyRound className="h-3.5 w-3.5" />} title="Registration Key" />
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                  <strong>Registration Key kaise milega?</strong> Praiaiti Infotech se contact karein aur woh aapko ek secret Registration Key provide karenge. Bina is key ke registration possible nahi hai.
+                  <strong>Registration Key kaise milega?</strong> Praiaiti Infotech se contact karein — woh aapko ek secret key provide karenge. Bina is key ke registration nahi hogi.
                 </div>
                 <Field label="Admin Registration Key *">
                   <div className="relative">
@@ -288,9 +368,9 @@ export default function CompanyRegister() {
 
               <Button type="submit" className="w-full" size="lg" disabled={submitting}>
                 {submitting ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Registering...</>
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Submitting...</>
                 ) : (
-                  <><Building2 className="h-4 w-4 mr-2" /> Register Training Center</>
+                  <><Building2 className="h-4 w-4 mr-2" /> Register Organization</>
                 )}
               </Button>
 

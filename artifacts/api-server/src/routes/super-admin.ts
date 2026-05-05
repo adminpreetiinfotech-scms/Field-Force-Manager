@@ -3,6 +3,7 @@ import {
   candidateAuditLogTable,
   candidateNotificationsTable,
   candidatesTable,
+  centersTable,
   companiesTable,
   db,
   staffTable,
@@ -137,6 +138,166 @@ router.get("/super-admin/companies", requireSuperAdmin, async (_req, res, next) 
   try {
     const companies = await db.select().from(companiesTable).orderBy(companiesTable.createdAt);
     res.json(companies.map(toCompanyDTO));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── GET /api/super-admin/pending-companies ────────────────────────────────────
+// List companies with approvalStatus = 'pending'
+
+router.get("/super-admin/pending-companies", requireSuperAdmin, async (_req, res, next) => {
+  try {
+    const companies = await db
+      .select()
+      .from(companiesTable)
+      .where(eq(companiesTable.approvalStatus, "pending"))
+      .orderBy(companiesTable.createdAt);
+    res.json(companies.map(toCompanyDTO));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── POST /api/super-admin/companies/:id/approve ──────────────────────────────
+// Approve a pending company and its admin(s).
+
+router.post("/super-admin/companies/:id/approve", requireSuperAdmin, async (req, res, next) => {
+  try {
+    const id = req.params.id as string;
+    if (!isValidUUID(id)) {
+      res.status(400).json({ title: "Invalid company id", status: 400 });
+      return;
+    }
+    const [company] = await db
+      .update(companiesTable)
+      .set({ approvalStatus: "approved" })
+      .where(eq(companiesTable.id, id))
+      .returning();
+    if (!company) {
+      res.status(404).json({ title: "Company not found", status: 404 });
+      return;
+    }
+    // Also approve all pending admins for this company
+    await db
+      .update(staffTable)
+      .set({ approvalStatus: "approved" })
+      .where(and(eq(staffTable.companyId, id), eq(staffTable.role, "admin"), eq(staffTable.approvalStatus, "pending")));
+    res.json({ message: "Company approved successfully", company: toCompanyDTO(company) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── POST /api/super-admin/companies/:id/reject ───────────────────────────────
+// Reject a pending company.
+
+router.post("/super-admin/companies/:id/reject", requireSuperAdmin, async (req, res, next) => {
+  try {
+    const id = req.params.id as string;
+    if (!isValidUUID(id)) {
+      res.status(400).json({ title: "Invalid company id", status: 400 });
+      return;
+    }
+    const [company] = await db
+      .update(companiesTable)
+      .set({ approvalStatus: "rejected" })
+      .where(eq(companiesTable.id, id))
+      .returning();
+    if (!company) {
+      res.status(404).json({ title: "Company not found", status: 404 });
+      return;
+    }
+    await db
+      .update(staffTable)
+      .set({ approvalStatus: "rejected" })
+      .where(and(eq(staffTable.companyId, id), eq(staffTable.role, "admin"), eq(staffTable.approvalStatus, "pending")));
+    res.json({ message: "Company rejected", company: toCompanyDTO(company) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── GET /api/super-admin/pending-centers ─────────────────────────────────────
+// List training centers with approvalStatus = 'pending'
+
+router.get("/super-admin/pending-centers", requireSuperAdmin, async (_req, res, next) => {
+  try {
+    const rows = await db
+      .select({
+        id: centersTable.id,
+        companyId: centersTable.companyId,
+        companyName: companiesTable.name,
+        name: centersTable.name,
+        tcId: centersTable.tcId,
+        state: centersTable.state,
+        district: centersTable.district,
+        block: centersTable.block,
+        pinCode: centersTable.pinCode,
+        courses: centersTable.courses,
+        approvalStatus: centersTable.approvalStatus,
+        createdAt: centersTable.createdAt,
+      })
+      .from(centersTable)
+      .leftJoin(companiesTable, eq(centersTable.companyId, companiesTable.id))
+      .where(eq(centersTable.approvalStatus, "pending"))
+      .orderBy(centersTable.createdAt);
+    res.json(rows.map((r) => ({
+      ...r,
+      companyName: r.companyName ?? null,
+      courses: (r.courses as string[] | null) ?? [],
+      createdAt: r.createdAt?.toISOString() ?? null,
+    })));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── POST /api/super-admin/centers/:id/approve ────────────────────────────────
+// Approve a pending training center.
+
+router.post("/super-admin/centers/:id/approve", requireSuperAdmin, async (req, res, next) => {
+  try {
+    const id = req.params.id as string;
+    if (!isValidUUID(id)) {
+      res.status(400).json({ title: "Invalid center id", status: 400 });
+      return;
+    }
+    const [center] = await db
+      .update(centersTable)
+      .set({ approvalStatus: "approved" })
+      .where(eq(centersTable.id, id))
+      .returning();
+    if (!center) {
+      res.status(404).json({ title: "Center not found", status: 404 });
+      return;
+    }
+    res.json({ message: "Center approved successfully", centerId: center.id, name: center.name });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── POST /api/super-admin/centers/:id/reject ─────────────────────────────────
+// Reject a pending training center.
+
+router.post("/super-admin/centers/:id/reject", requireSuperAdmin, async (req, res, next) => {
+  try {
+    const id = req.params.id as string;
+    if (!isValidUUID(id)) {
+      res.status(400).json({ title: "Invalid center id", status: 400 });
+      return;
+    }
+    const [center] = await db
+      .update(centersTable)
+      .set({ approvalStatus: "rejected" })
+      .where(eq(centersTable.id, id))
+      .returning();
+    if (!center) {
+      res.status(404).json({ title: "Center not found", status: 404 });
+      return;
+    }
+    res.json({ message: "Center rejected", centerId: center.id, name: center.name });
   } catch (err) {
     next(err);
   }

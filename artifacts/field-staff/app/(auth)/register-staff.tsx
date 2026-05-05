@@ -20,17 +20,32 @@ import { Button } from "@/components/Button";
 import { useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
 
-const CENTER_ROLES = [
+// ── Role lists ───────────────────────────────────────────────────────────────
+const ACADEMIC_ROLES = [
   "Center Head",
   "MIS Executive",
+  "Placement Incharge",
   "Trainer",
-  "Co-Trainer",
+  "IT Trainer",
+  "Soft Skills Trainer",
+  "Receptionist",
   "Counselor",
-  "Cook",
-  "Security Guard",
-  "Hostel Warden",
-  "Lab Assistant",
-  "Other",
+  "Tele Caller",
+  "Hostel Warden Male",
+  "Hostel Warden Female",
+];
+
+const GROUND_ROLES = [
+  "Office Boy",
+  "Security Guard (Day)",
+  "Security Guard (Night)",
+  "Head Cook",
+  "Assistant Cook",
+  "Cook Helper",
+  "Care Taker",
+  "Sweeper",
+  "Toilet Cleaner",
+  "Other Staff",
 ];
 
 interface Center {
@@ -63,35 +78,49 @@ export default function RegisterStaffScreen() {
   const insets = useSafeAreaInsets();
   const { register } = useApp();
 
+  // Personal details
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+
+  // Staff category: field staff or center staff
+  const [staffCategory, setStaffCategory] = useState<"field" | "center">("field");
+  // Center staff sub-category
+  const [staffCategoryGroup, setStaffCategoryGroup] = useState<"academic" | "ground" | null>(null);
+  const [centerStaffRole, setCenterStaffRole] = useState("");
+  const [designation, setDesignation] = useState("");
+  const [showRolePicker, setShowRolePicker] = useState(false);
+
+  // Organization fields
   const [centerName, setCenterName] = useState("");
   const [projectName, setProjectName] = useState("");
   const [state, setState_] = useState("");
   const [district, setDistrict] = useState("");
-  const [adminCode, setAdminCode] = useState("");
-  const [staffCategory, setStaffCategory] = useState<"field" | "center">("field");
-  const [centerStaffRole, setCenterStaffRole] = useState("");
-  const [showRolePicker, setShowRolePicker] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [block, setBlock] = useState("");
+  const [staffPinCode, setStaffPinCode] = useState("");
 
-  // Center picker state
+  // Admin code + center picker
+  const [adminCode, setAdminCode] = useState("");
   const [centers, setCenters] = useState<Center[]>([]);
   const [centerId, setCenterId] = useState<string | null>(null);
   const [centersLoading, setCentersLoading] = useState(false);
   const [showCenterPicker, setShowCenterPicker] = useState(false);
   const [centersLoaded, setCentersLoaded] = useState(false);
 
+  const [loading, setLoading] = useState(false);
+
   const phoneRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
+  const designationRef = useRef<TextInput>(null);
   const centerRef = useRef<TextInput>(null);
   const projectRef = useRef<TextInput>(null);
   const stateRef = useRef<TextInput>(null);
   const districtRef = useRef<TextInput>(null);
+  const blockRef = useRef<TextInput>(null);
+  const pinCodeRef = useRef<TextInput>(null);
   const adminCodeRef = useRef<TextInput>(null);
 
-  // Fetch centers when admin code has 6 chars
+  // ── Fetch centers when admin code is 6 chars ─────────────────────────────
   useEffect(() => {
     const code = adminCode.trim().toUpperCase();
     if (code.length !== 6) {
@@ -109,7 +138,6 @@ export default function RegisterStaffScreen() {
       setCenters(data);
       setCentersLoaded(true);
       setCentersLoading(false);
-      // Reset center selection when code changes
       setCenterId(null);
     });
     return () => { cancelled = true; };
@@ -120,6 +148,7 @@ export default function RegisterStaffScreen() {
     setCenterName(c.name);
     if (c.state) setState_(c.state);
     if (c.district) setDistrict(c.district);
+    if (c.block) setBlock(c.block);
     setShowCenterPicker(false);
   };
 
@@ -128,6 +157,7 @@ export default function RegisterStaffScreen() {
     setCenterName("");
     setState_("");
     setDistrict("");
+    setBlock("");
   };
 
   const selectedCenter = centers.find((c) => c.id === centerId) ?? null;
@@ -135,15 +165,28 @@ export default function RegisterStaffScreen() {
   const isValidEmail = (e: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
 
+  // Center staff: need a role (from picker) or designation
+  const centerRoleValid =
+    staffCategory === "field" ||
+    (staffCategory === "center" && staffCategoryGroup !== null && centerStaffRole.trim().length >= 2);
+
   const valid =
     name.trim().length >= 2 &&
     phone.replace(/\D/g, "").length === 10 &&
-    isValidEmail(email) &&
+    (email.trim() === "" || isValidEmail(email)) &&
     centerName.trim().length >= 2 &&
     projectName.trim().length >= 2 &&
     state.trim().length >= 2 &&
     district.trim().length >= 2 &&
-    (staffCategory === "field" || centerStaffRole.trim().length >= 2);
+    centerRoleValid;
+
+  // ── Which role list to show based on sub-category ─────────────────────────
+  const activeRoles =
+    staffCategoryGroup === "academic"
+      ? ACADEMIC_ROLES
+      : staffCategoryGroup === "ground"
+      ? GROUND_ROLES
+      : [];
 
   const onRegister = async () => {
     if (!valid) return;
@@ -153,7 +196,7 @@ export default function RegisterStaffScreen() {
         kind: "staff",
         name: name.trim(),
         phone: phone.replace(/\D/g, ""),
-        email: email.trim(),
+        email: email.trim() || undefined,
         centerName: centerName.trim(),
         projectName: projectName.trim(),
         state: state.trim(),
@@ -161,19 +204,19 @@ export default function RegisterStaffScreen() {
         adminCode: adminCode.trim().toUpperCase() || undefined,
         staffCategory,
         centerStaffRole: staffCategory === "center" ? centerStaffRole.trim() : undefined,
+        staffCategoryGroup: staffCategory === "center" ? (staffCategoryGroup ?? undefined) : undefined,
+        designation: designation.trim() || undefined,
+        block: block.trim() || undefined,
+        staffPinCode: staffPinCode.trim() || undefined,
         centerId: centerId ?? undefined,
       });
       if (Platform.OS !== "web") {
-        Haptics.notificationAsync(
-          Haptics.NotificationFeedbackType.Success,
-        ).catch(() => {});
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       }
       router.push({ pathname: "/(auth)/mpin", params: { mode: "setup" } });
     } catch (e: any) {
       if (Platform.OS !== "web") {
-        Haptics.notificationAsync(
-          Haptics.NotificationFeedbackType.Error,
-        ).catch(() => {});
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
       }
       Alert.alert(
         "Registration failed",
@@ -235,15 +278,19 @@ export default function RegisterStaffScreen() {
               Staff Registration
             </Text>
             <Text style={[styles.sub, { color: colors.mutedForeground }]}>
-              Apna account banayein. Saari details sahi bharein.
+              Apna account banayein. Admin approval ke baad login milega.
             </Text>
           </View>
 
-          {/* Section: Staff Type */}
+          {/* ── Section: Staff Type ─────────────────────────────────────── */}
           <SectionHeader label="STAFF TYPE" colors={colors} />
           <View style={{ flexDirection: "row", gap: 12 }}>
             <Pressable
-              onPress={() => { setStaffCategory("field"); setCenterStaffRole(""); }}
+              onPress={() => {
+                setStaffCategory("field");
+                setStaffCategoryGroup(null);
+                setCenterStaffRole("");
+              }}
               style={[
                 styles.categoryBtn,
                 {
@@ -308,102 +355,191 @@ export default function RegisterStaffScreen() {
                   { color: staffCategory === "center" ? colors.primary + "99" : colors.mutedForeground + "88" },
                 ]}
               >
-                Trainer, MIS, Cook, etc.
+                Academic / Ground
               </Text>
             </Pressable>
           </View>
 
-          {/* Center Role — only for center staff */}
+          {/* ── Center staff sub-categories ──────────────────────────────── */}
           {staffCategory === "center" && (
             <>
-              <SectionHeader label="CENTER ROLE *" colors={colors} />
-              <View style={{ gap: 8 }}>
+              <SectionHeader label="STAFF CATEGORY *" colors={colors} />
+              <View style={{ flexDirection: "row", gap: 12 }}>
+                {/* Academic */}
                 <Pressable
-                  onPress={() => setShowRolePicker((p) => !p)}
+                  onPress={() => {
+                    setStaffCategoryGroup("academic");
+                    setCenterStaffRole("");
+                    setShowRolePicker(false);
+                  }}
                   style={[
-                    styles.roleSelector,
+                    styles.categoryBtn,
                     {
-                      borderColor: centerStaffRole ? colors.primary : colors.border,
-                      backgroundColor: colors.background,
+                      flex: 1,
+                      borderColor: staffCategoryGroup === "academic" ? "#2563EB" : colors.border,
+                      backgroundColor: staffCategoryGroup === "academic" ? "#EFF6FF" : colors.background,
                       borderRadius: colors.radius,
                     },
                   ]}
                 >
-                  <Text
-                    style={{
-                      flex: 1,
-                      color: centerStaffRole ? colors.foreground : colors.mutedForeground,
-                      fontFamily: "Inter_400Regular",
-                      fontSize: 15,
-                    }}
-                  >
-                    {centerStaffRole || "Role chunein..."}
-                  </Text>
                   <Feather
-                    name={showRolePicker ? "chevron-up" : "chevron-down"}
-                    size={16}
-                    color={colors.mutedForeground}
+                    name="book-open"
+                    size={20}
+                    color={staffCategoryGroup === "academic" ? "#2563EB" : colors.mutedForeground}
                   />
-                </Pressable>
-
-                {showRolePicker && (
-                  <View
+                  <Text
                     style={[
-                      styles.roleDropdown,
-                      {
-                        borderColor: colors.border,
-                        backgroundColor: colors.card,
-                        borderRadius: colors.radius,
-                      },
+                      styles.categoryLabel,
+                      { color: staffCategoryGroup === "academic" ? "#2563EB" : colors.mutedForeground },
                     ]}
                   >
-                    {CENTER_ROLES.map((role) => (
-                      <Pressable
-                        key={role}
-                        onPress={() => {
-                          setCenterStaffRole(role);
-                          setShowRolePicker(false);
+                    Academic
+                  </Text>
+                  <Text
+                    style={[
+                      styles.categorySub,
+                      { color: staffCategoryGroup === "academic" ? "#2563EB99" : colors.mutedForeground + "88" },
+                    ]}
+                  >
+                    Trainer, MIS, Counselor
+                  </Text>
+                </Pressable>
+
+                {/* Ground */}
+                <Pressable
+                  onPress={() => {
+                    setStaffCategoryGroup("ground");
+                    setCenterStaffRole("");
+                    setShowRolePicker(false);
+                  }}
+                  style={[
+                    styles.categoryBtn,
+                    {
+                      flex: 1,
+                      borderColor: staffCategoryGroup === "ground" ? "#16A34A" : colors.border,
+                      backgroundColor: staffCategoryGroup === "ground" ? "#F0FDF4" : colors.background,
+                      borderRadius: colors.radius,
+                    },
+                  ]}
+                >
+                  <Feather
+                    name="tool"
+                    size={20}
+                    color={staffCategoryGroup === "ground" ? "#16A34A" : colors.mutedForeground}
+                  />
+                  <Text
+                    style={[
+                      styles.categoryLabel,
+                      { color: staffCategoryGroup === "ground" ? "#16A34A" : colors.mutedForeground },
+                    ]}
+                  >
+                    Ground
+                  </Text>
+                  <Text
+                    style={[
+                      styles.categorySub,
+                      { color: staffCategoryGroup === "ground" ? "#16A34A99" : colors.mutedForeground + "88" },
+                    ]}
+                  >
+                    Cook, Security, Other
+                  </Text>
+                </Pressable>
+              </View>
+
+              {/* ── Role picker (shown after sub-category is chosen) ─────── */}
+              {staffCategoryGroup !== null && (
+                <>
+                  <SectionHeader label="DESIGNATION / ROLE *" colors={colors} />
+                  <View style={{ gap: 8 }}>
+                    <Pressable
+                      onPress={() => setShowRolePicker((p) => !p)}
+                      style={[
+                        styles.roleSelector,
+                        {
+                          borderColor: centerStaffRole ? colors.primary : colors.border,
+                          backgroundColor: colors.background,
+                          borderRadius: colors.radius,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={{
+                          flex: 1,
+                          color: centerStaffRole ? colors.foreground : colors.mutedForeground,
+                          fontFamily: "Inter_400Regular",
+                          fontSize: 15,
                         }}
-                        style={({ pressed }) => [
-                          styles.roleOption,
+                      >
+                        {centerStaffRole || "Role chunein..."}
+                      </Text>
+                      <Feather
+                        name={showRolePicker ? "chevron-up" : "chevron-down"}
+                        size={16}
+                        color={colors.mutedForeground}
+                      />
+                    </Pressable>
+
+                    {showRolePicker && (
+                      <View
+                        style={[
+                          styles.roleDropdown,
                           {
-                            backgroundColor:
-                              centerStaffRole === role
-                                ? colors.primary + "15"
-                                : pressed
-                                ? colors.border + "40"
-                                : "transparent",
+                            borderColor: colors.border,
+                            backgroundColor: colors.card,
+                            borderRadius: colors.radius,
                           },
                         ]}
                       >
-                        {centerStaffRole === role && (
-                          <Feather name="check" size={14} color={colors.primary} />
-                        )}
-                        <Text
-                          style={{
-                            color:
-                              centerStaffRole === role
-                                ? colors.primary
-                                : colors.foreground,
-                            fontFamily:
-                              centerStaffRole === role
-                                ? "Inter_600SemiBold"
-                                : "Inter_400Regular",
-                            fontSize: 14,
-                            marginLeft: centerStaffRole === role ? 0 : 18,
-                          }}
-                        >
-                          {role}
-                        </Text>
-                      </Pressable>
-                    ))}
+                        {activeRoles.map((role) => (
+                          <Pressable
+                            key={role}
+                            onPress={() => {
+                              setCenterStaffRole(role);
+                              setDesignation(role);
+                              setShowRolePicker(false);
+                            }}
+                            style={({ pressed }) => [
+                              styles.roleOption,
+                              {
+                                backgroundColor:
+                                  centerStaffRole === role
+                                    ? colors.primary + "15"
+                                    : pressed
+                                    ? colors.border + "40"
+                                    : "transparent",
+                              },
+                            ]}
+                          >
+                            {centerStaffRole === role && (
+                              <Feather name="check" size={14} color={colors.primary} />
+                            )}
+                            <Text
+                              style={{
+                                color:
+                                  centerStaffRole === role
+                                    ? colors.primary
+                                    : colors.foreground,
+                                fontFamily:
+                                  centerStaffRole === role
+                                    ? "Inter_600SemiBold"
+                                    : "Inter_400Regular",
+                                fontSize: 14,
+                                marginLeft: centerStaffRole === role ? 0 : 18,
+                              }}
+                            >
+                              {role}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    )}
                   </View>
-                )}
-              </View>
+                </>
+              )}
             </>
           )}
 
-          {/* Section: Personal Details */}
+          {/* ── Section: Personal Details ─────────────────────────────────── */}
           <SectionHeader label="PERSONAL DETAILS" colors={colors} />
           <View style={[styles.form]}>
             <FieldInput
@@ -431,21 +567,12 @@ export default function RegisterStaffScreen() {
                   },
                 ]}
               >
-                <Text style={[styles.cc, { color: colors.foreground }]}>
-                  +91
-                </Text>
-                <View
-                  style={[
-                    styles.divider,
-                    { backgroundColor: colors.border },
-                  ]}
-                />
+                <Text style={[styles.cc, { color: colors.foreground }]}>+91</Text>
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
                 <TextInput
                   ref={phoneRef}
                   value={phone}
-                  onChangeText={(t) =>
-                    setPhone(t.replace(/[^0-9]/g, "").slice(0, 10))
-                  }
+                  onChangeText={(t) => setPhone(t.replace(/[^0-9]/g, "").slice(0, 10))}
                   keyboardType="number-pad"
                   placeholder="98765 43210"
                   placeholderTextColor={colors.mutedForeground}
@@ -453,10 +580,7 @@ export default function RegisterStaffScreen() {
                   onSubmitEditing={() => emailRef.current?.focus()}
                   style={[
                     styles.input,
-                    {
-                      color: colors.foreground,
-                      fontFamily: "Inter_500Medium",
-                    },
+                    { color: colors.foreground, fontFamily: "Inter_500Medium" },
                   ]}
                   maxLength={10}
                 />
@@ -470,7 +594,7 @@ export default function RegisterStaffScreen() {
 
             <FieldInput
               ref={emailRef}
-              label="EMAIL ID *"
+              label="EMAIL ID (optional)"
               value={email}
               onChangeText={setEmail}
               placeholder="ramesh@example.com"
@@ -487,7 +611,30 @@ export default function RegisterStaffScreen() {
             )}
           </View>
 
-          {/* Admin code — moved up so centers load before org section */}
+          {/* ── Section: Designation (optional override) ─────────────────── */}
+          {staffCategory === "center" && staffCategoryGroup !== null && (
+            <>
+              <SectionHeader label="DESIGNATION (OPTIONAL OVERRIDE)" colors={colors} />
+              <View style={[styles.form]}>
+                <FieldInput
+                  ref={designationRef}
+                  label="DESIGNATION"
+                  value={designation}
+                  onChangeText={setDesignation}
+                  placeholder="e.g. Senior Trainer, Head MIS"
+                  returnKeyType="next"
+                  onSubmitEditing={() => adminCodeRef.current?.focus()}
+                  colors={colors}
+                  autoCapitalize="words"
+                />
+                <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
+                  Role chunne par auto-fill hota hai — alag designation ho toh yahan likhen.
+                </Text>
+              </View>
+            </>
+          )}
+
+          {/* ── Section: Link to Admin (optional) ────────────────────────── */}
           <SectionHeader label="LINK TO ADMIN (OPTIONAL)" colors={colors} />
           <View style={[styles.form]}>
             <View>
@@ -518,9 +665,7 @@ export default function RegisterStaffScreen() {
                     },
                   ]}
                 />
-                {centersLoading && (
-                  <ActivityIndicator size="small" color={colors.primary} />
-                )}
+                {centersLoading && <ActivityIndicator size="small" color={colors.primary} />}
                 {centersLoaded && centers.length > 0 && !centersLoading && (
                   <View style={{ width: 32, height: 32, borderRadius: 999, backgroundColor: colors.primary + "18", alignItems: "center", justifyContent: "center" }}>
                     <Feather name="check" size={16} color={colors.primary} />
@@ -535,7 +680,7 @@ export default function RegisterStaffScreen() {
             </View>
           </View>
 
-          {/* Section: Organization Details */}
+          {/* ── Section: Organization Details ────────────────────────────── */}
           <SectionHeader label="ORGANIZATION DETAILS" colors={colors} />
           <View style={[styles.form]}>
 
@@ -547,7 +692,6 @@ export default function RegisterStaffScreen() {
                 </Text>
 
                 {selectedCenter ? (
-                  /* Selected center card */
                   <View style={[styles.centerCard, { borderColor: colors.primary, backgroundColor: colors.primary + "0A", borderRadius: colors.radius }]}>
                     <View style={{ flex: 1 }}>
                       <Text style={{ color: colors.primary, fontFamily: "Inter_700Bold", fontSize: 14 }}>{selectedCenter.name}</Text>
@@ -555,7 +699,7 @@ export default function RegisterStaffScreen() {
                         <Text style={{ color: colors.primary + "AA", fontFamily: "Inter_500Medium", fontSize: 11, marginTop: 2 }}>TC ID: {selectedCenter.tcId}</Text>
                       )}
                       <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>
-                        {[selectedCenter.district, selectedCenter.state].filter(Boolean).join(", ")}
+                        {[selectedCenter.block, selectedCenter.district, selectedCenter.state].filter(Boolean).join(", ")}
                       </Text>
                     </View>
                     <Pressable onPress={clearCenter} hitSlop={8}>
@@ -563,7 +707,6 @@ export default function RegisterStaffScreen() {
                     </Pressable>
                   </View>
                 ) : (
-                  /* Center picker trigger */
                   <Pressable
                     onPress={() => setShowCenterPicker((p) => !p)}
                     style={[
@@ -598,7 +741,7 @@ export default function RegisterStaffScreen() {
                           <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>{c.name}</Text>
                           {(c.district || c.state) && (
                             <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>
-                              {[c.district, c.state].filter(Boolean).join(", ")}
+                              {[c.block, c.district, c.state].filter(Boolean).join(", ")}
                             </Text>
                           )}
                         </View>
@@ -627,7 +770,7 @@ export default function RegisterStaffScreen() {
               label="SCHEME / PROJECT NAME *"
               value={projectName}
               onChangeText={setProjectName}
-              placeholder="e.g. DDU-GKY, JSDMS"
+              placeholder="e.g. DDU-GKY, JSDMS, PMKVY"
               returnKeyType="next"
               onSubmitEditing={() => stateRef.current?.focus()}
               colors={colors}
@@ -635,7 +778,7 @@ export default function RegisterStaffScreen() {
             />
           </View>
 
-          {/* Section: Location */}
+          {/* ── Section: Location ─────────────────────────────────────────── */}
           <SectionHeader label="LOCATION" colors={colors} />
           <View style={[styles.form]}>
             <FieldInput
@@ -656,10 +799,35 @@ export default function RegisterStaffScreen() {
               value={district}
               onChangeText={setDistrict}
               placeholder="e.g. Ranchi"
+              returnKeyType="next"
+              onSubmitEditing={() => blockRef.current?.focus()}
+              colors={colors}
+              autoCapitalize="words"
+            />
+
+            <FieldInput
+              ref={blockRef}
+              label="BLOCK (optional)"
+              value={block}
+              onChangeText={setBlock}
+              placeholder="e.g. Namkum"
+              returnKeyType="next"
+              onSubmitEditing={() => pinCodeRef.current?.focus()}
+              colors={colors}
+              autoCapitalize="words"
+            />
+
+            <FieldInput
+              ref={pinCodeRef}
+              label="PIN CODE (optional)"
+              value={staffPinCode}
+              onChangeText={(t) => setStaffPinCode(t.replace(/[^0-9]/g, "").slice(0, 6))}
+              placeholder="e.g. 834001"
               returnKeyType="done"
               onSubmitEditing={onRegister}
               colors={colors}
-              autoCapitalize="words"
+              autoCapitalize="none"
+              keyboardType="number-pad"
             />
           </View>
 
@@ -675,7 +843,7 @@ export default function RegisterStaffScreen() {
           />
 
           <Text style={[styles.legal, { color: colors.mutedForeground }]}>
-            Account banane ke baad aapko 4-digit MPIN set karna hoga. Aap GPS, camera aur movement logging ke liye consent dete hain.
+            Account banane ke baad aapko 4-digit MPIN set karna hoga. Admin approval milne ke baad aap login kar sakte hain.
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>

@@ -184,9 +184,9 @@ async function capturePassportPhoto(): Promise<ImageData | null> {
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
 
-function FormHeader() {
+function FormHeader({ tcId: tcIdProp }: { tcId?: string | null }) {
   const { user } = useApp();
-  const tcId = user?.companyTcId ?? null;
+  const tcId = tcIdProp ?? user?.companyTcId ?? null;
   return (
     <View style={styles.formHeader}>
       {/* ── Three-column letterhead ── */}
@@ -778,13 +778,19 @@ export default function CandidateRegisterScreen() {
     const base = getApiBase();
     fetch(`${base}/api/centers/${centerId}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((data: { name?: string; courses?: string[] } | null) => {
+      .then((data: { name?: string; courses?: string[]; tcId?: string | null } | null) => {
         if (!data) return;
         if (data.courses && data.courses.length > 0) setCenterCourses(data.courses);
         if (data.name) setSkillCentreName((prev) => (prev ? prev : data.name ?? ""));
+        // Auto-fill center TC ID into the form header context if available
+        if (data.tcId) {
+          setCenterTcId(data.tcId);
+        }
       })
       .catch(() => {});
   }, [user?.centerId]);
+
+  const [centerTcId, setCenterTcId] = useState<string | null>(null);
 
   // ─ Identity
   const [aadhaarNumber, setAadhaarNumber] = useState("");
@@ -1326,7 +1332,7 @@ export default function CandidateRegisterScreen() {
         <View style={styles.paper}>
 
           {/* Form Header */}
-          <FormHeader />
+          <FormHeader tcId={centerTcId} />
 
           {/* Course + Photo row */}
           <View style={[styles.borderRow, { alignItems: "flex-start" }]}>
