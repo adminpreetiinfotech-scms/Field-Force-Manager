@@ -73,10 +73,11 @@ if (process.env.NODE_ENV === "production") {
     res.json({ ok: true });
   });
 
-  // / and /manifest — Expo platform manifest or landing page
-  app.get(["/", "/manifest"], (req: Request, res: Response) => {
+  // / — redirect to Admin Panel; /manifest — Expo platform manifest
+  app.get("/", (req: Request, res: Response) => {
     const platform = req.headers["expo-platform"] as string | undefined;
 
+    // Expo app requesting manifest
     if (platform === "ios" || platform === "android") {
       const manifestPath = path.join(fieldRoot, platform, "manifest.json");
       if (!fs.existsSync(manifestPath)) {
@@ -90,19 +91,25 @@ if (process.env.NODE_ENV === "production") {
       return;
     }
 
-    if (req.path === "/" && landingHtml) {
-      const proto = req.headers["x-forwarded-proto"] ?? "https";
-      const host = req.headers["x-forwarded-host"] ?? req.headers["host"] ?? "";
-      const html = landingHtml
-        .replace(/BASE_URL_PLACEHOLDER/g, `${proto}://${host}`)
-        .replace(/EXPS_URL_PLACEHOLDER/g, String(host))
-        .replace(/APP_NAME_PLACEHOLDER/g, appName);
-      res.setHeader("content-type", "text/html; charset=utf-8");
-      res.send(html);
+    // Browser — redirect to Admin Panel
+    res.redirect(301, "/admin-panel/");
+  });
+
+  app.get("/manifest", (req: Request, res: Response) => {
+    const platform = req.headers["expo-platform"] as string | undefined;
+    if (platform === "ios" || platform === "android") {
+      const manifestPath = path.join(fieldRoot, platform, "manifest.json");
+      if (!fs.existsSync(manifestPath)) {
+        res.status(404).json({ error: `Manifest not found for: ${platform}` });
+        return;
+      }
+      res.setHeader("expo-protocol-version", "1");
+      res.setHeader("expo-sfv-version", "0");
+      res.setHeader("content-type", "application/json");
+      res.send(fs.readFileSync(manifestPath, "utf-8"));
       return;
     }
-
-    res.status(404).send("Not found");
+    res.redirect(301, "/admin-panel/");
   });
 
   // Field-staff static assets (JS bundles, images, etc.)
