@@ -11,3 +11,9 @@ id = "1yeSnHvWtcZSWKo1eODFB"
 uri = "file://artifacts/admin-panel/public/user-guide.md"
 type = "text"
 title = "Nistha Skill — User Guide v1.0.2"
+
+[[outputs]]
+id = "-yJwGPh_3i59kuIdEADNP"
+uri = "file://SCMS_User_Guide.md"
+type = "text"
+title = "SCMS User Guide — Skill Center Management System"
