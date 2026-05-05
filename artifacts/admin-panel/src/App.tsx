@@ -16,6 +16,7 @@ import SuperAdminCompanies from "@/pages/super-admin-companies";
 import SuperAdminCompanyDetail from "@/pages/super-admin-company-detail";
 import SuperAdminStaff from "@/pages/super-admin-staff";
 import SuperAdminCreateAdmin from "@/pages/super-admin-create-admin";
+import SuperAdminSubscriptions from "@/pages/super-admin-subscriptions";
 import CompanySettings from "@/pages/company-settings";
 import LiveMap from "@/pages/live-map";
 import CenterAttendance from "@/pages/center-attendance";
@@ -99,6 +100,7 @@ function Router() {
         <SuperAdminCompanyDetail companyId={params.id} />
       )} />
       <SuperAdminRoute path="/super-admin/companies" component={SuperAdminCompanies} />
+      <SuperAdminRoute path="/super-admin/subscriptions" component={SuperAdminSubscriptions} />
       <SuperAdminRoute path="/super-admin/staff" component={SuperAdminStaff} />
       <SuperAdminRoute path="/super-admin/create-admin" component={SuperAdminCreateAdmin} />
       <ProtectedRoute path="/settings" component={CompanySettings} />
