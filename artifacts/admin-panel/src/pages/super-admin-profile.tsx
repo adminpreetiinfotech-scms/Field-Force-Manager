@@ -17,10 +17,7 @@ const getAdminPhone = () => {
   } catch { return null; }
 };
 
-const apiBase = () => {
-  const d = (window as any).__REPLIT_DOMAIN__ || "field-force-manager-Mobilization.replit.app";
-  return `https://${d}`;
-};
+const API_BASE = "/api";
 
 interface Profile {
   id: string;
@@ -52,7 +49,7 @@ export default function SuperAdminProfile() {
 
   useEffect(() => {
     if (!adminPhone) return;
-    fetch(`${apiBase()}/api/super-admin/profile`, {
+    fetch(`${API_BASE}/super-admin/profile`, {
       headers: { "x-admin-phone": adminPhone },
     })
       .then((r) => r.json())
@@ -73,7 +70,7 @@ export default function SuperAdminProfile() {
 
     setSaving(true);
     try {
-      const res = await fetch(`${apiBase()}/api/super-admin/profile`, {
+      const res = await fetch(`${API_BASE}/super-admin/profile`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", "x-admin-phone": adminPhone },
         body: JSON.stringify({ name: name.trim(), phone: phone.trim(), email: email.trim() || null }),
@@ -111,7 +108,7 @@ export default function SuperAdminProfile() {
 
     setSavingMpin(true);
     try {
-      const res = await fetch(`${apiBase()}/api/super-admin/profile`, {
+      const res = await fetch(`${API_BASE}/super-admin/profile`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", "x-admin-phone": adminPhone },
         body: JSON.stringify({ mpin: newMpin, currentMpin }),
