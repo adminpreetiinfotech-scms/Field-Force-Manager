@@ -340,6 +340,42 @@ router.post("/auth/unlock-mpin", async (req, res, next) => {
   }
 });
 
+// ─── POST /api/auth/reset-mpin ───────────────────────────────────────────────
+// Emergency MPIN reset — sets a new MPIN for any account.
+// Protected by ADMIN_REGISTRATION_KEY — no session required.
+router.post("/auth/reset-mpin", async (req, res, next) => {
+  try {
+    const { phone, key, newMpin } = req.body as { phone?: string; key?: string; newMpin?: string };
+    const requiredKey = process.env.ADMIN_REGISTRATION_KEY;
+    if (!key || !requiredKey || key.trim() !== requiredKey.trim()) {
+      res.status(403).json({ title: "Invalid key", status: 403 });
+      return;
+    }
+    if (!phone || !newMpin) {
+      res.status(400).json({ title: "phone and newMpin are required", status: 400 });
+      return;
+    }
+    if (!/^\d{4,6}$/.test(newMpin)) {
+      res.status(400).json({ title: "MPIN must be 4-6 digits", status: 400 });
+      return;
+    }
+    const mpinHash = hashMpin(newMpin);
+    const result = await db
+      .update(staffTable)
+      .set({ mpinHash, failedMpinAttempts: 0, mpinBlockedUntil: null })
+      .where(eq(staffTable.phone, phone.trim()))
+      .returning({ id: staffTable.id, phone: staffTable.phone });
+    if (result.length === 0) {
+      res.status(404).json({ title: "Phone not found", status: 404 });
+      return;
+    }
+    req.log.info({ phone }, "MPIN reset via emergency reset endpoint");
+    res.json({ success: true, phone: result[0]!.phone });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ─── POST /api/auth/promote-super-admin ─────────────────────────────────────
 // Promotes 9999999999 to super_admin. Requires correct MPIN for that account.
 router.post("/auth/promote-super-admin", async (req, res, next) => {
