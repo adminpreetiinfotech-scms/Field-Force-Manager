@@ -80,7 +80,7 @@ interface CompanyOption {
 const API_BASE =
   Platform.OS === "web"
     ? ""
-    : process.env.EXPO_PUBLIC_API_BASE ?? "";
+    : `https://${process.env.EXPO_PUBLIC_DOMAIN || "field-force-manager-Mobilization.replit.app"}`;
 
 async function fetchCentersByAdminCode(code: string): Promise<Center[]> {
   try {
