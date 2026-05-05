@@ -303,6 +303,31 @@ router.post("/super-admin/centers/:id/reject", requireSuperAdmin, async (req, re
   }
 });
 
+// ─── POST /api/super-admin/centers/:id/reset-pending ──────────────────────────
+// Reset an approved/rejected center back to pending for re-review.
+
+router.post("/super-admin/centers/:id/reset-pending", requireSuperAdmin, async (req, res, next) => {
+  try {
+    const id = req.params.id as string;
+    if (!isValidUUID(id)) {
+      res.status(400).json({ title: "Invalid center id", status: 400 });
+      return;
+    }
+    const [center] = await db
+      .update(centersTable)
+      .set({ approvalStatus: "pending" })
+      .where(eq(centersTable.id, id))
+      .returning();
+    if (!center) {
+      res.status(404).json({ title: "Center not found", status: 404 });
+      return;
+    }
+    res.json({ message: "Center reset to pending", centerId: center.id, name: center.name });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ─── GET /api/super-admin/companies/:id/stats ─────────────────────────────────
 
 router.get("/super-admin/companies/:id/stats", requireSuperAdmin, async (req, res, next) => {

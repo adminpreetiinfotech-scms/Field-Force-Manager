@@ -40,7 +40,7 @@ import {
   KeyRound, MapPin, User, CalendarDays, Mail,
   Building2, CreditCard, ShieldOff, CheckCircle2,
   AlertTriangle, XCircle, Zap, CalendarClock, Plus, Wand2, Trash2,
-  School, Check, X, ChevronDown, ChevronUp, Upload, ImageIcon,
+  School, Check, X, ChevronDown, ChevronUp, Upload, ImageIcon, RotateCcw,
 } from "lucide-react";
 import { format, addDays, differenceInDays, isPast } from "date-fns";
 
@@ -324,6 +324,19 @@ export default function SuperAdminCompanyDetail({ companyId }: Props) {
       const res = await adminFetch(`/api/super-admin/centers/${centerId}/${action}`, { method: "POST" });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).title ?? "Failed");
       toast({ title: action === "approve" ? "Center approved!" : "Center rejected" });
+      centersHook.refetch();
+      invalidate();
+    } catch (e: any) {
+      toast({ title: e.message, variant: "destructive" });
+    } finally { setCenterActionLoading(null); }
+  };
+
+  const handleCenterResetPending = async (centerId: string) => {
+    setCenterActionLoading(`${centerId}-reset`);
+    try {
+      const res = await adminFetch(`/api/super-admin/centers/${centerId}/reset-pending`, { method: "POST" });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).title ?? "Failed");
+      toast({ title: "Center reset to pending — ready for review" });
       centersHook.refetch();
       invalidate();
     } catch (e: any) {
@@ -736,6 +749,18 @@ export default function SuperAdminCompanyDetail({ companyId }: Props) {
                           {centerActionLoading === `${center.id}-reject` ? "..." : <><X className="h-3 w-3 mr-1" />Reject</>}
                         </Button>
                       </>
+                    )}
+                    {!isPending && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-muted-foreground hover:text-amber-700 hover:bg-amber-50"
+                        disabled={centerActionLoading !== null}
+                        title="Reset to pending for re-review"
+                        onClick={() => handleCenterResetPending(center.id)}
+                      >
+                        {centerActionLoading === `${center.id}-reset` ? "..." : <><RotateCcw className="h-3 w-3 mr-1" />Reset</>}
+                      </Button>
                     )}
                   </div>
                 </div>
