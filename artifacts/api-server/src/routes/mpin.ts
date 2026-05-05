@@ -1,5 +1,5 @@
 import { companiesTable, db, staffTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { Router } from "express";
 import crypto from "node:crypto";
 
@@ -102,7 +102,13 @@ router.post("/auth/check-phone", async (req, res, next) => {
         companyId: staffTable.companyId,
       })
       .from(staffTable)
-      .where(eq(staffTable.phone, phone.trim()))
+      .where(
+        and(
+          eq(staffTable.phone, phone.trim()),
+          isNull(staffTable.deletedAt),
+          isNull(staffTable.disabledAt),
+        ),
+      )
       .limit(1);
 
     if (rows.length === 0) {

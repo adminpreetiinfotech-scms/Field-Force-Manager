@@ -456,6 +456,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
+
+          // Silently validate stored session against server.
+          // If account was deleted/disabled by admin, force logout.
+          let validatedUser: User | null = parsed.user ?? null;
+          if (validatedUser?.phone) {
+            try {
+              const checkRes = await fetch(`${API_BASE}/api/auth/check-phone`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ phone: validatedUser.phone }),
+              });
+              if (checkRes.ok) {
+                const checkData = (await checkRes.json()) as {
+                  exists: boolean;
+                  approvalStatus: string | null;
+                };
+                if (!checkData.exists || checkData.approvalStatus === "rejected") {
+                  validatedUser = null;
+                  parsed.user = null;
+                  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(parsed)).catch(() => {});
+                }
+              }
+              // If fetch fails (offline), keep the user logged in.
+            } catch {
+              // Network unavailable — do not logout, allow offline use.
+            }
+          }
+
           // Drop any stale demo trips and replace with fresh seed trips for today.
           const userTrips = (parsed.trips || []).filter(
             (t: Trip) => !t.id.startsWith("demo-trip-") || t.date !== today,
@@ -463,6 +491,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setState((s) => ({
             ...s,
             ...parsed,
+            user: validatedUser,
             trips: [...seeded.trips, ...userTrips],
             staffLocations:
               parsed.staffLocations && parsed.staffLocations.length > 0
