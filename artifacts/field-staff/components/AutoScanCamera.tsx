@@ -18,6 +18,7 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { writeAsStringAsync, cacheDirectory, EncodingType } from "expo-file-system/legacy";
 import * as ImageManipulator from "expo-image-manipulator";
+import * as ImagePicker from "expo-image-picker";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -248,39 +249,59 @@ export default function AutoScanCamera({
   // ── Capture & process ─────────────────────────────────────────────────────
   const handleCapture = useCallback(async () => {
     if (!cameraRef.current) return;
-    cancelledRef.current = false; // reset cancellation flag for this capture
+    cancelledRef.current = false;
     setPhase("processing");
     setTorchOn(false);
     setError(null);
 
     try {
-      // 1 — Take picture (skipProcessing:true for Android reliability)
-      let pic;
-      try {
-        pic = await cameraRef.current.takePictureAsync({
-          quality: 0.85, base64: false, skipProcessing: true,
-        });
-      } catch (camErr) {
-        const m = camErr instanceof Error ? camErr.message : "Camera error";
-        setError(`Camera failed: ${m}. Try again.`);
-        setPhase("camera");
-        return;
-      }
-      if (!pic?.uri) {
-        setError("No image captured. Please tap the shutter again.");
-        setPhase("camera");
-        return;
+      // 1 — Capture image: try CameraView first (3 attempts), then ImagePicker fallback
+      let capturedUri: string | null = null;
+      let capturedW = 1080;
+      let capturedH = 1920;
+
+      // Attempt CameraView with retries (without skipProcessing which causes failures)
+      for (const quality of [0.85, 0.6, 0] as const) {
+        try {
+          await new Promise((r) => setTimeout(r, 120));
+          const opts = quality > 0 ? { quality, base64: false } : {};
+          const pic = await cameraRef.current!.takePictureAsync(opts);
+          if (pic?.uri) {
+            capturedUri = pic.uri;
+            capturedW = pic.width;
+            capturedH = pic.height;
+            break;
+          }
+        } catch {
+          // try next
+        }
       }
 
-      setCapturedUri(pic.uri);
-      setCapturedDims({ w: pic.width, h: pic.height });
+      // Final fallback: native ImagePicker camera (works on all Android/iOS + Expo Go)
+      if (!capturedUri) {
+        const result = await ImagePicker.launchCameraAsync({
+          mediaTypes: ["images"] as ImagePicker.MediaType[],
+          quality: 0.85,
+          base64: false,
+        });
+        if (result.canceled || !result.assets?.[0]?.uri) {
+          setPhase("camera");
+          return;
+        }
+        capturedUri = result.assets[0].uri;
+        capturedW = result.assets[0].width ?? 1080;
+        capturedH = result.assets[0].height ?? 1920;
+      }
+
+      setCapturedUri(capturedUri);
+      setCapturedDims({ w: capturedW, h: capturedH });
 
       // 2 — Resize to transport size (max 2000 px wide for memory safety)
       const MAX_W  = 2000;
-      const tgtW   = Math.min(MAX_W, pic.width);
+      const tgtW   = Math.min(MAX_W, capturedW);
       const resized = await ImageManipulator.manipulateAsync(
-        pic.uri,
-        tgtW < pic.width ? [{ resize: { width: tgtW } }] : [],
+        capturedUri,
+        tgtW < capturedW ? [{ resize: { width: tgtW } }] : [],
         { format: ImageManipulator.SaveFormat.JPEG, compress: 0.88, base64: true },
       );
       const base64 = resized.base64!;
