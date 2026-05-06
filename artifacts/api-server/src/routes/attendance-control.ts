@@ -623,107 +623,233 @@ router.get("/admin/reports/monthly-attendance/xlsx", requireAdmin, async (req, r
       "July", "August", "September", "October", "November", "December"];
     const monthLabel = `${MONTH_NAMES[month - 1]} ${year}`;
 
-    const COLS = 16;
+    // Separate field vs center
+    const fieldRows  = rows.filter(r => r.staffCategory !== "center");
+    const centerRows = rows.filter(r => r.staffCategory === "center");
+
+    const GREEN_DARK  = "FF047857";
+    const INDIGO      = "FF4F46E5";
+
     const wb = new ExcelJS.Workbook();
     wb.creator = "SCMS"; wb.modified = new Date();
-    const ws = wb.addWorksheet("Monthly Attendance", { properties: { tabColor: { argb: PURPLE } } });
 
-    ws.columns = [
+    // ── Helper: build one worksheet for a staff group ─────────────────────────
+    function buildSheet(
+      sheetName: string,
+      tabColor: string,
+      headerColor: string,
+      groupRows: typeof rows,
+      shiftLabel: string,
+    ) {
+      const COLS = 15; // removed "Type" column since it's category-specific sheet
+      const ws = wb.addWorksheet(sheetName, { properties: { tabColor: { argb: tabColor } } });
+
+      ws.columns = [
+        { width: 5 },  { width: 22 }, { width: 12 }, { width: 14 },
+        { width: 8 },  { width: 8 },  { width: 8 },  { width: 8 },
+        { width: 11 }, { width: 11 }, { width: 10 },
+        { width: 8 },  { width: 8 },  { width: 8 },  { width: 8 },
+      ];
+
+      // Row 1 — org
+      ws.mergeCells(1, 1, 1, COLS);
+      const c1 = ws.getCell(1, 1);
+      c1.value = organization ?? "Monthly Attendance Report";
+      c1.font = { bold: true, size: 13, color: { argb: WHITE }, name: "Calibri" };
+      c1.fill = { type: "pattern", pattern: "solid", fgColor: { argb: headerColor } };
+      c1.alignment = { horizontal: "center", vertical: "middle" };
+      ws.getRow(1).height = 26;
+
+      // Row 2 — title
+      ws.mergeCells(2, 1, 2, COLS);
+      const c2 = ws.getCell(2, 1);
+      c2.value = `${sheetName.toUpperCase()} — ${monthLabel.toUpperCase()}`;
+      c2.font = { bold: true, size: 14, color: { argb: AMBER }, name: "Calibri" };
+      c2.fill = { type: "pattern", pattern: "solid", fgColor: { argb: headerColor } };
+      c2.alignment = { horizontal: "center", vertical: "middle" };
+      ws.getRow(2).height = 28;
+
+      // Row 3 — shift info
+      ws.mergeCells(3, 1, 3, COLS);
+      const c3 = ws.getCell(3, 1);
+      c3.value = `Shift Start: ${shiftLabel} | Late after: ${lateGraceMinutes} min grace | Total: ${groupRows.length} staff`;
+      c3.font = { italic: true, size: 10, color: { argb: AMBER }, name: "Calibri" };
+      c3.fill = { type: "pattern", pattern: "solid", fgColor: { argb: headerColor } };
+      c3.alignment = { horizontal: "center", vertical: "middle" };
+      ws.getRow(3).height = 18;
+
+      // Row 4 — column headers (no "Type" column)
+      const headers = [
+        "S.No", "Staff Name", "Emp Code", "Mobile",
+        "Present", "Late", "Absent", "Leave",
+        "Avg Check-In", "Avg Check-Out", "GPS KM (Total)",
+        "Casual Used", "Casual Bal", "Sick Used", "Sick Bal",
+      ];
+      ws.getRow(4).values = headers;
+      ws.getRow(4).height = 28;
+      ws.getRow(4).eachCell((cell) => {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: headerColor } };
+        cell.font = { color: { argb: WHITE }, bold: true, size: 10, name: "Calibri" };
+        cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+        cell.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
+      });
+
+      const altFill: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: LGRAY } };
+
+      groupRows.forEach((r, idx) => {
+        const dataRow = ws.addRow([
+          idx + 1,
+          r.staffName,
+          r.empCode ?? "",
+          r.phone ?? "",
+          r.presentDays,
+          r.lateDays,
+          r.absentDays,
+          r.leaveDays,
+          r.avgCheckin  ?? "",
+          r.avgCheckout ?? "",
+          r.totalGpsKm,
+          r.casualUsed,
+          r.casualBalance,
+          r.sickUsed,
+          r.sickBalance,
+        ]);
+        dataRow.height = 20;
+        dataRow.eachCell((cell) => {
+          cell.alignment = { vertical: "middle", horizontal: "center" };
+          cell.border = { top: { style: "hair" }, bottom: { style: "hair" }, left: { style: "hair" }, right: { style: "hair" } };
+          if (idx % 2 === 1) cell.fill = altFill;
+        });
+
+        // Color coding (cols 5,6,7 = present,late,absent)
+        dataRow.getCell(5).fill = { type: "pattern", pattern: "solid", fgColor: { argb: r.presentDays > 0 ? GREEN_BG : RED_BG } };
+        if (r.lateDays > 0) {
+          const lc = dataRow.getCell(6);
+          lc.fill = { type: "pattern", pattern: "solid", fgColor: { argb: AMBER_BG } };
+          lc.font = { bold: true, color: { argb: "FFB45309" }, name: "Calibri" };
+        }
+        if (r.absentDays > 0) {
+          const ac = dataRow.getCell(7);
+          ac.fill = { type: "pattern", pattern: "solid", fgColor: { argb: RED_BG } };
+          ac.font = { bold: true, color: { argb: "FFB91C1C" }, name: "Calibri" };
+        }
+      });
+
+      // Summary totals row
+      if (groupRows.length > 0) {
+        const totals = groupRows.reduce(
+          (acc, r) => ({
+            present: acc.present + r.presentDays,
+            late:    acc.late    + r.lateDays,
+            absent:  acc.absent  + r.absentDays,
+            leave:   acc.leave   + r.leaveDays,
+            gpsKm:   acc.gpsKm   + r.totalGpsKm,
+          }),
+          { present: 0, late: 0, absent: 0, leave: 0, gpsKm: 0 },
+        );
+        const sumRow = ws.addRow([
+          "", "TOTAL", "", "",
+          totals.present, totals.late, totals.absent, totals.leave,
+          "", "", Math.round(totals.gpsKm * 10) / 10,
+          "", "", "", "",
+        ]);
+        sumRow.height = 22;
+        sumRow.eachCell((cell) => {
+          cell.font = { bold: true, name: "Calibri", size: 10 };
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: headerColor } };
+          cell.font = { bold: true, color: { argb: WHITE }, name: "Calibri", size: 10 };
+          cell.alignment = { vertical: "middle", horizontal: "center" };
+          cell.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
+        });
+      }
+
+      ws.autoFilter = { from: "A4", to: { row: 4, column: COLS } };
+    }
+
+    // Sheet 1 — Field Staff (indigo)
+    if (fieldRows.length > 0) {
+      buildSheet("Field Staff Attendance", INDIGO, INDIGO, fieldRows, fieldShiftStart);
+    }
+
+    // Sheet 2 — Center Staff (green)
+    if (centerRows.length > 0) {
+      buildSheet("Center Staff Attendance", GREEN_DARK, GREEN_DARK, centerRows, centerShiftStart);
+    }
+
+    // Sheet 3 — Combined (purple, for reference)
+    const COMBINED_COLS = 16;
+    const wsAll = wb.addWorksheet("All Staff", { properties: { tabColor: { argb: PURPLE } } });
+    wsAll.columns = [
       { width: 5 },  { width: 22 }, { width: 12 }, { width: 14 }, { width: 10 },
       { width: 8 },  { width: 8 },  { width: 8 },  { width: 8 },
       { width: 11 }, { width: 11 }, { width: 10 },
       { width: 8 },  { width: 8 },  { width: 8 },  { width: 8 },
     ];
+    wsAll.mergeCells(1, 1, 1, COMBINED_COLS);
+    const ca1 = wsAll.getCell(1, 1);
+    ca1.value = organization ?? "Monthly Attendance Report";
+    ca1.font = { bold: true, size: 13, color: { argb: WHITE }, name: "Calibri" };
+    ca1.fill = { type: "pattern", pattern: "solid", fgColor: { argb: PURPLE } };
+    ca1.alignment = { horizontal: "center", vertical: "middle" };
+    wsAll.getRow(1).height = 26;
 
-    // Row 1 — organization header
-    ws.mergeCells(1, 1, 1, COLS);
-    const r1 = ws.getCell(1, 1);
-    r1.value = organization ?? "Monthly Attendance Report";
-    r1.font = { bold: true, size: 13, color: { argb: WHITE }, name: "Calibri" };
-    r1.fill = { type: "pattern", pattern: "solid", fgColor: { argb: PURPLE } };
-    r1.alignment = { horizontal: "center", vertical: "middle" };
-    ws.getRow(1).height = 26;
+    wsAll.mergeCells(2, 1, 2, COMBINED_COLS);
+    const ca2 = wsAll.getCell(2, 1);
+    ca2.value = `ALL STAFF — MONTHLY ATTENDANCE — ${monthLabel.toUpperCase()}`;
+    ca2.font = { bold: true, size: 13, color: { argb: AMBER }, name: "Calibri" };
+    ca2.fill = { type: "pattern", pattern: "solid", fgColor: { argb: PURPLE } };
+    ca2.alignment = { horizontal: "center", vertical: "middle" };
+    wsAll.getRow(2).height = 28;
 
-    // Row 2 — report title
-    ws.mergeCells(2, 1, 2, COLS);
-    const r2 = ws.getCell(2, 1);
-    r2.value = `MONTHLY ATTENDANCE REPORT — ${monthLabel.toUpperCase()}`;
-    r2.font = { bold: true, size: 14, color: { argb: AMBER }, name: "Calibri" };
-    r2.fill = { type: "pattern", pattern: "solid", fgColor: { argb: PURPLE } };
-    r2.alignment = { horizontal: "center", vertical: "middle" };
-    ws.getRow(2).height = 28;
+    wsAll.mergeCells(3, 1, 3, COMBINED_COLS);
+    const ca3 = wsAll.getCell(3, 1);
+    ca3.value = `Field Shift: ${fieldShiftStart} | Center Shift: ${centerShiftStart} | Late after: ${lateGraceMinutes} min grace`;
+    ca3.font = { italic: true, size: 10, color: { argb: AMBER }, name: "Calibri" };
+    ca3.fill = { type: "pattern", pattern: "solid", fgColor: { argb: PURPLE } };
+    ca3.alignment = { horizontal: "center", vertical: "middle" };
+    wsAll.getRow(3).height = 18;
 
-    // Row 3 — sub-header: shift info
-    ws.mergeCells(3, 1, 3, COLS);
-    const r3 = ws.getCell(3, 1);
-    r3.value = `Field Shift: ${fieldShiftStart} | Center Shift: ${centerShiftStart} | Late after: ${lateGraceMinutes} min grace`;
-    r3.font = { italic: true, size: 10, color: { argb: AMBER }, name: "Calibri" };
-    r3.fill = { type: "pattern", pattern: "solid", fgColor: { argb: PURPLE } };
-    r3.alignment = { horizontal: "center", vertical: "middle" };
-    ws.getRow(3).height = 18;
-
-    // Row 4 — column headers
-    const headers = [
+    wsAll.getRow(4).values = [
       "S.No", "Staff Name", "Emp Code", "Mobile", "Type",
       "Present", "Late", "Absent", "Leave",
-      "Avg Check-In", "Avg Check-Out", "GPS KM (Total)",
+      "Avg Check-In", "Avg Check-Out", "GPS KM",
       "Casual Used", "Casual Bal", "Sick Used", "Sick Bal",
     ];
-    ws.getRow(4).values = headers;
-    ws.getRow(4).height = 28;
-    ws.getRow(4).eachCell((cell) => {
+    wsAll.getRow(4).height = 28;
+    wsAll.getRow(4).eachCell((cell) => {
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: PURPLE_DK } };
       cell.font = { color: { argb: WHITE }, bold: true, size: 10, name: "Calibri" };
       cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
       cell.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
     });
-
-    const altFill: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: LGRAY } };
-
+    const altFillAll: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: LGRAY } };
     rows.forEach((r, idx) => {
-      const dataRow = ws.addRow([
-        idx + 1,
-        r.staffName,
-        r.empCode ?? "",
-        r.phone ?? "",
+      const dr = wsAll.addRow([
+        idx + 1, r.staffName, r.empCode ?? "", r.phone ?? "",
         r.staffCategory === "center" ? "Center" : "Field",
-        r.presentDays,
-        r.lateDays,
-        r.absentDays,
-        r.leaveDays,
-        r.avgCheckin  ?? "",
-        r.avgCheckout ?? "",
-        r.totalGpsKm,
-        r.casualUsed,
-        r.casualBalance,
-        r.sickUsed,
-        r.sickBalance,
+        r.presentDays, r.lateDays, r.absentDays, r.leaveDays,
+        r.avgCheckin ?? "", r.avgCheckout ?? "", r.totalGpsKm,
+        r.casualUsed, r.casualBalance, r.sickUsed, r.sickBalance,
       ]);
-      dataRow.height = 20;
-      dataRow.eachCell((cell) => {
+      dr.height = 20;
+      dr.eachCell((cell) => {
         cell.alignment = { vertical: "middle", horizontal: "center" };
         cell.border = { top: { style: "hair" }, bottom: { style: "hair" }, left: { style: "hair" }, right: { style: "hair" } };
-        if (idx % 2 === 1) cell.fill = altFill;
+        if (idx % 2 === 1) cell.fill = altFillAll;
       });
-
-      // Color: present green, absent red, late amber
-      const presentCell = dataRow.getCell(6);
-      presentCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: r.presentDays > 0 ? GREEN_BG : RED_BG } };
-
+      dr.getCell(6).fill = { type: "pattern", pattern: "solid", fgColor: { argb: r.presentDays > 0 ? GREEN_BG : RED_BG } };
       if (r.lateDays > 0) {
-        const lateCell = dataRow.getCell(7);
-        lateCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: AMBER_BG } };
-        lateCell.font = { bold: true, color: { argb: "FFB45309" }, name: "Calibri" };
+        const lc = dr.getCell(7);
+        lc.fill = { type: "pattern", pattern: "solid", fgColor: { argb: AMBER_BG } };
+        lc.font = { bold: true, color: { argb: "FFB45309" }, name: "Calibri" };
       }
-
       if (r.absentDays > 0) {
-        const absentCell = dataRow.getCell(8);
-        absentCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: RED_BG } };
-        absentCell.font = { bold: true, color: { argb: "FFB91C1C" }, name: "Calibri" };
+        const ac = dr.getCell(8);
+        ac.fill = { type: "pattern", pattern: "solid", fgColor: { argb: RED_BG } };
+        ac.font = { bold: true, color: { argb: "FFB91C1C" }, name: "Calibri" };
       }
     });
-
-    ws.autoFilter = { from: "A4", to: { row: 4, column: COLS } };
+    wsAll.autoFilter = { from: "A4", to: { row: 4, column: COMBINED_COLS } };
 
     const fname = `monthly-attendance-${year}-${String(month).padStart(2, "0")}.xlsx`;
     res.setHeader("Content-Disposition", `attachment; filename="${fname}"`);

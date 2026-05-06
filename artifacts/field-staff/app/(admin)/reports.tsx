@@ -2627,98 +2627,122 @@ function MonthlyReportSection({
         </Pressable>
       )}
 
-      {/* Summary strip */}
+      {/* Separated field / center sections */}
       {!loading && rows && rows.length > 0 && (() => {
-        const totalPresent = rows.reduce((s, r) => s + r.presentDays, 0);
-        const totalLate    = rows.reduce((s, r) => s + r.lateDays,    0);
-        const totalAbsent  = rows.reduce((s, r) => s + r.absentDays,  0);
-        const totalLeave   = rows.reduce((s, r) => s + r.leaveDays,   0);
-        return (
-          <View style={{ flexDirection: "row", backgroundColor: colors.muted, borderRadius: colors.radius, padding: 12, marginBottom: 14, gap: 4 }}>
-            {[
-              { label: "Present", value: totalPresent, color: "#16A34A" },
-              { label: "Late",    value: totalLate,    color: "#D97706" },
-              { label: "Absent",  value: totalAbsent,  color: "#DC2626" },
-              { label: "Leave",   value: totalLeave,   color: "#6366F1" },
-            ].map((s, i) => (
-              <React.Fragment key={s.label}>
-                {i > 0 && <View style={{ width: StyleSheet.hairlineWidth, backgroundColor: colors.border }} />}
-                <View style={{ flex: 1, alignItems: "center" }}>
-                  <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: s.color }}>{s.value}</Text>
-                  <Text style={{ fontSize: 10, fontFamily: "Inter_500Medium", color: colors.mutedForeground }}>{s.label}</Text>
+        const fieldRows  = rows.filter(r => r.staffCategory !== "center");
+        const centerRows = rows.filter(r => r.staffCategory === "center");
+
+        function SummaryStrip({ data }: { data: MonthlyAttRow[] }) {
+          const present = data.reduce((s, r) => s + r.presentDays, 0);
+          const late    = data.reduce((s, r) => s + r.lateDays,    0);
+          const absent  = data.reduce((s, r) => s + r.absentDays,  0);
+          const leave   = data.reduce((s, r) => s + r.leaveDays,   0);
+          return (
+            <View style={{ flexDirection: "row", backgroundColor: colors.muted, borderRadius: colors.radius, padding: 10, marginBottom: 10, gap: 4 }}>
+              {[
+                { label: "Present", value: present, color: "#16A34A" },
+                { label: "Late",    value: late,    color: "#D97706" },
+                { label: "Absent",  value: absent,  color: "#DC2626" },
+                { label: "Leave",   value: leave,   color: "#6366F1" },
+              ].map((s, i) => (
+                <React.Fragment key={s.label}>
+                  {i > 0 && <View style={{ width: StyleSheet.hairlineWidth, backgroundColor: colors.border }} />}
+                  <View style={{ flex: 1, alignItems: "center" }}>
+                    <Text style={{ fontSize: 17, fontFamily: "Inter_700Bold", color: s.color }}>{s.value}</Text>
+                    <Text style={{ fontSize: 10, fontFamily: "Inter_500Medium", color: colors.mutedForeground }}>{s.label}</Text>
+                  </View>
+                </React.Fragment>
+              ))}
+            </View>
+          );
+        }
+
+        function StaffCard({ r }: { r: MonthlyAttRow }) {
+          return (
+            <View style={[styles.kmCard, { backgroundColor: colors.card, borderColor: colors.border, borderRadius: colors.radius + 2 }]}>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: colors.foreground }} numberOfLines={1}>
+                    {r.staffName}
+                  </Text>
+                  <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 1 }}>
+                    {r.empCode}
+                  </Text>
                 </View>
-              </React.Fragment>
-            ))}
-          </View>
+                <View style={{ flexDirection: "row", gap: 6 }}>
+                  <View style={{ backgroundColor: "#D1FAE5", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
+                    <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#166534" }}>{r.presentDays}P</Text>
+                  </View>
+                  {r.lateDays > 0 && (
+                    <View style={{ backgroundColor: "#FEF3C7", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
+                      <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#B45309" }}>{r.lateDays}L</Text>
+                    </View>
+                  )}
+                  {r.absentDays > 0 && (
+                    <View style={{ backgroundColor: "#FEE2E2", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
+                      <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#B91C1C" }}>{r.absentDays}A</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                {[
+                  { label: "Check-In",  value: r.avgCheckin  ?? "—", sub: "avg" },
+                  { label: "Check-Out", value: r.avgCheckout ?? "—", sub: "avg" },
+                  { label: "GPS KM",    value: r.totalGpsKm > 0 ? `${r.totalGpsKm}` : "—", sub: "total" },
+                  { label: "Leave Bal", value: `${r.casualBalance}C ${r.sickBalance}S`, sub: "remaining", valueColor: "#6366F1" },
+                ].map((item) => (
+                  <View key={item.label} style={{ flex: 1, backgroundColor: colors.muted, borderRadius: 8, padding: 8 }}>
+                    <Text style={{ fontSize: 10, fontFamily: "Inter_500Medium", color: colors.mutedForeground }}>{item.label}</Text>
+                    <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: item.valueColor ?? colors.foreground, marginTop: 2 }}>
+                      {item.value}
+                    </Text>
+                    <Text style={{ fontSize: 9, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>{item.sub}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          );
+        }
+
+        return (
+          <>
+            {/* Field Staff Section */}
+            {fieldRows.length > 0 && (
+              <>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                  <View style={{ width: 4, height: 16, borderRadius: 2, backgroundColor: "#6366F1" }} />
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: colors.foreground }}>
+                    Field Staff
+                  </Text>
+                  <View style={{ backgroundColor: "#EEF2FF", borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 }}>
+                    <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#6366F1" }}>{fieldRows.length}</Text>
+                  </View>
+                </View>
+                <SummaryStrip data={fieldRows} />
+                {fieldRows.map(r => <StaffCard key={r.staffId} r={r} />)}
+              </>
+            )}
+
+            {/* Center Staff Section */}
+            {centerRows.length > 0 && (
+              <>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10, marginTop: fieldRows.length > 0 ? 18 : 0 }}>
+                  <View style={{ width: 4, height: 16, borderRadius: 2, backgroundColor: "#059669" }} />
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: colors.foreground }}>
+                    Center Staff
+                  </Text>
+                  <View style={{ backgroundColor: "#ECFDF5", borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 }}>
+                    <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#059669" }}>{centerRows.length}</Text>
+                  </View>
+                </View>
+                <SummaryStrip data={centerRows} />
+                {centerRows.map(r => <StaffCard key={r.staffId} r={r} />)}
+              </>
+            )}
+          </>
         );
       })()}
-
-      {/* Per-staff cards */}
-      {!loading && rows && rows.map((r) => (
-        <View
-          key={r.staffId}
-          style={[styles.kmCard, { backgroundColor: colors.card, borderColor: colors.border, borderRadius: colors.radius + 2 }]}
-        >
-          {/* Header row */}
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: colors.foreground }} numberOfLines={1}>
-                {r.staffName}
-              </Text>
-              <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 1 }}>
-                {r.empCode} · {r.staffCategory === "center" ? "Center" : "Field"}
-              </Text>
-            </View>
-            <View style={{ flexDirection: "row", gap: 6 }}>
-              <View style={{ backgroundColor: "#D1FAE5", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
-                <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#166534" }}>{r.presentDays}P</Text>
-              </View>
-              {r.lateDays > 0 && (
-                <View style={{ backgroundColor: "#FEF3C7", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
-                  <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#B45309" }}>{r.lateDays}L</Text>
-                </View>
-              )}
-              {r.absentDays > 0 && (
-                <View style={{ backgroundColor: "#FEE2E2", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
-                  <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#B91C1C" }}>{r.absentDays}A</Text>
-                </View>
-              )}
-            </View>
-          </View>
-
-          {/* Stats row */}
-          <View style={{ flexDirection: "row", gap: 8 }}>
-            <View style={{ flex: 1, backgroundColor: colors.muted, borderRadius: 8, padding: 8 }}>
-              <Text style={{ fontSize: 10, fontFamily: "Inter_500Medium", color: colors.mutedForeground }}>Check-In</Text>
-              <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.foreground, marginTop: 2 }}>
-                {r.avgCheckin ?? "—"}
-              </Text>
-              <Text style={{ fontSize: 9, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>avg</Text>
-            </View>
-            <View style={{ flex: 1, backgroundColor: colors.muted, borderRadius: 8, padding: 8 }}>
-              <Text style={{ fontSize: 10, fontFamily: "Inter_500Medium", color: colors.mutedForeground }}>Check-Out</Text>
-              <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.foreground, marginTop: 2 }}>
-                {r.avgCheckout ?? "—"}
-              </Text>
-              <Text style={{ fontSize: 9, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>avg</Text>
-            </View>
-            <View style={{ flex: 1, backgroundColor: colors.muted, borderRadius: 8, padding: 8 }}>
-              <Text style={{ fontSize: 10, fontFamily: "Inter_500Medium", color: colors.mutedForeground }}>GPS KM</Text>
-              <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.foreground, marginTop: 2 }}>
-                {r.totalGpsKm > 0 ? `${r.totalGpsKm}` : "—"}
-              </Text>
-              <Text style={{ fontSize: 9, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>total</Text>
-            </View>
-            <View style={{ flex: 1, backgroundColor: colors.muted, borderRadius: 8, padding: 8 }}>
-              <Text style={{ fontSize: 10, fontFamily: "Inter_500Medium", color: colors.mutedForeground }}>Leave Bal</Text>
-              <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#6366F1", marginTop: 2 }}>
-                {r.casualBalance}C {r.sickBalance}S
-              </Text>
-              <Text style={{ fontSize: 9, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>remaining</Text>
-            </View>
-          </View>
-        </View>
-      ))}
 
       {/* Empty state */}
       {!loading && !error && rows?.length === 0 && (
