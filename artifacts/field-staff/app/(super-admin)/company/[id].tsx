@@ -4,12 +4,15 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Switch,
   Text,
+  TextInput,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -55,6 +58,11 @@ export default function CompanyDetailScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Reset MPIN modal
+  const [mpinModal, setMpinModal] = useState(false);
+  const [newMpin, setNewMpin] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
+
   const headers = { "x-admin-phone": user?.phone ?? "", "Content-Type": "application/json" };
 
   const fetchStats = useCallback(async () => {
@@ -94,34 +102,36 @@ export default function CompanyDetailScreen() {
     }
   }, [id, user]);
 
-  const handleResetAdmin = useCallback(() => {
-    Alert.alert(
-      "Reset Admin MPIN",
-      "This will clear the company admin's MPIN. They will need to set a new one on next login. Continue?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Reset",
-          style: "destructive",
-          onPress: async () => {
-            setSaving(true);
-            try {
-              const res = await fetch(`${API_BASE}/api/super-admin/companies/${id}/reset-admin`, {
-                method: "POST",
-                headers,
-              });
-              if (!res.ok) throw new Error("Reset failed");
-              Alert.alert("Done", "Admin MPIN reset. They must re-setup MPIN on next login.");
-            } catch (e: any) {
-              Alert.alert("Error", e.message || "Reset failed");
-            } finally {
-              setSaving(false);
-            }
-          },
-        },
-      ],
-    );
-  }, [id, user]);
+  const openMpinModal = () => {
+    setNewMpin("");
+    setMpinModal(true);
+  };
+
+  const confirmResetMpin = async () => {
+    if (!/^\d{4,6}$/.test(newMpin.trim())) {
+      Alert.alert("Validation", "MPIN 4 se 6 digits ka hona chahiye.");
+      return;
+    }
+    setResetLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/super-admin/companies/${id}/reset-admin`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ newMpin: newMpin.trim() }),
+      });
+      if (!res.ok) throw new Error("Reset failed");
+      const json = await res.json() as { phone: string };
+      setMpinModal(false);
+      Alert.alert(
+        "✅ MPIN Reset Ho Gaya",
+        `Admin ka naya MPIN set ho gaya.\n\nPhone: ${json.phone}\nNaya MPIN: ${newMpin.trim()}\n\nAdmin ko yeh MPIN bata dein.`,
+      );
+    } catch (e: any) {
+      Alert.alert("Error", e.message || "Reset nahi ho saka. Dobara try karein.");
+    } finally {
+      setResetLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -149,6 +159,61 @@ export default function CompanyDetailScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: "#F0F4FA" }}>
+
+      {/* ── Reset Admin MPIN Modal ───────────────────────────────────── */}
+      <Modal
+        visible={mpinModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMpinModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <View style={styles.modalIconWrap}>
+              <Feather name="key" size={22} color="#D97706" />
+            </View>
+            <Text style={styles.modalTitle}>Admin MPIN Reset</Text>
+            <Text style={styles.modalSub}>
+              {company.adminName || company.name} ke admin ke liye naya MPIN set karein
+            </Text>
+            <TextInput
+              value={newMpin}
+              onChangeText={(t) => setNewMpin(t.replace(/\D/g, "").slice(0, 6))}
+              placeholder="Naya MPIN (4–6 digits)"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="number-pad"
+              maxLength={6}
+              secureTextEntry
+              style={styles.mpinInput}
+            />
+            <Text style={styles.mpinHint}>
+              Reset ke baad admin ko yeh MPIN bata dein
+            </Text>
+            <View style={styles.modalBtns}>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalBtnCancel]}
+                onPress={() => setMpinModal(false)}
+                disabled={resetLoading}
+              >
+                <Text style={{ color: "#6B7280", fontFamily: "Inter_600SemiBold", fontSize: 14 }}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalBtnConfirm, { opacity: resetLoading ? 0.7 : 1 }]}
+                onPress={() => { void confirmResetMpin(); }}
+                disabled={resetLoading}
+              >
+                {resetLoading
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 14 }}>Set MPIN</Text>
+                }
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Header */}
       <View style={[styles.headerBg, { paddingTop: insets.top + webTop + 16 }]}>
         <Pressable onPress={() => router.back()} style={styles.backArrow}>
@@ -247,16 +312,71 @@ export default function CompanyDetailScreen() {
         {/* Danger zone */}
         <View style={[styles.card, { borderColor: "#FEE2E2", borderWidth: 1 }]}>
           <Text style={[styles.cardTitle, { color: "#DC2626" }]}>Danger Zone</Text>
-          <Text style={styles.dangerDesc}>
-            Reset the company admin's MPIN. They will need to set a new 4-digit MPIN on next login.
-          </Text>
+
+          {/* Reset Admin MPIN */}
+          <View style={styles.dangerRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.dangerRowTitle}>Admin MPIN Reset</Text>
+              <Text style={styles.dangerDesc}>
+                Admin block ho gaya ho ya MPIN bhool gaya ho — naya MPIN set karein aur account unlock ho jaayega.
+              </Text>
+            </View>
+          </View>
           <Pressable
-            onPress={handleResetAdmin}
+            onPress={openMpinModal}
             style={({ pressed }) => [styles.dangerBtn, { opacity: pressed ? 0.8 : 1 }]}
             disabled={saving}
           >
+            <Feather name="key" size={14} color="#D97706" />
+            <Text style={[styles.dangerBtnText, { color: "#D97706" }]}>Set Naya MPIN</Text>
+          </Pressable>
+
+          <View style={styles.divider} />
+
+          {/* Clear MPIN (force re-setup) */}
+          <View style={styles.dangerRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.dangerRowTitle}>MPIN Clear Karo</Text>
+              <Text style={styles.dangerDesc}>
+                Admin ka MPIN hata do — next login par unhe khud naya MPIN set karna hoga.
+              </Text>
+            </View>
+          </View>
+          <Pressable
+            onPress={() => {
+              Alert.alert(
+                "MPIN Clear?",
+                "Admin ka MPIN hatane ke baad unhe next login par khud naya MPIN banana hoga. Proceed?",
+                [
+                  { text: "Cancel", style: "cancel" },
+                  {
+                    text: "Clear",
+                    style: "destructive",
+                    onPress: async () => {
+                      setSaving(true);
+                      try {
+                        const res = await fetch(`${API_BASE}/api/super-admin/companies/${id}/reset-admin`, {
+                          method: "POST",
+                          headers,
+                          body: JSON.stringify({}),
+                        });
+                        if (!res.ok) throw new Error("Reset failed");
+                        Alert.alert("Done", "Admin MPIN clear ho gaya. Next login par unhe naya MPIN set karna hoga.");
+                      } catch (e: any) {
+                        Alert.alert("Error", e.message || "Failed");
+                      } finally {
+                        setSaving(false);
+                      }
+                    },
+                  },
+                ],
+              );
+            }}
+            style={({ pressed }) => [styles.dangerBtn, { borderColor: "#DC2626", opacity: pressed ? 0.8 : 1 }]}
+            disabled={saving}
+          >
             <Feather name="refresh-cw" size={14} color="#DC2626" />
-            <Text style={styles.dangerBtnText}>Reset Admin MPIN</Text>
+            <Text style={styles.dangerBtnText}>Clear Admin MPIN</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -370,23 +490,35 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  dangerDesc: {
+  dangerRow: { marginBottom: 6 },
+  dangerRowTitle: {
     fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: "#374151",
+    marginBottom: 2,
+  },
+  dangerDesc: {
+    fontSize: 12,
     fontFamily: "Inter_400Regular",
     color: "#666",
-    marginBottom: 12,
-    lineHeight: 18,
+    lineHeight: 17,
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "#FEE2E2",
+    marginVertical: 14,
   },
   dangerBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     borderWidth: 1.5,
-    borderColor: "#DC2626",
+    borderColor: "#D97706",
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 14,
     alignSelf: "flex-start",
+    marginTop: 6,
   },
   dangerBtnText: {
     color: "#DC2626",
@@ -405,5 +537,89 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontFamily: "Inter_600SemiBold",
     fontSize: 14,
+  },
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+  },
+  modalBox: {
+    width: "100%",
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 24,
+    alignItems: "center",
+    gap: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  modalIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "#FEF3C7",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    color: "#111",
+  },
+  modalSub: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: "#6B7280",
+    textAlign: "center",
+  },
+  mpinInput: {
+    width: "100%",
+    height: 52,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: "#D1D5DB",
+    paddingHorizontal: 16,
+    fontSize: 22,
+    fontFamily: "Inter_700Bold",
+    textAlign: "center",
+    letterSpacing: 10,
+    color: "#111",
+    backgroundColor: "#F9FAFB",
+    marginTop: 4,
+  },
+  mpinHint: {
+    fontSize: 11,
+    color: "#9CA3AF",
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    marginTop: 2,
+  },
+  modalBtns: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 8,
+    width: "100%",
+  },
+  modalBtn: {
+    flex: 1,
+    height: 46,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalBtnCancel: {
+    backgroundColor: "#F3F4F6",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  modalBtnConfirm: {
+    backgroundColor: "#D97706",
   },
 });

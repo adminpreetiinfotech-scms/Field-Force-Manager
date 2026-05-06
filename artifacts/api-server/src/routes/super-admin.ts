@@ -484,7 +484,10 @@ router.patch("/super-admin/companies/:id", requireSuperAdmin, async (req, res, n
 });
 
 // ─── POST /api/super-admin/companies/:id/reset-admin ──────────────────────────
-// Reset the admin of a company (clear their MPIN so they must re-setup).
+// Reset the admin of a company.
+// Body (optional): { newMpin: "4–6 digits" }
+//   • If newMpin is provided → set that specific MPIN (hashed) and unblock.
+//   • If newMpin is omitted  → clear MPIN hash (admin must re-setup on next login).
 
 router.post(
   "/super-admin/companies/:id/reset-admin",
@@ -500,6 +503,13 @@ router.post(
         res.status(400).json({ title: "id must be a valid UUID", status: 400 });
         return;
       }
+
+      const { newMpin } = req.body as { newMpin?: string };
+      if (newMpin !== undefined && !/^\d{4,6}$/.test(newMpin.trim())) {
+        res.status(400).json({ title: "Invalid MPIN", detail: "newMpin must be 4–6 digits", status: 400 });
+        return;
+      }
+
       // Find admin user for this company
       const [admin] = await db
         .select({ id: staffTable.id, name: staffTable.name, phone: staffTable.phone })
@@ -512,17 +522,24 @@ router.post(
         return;
       }
 
-      // Clear MPIN hash (forces them to re-setup)
+      let mpinHash: string | null = null;
+      if (newMpin) {
+        const salt = crypto.randomBytes(16).toString("hex");
+        const hash = crypto.scryptSync(newMpin.trim(), salt, 64).toString("hex");
+        mpinHash = `${salt}:${hash}`;
+      }
+
       await db
         .update(staffTable)
         .set({
-          mpinHash: null,
+          mpinHash,
           failedMpinAttempts: 0,
           mpinBlockedUntil: null,
           disabledAt: null,
         })
         .where(eq(staffTable.id, admin.id));
 
+      req.log.info({ companyId: id, adminId: admin.id, hadNewMpin: !!newMpin }, "Admin MPIN reset by super-admin");
       res.json({ message: "Admin MPIN reset successfully", adminId: admin.id, phone: admin.phone });
     } catch (err) {
       next(err);
