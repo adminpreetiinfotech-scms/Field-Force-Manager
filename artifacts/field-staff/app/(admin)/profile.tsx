@@ -14,7 +14,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button } from "@/components/Button";
 import { CompanyBrand } from "@/components/CompanyBrand";
-import { RoleSwitcher } from "@/components/RoleSwitcher";
 import { useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -141,8 +140,6 @@ export default function AdminProfile() {
           </View>
         </View>
       </View>
-
-      <RoleSwitcher />
 
       <View
         style={[
