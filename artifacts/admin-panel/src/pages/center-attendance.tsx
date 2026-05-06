@@ -174,6 +174,7 @@ export default function CenterAttendance() {
   useEffect(() => { if (!staffLoading) loadAttendance(); }, [staffLoading, loadAttendance]);
 
   const [exporting, setExporting] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   const exportExcel = async () => {
     if (!filteredRows.length) return;
@@ -196,6 +197,30 @@ export default function CenterAttendance() {
       toast({ title: "Export failed", description: e.message, variant: "destructive" });
     } finally {
       setExporting(false);
+    }
+  };
+
+  const exportPdf = async () => {
+    if (!filteredRows.length) return;
+    setExportingPdf(true);
+    try {
+      const params = new URLSearchParams({ dateFrom, dateTo });
+      if (selectedStaffId) params.set("staffId", selectedStaffId);
+      if (statusFilter) params.set("status", statusFilter);
+      const res = await adminFetch(`/api/admin/center-attendance/pdf?${params}`);
+      if (!res.ok) throw new Error("PDF export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const filterSuffix = statusFilter ? `-${statusFilter}` : "";
+      a.href = url;
+      a.download = `center-attendance${filterSuffix}-${dateFrom}-to-${dateTo}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      toast({ title: "PDF export failed", description: e.message, variant: "destructive" });
+    } finally {
+      setExportingPdf(false);
     }
   };
 
@@ -226,7 +251,11 @@ export default function CenterAttendance() {
           </Button>
           <Button variant="outline" size="sm" onClick={exportExcel} disabled={!filteredRows.length || exporting}>
             <Download className={`h-4 w-4 mr-1.5 ${exporting ? "animate-bounce" : ""}`} />
-            {exporting ? "Exporting…" : `Export Excel (${filteredRows.length} ${filteredRows.length === 1 ? "row" : "rows"})`}
+            {exporting ? "Exporting…" : `Excel (${filteredRows.length})`}
+          </Button>
+          <Button variant="outline" size="sm" onClick={exportPdf} disabled={!filteredRows.length || exportingPdf}>
+            <Download className={`h-4 w-4 mr-1.5 ${exportingPdf ? "animate-bounce" : ""}`} />
+            {exportingPdf ? "Generating PDF…" : `PDF (${filteredRows.length})`}
           </Button>
         </div>
       </div>

@@ -6,7 +6,7 @@ import {
   db,
   staffTable,
 } from "@workspace/db";
-import { and, desc, eq, gte, ilike, isNull, lt, or } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, inArray, isNull, lt, or } from "drizzle-orm";
 import express, { Router } from "express";
 import { isValidUUID } from "../lib/validation";
 import fs from "fs";
@@ -918,6 +918,131 @@ router.patch("/admin/candidates/:id/status", requireAdmin, async (req, res, next
     }
 
     res.json(toDto(updated));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── PATCH /api/admin/candidates/bulk-status ──────────────────────────────────
+// Bulk update status for multiple candidates at once.
+
+router.patch("/admin/candidates/bulk-status", requireAdmin, async (req, res, next) => {
+  try {
+    const companyId = res.locals.companyId as string | null;
+    const { ids, status, remarks, verifiedBy, verifiedByPhone } = req.body as {
+      ids?: unknown;
+      status?: string;
+      remarks?: string;
+      verifiedBy?: string;
+      verifiedByPhone?: string;
+    };
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      res.status(400).json({ title: "ids must be a non-empty array", status: 400 });
+      return;
+    }
+    if (ids.length > 200) {
+      res.status(400).json({ title: "Cannot update more than 200 candidates at once", status: 400 });
+      return;
+    }
+    const validStatuses = ["pending", "verified", "rejected", "enrolled"];
+    if (!status || !validStatuses.includes(status)) {
+      res.status(400).json({ title: `status must be one of: ${validStatuses.join(", ")}`, status: 400 });
+      return;
+    }
+
+    const cleanIds: string[] = [];
+    for (const id of ids) {
+      if (typeof id !== "string" || !isValidUUID(id)) {
+        res.status(400).json({ title: `Invalid UUID in ids: ${id}`, status: 400 });
+        return;
+      }
+      cleanIds.push(id);
+    }
+
+    // Fetch candidates to validate company scope
+    const existing = await db
+      .select({ id: candidatesTable.id, companyId: candidatesTable.companyId, name: candidatesTable.name, status: candidatesTable.status, submittedByPhone: candidatesTable.submittedByPhone })
+      .from(candidatesTable)
+      .where(inArray(candidatesTable.id, cleanIds));
+
+    const forbidden = companyId ? existing.filter((c) => c.companyId && c.companyId !== companyId) : [];
+    if (forbidden.length > 0) {
+      res.status(403).json({ title: "Some candidates do not belong to your company", status: 403 });
+      return;
+    }
+
+    const now = new Date();
+    const actionBy = verifiedBy?.trim() || "admin";
+
+    // Bulk update
+    await db
+      .update(candidatesTable)
+      .set({ status, verifiedBy: actionBy, verifiedAt: now, verificationRemarks: remarks?.trim() || null })
+      .where(inArray(candidatesTable.id, cleanIds));
+
+    // Write audit logs for each candidate
+    if (existing.length > 0) {
+      await db.insert(candidateAuditLogTable).values(
+        existing.map((c) => ({
+          companyId: c.companyId ?? null,
+          candidateId: c.id,
+          candidateName: c.name,
+          actionBy,
+          actionByPhone: verifiedByPhone?.trim() || null,
+          oldStatus: c.status ?? null,
+          newStatus: status,
+          remarks: remarks?.trim() || null,
+        })),
+      );
+    }
+
+    // Fire-and-forget push + SMS notifications (non-blocking)
+    void (async () => {
+      try {
+        const statusLabel =
+          status === "verified" ? "approved ✓"
+          : status === "rejected" ? "rejected ✗"
+          : status === "enrolled" ? "enrolled 🎓"
+          : status;
+
+        for (const candidate of existing) {
+          if (!candidate.submittedByPhone) continue;
+          const message = `Your candidate ${candidate.name} has been ${statusLabel}.${remarks ? ` Remark: ${remarks}` : ""}`;
+          await db.insert(candidateNotificationsTable).values({
+            companyId: candidate.companyId ?? null,
+            staffPhone: candidate.submittedByPhone,
+            candidateId: candidate.id,
+            candidateName: candidate.name,
+            message,
+          }).catch(() => {});
+
+          const [mobilizer] = await db
+            .select({ expoPushToken: staffTable.expoPushToken })
+            .from(staffTable)
+            .where(eq(staffTable.phone, candidate.submittedByPhone))
+            .limit(1);
+          if (mobilizer?.expoPushToken) {
+            await sendPushSilent(
+              [mobilizer.expoPushToken],
+              `Candidate ${statusLabel}`,
+              message,
+              { type: "candidate_status", candidateId: candidate.id, status },
+              () => {},
+            ).catch(() => {});
+          }
+          if (status !== "pending") {
+            await sendSmsSilent(
+              candidate.submittedByPhone,
+              `Nistha Skill: ${message}`.slice(0, 320),
+              () => {},
+            ).catch(() => {});
+          }
+        }
+      } catch { /* non-fatal */ }
+    })();
+
+    res.json({ updated: existing.length, status });
   } catch (err) {
     next(err);
   }

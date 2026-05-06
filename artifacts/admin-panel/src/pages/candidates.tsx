@@ -5,11 +5,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Download, Pencil, Trash2 } from "lucide-react";
+import { Search, Download, Pencil, Trash2, CheckSquare, X } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -282,6 +283,11 @@ export default function Candidates() {
   const [editCandidate, setEditCandidate] = useState<CandidateDto | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkStatus, setBulkStatus] = useState<string>("verified");
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
+
   const handleDeleteCandidate = async (candidate: CandidateDto) => {
     if (!user?.phone) return;
     setDeletingId(candidate.id);
@@ -341,6 +347,61 @@ export default function Candidates() {
     }
   };
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (!candidates) return;
+    if (selectedIds.size === candidates.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(candidates.map((c) => c.id)));
+    }
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const handleBulkUpdate = async () => {
+    if (!user?.phone || selectedIds.size === 0) return;
+    setBulkLoading(true);
+    try {
+      const res = await fetch("/api/admin/candidates/bulk-status", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-phone": user.phone,
+        },
+        body: JSON.stringify({
+          ids: Array.from(selectedIds),
+          status: bulkStatus,
+          verifiedBy: user?.name,
+          verifiedByPhone: user?.phone,
+        }),
+      });
+      const data = await res.json() as { updated?: number; title?: string };
+      if (!res.ok) throw new Error(data.title ?? "Bulk update failed");
+      toast({
+        title: "Bulk update complete",
+        description: `${data.updated} candidate(s) marked as ${bulkStatus}.`,
+      });
+      setSelectedIds(new Set());
+      setBulkConfirmOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/candidates"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/dashboard/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/candidate-stats"] });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "enrolled": return "bg-green-100 text-green-800 border-green-200";
@@ -349,6 +410,9 @@ export default function Candidates() {
       default: return "bg-orange-100 text-orange-800 border-orange-200";
     }
   };
+
+  const allSelected = !!candidates && candidates.length > 0 && selectedIds.size === candidates.length;
+  const someSelected = selectedIds.size > 0 && !allSelected;
 
   return (
     <div className="space-y-6">
@@ -367,7 +431,7 @@ export default function Candidates() {
           />
         </div>
         <div className="w-full sm:w-48">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setSelectedIds(new Set()); }}>
             <SelectTrigger>
               <SelectValue placeholder="Status Filter" />
             </SelectTrigger>
@@ -392,10 +456,67 @@ export default function Candidates() {
         </div>
       </div>
 
+      {/* Bulk action bar */}
+      {selectedIds.size > 0 && (
+        <div className="flex flex-wrap items-center gap-3 bg-primary/5 border border-primary/20 rounded-lg px-4 py-3">
+          <CheckSquare className="h-4 w-4 text-primary shrink-0" />
+          <span className="text-sm font-medium text-primary">
+            {selectedIds.size} candidate{selectedIds.size !== 1 ? "s" : ""} selected
+          </span>
+          <div className="flex items-center gap-2 ml-auto">
+            <span className="text-sm text-muted-foreground">Mark as:</span>
+            <Select value={bulkStatus} onValueChange={setBulkStatus}>
+              <SelectTrigger className="w-[130px] h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="verified">Verified</SelectItem>
+                <SelectItem value="enrolled">Enrolled</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
+            <AlertDialog open={bulkConfirmOpen} onOpenChange={setBulkConfirmOpen}>
+              <AlertDialogTrigger asChild>
+                <Button size="sm" className="h-8 text-xs" disabled={bulkLoading}>
+                  Apply to {selectedIds.size}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Bulk status update</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Mark <strong>{selectedIds.size}</strong> candidate{selectedIds.size !== 1 ? "s" : ""} as{" "}
+                    <strong>{bulkStatus}</strong>? Each mobilizer will receive a notification.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={bulkLoading}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleBulkUpdate} disabled={bulkLoading}>
+                    {bulkLoading ? "Updating..." : "Confirm"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={clearSelection} title="Clear selection">
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="border rounded-md bg-card overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={allSelected}
+                  ref={(el) => { if (el) (el as any).indeterminate = someSelected; }}
+                  onCheckedChange={toggleSelectAll}
+                  aria-label="Select all"
+                />
+              </TableHead>
               <TableHead>Candidate</TableHead>
               <TableHead>Contact</TableHead>
               <TableHead>Location</TableHead>
@@ -408,17 +529,27 @@ export default function Candidates() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading candidates...</TableCell>
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Loading candidates...</TableCell>
               </TableRow>
             ) : !candidates || candidates.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   No candidates found matching your criteria.
                 </TableCell>
               </TableRow>
             ) : (
               candidates.map((candidate) => (
-                <TableRow key={candidate.id}>
+                <TableRow
+                  key={candidate.id}
+                  className={selectedIds.has(candidate.id) ? "bg-primary/5" : undefined}
+                >
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedIds.has(candidate.id)}
+                      onCheckedChange={() => toggleSelect(candidate.id)}
+                      aria-label={`Select ${candidate.name}`}
+                    />
+                  </TableCell>
                   <TableCell>
                     <div className="font-medium">{candidate.name}</div>
                     <div className="text-xs text-muted-foreground">{candidate.fatherName || "N/A"}</div>

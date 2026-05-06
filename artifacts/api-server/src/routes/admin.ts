@@ -14,6 +14,8 @@ import ExcelJS from "exceljs";
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { isValidUUID } from "../lib/validation";
 import crypto from "node:crypto";
+import PDFDocument from "pdfkit";
+import { downloadLogoBuffer } from "../lib/logoStorage";
 
 function hashMpinAdmin(mpin: string): string {
   const salt = crypto.randomBytes(16).toString("hex");
@@ -1714,6 +1716,258 @@ router.get("/admin/center-attendance/xlsx", requireAdmin, async (req, res, next)
     res.setHeader("Content-Disposition", `attachment; filename="${fname}"`);
     await wb.xlsx.write(res);
     res.end();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── GET /api/admin/center-attendance/pdf ─────────────────────────────────────
+// Generates a PDF attendance sheet for center staff.
+
+router.get("/admin/center-attendance/pdf", requireAdmin, async (req, res, next) => {
+  try {
+    const companyId = res.locals.companyId as string | null;
+    const { dateFrom, dateTo, staffId, status: statusFilter } = req.query as {
+      dateFrom?: string; dateTo?: string; staffId?: string; status?: string;
+    };
+
+    const todayIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const resolvedDateFrom = dateFrom || todayIST;
+    const resolvedDateTo   = dateTo   || todayIST;
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(resolvedDateFrom) || !/^\d{4}-\d{2}-\d{2}$/.test(resolvedDateTo)) {
+      res.status(400).json({ title: "Dates must be in YYYY-MM-DD format", status: 400 });
+      return;
+    }
+
+    let organization: string | null = null;
+    let logoPath: string | null = null;
+    if (companyId) {
+      try {
+        const [co] = await db
+          .select({ name: companiesTable.name, projectName: companiesTable.projectName, logoPath: companiesTable.logoPath })
+          .from(companiesTable).where(eq(companiesTable.id, companyId)).limit(1);
+        if (co) {
+          organization = co.projectName ? `${co.name} — ${co.projectName}` : co.name;
+          logoPath = co.logoPath ?? null;
+        }
+      } catch { /* non-fatal */ }
+    }
+
+    const normalizedStaffId = staffId?.trim() || undefined;
+    if (normalizedStaffId && !isValidUUID(normalizedStaffId)) {
+      res.status(400).json({ title: "Invalid staffId", status: 400 });
+      return;
+    }
+
+    const companyFilter = companyId
+      ? and(eq(staffTable.companyId, companyId), eq(staffTable.staffCategory, "center"), eq(staffTable.role, "staff"))
+      : and(eq(staffTable.staffCategory, "center"), eq(staffTable.role, "staff"));
+    const staffFilter = normalizedStaffId ? and(companyFilter, eq(staffTable.id, normalizedStaffId)) : companyFilter;
+
+    const centerStaff = await db
+      .select({ id: staffTable.id, name: staffTable.name, empCode: staffTable.empCode, centerStaffRole: staffTable.centerStaffRole })
+      .from(staffTable).where(and(staffFilter, isNull(staffTable.deletedAt)));
+
+    const fromUtc = new Date(resolvedDateFrom + "T00:00:00+05:30");
+    const toUtc   = new Date(resolvedDateTo   + "T23:59:59+05:30");
+    const staffIds = centerStaff.map((s) => s.id);
+
+    const events = staffIds.length > 0
+      ? await db.select({ staffId: activityEventsTable.staffId, kind: activityEventsTable.kind, occurredAt: activityEventsTable.occurredAt, payload: activityEventsTable.payload })
+          .from(activityEventsTable)
+          .where(and(inArray(activityEventsTable.staffId, staffIds), or(eq(activityEventsTable.kind, "checkin"), eq(activityEventsTable.kind, "checkout")), gte(activityEventsTable.occurredAt, fromUtc), lt(activityEventsTable.occurredAt, new Date(toUtc.getTime() + 1000))))
+          .orderBy(activityEventsTable.occurredAt)
+      : [];
+
+    const IST_OFFSET = 5.5 * 60 * 60 * 1000;
+    type EventEntry = { occurredAt: Date; payload: Record<string, unknown> };
+    const eventMap = new Map<string, { checkin?: EventEntry; checkout?: EventEntry }>();
+    for (const ev of events) {
+      const istDate = new Date(ev.occurredAt.getTime() + IST_OFFSET).toISOString().slice(0, 10);
+      const key = `${ev.staffId}|${istDate}`;
+      if (!eventMap.has(key)) eventMap.set(key, {});
+      const entry = eventMap.get(key)!;
+      const payload = (ev.payload ?? {}) as Record<string, unknown>;
+      if (ev.kind === "checkin") { if (!entry.checkin) entry.checkin = { occurredAt: ev.occurredAt, payload }; }
+      else if (ev.kind === "checkout") { entry.checkout = { occurredAt: ev.occurredAt, payload }; }
+    }
+
+    function toISTTime(d: Date): string {
+      const local = new Date(d.getTime() + IST_OFFSET);
+      return local.toISOString().slice(11, 16);
+    }
+    function fmtRole(role: string | null | undefined): string {
+      if (!role) return "";
+      return role.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase()).trim();
+    }
+
+    const dates: string[] = [];
+    const cur = new Date(resolvedDateFrom + "T00:00:00Z");
+    const end = new Date(resolvedDateTo   + "T00:00:00Z");
+    while (cur <= end) { dates.push(cur.toISOString().slice(0, 10)); cur.setDate(cur.getDate() + 1); }
+
+    const today = new Date(Date.now() + IST_OFFSET).toISOString().slice(0, 10);
+
+    type AttendRow = { staffName: string; empCode: string; role: string; date: string; checkIn: string; checkOut: string; duration: string; geoIn: string; geoOut: string; status: string };
+    const attendRows: AttendRow[] = [];
+
+    for (const staff of centerStaff) {
+      for (const date of dates) {
+        const entry = eventMap.get(`${staff.id}|${date}`);
+        const hasCheckin  = !!entry?.checkin;
+        const hasCheckout = !!entry?.checkout;
+        if (!hasCheckin && !hasCheckout && date > today) continue;
+
+        let rowStatus = "absent";
+        if (hasCheckin && hasCheckout) rowStatus = "present";
+        else if (hasCheckin) rowStatus = "partial";
+
+        const ciPayload = entry?.checkin?.payload ?? {};
+        const coPayload = entry?.checkout?.payload ?? {};
+        const ciOutside = (ciPayload.outsideGeofence as boolean | null) ?? null;
+        const coOutside = (coPayload.outsideGeofence as boolean | null) ?? null;
+        const ciDist    = (ciPayload.distanceFromCenterM as number | null) ?? null;
+        const coDist    = (coPayload.distanceFromCenterM as number | null) ?? null;
+
+        if (statusFilter === "violations") { if (ciOutside !== true && coOutside !== true) continue; }
+        else if (statusFilter && rowStatus !== statusFilter) continue;
+
+        const checkIn  = hasCheckin  ? toISTTime(entry!.checkin!.occurredAt)  : "—";
+        const checkOut = hasCheckout ? toISTTime(entry!.checkout!.occurredAt) : "—";
+        let duration = "—";
+        if (hasCheckin && hasCheckout && entry!.checkout!.occurredAt > entry!.checkin!.occurredAt) {
+          const diffMs = entry!.checkout!.occurredAt.getTime() - entry!.checkin!.occurredAt.getTime();
+          const hrs = diffMs / (1000 * 60 * 60);
+          duration = `${Math.floor(hrs)}h ${Math.round((hrs % 1) * 60)}m`;
+        }
+
+        const fmtGeo = (outside: boolean | null, distM: number | null) =>
+          outside === null ? "N/A" : outside ? `Outside${distM != null ? ` (${distM}m)` : ""}` : `Inside${distM != null ? ` (${distM}m)` : ""}`;
+
+        attendRows.push({ staffName: staff.name, empCode: staff.empCode ?? "", role: fmtRole(staff.centerStaffRole), date, checkIn, checkOut, duration, geoIn: fmtGeo(ciOutside, ciDist), geoOut: fmtGeo(coOutside, coDist), status: rowStatus });
+      }
+    }
+    attendRows.sort((a, b) => a.date.localeCompare(b.date) || a.staffName.localeCompare(b.staffName));
+
+    // Fetch logo buffer
+    let logoBuffer: Buffer | null = null;
+    if (logoPath) {
+      try { logoBuffer = await downloadLogoBuffer(logoPath); } catch { /* non-fatal */ }
+    }
+
+    // Build PDF
+    const doc = new PDFDocument({ size: "A4", margin: 0, autoFirstPage: true });
+    const chunks: Buffer[] = [];
+    doc.on("data", (c: Buffer) => chunks.push(c));
+
+    const W = 595.28;
+    const ML = 30;
+    const MR = 30;
+    const CW = W - ML - MR;
+
+    // Header background
+    doc.rect(0, 0, W, 56).fill("#4F46E5");
+
+    // Logo
+    let headerTextX = ML + 8;
+    if (logoBuffer) {
+      try {
+        doc.image(logoBuffer, ML + 8, 8, { height: 40, fit: [40, 40] });
+        headerTextX = ML + 56;
+      } catch { /* no logo */ }
+    }
+
+    doc.fillColor("#FFFFFF").fontSize(13).font("Helvetica-Bold")
+      .text(organization ?? "Center Attendance Report", headerTextX, 12, { width: CW - (headerTextX - ML), align: "left" });
+    doc.fontSize(9).font("Helvetica")
+      .text(`Period: ${resolvedDateFrom}  →  ${resolvedDateTo}   |   ${attendRows.length} record(s)`, headerTextX, 30, { width: CW - (headerTextX - ML) });
+
+    let y = 68;
+
+    // Summary row
+    const totalPresent = attendRows.filter((r) => r.status === "present").length;
+    const totalPartial = attendRows.filter((r) => r.status === "partial").length;
+    const totalAbsent  = attendRows.filter((r) => r.status === "absent").length;
+    const totalViol    = attendRows.filter((r) => r.geoIn.startsWith("Outside") || r.geoOut.startsWith("Outside")).length;
+
+    doc.rect(ML, y, CW, 22).fill("#F3F4F6");
+    doc.fillColor("#374151").fontSize(8).font("Helvetica-Bold")
+      .text(`Present: ${totalPresent}   Partial: ${totalPartial}   Absent: ${totalAbsent}   Violations: ${totalViol}`, ML + 8, y + 7, { width: CW });
+    y += 30;
+
+    // Column config
+    const COLS = [
+      { label: "Date",       w: 60 },
+      { label: "Staff Name", w: 100 },
+      { label: "EMP ID",     w: 55 },
+      { label: "Role",       w: 65 },
+      { label: "Check-In",   w: 50 },
+      { label: "Check-Out",  w: 50 },
+      { label: "Duration",   w: 50 },
+      { label: "Geo In",     w: 57 },
+      { label: "Geo Out",    w: 48 },
+    ];
+
+    // Table header
+    doc.rect(ML, y, CW, 18).fill("#4F46E5");
+    let cx = ML;
+    for (const col of COLS) {
+      doc.fillColor("#FFFFFF").fontSize(7).font("Helvetica-Bold")
+        .text(col.label, cx + 3, y + 5, { width: col.w - 4, align: "center" });
+      cx += col.w;
+    }
+    y += 18;
+
+    // Data rows
+    for (const [idx, row] of attendRows.entries()) {
+      const rowH = 16;
+      if (y + rowH > 820) {
+        doc.addPage({ size: "A4", margin: 0 });
+        y = 20;
+        // Repeat header
+        doc.rect(ML, y, CW, 18).fill("#4F46E5");
+        cx = ML;
+        for (const col of COLS) {
+          doc.fillColor("#FFFFFF").fontSize(7).font("Helvetica-Bold")
+            .text(col.label, cx + 3, y + 5, { width: col.w - 4, align: "center" });
+          cx += col.w;
+        }
+        y += 18;
+      }
+
+      const isViol = row.geoIn.startsWith("Outside") || row.geoOut.startsWith("Outside");
+      const isPartial = row.status === "partial";
+      const bgColor = isViol ? "#FEE2E2" : isPartial ? "#FEF3C7" : idx % 2 === 0 ? "#FFFFFF" : "#F9FAFB";
+      doc.rect(ML, y, CW, rowH).fill(bgColor);
+
+      const cells = [row.date, row.staffName, row.empCode, row.role, row.checkIn, row.checkOut, row.duration, row.geoIn, row.geoOut];
+      cx = ML;
+      for (const [ci, col] of COLS.entries()) {
+        const txtColor = (ci === 7 || ci === 8) && cells[ci].startsWith("Outside") ? "#DC2626" : "#111827";
+        doc.fillColor(txtColor).fontSize(7).font("Helvetica")
+          .text(cells[ci] ?? "", cx + 3, y + 4, { width: col.w - 4, align: ci >= 4 ? "center" : "left", lineBreak: false });
+        cx += col.w;
+      }
+
+      // Row border
+      doc.moveTo(ML, y + rowH).lineTo(ML + CW, y + rowH).strokeColor("#E5E7EB").lineWidth(0.3).stroke();
+      y += rowH;
+    }
+
+    // Footer
+    y += 10;
+    doc.fontSize(7).font("Helvetica").fillColor("#6B7280")
+      .text(`Generated on ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}   |   CENTER ATTENDANCE REPORT`, ML, y, { width: CW, align: "center" });
+
+    doc.end();
+
+    await new Promise<void>((resolve) => doc.on("end", resolve));
+    const pdfBuffer = Buffer.concat(chunks);
+    const fname = `center-attendance-${resolvedDateFrom}-to-${resolvedDateTo}.pdf`;
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${fname}"`);
+    res.send(pdfBuffer);
   } catch (err) {
     next(err);
   }
