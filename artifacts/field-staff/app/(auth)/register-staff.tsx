@@ -133,7 +133,6 @@ export default function RegisterStaffScreen() {
   // Organization fields
   const [centerName, setCenterName] = useState("");
   const [projectName, setProjectName] = useState("");
-  const [showSchemePicker, setShowSchemePicker] = useState(false);
   const [state, setState_] = useState("");
   const [district, setDistrict] = useState("");
   const [block, setBlock] = useState("");
@@ -160,7 +159,6 @@ export default function RegisterStaffScreen() {
   const emailRef = useRef<TextInput>(null);
   const designationRef = useRef<TextInput>(null);
   const centerRef = useRef<TextInput>(null);
-  const projectRef = useRef<TextInput>(null);
   const stateRef = useRef<TextInput>(null);
   const districtRef = useRef<TextInput>(null);
   const blockRef = useRef<TextInput>(null);
@@ -738,6 +736,39 @@ export default function RegisterStaffScreen() {
             </>
           )}
 
+          {/* ── Section: Scheme / Project ─────────────────────────────── */}
+          <SectionHeader label="SCHEME / PROJECT *" colors={colors} />
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {SCHEME_OPTIONS.map((scheme) => {
+              const selected = projectName === scheme;
+              return (
+                <Pressable
+                  key={scheme}
+                  onPress={() => setProjectName(selected ? "" : scheme)}
+                  style={[
+                    styles.schemeChip,
+                    {
+                      borderColor: selected ? colors.primary : colors.border,
+                      backgroundColor: selected ? colors.primary + "15" : colors.background,
+                      borderRadius: 999,
+                    },
+                  ]}
+                >
+                  {selected && <Feather name="check" size={12} color={colors.primary} />}
+                  <Text
+                    style={{
+                      color: selected ? colors.primary : colors.mutedForeground,
+                      fontFamily: selected ? "Inter_600SemiBold" : "Inter_400Regular",
+                      fontSize: 13,
+                    }}
+                  >
+                    {scheme}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
           {/* ── Section: Find Organization ────────────────────────────── */}
           <SectionHeader label="APNI ORGANIZATION DHUNDEIN *" colors={colors} />
           <View style={[styles.form]}>
@@ -954,7 +985,7 @@ export default function RegisterStaffScreen() {
               onChangeText={setCenterName}
               placeholder="e.g. Ranchi Training Center"
               returnKeyType="next"
-              onSubmitEditing={() => projectRef.current?.focus()}
+              onSubmitEditing={() => stateRef.current?.focus()}
               colors={colors}
               autoCapitalize="words"
             />
@@ -994,87 +1025,6 @@ export default function RegisterStaffScreen() {
               </View>
             ) : null}
 
-            {/* Scheme / Project dropdown */}
-            <View>
-              <Text style={[styles.label, { color: colors.mutedForeground }]}>
-                SCHEME / PROJECT NAME *
-              </Text>
-              <Pressable
-                onPress={() => setShowSchemePicker((p) => !p)}
-                style={[
-                  styles.roleSelector,
-                  {
-                    borderColor: projectName ? colors.primary : colors.border,
-                    backgroundColor: colors.background,
-                    borderRadius: colors.radius,
-                  },
-                ]}
-              >
-                <Text
-                  style={{
-                    flex: 1,
-                    color: projectName ? colors.foreground : colors.mutedForeground,
-                    fontFamily: "Inter_400Regular",
-                    fontSize: 15,
-                  }}
-                >
-                  {projectName || "Scheme chunein... (DDU-GKY, JSDMS, PMKVY...)"}
-                </Text>
-                <Feather
-                  name={showSchemePicker ? "chevron-up" : "chevron-down"}
-                  size={16}
-                  color={colors.mutedForeground}
-                />
-              </Pressable>
-
-              {showSchemePicker && (
-                <View
-                  style={[
-                    styles.roleDropdown,
-                    {
-                      borderColor: colors.border,
-                      backgroundColor: colors.card,
-                      borderRadius: colors.radius,
-                    },
-                  ]}
-                >
-                  {SCHEME_OPTIONS.map((scheme) => (
-                    <Pressable
-                      key={scheme}
-                      onPress={() => {
-                        setProjectName(scheme);
-                        setShowSchemePicker(false);
-                      }}
-                      style={({ pressed }) => [
-                        styles.roleOption,
-                        {
-                          backgroundColor:
-                            projectName === scheme
-                              ? colors.primary + "15"
-                              : pressed
-                              ? colors.border + "40"
-                              : "transparent",
-                        },
-                      ]}
-                    >
-                      {projectName === scheme && (
-                        <Feather name="check" size={14} color={colors.primary} />
-                      )}
-                      <Text
-                        style={{
-                          color: projectName === scheme ? colors.primary : colors.foreground,
-                          fontFamily: projectName === scheme ? "Inter_600SemiBold" : "Inter_400Regular",
-                          fontSize: 14,
-                          marginLeft: projectName === scheme ? 0 : 18,
-                        }}
-                      >
-                        {scheme}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              )}
-            </View>
           </View>
 
           {/* ── Section: Location ─────────────────────────────────────────── */}
@@ -1344,5 +1294,13 @@ const styles = StyleSheet.create({
     padding: 14,
     borderWidth: 1.5,
     gap: 10,
+  },
+  schemeChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderWidth: 1.5,
   },
 });
