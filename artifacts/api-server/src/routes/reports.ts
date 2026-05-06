@@ -237,8 +237,9 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
       }
 
       let variancePct: number | null = null;
-      if (vehicleKm != null && gpsKm != null && vehicleKm > 0) {
-        variancePct = Math.round(Math.abs(vehicleKm - gpsKm) / vehicleKm * 100 * 10) / 10;
+      if (vehicleKm != null && vehicleKm > 0) {
+        // Calculate variance even when gpsKm = 0 (shows 100% discrepancy)
+        variancePct = Math.round(Math.abs(vehicleKm - (gpsKm ?? 0)) / vehicleKm * 100 * 10) / 10;
       }
 
       rows.push({
@@ -560,7 +561,8 @@ router.get("/admin/reports/rides/xlsx", requireAdmin, async (req, res, next) => 
       }
 
       let variancePct: number | null = null;
-      if (vehicleKm != null && gps.gpsKm > 0) {
+      if (vehicleKm != null && vehicleKm > 0) {
+        // Calculate variance even when gpsKm = 0 (shows 100% discrepancy)
         variancePct = Math.round(Math.abs(vehicleKm - gps.gpsKm) / vehicleKm * 100 * 10) / 10;
       }
 

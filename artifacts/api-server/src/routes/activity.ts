@@ -1,5 +1,6 @@
 import { activityEventsTable, candidatesTable, companiesTable, db, staffTable } from "@workspace/db";
 import { isCompanySubscriptionBlocked } from "./companies";
+import { requireAdmin } from "./admin";
 import { and, count, desc, eq, gt, gte, inArray, lt, or, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
@@ -775,11 +776,13 @@ router.get("/activity/trip-route/:tripRef", async (req, res, next) => {
   }
 });
 
-router.get("/activity/trip-report", async (req, res, next) => {
+router.get("/activity/trip-report", requireAdmin, async (req, res, next) => {
   try {
     const rawFrom = req.query.from as string | undefined;
     const rawTo = req.query.to as string | undefined;
     const rawStaffId = req.query.staffId as string | undefined;
+    // companyId from requireAdmin middleware (null = super_admin = sees all companies)
+    const scopedCompanyId = (res.locals.companyId as string | null) ?? null;
 
     const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
     if (!rawFrom || !DATE_RE.test(rawFrom) || !rawTo || !DATE_RE.test(rawTo)) {
@@ -808,9 +811,8 @@ router.get("/activity/trip-report", async (req, res, next) => {
       gte(activityEventsTable.occurredAt, startOfFrom),
       lt(activityEventsTable.occurredAt, new Date(endOfTo.getTime() + 1)),
     ] as ReturnType<typeof eq>[];
-    if (rawStaffId) {
-      tripConds.push(eq(activityEventsTable.staffId, rawStaffId));
-    }
+    if (rawStaffId)     tripConds.push(eq(activityEventsTable.staffId, rawStaffId));
+    if (scopedCompanyId) tripConds.push(eq(activityEventsTable.companyId, scopedCompanyId));
 
     // Also pull checkin/checkout events for the same window (for odometer photos).
     const attendConds = [
@@ -818,9 +820,8 @@ router.get("/activity/trip-report", async (req, res, next) => {
       gte(activityEventsTable.occurredAt, startOfFrom),
       lt(activityEventsTable.occurredAt, new Date(endOfTo.getTime() + 1)),
     ] as ReturnType<typeof eq>[];
-    if (rawStaffId) {
-      attendConds.push(eq(activityEventsTable.staffId, rawStaffId));
-    }
+    if (rawStaffId)     attendConds.push(eq(activityEventsTable.staffId, rawStaffId));
+    if (scopedCompanyId) attendConds.push(eq(activityEventsTable.companyId, scopedCompanyId));
 
     const [tripRows, attendRows] = await Promise.all([
       db
@@ -948,7 +949,8 @@ router.get("/activity/trip-report", async (req, res, next) => {
       }
 
       let variancePct: number | null = null;
-      if (vehicleKm != null && vehicleKm > 0 && dayGpsKm > 0) {
+      if (vehicleKm != null && vehicleKm > 0) {
+        // Calculate variance even when dayGpsKm = 0 (shows 100% discrepancy)
         variancePct = round1(Math.abs(vehicleKm - dayGpsKm) / vehicleKm * 100);
       }
 
