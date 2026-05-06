@@ -126,11 +126,11 @@ router.post("/staff/register", async (req, res, next) => {
       }
     }
 
-    // Check for duplicate phone.
+    // Check for duplicate phone (ignore soft-deleted records).
     const existing = await db
       .select({ id: staffTable.id })
       .from(staffTable)
-      .where(eq(staffTable.phone, phone.trim()))
+      .where(and(eq(staffTable.phone, phone.trim()), isNull(staffTable.deletedAt)))
       .limit(1);
 
     if (existing.length > 0) {
