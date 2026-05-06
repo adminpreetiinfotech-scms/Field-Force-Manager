@@ -191,6 +191,19 @@ function ConfirmDialog({
   );
 }
 
+// ─── Reusable field component (must be outside AddStaffDialog to avoid remount on every keystroke) ───
+
+function StaffFormField({ id, label, value, onChange, type = "text", placeholder = "" }: {
+  id: string; label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <Input id={id} type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
+    </div>
+  );
+}
+
 // ─── Add Staff Dialog ─────────────────────────────────────────────────────────
 
 function AddStaffDialog({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
@@ -270,15 +283,6 @@ function AddStaffDialog({ onClose, onCreated }: { onClose: () => void; onCreated
     }
   };
 
-  const Field = ({ id, label, value, onChange, type = "text", placeholder = "" }: {
-    id: string; label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string;
-  }) => (
-    <div className="space-y-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      <Input id={id} type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
-    </div>
-  );
-
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
@@ -332,9 +336,9 @@ function AddStaffDialog({ onClose, onCreated }: { onClose: () => void; onCreated
             </div>
           )}
 
-          <Field id="name" label="Naam *" value={form.name} onChange={set("name")} placeholder="Ramesh Kumar" />
-          <Field id="phone" label="Mobile Number *" value={form.phone} onChange={(v) => set("phone")(v.replace(/\D/g, "").slice(0, 10))} placeholder="9876543210" type="tel" />
-          <Field id="email" label="Email (optional)" value={form.email} onChange={set("email")} placeholder="ramesh@example.com" type="email" />
+          <StaffFormField id="name" label="Naam *" value={form.name} onChange={set("name")} placeholder="Ramesh Kumar" />
+          <StaffFormField id="phone" label="Mobile Number *" value={form.phone} onChange={(v) => set("phone")(v.replace(/\D/g, "").slice(0, 10))} placeholder="9876543210" type="tel" />
+          <StaffFormField id="email" label="Email (optional)" value={form.email} onChange={set("email")} placeholder="ramesh@example.com" type="email" />
 
           {/* Training Center */}
           <div className="space-y-1.5">
@@ -382,8 +386,8 @@ function AddStaffDialog({ onClose, onCreated }: { onClose: () => void; onCreated
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <Field id="state" label="State" value={form.state} onChange={set("state")} placeholder="Jharkhand" />
-            <Field id="district" label="District" value={form.district} onChange={set("district")} placeholder="Ranchi" />
+            <StaffFormField id="state" label="State" value={form.state} onChange={set("state")} placeholder="Jharkhand" />
+            <StaffFormField id="district" label="District" value={form.district} onChange={set("district")} placeholder="Ranchi" />
           </div>
         </div>
 
@@ -515,15 +519,15 @@ function EditProfileDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <Field id="name" label="Full Name *" value={form.name} onChange={(v) => setForm(f => ({ ...f, name: v }))} />
+              <StaffFormField id="name" label="Full Name *" value={form.name} onChange={(v) => setForm(f => ({ ...f, name: v }))} />
             </div>
             <div className="col-span-2">
-              <Field id="email" label="Email" value={form.email} onChange={(v) => setForm(f => ({ ...f, email: v }))} type="email" />
+              <StaffFormField id="email" label="Email" value={form.email} onChange={(v) => setForm(f => ({ ...f, email: v }))} type="email" />
             </div>
-            <Field id="org" label="Organization" value={form.organization} onChange={(v) => setForm(f => ({ ...f, organization: v }))} />
-            <Field id="area" label="Area / Territory" value={form.area} onChange={(v) => setForm(f => ({ ...f, area: v }))} />
-            <Field id="state" label="State" value={form.state} onChange={(v) => setForm(f => ({ ...f, state: v }))} />
-            <Field id="district" label="District" value={form.district} onChange={(v) => setForm(f => ({ ...f, district: v }))} />
+            <StaffFormField id="org" label="Organization" value={form.organization} onChange={(v) => setForm(f => ({ ...f, organization: v }))} />
+            <StaffFormField id="area" label="Area / Territory" value={form.area} onChange={(v) => setForm(f => ({ ...f, area: v }))} />
+            <StaffFormField id="state" label="State" value={form.state} onChange={(v) => setForm(f => ({ ...f, state: v }))} />
+            <StaffFormField id="district" label="District" value={form.district} onChange={(v) => setForm(f => ({ ...f, district: v }))} />
 
             {/* Training Center Dropdown */}
             <div className="col-span-2 space-y-1.5">
@@ -570,7 +574,7 @@ function EditProfileDialog({
 
             {/* Center Name (manual fallback) */}
             <div className="col-span-2">
-              <Field id="center" label={form.centerId ? "Center Name (auto-filled)" : "Center Name"} value={form.centerName} onChange={(v) => setForm(f => ({ ...f, centerName: v }))} />
+              <StaffFormField id="center" label={form.centerId ? "Center Name (auto-filled)" : "Center Name"} value={form.centerName} onChange={(v) => setForm(f => ({ ...f, centerName: v }))} />
             </div>
 
             {/* Scheme / Project Dropdown */}
