@@ -11,6 +11,7 @@ import noticesRouter from "./notices";
 import companiesRouter from "./companies";
 import superAdminRouter from "./super-admin";
 import reportScheduleRouter from "./report-schedule";
+import leavesRouter from "./leaves";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(candidatesRouter);
 router.use(reportsRouter);
 router.use(noticesRouter);
 router.use(reportScheduleRouter);
+router.use(leavesRouter);
 
 export default router;

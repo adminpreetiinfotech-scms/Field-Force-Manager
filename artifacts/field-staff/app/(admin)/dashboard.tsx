@@ -437,6 +437,9 @@ export default function AdminDashboard() {
           {/* ── Center Staff Attendance ──────────────────────────── */}
           <CenterStaffAttendanceCard />
 
+          {/* ── Leave & Holidays ──────────────────────────────────── */}
+          <LeaveHolidaysCard />
+
           {/* Live activity */}
           <View
             style={[
@@ -1099,6 +1102,130 @@ function CenterStaffAttendanceCard() {
           ))}
         </View>
       ) : null}
+    </View>
+  );
+}
+
+// ─── Leave & Holidays Quick-Access Card ───────────────────────────────────────
+
+function LeaveHolidaysCard() {
+  const colors = useColors();
+  const { user } = useApp();
+  const [pendingCount, setPendingCount] = useState<number | null>(null);
+  const [nextHoliday, setNextHoliday] = useState<{ name: string; date: string } | null>(null);
+
+  useEffect(() => {
+    if (!user?.phone) return;
+    let mounted = true;
+    const load = async () => {
+      try {
+        const [lr, hr] = await Promise.all([
+          fetch(`${API_BASE}/api/admin/leaves?status=pending`, { headers: { "x-admin-phone": user.phone } }),
+          fetch(`${API_BASE}/api/holidays`, { headers: { "x-admin-phone": user.phone } }),
+        ]);
+        if (lr.ok) {
+          const ld = await lr.json() as { leaves: { id: string }[] };
+          if (mounted) setPendingCount(ld.leaves?.length ?? 0);
+        }
+        if (hr.ok) {
+          const hd = await hr.json() as { holidays: { name: string; date: string }[] };
+          const today = new Date().toISOString().slice(0, 10);
+          const upcoming = (hd.holidays ?? []).find((h) => h.date >= today);
+          if (mounted) setNextHoliday(upcoming ?? null);
+        }
+      } catch { /* silent */ }
+    };
+    void load();
+    return () => { mounted = false; };
+  }, [user?.phone]);
+
+  return (
+    <View
+      style={[
+        styles.section,
+        {
+          backgroundColor: colors.card,
+          borderColor: "#16A34A33",
+          borderRadius: colors.radius + 4,
+        },
+      ]}
+    >
+      <View style={[styles.sectionHeader, { marginBottom: 12 }]}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <View style={{ backgroundColor: "#16A34A18", borderRadius: 8, padding: 5 }}>
+            <Feather name="calendar" size={14} color="#16A34A" />
+          </View>
+          <View>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              Leave & Holidays
+            </Text>
+            <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
+              Leave requests and upcoming holidays
+            </Text>
+          </View>
+        </View>
+        <Pressable onPress={() => router.push("/(admin)/leaves" as never)} hitSlop={8}>
+          <Text style={{ color: colors.primary, fontSize: 12, fontFamily: "Inter_600SemiBold" }}>
+            Manage →
+          </Text>
+        </Pressable>
+      </View>
+
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        <Pressable
+          onPress={() => router.push("/(admin)/leaves" as never)}
+          style={({ pressed }) => ({
+            flex: 1, backgroundColor: pendingCount ? "#FEF9C3" : "#F0FDF4",
+            borderRadius: 10, padding: 10, alignItems: "center",
+            opacity: pressed ? 0.8 : 1,
+          })}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <Text style={{
+              color: pendingCount ? "#D97706" : "#16A34A",
+              fontSize: 20, fontFamily: "Inter_700Bold",
+            }}>
+              {pendingCount ?? "—"}
+            </Text>
+            {(pendingCount ?? 0) > 0 && (
+              <Feather name="alert-circle" size={14} color="#D97706" />
+            )}
+          </View>
+          <Text style={{
+            color: pendingCount ? "#D97706" : "#16A34A",
+            fontSize: 10, fontFamily: "Inter_500Medium", marginTop: 2,
+          }}>
+            Pending
+          </Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => router.push("/(admin)/leaves" as never)}
+          style={({ pressed }) => ({
+            flex: 2, backgroundColor: "#EFF6FF",
+            borderRadius: 10, padding: 10,
+            opacity: pressed ? 0.8 : 1,
+          })}
+        >
+          <Text style={{ color: "#3B82F6", fontSize: 10, fontFamily: "Inter_500Medium" }}>
+            Next Holiday
+          </Text>
+          {nextHoliday ? (
+            <>
+              <Text style={{ color: "#1D4ED8", fontSize: 12, fontFamily: "Inter_700Bold", marginTop: 2 }}>
+                {nextHoliday.name}
+              </Text>
+              <Text style={{ color: "#3B82F6", fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 1 }}>
+                {new Date(nextHoliday.date + "T00:00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+              </Text>
+            </>
+          ) : (
+            <Text style={{ color: "#93C5FD", fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 }}>
+              No upcoming holidays
+            </Text>
+          )}
+        </Pressable>
+      </View>
     </View>
   );
 }

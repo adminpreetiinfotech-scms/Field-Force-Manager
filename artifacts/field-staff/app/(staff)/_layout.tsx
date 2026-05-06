@@ -84,6 +84,24 @@ export default function StaffTabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="leaves"
+        options={{
+          title: "Leaves",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="calendar" size={size - 2} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="holidays"
+        options={{
+          title: "Holidays",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="sun" size={size - 2} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="notices"
         options={{
           title: "Notices",
