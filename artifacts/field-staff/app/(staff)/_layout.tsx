@@ -15,6 +15,7 @@ export default function StaffTabsLayout() {
   const isWeb = Platform.OS === "web";
   const { user, validateSession } = useApp();
   const { unreadCount } = useNotices({ phone: user?.phone, pollIntervalMs: 30_000 });
+  const isCenterStaff = user?.staffCategory === "center";
 
   useEffect(() => {
     validateSession();
@@ -60,9 +61,9 @@ export default function StaffTabsLayout() {
       <Tabs.Screen
         name="shift"
         options={{
-          title: "Shift",
+          title: isCenterStaff ? "Attendance" : "Shift",
           tabBarIcon: ({ color, size }) => (
-            <Feather name="clock" size={size - 2} color={color} />
+            <Feather name={isCenterStaff ? "check-square" : "clock"} size={size - 2} color={color} />
           ),
         }}
       />
@@ -75,6 +76,7 @@ export default function StaffTabsLayout() {
       <Tabs.Screen
         name="trips"
         options={{
+          href: isCenterStaff ? null : undefined,
           title: "Trips",
           tabBarIcon: ({ color, size }) => (
             <Feather name="navigation" size={size - 2} color={color} />

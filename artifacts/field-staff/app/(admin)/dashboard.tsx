@@ -434,6 +434,9 @@ export default function AdminDashboard() {
           {/* Staff Leaderboard */}
           <LeaderboardSection companyId={user?.companyId} />
 
+          {/* ── Center Staff Attendance ──────────────────────────── */}
+          <CenterStaffAttendanceCard />
+
           {/* Live activity */}
           <View
             style={[
@@ -992,6 +995,111 @@ function StaffManagementSection() {
         )}
       </View>
     </>
+  );
+}
+
+// ─── Center Staff Attendance Quick-Access Card ─────────────────────────────────
+
+function CenterStaffAttendanceCard() {
+  const colors = useColors();
+  const { user } = useApp();
+  const [cStats, setCStats] = useState<{
+    totalCenterStaff: number;
+    centerPresentToday: number;
+    centerAbsentToday: number;
+    centerViolationsToday: number;
+  } | null>(null);
+  const [cLoading, setCLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      if (!user?.phone) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/dashboard/stats`, {
+          headers: { "x-admin-phone": user.phone },
+        });
+        if (!res.ok) return;
+        const d = await res.json() as {
+          totalCenterStaff?: number;
+          centerPresentToday?: number;
+          centerAbsentToday?: number;
+          centerViolationsToday?: number;
+        };
+        if (mounted) setCStats({
+          totalCenterStaff: d.totalCenterStaff ?? 0,
+          centerPresentToday: d.centerPresentToday ?? 0,
+          centerAbsentToday: d.centerAbsentToday ?? 0,
+          centerViolationsToday: d.centerViolationsToday ?? 0,
+        });
+      } catch { /* ignore */ } finally {
+        if (mounted) setCLoading(false);
+      }
+    };
+    void load();
+    const t = setInterval(() => void load(), 60_000);
+    return () => { mounted = false; clearInterval(t); };
+  }, [user?.phone]);
+
+  if (!cLoading && (cStats?.totalCenterStaff ?? 0) === 0) return null;
+
+  return (
+    <View
+      style={[
+        styles.section,
+        {
+          backgroundColor: colors.card,
+          borderColor: "#1E3A5F33",
+          borderRadius: colors.radius + 4,
+        },
+      ]}
+    >
+      <View style={[styles.sectionHeader, { marginBottom: 12 }]}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <View style={{ backgroundColor: "#1E3A5F22", borderRadius: 8, padding: 5 }}>
+            <Feather name="check-square" size={14} color="#1E3A5F" />
+          </View>
+          <View>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              Center Staff Attendance
+            </Text>
+            <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
+              Today's check-in status
+            </Text>
+          </View>
+        </View>
+        <Pressable onPress={() => router.push("/(admin)/center-attendance" as never)} hitSlop={8}>
+          <Text style={{ color: colors.primary, fontSize: 12, fontFamily: "Inter_600SemiBold" }}>
+            View all →
+          </Text>
+        </Pressable>
+      </View>
+
+      {cLoading ? (
+        <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 8 }} />
+      ) : cStats ? (
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          {[
+            { label: "Total", value: cStats.totalCenterStaff, color: "#1E3A5F", bg: "#1E3A5F14" },
+            { label: "Present", value: cStats.centerPresentToday, color: "#16A34A", bg: "#DCFCE7" },
+            { label: "Absent", value: cStats.centerAbsentToday, color: "#DC2626", bg: "#FEE2E2" },
+            { label: "Violations", value: cStats.centerViolationsToday, color: "#D97706", bg: "#FEF9C3" },
+          ].map(s => (
+            <Pressable
+              key={s.label}
+              onPress={() => router.push("/(admin)/center-attendance" as never)}
+              style={({ pressed }) => ({
+                flex: 1, backgroundColor: s.bg, borderRadius: 10, padding: 10,
+                alignItems: "center", opacity: pressed ? 0.8 : 1,
+              })}
+            >
+              <Text style={{ color: s.color, fontSize: 20, fontFamily: "Inter_700Bold" }}>{s.value}</Text>
+              <Text style={{ color: s.color, fontSize: 10, fontFamily: "Inter_500Medium", marginTop: 2, textAlign: "center" }}>{s.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+    </View>
   );
 }
 

@@ -142,6 +142,10 @@ export default function AdminTabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="center-attendance"
+        options={{ href: null, headerShown: false }}
+      />
+      <Tabs.Screen
         name="mobilizer/[id]"
         options={{ href: null, headerShown: false }}
       />
