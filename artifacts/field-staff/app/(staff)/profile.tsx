@@ -17,7 +17,6 @@ import { Button } from "@/components/Button";
 import { CompanyBrand } from "@/components/CompanyBrand";
 import { KmDayDetailSheet } from "@/components/KmDayDetailSheet";
 import { PillarsRow } from "@/components/PillarBadge";
-import { RoleSwitcher } from "@/components/RoleSwitcher";
 import { VehicleType, useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { useGetStaffKmHistory } from "@workspace/api-client-react";
@@ -157,44 +156,45 @@ export default function StaffProfile() {
             >
               <Feather name="check-circle" size={11} color={colors.success} />
               <Text style={{ color: colors.success, fontSize: 11, fontFamily: "Inter_600SemiBold" }}>
-                Verified field staff
+                {user?.staffCategory === "center" ? "Verified center staff" : "Verified field staff"}
               </Text>
             </View>
           </View>
         </View>
 
-        <View
-          style={[styles.divider, { backgroundColor: colors.border }]}
-        />
-
-        <View style={styles.statsRow}>
-          <View style={styles.statCol}>
-            <Text style={[styles.statValue, { color: colors.foreground }]}>
-              {mineAttendance.filter((a) => a.type === "in").length}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
-              Check-ins
-            </Text>
-          </View>
-          <View style={[styles.statSep, { backgroundColor: colors.border }]} />
-          <View style={styles.statCol}>
-            <Text style={[styles.statValue, { color: colors.foreground }]}>
-              {trips.filter((t) => t.staffId === user?.id).length}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
-              Trips
-            </Text>
-          </View>
-          <View style={[styles.statSep, { backgroundColor: colors.border }]} />
-          <View style={styles.statCol}>
-            <Text style={[styles.statValue, { color: colors.foreground }]}>
-              {totalKm.toFixed(0)}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
-              Total km
-            </Text>
-          </View>
-        </View>
+        {user?.staffCategory !== "center" && (
+          <>
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <View style={styles.statsRow}>
+              <View style={styles.statCol}>
+                <Text style={[styles.statValue, { color: colors.foreground }]}>
+                  {mineAttendance.filter((a) => a.type === "in").length}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
+                  Check-ins
+                </Text>
+              </View>
+              <View style={[styles.statSep, { backgroundColor: colors.border }]} />
+              <View style={styles.statCol}>
+                <Text style={[styles.statValue, { color: colors.foreground }]}>
+                  {trips.filter((t) => t.staffId === user?.id).length}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
+                  Trips
+                </Text>
+              </View>
+              <View style={[styles.statSep, { backgroundColor: colors.border }]} />
+              <View style={styles.statCol}>
+                <Text style={[styles.statValue, { color: colors.foreground }]}>
+                  {totalKm.toFixed(0)}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
+                  Total km
+                </Text>
+              </View>
+            </View>
+          </>
+        )}
       </View>
 
       {/* ── Vehicle Setup — field staff only ─────────────────────── */}
@@ -461,8 +461,6 @@ export default function StaffProfile() {
           <PillarsRow />
         </View>
       </View>
-
-      <RoleSwitcher />
 
       <View
         style={[
