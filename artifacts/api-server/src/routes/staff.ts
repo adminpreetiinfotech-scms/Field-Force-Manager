@@ -185,6 +185,16 @@ router.post("/staff/register", async (req, res, next) => {
       if (adminRow?.companyId) resolvedCompanyId = adminRow.companyId;
     }
 
+    // If companyId still unresolved but centerId provided, inherit from center
+    if (!resolvedCompanyId && centerId?.trim()) {
+      const [centerRow] = await db
+        .select({ companyId: centersTable.companyId })
+        .from(centersTable)
+        .where(eq(centersTable.id, centerId.trim()))
+        .limit(1);
+      if (centerRow?.companyId) resolvedCompanyId = centerRow.companyId;
+    }
+
     // If admin registration and no companyId, auto-create a company
     if (kind === "admin" && !resolvedCompanyId) {
       const [newCompany] = await db
