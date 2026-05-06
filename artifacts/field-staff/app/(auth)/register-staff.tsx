@@ -71,9 +71,15 @@ interface Center {
   courses: string[];
 }
 
-interface CompanyOption {
+interface CenterSearchResult {
   id: string;
   name: string;
+  tcId: string | null;
+  state: string | null;
+  district: string | null;
+  block: string | null;
+  companyId: string;
+  companyName: string;
   projectName: string | null;
 }
 
@@ -82,29 +88,19 @@ const API_BASE =
     ? ""
     : `https://${process.env.EXPO_PUBLIC_DOMAIN || "field-force-manager-Mobilization.replit.app"}`;
 
+async function searchCenters(q: string): Promise<CenterSearchResult[]> {
+  try {
+    const res = await fetch(`${API_BASE}/api/centers/search?q=${encodeURIComponent(q)}`);
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+}
+
 async function fetchCentersByAdminCode(code: string): Promise<Center[]> {
   try {
     const res = await fetch(`${API_BASE}/api/centers?adminCode=${encodeURIComponent(code)}`);
-    if (!res.ok) return [];
-    return await res.json();
-  } catch {
-    return [];
-  }
-}
-
-async function fetchCentersByCompanyId(companyId: string): Promise<Center[]> {
-  try {
-    const res = await fetch(`${API_BASE}/api/centers?companyId=${encodeURIComponent(companyId)}`);
-    if (!res.ok) return [];
-    return await res.json();
-  } catch {
-    return [];
-  }
-}
-
-async function searchCompanies(q: string): Promise<CompanyOption[]> {
-  try {
-    const res = await fetch(`${API_BASE}/api/companies/public-search?q=${encodeURIComponent(q)}`);
     if (!res.ok) return [];
     return await res.json();
   } catch {
@@ -138,14 +134,14 @@ export default function RegisterStaffScreen() {
   const [block, setBlock] = useState("");
   const [staffPinCode, setStaffPinCode] = useState("");
 
-  // Company search
-  const [companyQuery, setCompanyQuery] = useState("");
-  const [companySuggestions, setCompanySuggestions] = useState<CompanyOption[]>([]);
-  const [selectedCompany, setSelectedCompany] = useState<CompanyOption | null>(null);
-  const [companySearchLoading, setCompanySearchLoading] = useState(false);
-  const [showCompanySuggestions, setShowCompanySuggestions] = useState(false);
+  // Center direct search (primary flow)
+  const [centerQuery, setCenterQuery] = useState("");
+  const [centerSuggestions, setCenterSuggestions] = useState<CenterSearchResult[]>([]);
+  const [selectedCenterResult, setSelectedCenterResult] = useState<CenterSearchResult | null>(null);
+  const [centerSearchLoading, setCenterSearchLoading] = useState(false);
+  const [showCenterSuggestions, setShowCenterSuggestions] = useState(false);
 
-  // Admin code + center picker
+  // Admin code (fallback)
   const [adminCode, setAdminCode] = useState("");
   const [centers, setCenters] = useState<Center[]>([]);
   const [centerId, setCenterId] = useState<string | null>(null);
@@ -166,53 +162,44 @@ export default function RegisterStaffScreen() {
   const adminCodeRef = useRef<TextInput>(null);
 
   // ── Company name search (debounced 400ms) ────────────────────────────
+  // ── Center name search (debounced 400ms) ─────────────────────────────────
   useEffect(() => {
-    const q = companyQuery.trim();
+    const q = centerQuery.trim();
     if (q.length < 2) {
-      setCompanySuggestions([]);
-      setShowCompanySuggestions(false);
+      setCenterSuggestions([]);
+      setShowCenterSuggestions(false);
       return;
     }
-    if (selectedCompany && selectedCompany.name === q) return;
+    if (selectedCenterResult && selectedCenterResult.name === q) return;
     let cancelled = false;
     const timer = setTimeout(() => {
-      setCompanySearchLoading(true);
-      searchCompanies(q).then((data) => {
+      setCenterSearchLoading(true);
+      searchCenters(q).then((data) => {
         if (cancelled) return;
-        setCompanySuggestions(data);
-        setShowCompanySuggestions(data.length > 0);
-        setCompanySearchLoading(false);
+        setCenterSuggestions(data);
+        setShowCenterSuggestions(data.length > 0);
+        setCenterSearchLoading(false);
       });
     }, 400);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [companyQuery, selectedCompany]);
+  }, [centerQuery, selectedCenterResult]);
 
-  const selectCompany = (company: CompanyOption) => {
-    setSelectedCompany(company);
-    setCompanyQuery(company.name);
-    setShowCompanySuggestions(false);
-    if (company.projectName && !projectName) {
-      setProjectName(company.projectName);
-    }
-    setCentersLoading(true);
-    setCentersLoaded(false);
-    setCenterId(null);
-    setCenters([]);
-    fetchCentersByCompanyId(company.id).then((data) => {
-      setCenters(data);
-      setCentersLoaded(true);
-      setCentersLoading(false);
-    });
+  const selectCenterResult = (c: CenterSearchResult) => {
+    setSelectedCenterResult(c);
+    setCenterQuery(c.name);
+    setShowCenterSuggestions(false);
+    setCenterName(c.name);
+    if (c.state) setState_(c.state);
+    if (c.district) setDistrict(c.district);
+    if (c.block) setBlock(c.block);
+    if (c.projectName && !projectName) setProjectName(c.projectName);
   };
 
-  const clearCompany = () => {
-    setSelectedCompany(null);
-    setCompanyQuery("");
-    setCompanySuggestions([]);
-    setShowCompanySuggestions(false);
-    setCenters([]);
-    setCenterId(null);
-    setCentersLoaded(false);
+  const clearCenterResult = () => {
+    setSelectedCenterResult(null);
+    setCenterQuery("");
+    setCenterSuggestions([]);
+    setShowCenterSuggestions(false);
     setCenterName("");
     setState_("");
     setDistrict("");
@@ -221,7 +208,7 @@ export default function RegisterStaffScreen() {
 
   // ── Fetch centers when admin code is 6 chars ─────────────────────────────
   useEffect(() => {
-    if (selectedCompany) return;
+    if (selectedCenterResult) return;
     const code = adminCode.trim().toUpperCase();
     if (code.length !== 6) {
       if (centersLoaded) {
@@ -241,7 +228,7 @@ export default function RegisterStaffScreen() {
       setCenterId(null);
     });
     return () => { cancelled = true; };
-  }, [adminCode, selectedCompany]);
+  }, [adminCode, selectedCenterResult]);
 
   const selectCenter = (c: Center) => {
     setCenterId(c.id);
@@ -252,7 +239,9 @@ export default function RegisterStaffScreen() {
     setShowCenterPicker(false);
   };
 
-  const selectedTcId = centers.find((c) => c.id === centerId)?.tcId ?? null;
+  const selectedTcId = selectedCenterResult?.tcId
+    ?? centers.find((c) => c.id === centerId)?.tcId
+    ?? null;
 
   const clearCenter = () => {
     setCenterId(null);
@@ -310,7 +299,7 @@ export default function RegisterStaffScreen() {
         designation: designation.trim() || undefined,
         block: block.trim() || undefined,
         staffPinCode: staffPinCode.trim() || undefined,
-        centerId: centerId ?? undefined,
+        centerId: selectedCenterResult?.id ?? centerId ?? undefined,
       });
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -769,36 +758,34 @@ export default function RegisterStaffScreen() {
             })}
           </View>
 
-          {/* ── Section: Find Organization ────────────────────────────── */}
-          <SectionHeader label="APNI ORGANIZATION DHUNDEIN *" colors={colors} />
+          {/* ── Section: Training Center ──────────────────────────────────── */}
+          <SectionHeader label="TRAINING CENTER *" colors={colors} />
           <View style={[styles.form]}>
+
+            {/* ── Primary: search center by name ── */}
             <View>
               <Text style={[styles.label, { color: colors.mutedForeground }]}>
-                ORGANIZATION / COMPANY NAME
+                CENTER KA NAAM DHUNDEIN
               </Text>
 
-              {selectedCompany ? (
+              {selectedCenterResult ? (
                 <View style={[styles.centerCard, { borderColor: colors.primary, backgroundColor: colors.primary + "0A", borderRadius: colors.radius }]}>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ color: colors.primary, fontFamily: "Inter_700Bold", fontSize: 14 }}>{selectedCompany.name}</Text>
-                    {selectedCompany.projectName && (
-                      <Text style={{ color: colors.primary + "99", fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>{selectedCompany.projectName}</Text>
-                    )}
-                    {centersLoading && (
-                      <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>Centers load ho rahe hain...</Text>
-                    )}
-                    {centersLoaded && centers.length > 0 && !centersLoading && (
-                      <Text style={{ color: colors.primary, fontFamily: "Inter_500Medium", fontSize: 12, marginTop: 2 }}>
-                        ✓ {centers.length} training center{centers.length > 1 ? "s" : ""} available
+                    <Text style={{ color: colors.primary, fontFamily: "Inter_700Bold", fontSize: 14 }}>{selectedCenterResult.name}</Text>
+                    <Text style={{ color: colors.primary + "99", fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>
+                      {selectedCenterResult.companyName}
+                      {selectedCenterResult.projectName ? ` • ${selectedCenterResult.projectName}` : ""}
+                    </Text>
+                    {selectedCenterResult.tcId && (
+                      <Text style={{ color: colors.primary + "AA", fontFamily: "Inter_500Medium", fontSize: 11, marginTop: 2 }}>
+                        TC ID: {selectedCenterResult.tcId}
                       </Text>
                     )}
-                    {centersLoaded && centers.length === 0 && !centersLoading && (
-                      <Text style={{ color: "#F59E0B", fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>
-                        Koi approved center nahi mila — neeche manually likhein
-                      </Text>
-                    )}
+                    <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>
+                      {[selectedCenterResult.block, selectedCenterResult.district, selectedCenterResult.state].filter(Boolean).join(", ")}
+                    </Text>
                   </View>
-                  <Pressable onPress={clearCompany} hitSlop={8}>
+                  <Pressable onPress={clearCenterResult} hitSlop={8}>
                     <Feather name="x" size={18} color={colors.mutedForeground} />
                   </Pressable>
                 </View>
@@ -806,12 +793,12 @@ export default function RegisterStaffScreen() {
                 <>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                     <TextInput
-                      value={companyQuery}
+                      value={centerQuery}
                       onChangeText={(t) => {
-                        setCompanyQuery(t);
-                        setSelectedCompany(null);
+                        setCenterQuery(t);
+                        setSelectedCenterResult(null);
                       }}
-                      placeholder="e.g. Nistha, Pratham, RSLDC..."
+                      placeholder="e.g. Nistha Skill Palamu, Ranchi Center..."
                       placeholderTextColor={colors.mutedForeground}
                       autoCapitalize="words"
                       returnKeyType="search"
@@ -827,28 +814,30 @@ export default function RegisterStaffScreen() {
                         },
                       ]}
                     />
-                    {companySearchLoading && <ActivityIndicator size="small" color={colors.primary} />}
+                    {centerSearchLoading && <ActivityIndicator size="small" color={colors.primary} />}
                   </View>
                   <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
-                    2+ aksharon ke baad apni company dhundhein — training centers auto-load honge
+                    Apne training center ka naam type karein (2+ akshar) — list auto-aayegi
                   </Text>
 
-                  {showCompanySuggestions && (
+                  {showCenterSuggestions && (
                     <View style={[styles.roleDropdown, { borderColor: colors.border, backgroundColor: colors.card, borderRadius: colors.radius, marginTop: 4 }]}>
-                      {companySuggestions.map((co) => (
+                      {centerSuggestions.map((c) => (
                         <Pressable
-                          key={co.id}
-                          onPress={() => selectCompany(co)}
+                          key={c.id}
+                          onPress={() => selectCenterResult(c)}
                           style={({ pressed }) => [
                             styles.roleOption,
                             { backgroundColor: pressed ? colors.primary + "10" : "transparent", paddingVertical: 14 },
                           ]}
                         >
                           <View style={{ flex: 1 }}>
-                            <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>{co.name}</Text>
-                            {co.projectName && (
-                              <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 1 }}>{co.projectName}</Text>
-                            )}
+                            <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>{c.name}</Text>
+                            <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>
+                              {c.companyName}
+                              {c.district ? ` • ${c.district}` : ""}
+                              {c.state ? `, ${c.state}` : ""}
+                            </Text>
                           </View>
                           <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
                         </Pressable>
@@ -859,19 +848,17 @@ export default function RegisterStaffScreen() {
               )}
             </View>
 
-            {/* Admin invite code — secondary optional */}
-            {!selectedCompany && (
+            {/* ── Fallback: admin invite code ── */}
+            {!selectedCenterResult && (
               <View>
                 <Text style={[styles.label, { color: colors.mutedForeground }]}>
-                  ADMIN INVITE CODE (VIKALP)
+                  YA ADMIN INVITE CODE DAALEN
                 </Text>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <TextInput
                     ref={adminCodeRef}
                     value={adminCode}
-                    onChangeText={(t) =>
-                      setAdminCode(t.replace(/[^a-zA-Z0-9]/g, "").slice(0, 6))
-                    }
+                    onChangeText={(t) => setAdminCode(t.replace(/[^a-zA-Z0-9]/g, "").slice(0, 6))}
                     placeholder="e.g. A3BZ90"
                     placeholderTextColor={colors.mutedForeground}
                     returnKeyType="done"
@@ -898,24 +885,18 @@ export default function RegisterStaffScreen() {
                 </View>
                 <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
                   {centersLoaded && centers.length > 0
-                    ? `✓ ${centers.length} training center${centers.length > 1 ? "s" : ""} available — neeche choose karein`
-                    : "Agar admin ne invite code diya ho toh yahan daalen (upar search se bhi ho sakta hai)"}
+                    ? `✓ ${centers.length} center${centers.length > 1 ? "s" : ""} mila — neeche choose karein`
+                    : "Admin ne invite code diya ho toh yahan daalen"}
                 </Text>
               </View>
             )}
-          </View>
 
-          {/* ── Section: Organization Details ────────────────────────────── */}
-          <SectionHeader label="ORGANIZATION DETAILS" colors={colors} />
-          <View style={[styles.form]}>
-
-            {/* Center picker — show when centers are loaded */}
-            {centersLoaded && centers.length > 0 && (
+            {/* Center picker from admin code */}
+            {centersLoaded && centers.length > 0 && !selectedCenterResult && (
               <View>
                 <Text style={[styles.label, { color: colors.mutedForeground }]}>
                   TRAINING CENTER CHUNEIN *
                 </Text>
-
                 {selectedCenter ? (
                   <View style={[styles.centerCard, { borderColor: colors.primary, backgroundColor: colors.primary + "0A", borderRadius: colors.radius }]}>
                     <View style={{ flex: 1 }}>
@@ -934,14 +915,7 @@ export default function RegisterStaffScreen() {
                 ) : (
                   <Pressable
                     onPress={() => setShowCenterPicker((p) => !p)}
-                    style={[
-                      styles.roleSelector,
-                      {
-                        borderColor: colors.primary + "44",
-                        backgroundColor: colors.background,
-                        borderRadius: colors.radius,
-                      },
-                    ]}
+                    style={[styles.roleSelector, { borderColor: colors.primary + "44", backgroundColor: colors.background, borderRadius: colors.radius }]}
                   >
                     <Feather name="home" size={16} color={colors.primary} />
                     <Text style={{ flex: 1, color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 15, marginLeft: 6 }}>
@@ -950,17 +924,13 @@ export default function RegisterStaffScreen() {
                     <Feather name={showCenterPicker ? "chevron-up" : "chevron-down"} size={16} color={colors.mutedForeground} />
                   </Pressable>
                 )}
-
                 {showCenterPicker && !selectedCenter && (
                   <View style={[styles.roleDropdown, { borderColor: colors.border, backgroundColor: colors.card, borderRadius: colors.radius }]}>
                     {centers.map((c) => (
                       <Pressable
                         key={c.id}
                         onPress={() => selectCenter(c)}
-                        style={({ pressed }) => [
-                          styles.roleOption,
-                          { backgroundColor: pressed ? colors.primary + "10" : "transparent", paddingVertical: 14 },
-                        ]}
+                        style={({ pressed }) => [styles.roleOption, { backgroundColor: pressed ? colors.primary + "10" : "transparent", paddingVertical: 14 }]}
                       >
                         <View style={{ flex: 1 }}>
                           <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>{c.name}</Text>
@@ -978,17 +948,20 @@ export default function RegisterStaffScreen() {
               </View>
             )}
 
-            <FieldInput
-              ref={centerRef}
-              label={centersLoaded && centers.length > 0 ? "CENTER / BRANCH NAME (auto-fill ya manual)" : "CENTER / BRANCH NAME *"}
-              value={centerName}
-              onChangeText={setCenterName}
-              placeholder="e.g. Ranchi Training Center"
-              returnKeyType="next"
-              onSubmitEditing={() => stateRef.current?.focus()}
-              colors={colors}
-              autoCapitalize="words"
-            />
+            {/* Manual center name fallback */}
+            {!selectedCenterResult && (
+              <FieldInput
+                ref={centerRef}
+                label="CENTER / BRANCH NAME (manual)"
+                value={centerName}
+                onChangeText={setCenterName}
+                placeholder="e.g. Ranchi Training Center"
+                returnKeyType="next"
+                onSubmitEditing={() => stateRef.current?.focus()}
+                colors={colors}
+                autoCapitalize="words"
+              />
+            )}
 
             {/* TC ID — shown when a center with tcId is selected */}
             {selectedTcId ? (

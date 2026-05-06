@@ -480,19 +480,6 @@ router.get("/companies/:id/centers", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// ─── GET /api/centers/:centerId ────────────────────────────────────────────────
-// Public endpoint: fetch a single center by its UUID (used by candidate form).
-
-router.get("/centers/:centerId", async (req, res, next) => {
-  try {
-    const { centerId } = req.params;
-    if (!isValidUUID(centerId)) { res.status(400).json({ title: "Invalid center id", status: 400 }); return; }
-    const [center] = await db.select().from(centersTable).where(eq(centersTable.id, centerId)).limit(1);
-    if (!center) { res.status(404).json({ title: "Center not found", status: 404 }); return; }
-    res.json(toCenterDTO(center));
-  } catch (err) { next(err); }
-});
-
 // ─── GET /api/companies/public-search?q=name ────────────────────────────────────
 // Public endpoint: find approved companies by name (for staff registration).
 // Returns minimal info only — id, name, projectName.
@@ -516,6 +503,52 @@ router.get("/companies/public-search", async (req, res, next) => {
       .orderBy(companiesTable.name)
       .limit(10);
     res.json(rows);
+  } catch (err) { next(err); }
+});
+
+// ─── GET /api/centers/search?q=name ────────────────────────────────────────────
+// Public endpoint: search all approved centers by name (for staff registration).
+// IMPORTANT: Must be defined BEFORE /centers/:centerId to avoid route conflict.
+router.get("/centers/search", async (req, res, next) => {
+  try {
+    const { q } = req.query as { q?: string };
+    const query = q?.trim() ?? "";
+    if (query.length < 2) { res.json([]); return; }
+    const rows = await db
+      .select({
+        id: centersTable.id,
+        name: centersTable.name,
+        tcId: centersTable.tcId,
+        state: centersTable.state,
+        district: centersTable.district,
+        block: centersTable.block,
+        companyId: centersTable.companyId,
+        companyName: companiesTable.name,
+        projectName: companiesTable.projectName,
+      })
+      .from(centersTable)
+      .innerJoin(companiesTable, eq(centersTable.companyId, companiesTable.id))
+      .where(
+        and(
+          eq(centersTable.approvalStatus, "approved"),
+          eq(companiesTable.approvalStatus, "approved"),
+          ilike(centersTable.name, `%${query}%`),
+        ),
+      )
+      .orderBy(centersTable.name)
+      .limit(15);
+    res.json(rows);
+  } catch (err) { next(err); }
+});
+
+// Public endpoint: fetch a single center by its UUID (used by candidate form).
+router.get("/centers/:centerId", async (req, res, next) => {
+  try {
+    const { centerId } = req.params;
+    if (!isValidUUID(centerId)) { res.status(400).json({ title: "Invalid center id", status: 400 }); return; }
+    const [center] = await db.select().from(centersTable).where(eq(centersTable.id, centerId)).limit(1);
+    if (!center) { res.status(404).json({ title: "Center not found", status: 404 }); return; }
+    res.json(toCenterDTO(center));
   } catch (err) { next(err); }
 });
 
