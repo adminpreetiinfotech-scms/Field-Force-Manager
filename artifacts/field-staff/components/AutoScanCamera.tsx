@@ -186,15 +186,15 @@ export default function AutoScanCamera({
     }
   }, [visible]);
 
-  // Fallback: if DocProcessorBridge doesn't signal ready within 6s, unlock anyway.
-  // Also call forceReady() so any pending waitReady() promises resolve immediately
-  // (avoids a 15s hang when the WebView fails to load in nested-Modal contexts).
+  // Fallback: if DocProcessorBridge doesn't signal ready within 1.5s, unlock anyway.
+  // Reduced from 6s so the capture button is usable almost immediately.
+  // Processing already falls back to raw image if WebView isn't ready.
   useEffect(() => {
     if (bridgeReady) return;
     const t = setTimeout(() => {
       setBridgeReady(true);
       processorRef.current?.forceReady?.();
-    }, 6000);
+    }, 1500);
     return () => clearTimeout(t);
   }, [bridgeReady]);
 
@@ -456,18 +456,17 @@ export default function AutoScanCamera({
                 )}
               </View>
 
-              {/* Capture button */}
+              {/* Capture button — always enabled; processing falls back to raw photo if bridge not ready */}
               <View style={[styles.bottomBar, { bottom: Platform.OS === "ios" ? 56 : 40 }]}>
                 <TouchableOpacity
-                  style={[styles.captureRing, !bridgeReady && styles.captureRingDim]}
+                  style={styles.captureRing}
                   onPress={handleCapture}
                   activeOpacity={0.75}
-                  disabled={!bridgeReady}
                 >
-                  <View style={[styles.captureDisc, !bridgeReady && styles.captureDiscDim]} />
+                  <View style={styles.captureDisc} />
                 </TouchableOpacity>
                 <Text style={styles.captureLbl}>
-                  {bridgeReady ? "Tap to Scan" : "Initialising…"}
+                  {bridgeReady ? "Tap to Scan" : "Tap to Capture"}
                 </Text>
               </View>
             </>
