@@ -24,6 +24,10 @@ type AttendanceDay = {
   checkoutTime: string | null;
   totalKm: number;
   tripCount: number;
+  startOdometer: number | null;
+  endOdometer: number | null;
+  odometerKm: number | null;
+  vehicleType: string | null;
 };
 
 type AttendanceMonth = {
@@ -472,36 +476,114 @@ export default function AttendanceCalendarScreen() {
               </View>
 
               {selectedDay ? (
-                <View style={styles.detailGrid}>
-                  <DetailStat
-                    icon="log-in"
-                    label="Check-in"
-                    value={fmtTime(selectedDay.checkinTime)}
-                    color="#16A34A"
-                    colors={colors}
-                  />
-                  <DetailStat
-                    icon="log-out"
-                    label="Check-out"
-                    value={fmtTime(selectedDay.checkoutTime)}
-                    color="#6B7280"
-                    colors={colors}
-                  />
-                  <DetailStat
-                    icon="map"
-                    label="Trips"
-                    value={String(selectedDay.tripCount)}
-                    color="#7C3AED"
-                    colors={colors}
-                  />
-                  <DetailStat
-                    icon="navigation"
-                    label="Distance"
-                    value={`${selectedDay.totalKm.toFixed(1)} km`}
-                    color="#0D6EAE"
-                    colors={colors}
-                  />
-                </View>
+                <>
+                  <View style={styles.detailGrid}>
+                    <DetailStat
+                      icon="log-in"
+                      label="Check-in"
+                      value={fmtTime(selectedDay.checkinTime)}
+                      color="#16A34A"
+                      colors={colors}
+                    />
+                    <DetailStat
+                      icon="log-out"
+                      label="Check-out"
+                      value={fmtTime(selectedDay.checkoutTime)}
+                      color="#6B7280"
+                      colors={colors}
+                    />
+                    <DetailStat
+                      icon="map"
+                      label="Trips"
+                      value={String(selectedDay.tripCount)}
+                      color="#7C3AED"
+                      colors={colors}
+                    />
+                    <DetailStat
+                      icon="navigation"
+                      label="GPS Distance"
+                      value={`${selectedDay.totalKm.toFixed(1)} km`}
+                      color="#0D6EAE"
+                      colors={colors}
+                    />
+                  </View>
+                  {selectedDay.odometerKm != null && (
+                    <View style={{
+                      marginTop: 14,
+                      borderRadius: 12,
+                      backgroundColor: colors.card,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      overflow: "hidden",
+                    }}>
+                      <View style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 6,
+                        paddingHorizontal: 12,
+                        paddingVertical: 8,
+                        backgroundColor: "rgba(16,122,64,0.08)",
+                        borderBottomWidth: 1,
+                        borderBottomColor: colors.border,
+                      }}>
+                        <Feather name="activity" size={13} color="#16A34A" />
+                        <Text style={{ fontFamily: "Inter_600SemiBold", fontSize: 12, color: colors.foreground, letterSpacing: 0.3 }}>
+                          Odometer vs GPS
+                          {selectedDay.vehicleType ? `  ·  ${selectedDay.vehicleType === "2-wheeler" ? "🏍️ 2-W" : "🚗 4-W"}` : ""}
+                        </Text>
+                      </View>
+                      <View style={{ flexDirection: "row" }}>
+                        <View style={{ flex: 1, padding: 10, alignItems: "center", gap: 2 }}>
+                          <Text style={{ fontFamily: "Inter_400Regular", fontSize: 10, color: colors.mutedForeground }}>Start Odo</Text>
+                          <Text style={{ fontFamily: "Inter_700Bold", fontSize: 14, color: colors.foreground }}>
+                            {selectedDay.startOdometer != null ? `${selectedDay.startOdometer} km` : "—"}
+                          </Text>
+                        </View>
+                        <View style={{ width: 1, backgroundColor: colors.border }} />
+                        <View style={{ flex: 1, padding: 10, alignItems: "center", gap: 2 }}>
+                          <Text style={{ fontFamily: "Inter_400Regular", fontSize: 10, color: colors.mutedForeground }}>End Odo</Text>
+                          <Text style={{ fontFamily: "Inter_700Bold", fontSize: 14, color: colors.foreground }}>
+                            {selectedDay.endOdometer != null ? `${selectedDay.endOdometer} km` : "—"}
+                          </Text>
+                        </View>
+                        <View style={{ width: 1, backgroundColor: colors.border }} />
+                        <View style={{ flex: 1, padding: 10, alignItems: "center", gap: 2 }}>
+                          <Text style={{ fontFamily: "Inter_400Regular", fontSize: 10, color: colors.mutedForeground }}>Odo KM</Text>
+                          <Text style={{ fontFamily: "Inter_700Bold", fontSize: 14, color: "#7C3AED" }}>
+                            {`${selectedDay.odometerKm.toFixed(1)} km`}
+                          </Text>
+                        </View>
+                        <View style={{ width: 1, backgroundColor: colors.border }} />
+                        <View style={{ flex: 1, padding: 10, alignItems: "center", gap: 2 }}>
+                          <Text style={{ fontFamily: "Inter_400Regular", fontSize: 10, color: colors.mutedForeground }}>GPS KM</Text>
+                          <Text style={{ fontFamily: "Inter_700Bold", fontSize: 14, color: "#0D6EAE" }}>
+                            {`${selectedDay.totalKm.toFixed(1)} km`}
+                          </Text>
+                        </View>
+                      </View>
+                      {selectedDay.odometerKm > 0 && selectedDay.totalKm > 0 && (() => {
+                        const diff = Math.abs(selectedDay.odometerKm - selectedDay.totalKm);
+                        const pct = Math.round((diff / selectedDay.odometerKm) * 100);
+                        const ok = pct <= 15;
+                        return (
+                          <View style={{
+                            flexDirection: "row", alignItems: "center", gap: 6,
+                            paddingHorizontal: 12, paddingVertical: 7,
+                            borderTopWidth: 1, borderTopColor: colors.border,
+                            backgroundColor: ok ? "rgba(16,163,74,0.06)" : "rgba(220,38,38,0.07)",
+                          }}>
+                            <Feather name={ok ? "check-circle" : "alert-triangle"} size={12} color={ok ? "#16A34A" : "#DC2626"} />
+                            <Text style={{ fontFamily: "Inter_500Medium", fontSize: 11, color: ok ? "#16A34A" : "#DC2626" }}>
+                              {ok
+                                ? `Variance ${pct}% — within acceptable range`
+                                : `Variance ${pct}% — GPS & odometer mismatch`}
+                            </Text>
+                          </View>
+                        );
+                      })()}
+                    </View>
+                  )}
+                </>
               ) : (
                 <Text
                   style={{

@@ -73,6 +73,8 @@ export type AttendanceRecord = {
   endOdometerKm?: number | null;
   /** Photo of vehicle odometer meter. */
   vehicleMeterPhotoUri?: string | null;
+  /** Vehicle type chosen at this specific check-in (may differ from profile default). */
+  checkinVehicleType?: "2-wheeler" | "4-wheeler" | null;
 };
 
 export type TripPoint = {
@@ -926,6 +928,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ...(record.startOdometerKm != null ? { startOdometerKm: record.startOdometerKm } : {}),
         ...(record.endOdometerKm != null ? { endOdometerKm: record.endOdometerKm } : {}),
         ...(record.vehicleMeterPhotoUri != null ? { vehicleMeterPhotoUri: record.vehicleMeterPhotoUri } : {}),
+        ...(record.checkinVehicleType != null ? { vehicleType: record.checkinVehicleType } : {}),
       } as Parameters<typeof enqueueActivity>[0]).catch(() => {});
 
       return full;

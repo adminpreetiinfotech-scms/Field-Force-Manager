@@ -30,7 +30,7 @@ function haversineM(lat1: number, lon1: number, lat2: number, lon2: number): num
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-type Phase = "selfie" | "odometer" | "meter-capture";
+type Phase = "selfie" | "vehicle" | "odometer" | "meter-capture";
 
 export default function CheckInScreen() {
   const colors = useColors();
@@ -46,6 +46,10 @@ export default function CheckInScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [facing, setFacing] = useState<CameraType>("front");
   const cameraRef = useRef<CameraView>(null);
+  // Per-check-in vehicle type (can be changed even if profile has a default)
+  const [selectedVehicleType, setSelectedVehicleType] = useState<"2-wheeler" | "4-wheeler" | null>(
+    user?.vehicleType ?? null,
+  );
 
   useEffect(() => {
     (async () => {
@@ -91,16 +95,18 @@ export default function CheckInScreen() {
 
   const confirmSelfie = () => {
     if (!photo) return;
-    // Center staff do not have an odometer phase — skip directly to submit
+    // Center staff do not have vehicle / odometer — skip directly to submit
     if (user?.staffCategory === "center") {
       submitFinal();
       return;
     }
-    if (user?.vehicleType) {
-      setPhase("odometer");
-    } else {
-      submitFinal();
-    }
+    // Always show vehicle selector so staff can confirm / change vehicle type
+    setPhase("vehicle");
+  };
+
+  const confirmVehicle = () => {
+    if (!selectedVehicleType) return;
+    setPhase("odometer");
   };
 
   const submitFinal = async () => {
@@ -115,7 +121,8 @@ export default function CheckInScreen() {
         timestamp: Date.now(),
         location: loc,
         selfieUri: photo,
-        ...(user.vehicleType
+        checkinVehicleType: selectedVehicleType,
+        ...(selectedVehicleType
           ? {
               startOdometerKm: Number.isFinite(kmVal as number) ? (kmVal as number) : null,
               vehicleMeterPhotoUri: meterPhotoUri,
@@ -187,6 +194,69 @@ export default function CheckInScreen() {
     );
   }
 
+  if (phase === "vehicle") {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#000" }}>
+        {photo && <Image source={{ uri: photo }} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={8} />}
+        <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.78)" }} />
+        <View style={{ flex: 1, justifyContent: "flex-end" }}>
+          <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 32 + (Platform.OS === "web" ? 34 : 0) }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <View style={{ width: 24, height: 24, borderRadius: 999, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" }}>
+                  <Text style={{ color: "#fff", fontSize: 11, fontFamily: "Inter_700Bold" }}>2</Text>
+                </View>
+                <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 15 }}>Select Vehicle Type</Text>
+              </View>
+              <Pressable onPress={() => setPhase("selfie")} hitSlop={8} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+                <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, fontFamily: "Inter_500Medium" }}>Back</Text>
+              </Pressable>
+            </View>
+            <Text style={{ color: "rgba(255,255,255,0.55)", fontSize: 12, fontFamily: "Inter_400Regular" }}>
+              Choose the vehicle you are using today
+            </Text>
+            <View style={{ flexDirection: "row", gap: 12 }}>
+              {(["2-wheeler", "4-wheeler"] as const).map((v) => {
+                const selected = selectedVehicleType === v;
+                return (
+                  <Pressable
+                    key={v}
+                    onPress={() => setSelectedVehicleType(v)}
+                    style={({ pressed }) => ({
+                      flex: 1, padding: 18, borderRadius: 16,
+                      borderWidth: 2,
+                      borderColor: selected ? "#3B82F6" : "rgba(255,255,255,0.2)",
+                      backgroundColor: selected ? "rgba(59,130,246,0.18)" : "rgba(255,255,255,0.06)",
+                      alignItems: "center", gap: 8,
+                      opacity: pressed ? 0.85 : 1,
+                    })}
+                  >
+                    <Text style={{ fontSize: 32 }}>{v === "2-wheeler" ? "🏍️" : "🚗"}</Text>
+                    <Text style={{ color: selected ? "#60A5FA" : "rgba(255,255,255,0.7)", fontFamily: "Inter_700Bold", fontSize: 14 }}>
+                      {v === "2-wheeler" ? "2-Wheeler" : "4-Wheeler"}
+                    </Text>
+                    {selected && (
+                      <View style={{ position: "absolute", top: 10, right: 10 }}>
+                        <Feather name="check-circle" size={16} color="#3B82F6" />
+                      </View>
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Button
+              label="Next: Odometer Reading"
+              onPress={confirmVehicle}
+              size="lg"
+              fullWidth
+              icon={<Feather name="arrow-right" size={18} color="#fff" />}
+            />
+          </View>
+        </View>
+      </View>
+    );
+  }
+
   if (phase === "odometer") {
     return (
       <View style={{ flex: 1, backgroundColor: "#000" }}>
@@ -198,17 +268,17 @@ export default function CheckInScreen() {
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <View style={{ width: 24, height: 24, borderRadius: 999, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" }}>
-                    <Text style={{ color: "#fff", fontSize: 11, fontFamily: "Inter_700Bold" }}>2</Text>
+                    <Text style={{ color: "#fff", fontSize: 11, fontFamily: "Inter_700Bold" }}>3</Text>
                   </View>
                   <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 15 }}>Vehicle Odometer</Text>
                 </View>
-                <Pressable onPress={() => setPhase("selfie")} hitSlop={8} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+                <Pressable onPress={() => setPhase("vehicle")} hitSlop={8} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
                   <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, fontFamily: "Inter_500Medium" }}>Back</Text>
                 </Pressable>
               </View>
 
               <Text style={{ color: "rgba(255,255,255,0.55)", fontSize: 12, fontFamily: "Inter_400Regular" }}>
-                {user?.vehicleType === "2-wheeler" ? "2-Wheeler" : "4-Wheeler"}
+                {selectedVehicleType === "2-wheeler" ? "🏍️ 2-Wheeler" : "🚗 4-Wheeler"}
                 {user?.vehicleNumber ? `  ·  ${user.vehicleNumber}` : ""}
               </Text>
 
@@ -317,7 +387,7 @@ export default function CheckInScreen() {
           <Check ok={!!photo} label="Live selfie captured" />
           <Check ok={locStatus === "ok"} label="GPS location locked" />
           <Check ok={true} label="Timestamp signed" />
-          {user?.staffCategory !== "center" && !!user?.vehicleType && <Check ok={false} label="Odometer reading (Step 2)" />}
+          {user?.staffCategory !== "center" && <Check ok={false} label="Vehicle + Odometer (Steps 2–3)" />}
         </View>
 
         {photo && centerGeofenceWarning && centerGeofenceWarning.outside && (
@@ -346,12 +416,12 @@ export default function CheckInScreen() {
               <Text style={styles.retakeText}>Retake</Text>
             </Pressable>
             <Button
-              label={user?.staffCategory !== "center" && user?.vehicleType ? "Next: Odometer" : "Confirm check-in"}
+              label={user?.staffCategory !== "center" ? "Next: Vehicle" : "Confirm check-in"}
               onPress={confirmSelfie}
               loading={submitting}
               size="lg"
               style={{ flex: 1 }}
-              icon={<Feather name={user?.staffCategory !== "center" && user?.vehicleType ? "arrow-right" : "check"} size={18} color="#fff" />}
+              icon={<Feather name={user?.staffCategory !== "center" ? "arrow-right" : "check"} size={18} color="#fff" />}
             />
           </View>
         ) : (

@@ -413,7 +413,8 @@ export const CreateActivityBody = zod.object({
 }).nullish(),
   "startOdometerKm": zod.number().nullish().describe('Vehicle odometer reading at check-in (km).'),
   "endOdometerKm": zod.number().nullish().describe('Vehicle odometer reading at check-out (km).'),
-  "vehicleMeterPhotoUri": zod.string().nullish().describe('Photo URI of vehicle odometer meter.')
+  "vehicleMeterPhotoUri": zod.string().nullish().describe('Photo URI of vehicle odometer meter.'),
+  "vehicleType": zod.enum(['2-wheeler', '4-wheeler']).nullish().describe('Vehicle type selected at check-in.')
 })
 
 

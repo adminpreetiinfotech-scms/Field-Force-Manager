@@ -46,6 +46,8 @@ type ActivityPayload = {
   endOdometerKm?: number | null;
   /** Photo of vehicle odometer meter. */
   vehicleMeterPhotoUri?: string | null;
+  /** Vehicle type selected at check-in (2-wheeler or 4-wheeler). */
+  vehicleType?: string | null;
   /** True if center staff checked in/out outside the company geo-fence radius. */
   outsideGeofence?: boolean | null;
   /** Straight-line distance in meters from the center geo-fence origin. */
@@ -416,6 +418,9 @@ router.get("/activity/attendance-calendar", async (req, res, next) => {
       checkoutTimes: Date[];
       totalKm: number;
       tripCount: number;
+      startOdometerKm: number | null;
+      endOdometerKm: number | null;
+      vehicleType: string | null;
     };
     const dayMap = new Map<string, DayAcc>();
 
@@ -430,15 +435,24 @@ router.get("/activity/attendance-calendar", async (req, res, next) => {
       if (y !== year || m !== month) continue;
 
       if (!dayMap.has(date)) {
-        dayMap.set(date, { checkinTimes: [], checkoutTimes: [], totalKm: 0, tripCount: 0 });
+        dayMap.set(date, { checkinTimes: [], checkoutTimes: [], totalKm: 0, tripCount: 0, startOdometerKm: null, endOdometerKm: null, vehicleType: null });
       }
       const acc = dayMap.get(date)!;
+      const p = (row.payload || {}) as ActivityPayload;
       if (row.kind === "checkin") {
         acc.checkinTimes.push(row.occurredAt as Date);
+        if (typeof p.startOdometerKm === "number" && acc.startOdometerKm === null) {
+          acc.startOdometerKm = p.startOdometerKm;
+        }
+        if (typeof p.vehicleType === "string" && acc.vehicleType === null) {
+          acc.vehicleType = p.vehicleType;
+        }
       } else if (row.kind === "checkout") {
         acc.checkoutTimes.push(row.occurredAt as Date);
+        if (typeof p.endOdometerKm === "number") {
+          acc.endOdometerKm = p.endOdometerKm;
+        }
       } else if (row.kind === "trip-end") {
-        const p = (row.payload || {}) as ActivityPayload;
         acc.totalKm += typeof p.distanceKm === "number" ? p.distanceKm : 0;
         acc.tripCount++;
       }
@@ -505,7 +519,19 @@ router.get("/activity/attendance-calendar", async (req, res, next) => {
       }
 
       totalKmMonth += km;
-      days.push({ date, status, checkinTime, checkoutTime, totalKm: km, tripCount: trips });
+      const acc2 = dayMap.get(date);
+      const startOdo = acc2?.startOdometerKm ?? null;
+      const endOdo = acc2?.endOdometerKm ?? null;
+      const odometerKm = (startOdo !== null && endOdo !== null && endOdo >= startOdo)
+        ? round1(endOdo - startOdo)
+        : null;
+      days.push({
+        date, status, checkinTime, checkoutTime, totalKm: km, tripCount: trips,
+        startOdometer: startOdo,
+        endOdometer: endOdo,
+        odometerKm,
+        vehicleType: acc2?.vehicleType ?? null,
+      });
     }
 
     const attendancePercent =
@@ -1132,6 +1158,7 @@ router.post("/activity", async (req, res, next) => {
       startOdometerKm: input.startOdometerKm ?? null,
       endOdometerKm: input.endOdometerKm ?? null,
       vehicleMeterPhotoUri: input.vehicleMeterPhotoUri ?? null,
+      vehicleType: input.vehicleType ?? null,
       gpsPath: gpsPath && gpsPath.length > 0 ? gpsPath : null,
     };
 
