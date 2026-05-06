@@ -90,24 +90,28 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
-  const [fontsLoaded, fontError] = useFonts({
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
-    Inter_700Bold,
-    NotoSansDevanagari_400Regular,
-    NotoSansDevanagari_500Medium,
-    NotoSansDevanagari_600SemiBold,
-    NotoSansDevanagari_700Bold,
-  });
+  const [fontsLoaded, fontError] = useFonts(
+    Platform.OS === "web"
+      ? {}
+      : {
+          Inter_400Regular,
+          Inter_500Medium,
+          Inter_600SemiBold,
+          Inter_700Bold,
+          NotoSansDevanagari_400Regular,
+          NotoSansDevanagari_500Medium,
+          NotoSansDevanagari_600SemiBold,
+          NotoSansDevanagari_700Bold,
+        },
+  );
 
   useEffect(() => {
-    if (fontsLoaded || fontError) {
+    if (Platform.OS === "web" || fontsLoaded || fontError) {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);
 
-  if (!fontsLoaded && !fontError) return null;
+  if (Platform.OS !== "web" && !fontsLoaded && !fontError) return null;
 
   return (
     <SafeAreaProvider>
