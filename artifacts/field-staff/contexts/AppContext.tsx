@@ -130,7 +130,7 @@ export type RegisterData = {
   trainerCourse?: string | null;
 };
 
-type AppState = {
+type AppContextState = {
   bootstrapped: boolean;
   user: User | null;
   /** Phone number being verified during login / MPIN setup flow. */
@@ -196,7 +196,7 @@ type AppActions = {
   }) => Promise<User>;
 };
 
-type AppContextValue = AppState & AppActions;
+type AppContextValue = AppContextState & AppActions;
 
 const STORAGE_KEY = "@field-staff/state-v1";
 
@@ -391,7 +391,7 @@ function seedDemoData(): { staffLocations: StaffLocation[]; trips: Trip[] } {
   return { staffLocations, trips };
 }
 
-const defaultState: AppState = {
+const defaultState: AppContextState = {
   bootstrapped: false,
   user: null,
   pendingPhone: null,
@@ -418,7 +418,7 @@ const _domain = process.env.EXPO_PUBLIC_DOMAIN || "field-force-manager-Mobilizat
 const API_BASE = `https://${_domain}`;
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<AppState>(defaultState);
+  const [state, setState] = useState<AppContextState>(defaultState);
   const stateRef = useRef(state);
   stateRef.current = state;
 

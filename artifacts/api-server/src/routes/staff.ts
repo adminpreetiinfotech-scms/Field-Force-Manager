@@ -37,12 +37,17 @@ export function toStaffDTO(r: typeof staffTable.$inferSelect) {
   };
 }
 
-router.get("/staff", async (_req, res, next) => {
+router.get("/staff", requireAdmin, async (_req, res, next) => {
   try {
+    const companyId = res.locals.companyId as string | null;
     const rows = await db
       .select()
       .from(staffTable)
-      .where(and(ne(staffTable.role, "super_admin"), isNull(staffTable.deletedAt)))
+      .where(
+        companyId
+          ? and(eq(staffTable.companyId, companyId), ne(staffTable.role, "super_admin"), isNull(staffTable.deletedAt))
+          : and(ne(staffTable.role, "super_admin"), isNull(staffTable.deletedAt)),
+      )
       .orderBy(staffTable.name);
     res.json(rows.map(toStaffDTO));
   } catch (err) {
@@ -248,9 +253,10 @@ router.post("/staff/register", async (req, res, next) => {
 
 // ─── Staff notes ──────────────────────────────────────────────────────────────
 
-router.patch("/staff/:staffId/notes", async (req, res, next) => {
+router.patch("/staff/:staffId/notes", requireAdmin, async (req, res, next) => {
   try {
-    const { staffId } = req.params;
+    const staffId = String(req.params.staffId ?? "");
+    const companyId = res.locals.companyId as string | null;
 
     if (!/^[0-9a-fA-F-]{36}$/.test(staffId)) {
       res.status(400).json({ title: "Invalid staffId", status: 400 });
@@ -259,11 +265,15 @@ router.patch("/staff/:staffId/notes", async (req, res, next) => {
 
     const { notes } = req.body as { notes?: string | null };
 
-    // Ensure the staff member exists.
+    // Ensure the staff member exists and belongs to this admin's company.
     const [existing] = await db
       .select({ id: staffTable.id })
       .from(staffTable)
-      .where(eq(staffTable.id, staffId))
+      .where(
+        companyId
+          ? and(eq(staffTable.id, staffId), eq(staffTable.companyId, companyId))
+          : eq(staffTable.id, staffId),
+      )
       .limit(1);
 
     if (!existing) {
@@ -289,9 +299,10 @@ router.patch("/staff/:staffId/notes", async (req, res, next) => {
 
 // ─── Staff profile stats ──────────────────────────────────────────────────────
 
-router.get("/staff/:staffId/profile-stats", async (req, res, next) => {
+router.get("/staff/:staffId/profile-stats", requireAdmin, async (req, res, next) => {
   try {
-    const { staffId } = req.params;
+    const staffId = String(req.params.staffId ?? "");
+    const companyId = res.locals.companyId as string | null;
 
     if (!/^[0-9a-fA-F-]{36}$/.test(staffId)) {
       res.status(400).json({ title: "Invalid staffId", status: 400 });
@@ -301,7 +312,11 @@ router.get("/staff/:staffId/profile-stats", async (req, res, next) => {
     const [staffRow] = await db
       .select()
       .from(staffTable)
-      .where(eq(staffTable.id, staffId))
+      .where(
+        companyId
+          ? and(eq(staffTable.id, staffId), eq(staffTable.companyId, companyId))
+          : eq(staffTable.id, staffId),
+      )
       .limit(1);
 
     if (!staffRow) {
@@ -587,14 +602,28 @@ router.get("/staff/:staffId/profile-stats", async (req, res, next) => {
 // Returns last N days of daily vehicle KM vs GPS KM for a staff member.
 // Query: staffId (uuid, required), days (integer, default 30)
 
-router.get("/staff/km-history", async (req, res, next) => {
+router.get("/staff/km-history", requireAdmin, async (req, res, next) => {
   try {
+    const companyId = res.locals.companyId as string | null;
     const rawStaffId = req.query.staffId as string | undefined;
     const rawDays    = req.query.days    as string | undefined;
 
     if (!rawStaffId || !/^[0-9a-fA-F-]{36}$/.test(rawStaffId)) {
       res.status(400).json({ title: "Invalid staffId", status: 400 });
       return;
+    }
+
+    // Cross-company guard — verify requested staffId belongs to caller's company.
+    if (companyId) {
+      const [staffRow] = await db
+        .select({ id: staffTable.id })
+        .from(staffTable)
+        .where(and(eq(staffTable.id, rawStaffId), eq(staffTable.companyId, companyId)))
+        .limit(1);
+      if (!staffRow) {
+        res.status(403).json({ title: "Forbidden", detail: "Staff does not belong to your company", status: 403 });
+        return;
+      }
     }
 
     const days = Math.min(90, Math.max(1, parseInt(rawDays ?? "30", 10) || 30));
