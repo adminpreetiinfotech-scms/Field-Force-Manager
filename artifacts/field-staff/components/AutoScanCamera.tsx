@@ -1,13 +1,21 @@
 /**
- * AutoScanCamera — v5 (Simple & Fast)
+ * AutoScanCamera — v6 (ML Kit + Image Picker hybrid)
  *
- * Replaces the previous WebView + native-plugin hybrid with a clean
- * expo-image-picker bottom sheet:
- *   • 📷 Take Photo  — opens the device camera
- *   • 🖼️ Choose from Gallery — picks an existing photo
+ * Two-mode operation — automatically detected at runtime:
  *
- * No WebView. No native scanner plugin. No multi-pass processing.
- * Works on Expo Go and EAS builds alike, with zero performance overhead.
+ *  MODE A — EAS / Production APK  (react-native-document-scanner-plugin available):
+ *    Launches Google ML Kit Document Scanner directly.
+ *    • Real-time edge detection + perspective correction
+ *    • Native Google UI — no custom camera code needed
+ *    • Android: ML Kit (on-device, offline)
+ *    • iOS: VisionKit
+ *
+ *  MODE B — Expo Go  (native module unavailable):
+ *    Falls back to a clean expo-image-picker bottom sheet:
+ *    • 📷 Take Photo   — device camera
+ *    • 🖼️ Gallery      — existing photo
+ *
+ * register.tsx and all callers need zero changes — same props interface.
  */
 
 import * as ImageManipulator from "expo-image-manipulator";
@@ -25,9 +33,32 @@ import {
 
 import type { ScannedImage } from "./DocumentScannerModal";
 
-// ─── DocType ─────────────────────────────────────────────────────────────────
-// Kept for API compatibility with callers (register.tsx passes docType).
-// No longer drives any special processing logic.
+// ─── ML Kit detection ─────────────────────────────────────────────────────────
+// Dynamic require so Metro / Expo Go does not crash when the native module is absent.
+
+type MlKitScanner = {
+  scanDocument: (opts: {
+    croppedImageQuality: number;
+    maxNumDocuments: number;
+    letUserAdjustCrop: boolean;
+  }) => Promise<{ scannedImages: string[] }>;
+};
+
+let MlKit: MlKitScanner | null = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  MlKit = (
+    require("react-native-document-scanner-plugin") as {
+      default: MlKitScanner;
+    }
+  ).default;
+  // Validate: the module may be present but the native bridge absent (old RN arch)
+  if (typeof MlKit?.scanDocument !== "function") MlKit = null;
+} catch {
+  MlKit = null;
+}
+
+// ─── DocType (kept for API compat — callers still pass it) ────────────────────
 
 export type DocType =
   | "aadhaar_front"
@@ -51,29 +82,118 @@ export interface AutoScanCameraProps {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const MAX_WIDTH = 1600; // px — keeps files sharp but not massive
+const MAX_WIDTH = 1600;
 
-async function compressAsset(
-  uri: string,
-  width: number,
-): Promise<ScannedImage> {
+async function compressUri(uri: string, width?: number): Promise<ScannedImage> {
   const actions: ImageManipulator.Action[] =
-    width > MAX_WIDTH ? [{ resize: { width: MAX_WIDTH } }] : [];
+    (width ?? MAX_WIDTH) > MAX_WIDTH ? [{ resize: { width: MAX_WIDTH } }] : [];
 
   const out = await ImageManipulator.manipulateAsync(uri, actions, {
     format: ImageManipulator.SaveFormat.JPEG,
-    compress: 0.88,
+    compress: 0.9,
     base64: true,
   });
-
   return { uri: out.uri, base64: out.base64!, mimeType: "image/jpeg" };
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── MODE A: ML Kit scanner ───────────────────────────────────────────────────
 
-export default function AutoScanCamera({
+function MlKitMode({
   visible,
-  title = "Capture Document",
+  onSave,
+  onCancel,
+}: Pick<AutoScanCameraProps, "visible" | "onSave" | "onCancel">) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Launch ML Kit automatically as soon as the component becomes visible.
+  useEffect(() => {
+    if (!visible) return;
+    setBusy(true);
+    setError(null);
+    launchMlKit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+
+  async function launchMlKit() {
+    try {
+      const { scannedImages } = await MlKit!.scanDocument({
+        croppedImageQuality: 100,
+        maxNumDocuments: 1,
+        letUserAdjustCrop: true,
+      });
+
+      if (!scannedImages?.length) {
+        // User pressed the back button inside ML Kit — treat as cancel.
+        setBusy(false);
+        onCancel();
+        return;
+      }
+
+      const img = await compressUri(scannedImages[0]!);
+      setBusy(false);
+      onSave(img);
+    } catch (err) {
+      setBusy(false);
+      const msg =
+        err instanceof Error ? err.message : "Scanner failed. Please retry.";
+      setError(msg);
+    }
+  }
+
+  // Minimal overlay — ML Kit draws its own full-screen camera UI on top.
+  return (
+    <Modal
+      visible={visible}
+      animationType="fade"
+      transparent
+      statusBarTranslucent
+      onRequestClose={onCancel}
+    >
+      <View style={styles.mlBackdrop}>
+        {busy && !error && (
+          <View style={styles.mlBox}>
+            <ActivityIndicator size="large" color="#fff" />
+            <Text style={styles.mlTxt}>Opening document scanner…</Text>
+          </View>
+        )}
+
+        {error && (
+          <View style={styles.mlErrorBox}>
+            <Text style={styles.mlErrorTitle}>⚠️  Scan Failed</Text>
+            <Text style={styles.mlErrorMsg}>{error}</Text>
+
+            <TouchableOpacity
+              style={styles.mlBtn}
+              onPress={() => {
+                setBusy(true);
+                setError(null);
+                launchMlKit();
+              }}
+            >
+              <Text style={styles.mlBtnTxt}>Try Again</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.mlBtn, styles.mlBtnCancel]}
+              onPress={onCancel}
+            >
+              <Text style={[styles.mlBtnTxt, { color: "#6B7280" }]}>
+                Cancel
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    </Modal>
+  );
+}
+
+// ─── MODE B: expo-image-picker bottom sheet ───────────────────────────────────
+
+function PickerMode({
+  visible,
+  title,
   onSave,
   onCancel,
 }: AutoScanCameraProps) {
@@ -124,13 +244,12 @@ export default function AutoScanCamera({
       }
 
       if (result.canceled || !result.assets?.[0]) {
-        // User pressed back inside the picker — stay on the choice sheet.
         setBusy(false);
         return;
       }
 
       const asset = result.assets[0];
-      const img = await compressAsset(asset.uri, asset.width ?? MAX_WIDTH);
+      const img = await compressUri(asset.uri, asset.width);
       onSave(img);
     } catch (err) {
       const msg =
@@ -150,11 +269,8 @@ export default function AutoScanCamera({
     >
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
-          {/* Drag handle */}
           <View style={styles.handle} />
-
-          {/* Title */}
-          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.title}>{title ?? "Capture Document"}</Text>
 
           {busy ? (
             <View style={styles.busyBox}>
@@ -169,7 +285,6 @@ export default function AutoScanCamera({
                 </View>
               ) : null}
 
-              {/* Camera option */}
               <TouchableOpacity
                 style={styles.btn}
                 onPress={() => handle("camera")}
@@ -186,7 +301,6 @@ export default function AutoScanCamera({
 
               <View style={styles.divider} />
 
-              {/* Gallery option */}
               <TouchableOpacity
                 style={styles.btn}
                 onPress={() => handle("gallery")}
@@ -199,7 +313,6 @@ export default function AutoScanCamera({
                 </View>
               </TouchableOpacity>
 
-              {/* Cancel */}
               <TouchableOpacity
                 style={styles.cancelBtn}
                 onPress={onCancel}
@@ -215,9 +328,58 @@ export default function AutoScanCamera({
   );
 }
 
+// ─── Main export — picks the right mode at runtime ────────────────────────────
+
+export default function AutoScanCamera(props: AutoScanCameraProps) {
+  if (MlKit) {
+    return <MlKitMode {...props} />;
+  }
+  return <PickerMode {...props} />;
+}
+
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  // ── ML Kit overlay ──
+  mlBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.72)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 32,
+  },
+  mlBox: {
+    alignItems: "center",
+    gap: 16,
+  },
+  mlTxt: { color: "#fff", fontSize: 15, fontWeight: "500" },
+  mlErrorBox: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 24,
+    width: "100%",
+    alignItems: "center",
+    gap: 10,
+  },
+  mlErrorTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
+  mlErrorMsg: {
+    fontSize: 13,
+    color: "#6B7280",
+    textAlign: "center",
+    lineHeight: 19,
+  },
+  mlBtn: {
+    width: "100%",
+    paddingVertical: 13,
+    borderRadius: 10,
+    backgroundColor: "#2563EB",
+    alignItems: "center",
+    marginTop: 4,
+  },
+  mlBtnCancel: { backgroundColor: "#F3F4F6" },
+  mlBtnTxt: { color: "#fff", fontSize: 15, fontWeight: "600" },
+
+  // ── Picker bottom sheet ──
   backdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.55)",
