@@ -398,21 +398,21 @@ export default function AutoScanCamera({
         onReady={() => setBridgeReady(true)}
       />
 
-      <Modal visible={visible} animationType="slide" statusBarTranslucent onRequestClose={onCancel}>
-        <View style={[styles.root, { width: screenW, height: screenH }]}>
+      {/* DocumentScannerModal is a sibling Modal (NOT nested inside Camera Modal).
+          Nested Modals on Android Expo Go are invisible/non-interactive. */}
+      <DocumentScannerModal
+        visible={visible && phase === "adjust" && !!capturedUri}
+        imageUri={capturedUri}
+        imageWidth={capturedDims.w}
+        imageHeight={capturedDims.h}
+        title={title}
+        onSave={(img) => onSave(img)}
+        onCancel={() => setPhase("preview")}
+      />
 
-          {/* ── Manual adjust phase ─────────────────────────────────────── */}
-          {phase === "adjust" && capturedUri && (
-            <DocumentScannerModal
-              visible
-              imageUri={capturedUri}
-              imageWidth={capturedDims.w}
-              imageHeight={capturedDims.h}
-              title={title}
-              onSave={(img) => onSave(img)}
-              onCancel={() => setPhase("preview")}
-            />
-          )}
+      {/* Camera Modal — hidden when in adjust phase so Modals never overlap */}
+      <Modal visible={visible && phase !== "adjust"} animationType="slide" statusBarTranslucent onRequestClose={onCancel}>
+        <View style={[styles.root, { width: screenW, height: screenH }]}>
 
           {/* ── Camera phase ────────────────────────────────────────────── */}
           {phase === "camera" && (
