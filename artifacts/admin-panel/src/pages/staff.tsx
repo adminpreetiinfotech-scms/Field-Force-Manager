@@ -1320,6 +1320,7 @@ function StaffTable({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function StaffManagement() {
+  const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState<"all" | "field" | "center">("all");

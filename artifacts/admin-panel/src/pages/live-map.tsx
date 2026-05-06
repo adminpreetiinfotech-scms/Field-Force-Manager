@@ -864,8 +864,8 @@ export default function LiveMapPage() {
   };
   const outsideStaff = filtered.filter((s) => isOutsideFence(s, geoFence)).sort((a, b) => {
     if (!geoFence) return 0;
-    const distA = haversineMeters(a.lastLat, a.lastLng, geoFence.centerLat, geoFence.centerLng) - geoFence.centerRadiusMeters;
-    const distB = haversineMeters(b.lastLat, b.lastLng, geoFence.centerLat, geoFence.centerLng) - geoFence.centerRadiusMeters;
+    const distA = haversineMeters(a.lastLat ?? 0, a.lastLng ?? 0, geoFence.centerLat, geoFence.centerLng) - geoFence.centerRadiusMeters;
+    const distB = haversineMeters(b.lastLat ?? 0, b.lastLng ?? 0, geoFence.centerLat, geoFence.centerLng) - geoFence.centerRadiusMeters;
     return distB - distA;
   });
   const insideStaff = filtered.filter((s) => !isOutsideFence(s, geoFence)).sort(sortByStatus);

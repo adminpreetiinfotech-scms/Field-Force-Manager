@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   LayoutDashboard, Users, UserSquare2, FileText, LogOut, Building2, ShieldCheck,
   Bell, Map, Settings, UserPlus, UserCheck, ClipboardList, CreditCard, UserCog,
-  GraduationCap, SlidersHorizontal,
+  GraduationCap, SlidersHorizontal, CalendarDays,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -16,6 +16,7 @@ const navItems = [
   { href: "/attendance-control",  label: "Attendance Control",  icon: SlidersHorizontal, color: "text-purple-400" },
   { href: "/candidates",          label: "Candidates",          icon: UserSquare2,       color: "text-pink-400" },
   { href: "/live-map",            label: "Live Staff Map",      icon: Map,               color: "text-orange-400" },
+  { href: "/leaves",              label: "Leave Requests",      icon: CalendarDays,      color: "text-green-400" },
   { href: "/notices",             label: "Notices",             icon: Bell,              color: "text-yellow-400" },
   { href: "/reports",             label: "Reports",             icon: FileText,          color: "text-teal-400" },
   { href: "/settings",            label: "Company Settings",    icon: Settings,          color: "text-slate-400" },
