@@ -8,3 +8,4 @@ export * from "./notices";
 export * from "./report-schedules";
 export * from "./leaves";
 export * from "./attendance-corrections";
+export * from "./staff-documents";

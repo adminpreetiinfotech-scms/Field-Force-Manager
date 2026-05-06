@@ -1,7 +1,9 @@
 import { Feather } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Platform,
   Pressable,
@@ -9,6 +11,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -18,6 +21,7 @@ import { CompanyBrand } from "@/components/CompanyBrand";
 import { KmDayDetailSheet } from "@/components/KmDayDetailSheet";
 import { PillarsRow } from "@/components/PillarBadge";
 import { VehicleType, useApp } from "@/contexts/AppContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useColors } from "@/hooks/useColors";
 import { useGetStaffKmHistory } from "@workspace/api-client-react";
 
@@ -42,10 +46,30 @@ function fmtDate(dateStr: string) {
   return `${String(d.getDate()).padStart(2, "0")} ${MONTHS[d.getMonth()]}`;
 }
 
+function getApiBase(): string {
+  if (Platform.OS === "web") return "";
+  const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "";
+  if (!domain) return "";
+  return domain.startsWith("http") ? domain : `https://${domain}`;
+}
+const API_BASE = getApiBase();
+
+type DocType = "aadhaar" | "certificate" | "photo" | "other";
+
+interface StaffDoc {
+  id: string;
+  docType: DocType;
+  label: string;
+  mimeType: string;
+  url: string;
+  uploadedAt: string | null;
+}
+
 export default function StaffProfile() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user, signOut, attendance, trips, updateProfile } = useApp();
+  const { t, lang, setLang } = useLanguage();
 
   const mineAttendance = attendance.filter((a) => a.staffId === user?.id);
   const totalKm = trips
@@ -55,6 +79,99 @@ export default function StaffProfile() {
   const [vehicleType, setVehicleType] = useState<VehicleType | null>(user?.vehicleType ?? null);
   const [vehicleNumber, setVehicleNumber] = useState(user?.vehicleNumber ?? "");
   const [savingVehicle, setSavingVehicle] = useState(false);
+
+  // ── Documents state ──
+  const [docs, setDocs] = useState<StaffDoc[]>([]);
+  const [docsLoading, setDocsLoading] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadDocType, setUploadDocType] = useState<DocType>("aadhaar");
+  const [uploadLabel, setUploadLabel] = useState("");
+  const [uploadBase64, setUploadBase64] = useState<string | null>(null);
+  const [uploadMime, setUploadMime] = useState("image/jpeg");
+  const [uploading, setUploading] = useState(false);
+
+  const phoneHeader: Record<string, string> = user?.role === "admin"
+    ? { "x-admin-phone": user?.phone ?? "" }
+    : { "x-staff-phone": user?.phone ?? "" };
+
+  const fetchDocs = useCallback(async () => {
+    if (!user?.phone) return;
+    setDocsLoading(true);
+    try {
+      const r = await fetch(`${API_BASE}/api/staff/documents`, { headers: phoneHeader });
+      if (r.ok) setDocs((await r.json()) as StaffDoc[]);
+    } catch { /* ignore */ } finally {
+      setDocsLoading(false);
+    }
+  }, [user?.phone]);
+
+  useEffect(() => { fetchDocs(); }, [fetchDocs]);
+
+  const pickImage = async (fromCamera: boolean) => {
+    const perm = fromCamera
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (perm.status !== "granted") {
+      Alert.alert(t("error"), "Permission denied.");
+      return;
+    }
+    const result = fromCamera
+      ? await ImagePicker.launchCameraAsync({ mediaTypes: ["images"] as ImagePicker.MediaType[], quality: 0.75, base64: true })
+      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"] as ImagePicker.MediaType[], quality: 0.75, base64: true });
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      setUploadBase64(asset.base64 ?? null);
+      setUploadMime(asset.mimeType ?? "image/jpeg");
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!uploadLabel.trim()) { Alert.alert(t("error"), t("required") + ": " + t("docLabel")); return; }
+    if (!uploadBase64) { Alert.alert(t("error"), "Please select an image first."); return; }
+    setUploading(true);
+    try {
+      const r = await fetch(`${API_BASE}/api/staff/documents`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...phoneHeader },
+        body: JSON.stringify({ docType: uploadDocType, label: uploadLabel.trim(), base64: uploadBase64, mimeType: uploadMime }),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({})) as { title?: string };
+        throw new Error(err.title ?? "Upload failed");
+      }
+      Alert.alert(t("success"), t("uploadSuccess"));
+      setShowUploadModal(false);
+      setUploadLabel("");
+      setUploadBase64(null);
+      setUploadDocType("aadhaar");
+      fetchDocs();
+    } catch (e: unknown) {
+      Alert.alert(t("error"), (e as Error).message || t("uploadError"));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDeleteDoc = (doc: StaffDoc) => {
+    Alert.alert(t("deleteDoc"), t("confirmDeleteDoc"), [
+      { text: t("cancel"), style: "cancel" },
+      {
+        text: t("deleteDoc"), style: "destructive", onPress: async () => {
+          try {
+            await fetch(`${API_BASE}/api/staff/documents/${doc.id}`, { method: "DELETE", headers: phoneHeader });
+            fetchDocs();
+          } catch { Alert.alert(t("error"), t("uploadError")); }
+        },
+      },
+    ]);
+  };
+
+  const DOC_TYPE_OPTIONS: { value: DocType; label: string }[] = [
+    { value: "aadhaar", label: t("docTypeAadhaar") },
+    { value: "certificate", label: t("docTypeCertificate") },
+    { value: "photo", label: t("docTypePhoto") },
+    { value: "other", label: t("docTypeOther") },
+  ];
 
   const { data: kmHistoryData } = useGetStaffKmHistory(
     { staffId: user?.id ?? "", days: 14 },
@@ -83,7 +200,28 @@ export default function StaffProfile() {
         paddingHorizontal: 22,
       }}
     >
-      <Text style={[styles.title, { color: colors.foreground }]}>Profile</Text>
+      {/* ── Language Toggle ─────────────────────────────────────── */}
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <Text style={[styles.title, { color: colors.foreground, marginBottom: 0 }]}>{t("profile")}</Text>
+        <View style={{ flexDirection: "row", backgroundColor: colors.card, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, overflow: "hidden" }}>
+          {(["en", "hi"] as const).map((l) => (
+            <TouchableOpacity
+              key={l}
+              onPress={() => setLang(l)}
+              style={{
+                paddingHorizontal: 14,
+                paddingVertical: 6,
+                backgroundColor: lang === l ? colors.primary : "transparent",
+                borderRadius: 20,
+              }}
+            >
+              <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: lang === l ? "#fff" : colors.mutedForeground }}>
+                {l === "en" ? "EN" : "हि"}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
 
       {/* ── Company Branding Card ─────────────────────────────────── */}
       {(user?.companyName || user?.organization) && (
@@ -461,6 +599,157 @@ export default function StaffProfile() {
           <PillarsRow />
         </View>
       </View>
+
+      {/* ── My Documents ──────────────────────────────────────────── */}
+      <View
+        style={[
+          styles.section,
+          {
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+            borderRadius: colors.radius + 4,
+          },
+        ]}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+          <View>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{t("myDocuments")}</Text>
+            <Text style={{ color: colors.mutedForeground, fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 }}>
+              {t("myDocumentsSub")}
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => setShowUploadModal(true)}
+            style={{ backgroundColor: colors.primary, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, flexDirection: "row", alignItems: "center", gap: 4 }}
+          >
+            <Feather name="upload" size={12} color="#fff" />
+            <Text style={{ color: "#fff", fontSize: 12, fontFamily: "Inter_600SemiBold" }}>{t("uploadDocument")}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {docsLoading ? (
+          <ActivityIndicator color={colors.primary} style={{ marginTop: 12 }} />
+        ) : docs.length === 0 ? (
+          <View style={{ alignItems: "center", paddingVertical: 18 }}>
+            <Feather name="file-text" size={30} color={colors.mutedForeground} />
+            <Text style={{ color: colors.mutedForeground, fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 8 }}>
+              {t("noDocuments")}
+            </Text>
+          </View>
+        ) : (
+          <View style={{ marginTop: 10, gap: 8 }}>
+            {docs.map((doc) => (
+              <View
+                key={doc.id}
+                style={{ flexDirection: "row", alignItems: "center", gap: 10, padding: 10, borderRadius: 10, backgroundColor: colors.background, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border }}
+              >
+                <View style={{ width: 34, height: 34, borderRadius: 8, backgroundColor: colors.primary + "18", alignItems: "center", justifyContent: "center" }}>
+                  <Feather
+                    name={doc.docType === "aadhaar" ? "credit-card" : doc.docType === "certificate" ? "award" : doc.docType === "photo" ? "image" : "file"}
+                    size={16}
+                    color={colors.primary}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.foreground, fontSize: 13, fontFamily: "Inter_600SemiBold" }} numberOfLines={1}>{doc.label}</Text>
+                  <Text style={{ color: colors.mutedForeground, fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 1 }}>
+                    {DOC_TYPE_OPTIONS.find((d) => d.value === doc.docType)?.label ?? doc.docType}
+                    {doc.uploadedAt ? `  ·  ${new Date(doc.uploadedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}` : ""}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => handleDeleteDoc(doc)} style={{ padding: 6 }}>
+                  <Feather name="trash-2" size={15} color="#EF4444" />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
+
+      {/* ── Upload Modal ───────────────────────────────────────────── */}
+      {showUploadModal && (
+        <View style={{
+          position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: "rgba(0,0,0,0.5)", zIndex: 100,
+          justifyContent: "flex-end",
+        }}>
+          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: insets.bottom + 24 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <Text style={{ color: colors.foreground, fontSize: 16, fontFamily: "Inter_700Bold" }}>{t("uploadDocument")}</Text>
+              <TouchableOpacity onPress={() => { setShowUploadModal(false); setUploadBase64(null); setUploadLabel(""); }}>
+                <Feather name="x" size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Doc type selector */}
+            <Text style={{ color: colors.mutedForeground, fontSize: 11, fontFamily: "Inter_500Medium", letterSpacing: 0.4, marginBottom: 8 }}>
+              {t("selectDocType").toUpperCase()}
+            </Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+              {DOC_TYPE_OPTIONS.map((opt) => (
+                <TouchableOpacity
+                  key={opt.value}
+                  onPress={() => setUploadDocType(opt.value)}
+                  style={{
+                    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
+                    borderWidth: 1.5,
+                    borderColor: uploadDocType === opt.value ? colors.primary : colors.border,
+                    backgroundColor: uploadDocType === opt.value ? colors.primary + "14" : "transparent",
+                  }}
+                >
+                  <Text style={{ fontSize: 13, fontFamily: uploadDocType === opt.value ? "Inter_700Bold" : "Inter_500Medium", color: uploadDocType === opt.value ? colors.primary : colors.mutedForeground }}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Label input */}
+            <Text style={{ color: colors.mutedForeground, fontSize: 11, fontFamily: "Inter_500Medium", letterSpacing: 0.4, marginBottom: 6 }}>
+              {t("docLabel").toUpperCase()}
+            </Text>
+            <TextInput
+              value={uploadLabel}
+              onChangeText={setUploadLabel}
+              placeholder={t("docLabelPlaceholder")}
+              placeholderTextColor={colors.mutedForeground}
+              style={{ backgroundColor: colors.background, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 11, color: colors.foreground, fontSize: 14, fontFamily: "Inter_500Medium", marginBottom: 14 }}
+            />
+
+            {/* Image picker buttons */}
+            {uploadBase64 ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10, padding: 10, borderRadius: 10, backgroundColor: colors.primary + "10", borderWidth: 1, borderColor: colors.primary + "30", marginBottom: 14 }}>
+                <Feather name="check-circle" size={16} color={colors.primary} />
+                <Text style={{ flex: 1, color: colors.primary, fontSize: 13, fontFamily: "Inter_600SemiBold" }}>Image selected ✓</Text>
+                <TouchableOpacity onPress={() => setUploadBase64(null)}>
+                  <Feather name="x" size={16} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={{ flexDirection: "row", gap: 10, marginBottom: 14 }}>
+                <TouchableOpacity onPress={() => pickImage(false)} style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, padding: 11, borderRadius: 10, borderWidth: 1, borderColor: colors.border }}>
+                  <Feather name="image" size={15} color={colors.foreground} />
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: colors.foreground }}>{t("chooseImage")}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => pickImage(true)} style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, padding: 11, borderRadius: 10, borderWidth: 1, borderColor: colors.border }}>
+                  <Feather name="camera" size={15} color={colors.foreground} />
+                  <Text style={{ fontSize: 13, fontFamily: "Inter_500Medium", color: colors.foreground }}>{t("takePhoto")}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            <Button
+              label={uploading ? t("uploading") : t("uploadDocument")}
+              loading={uploading}
+              disabled={uploading || !uploadBase64}
+              onPress={handleUpload}
+              fullWidth
+              size="lg"
+              icon={<Feather name="upload" size={16} color="#fff" />}
+            />
+          </View>
+        </View>
+      )}
 
       <View
         style={[

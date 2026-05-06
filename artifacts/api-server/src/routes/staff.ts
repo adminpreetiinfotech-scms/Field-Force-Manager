@@ -1,5 +1,7 @@
-import { candidatesTable, centersTable, companiesTable, db, staffTable, activityEventsTable } from "@workspace/db";
-import { eq, and, gte, lt, isNull, ne, sql, inArray } from "drizzle-orm";
+import { candidatesTable, centersTable, companiesTable, db, staffTable, activityEventsTable, staffDocumentsTable } from "@workspace/db";
+import { eq, and, gte, lt, isNull, ne, sql, inArray, desc } from "drizzle-orm";
+import fs from "fs";
+import path from "path";
 import { Router, type IRouter } from "express";
 import crypto from "node:crypto";
 import { requireAdmin } from "./admin";
@@ -1099,6 +1101,237 @@ router.post("/staff/ping-location", async (req, res, next) => {
       .set({ lastLat: lat, lastLng: lng, lastLocationAt: new Date() })
       .where(eq(staffTable.id, staffId));
     res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+
+// ─── Staff Documents ─────────────────────────────────────────────────────────
+
+const UPLOADS_BASE = path.join(process.cwd(), "uploads");
+const STAFF_DOCS_DIR = path.join(UPLOADS_BASE, "staff-docs");
+fs.mkdirSync(STAFF_DOCS_DIR, { recursive: true });
+
+const DOC_ALLOWED_MIMES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+const DOC_ALLOWED_TYPES = ["aadhaar", "certificate", "photo", "other"] as const;
+const MAX_DOC_BYTES = 6 * 1024 * 1024;
+
+function saveDocBase64(base64: string, mimeType: string, staffId: string, docId: string): string {
+  const ext = mimeType.includes("png") ? "png" : "jpg";
+  const dir = path.join(STAFF_DOCS_DIR, staffId);
+  fs.mkdirSync(dir, { recursive: true });
+  const filepath = path.join(dir, `${docId}.${ext}`);
+  fs.writeFileSync(filepath, Buffer.from(base64, "base64"));
+  return filepath;
+}
+
+function docFileUrl(filePath: string): string {
+  const rel = path.relative(UPLOADS_BASE, filePath).replace(/\\/g, "/");
+  return `/api/uploads/${rel}`;
+}
+
+/**
+ * POST /api/staff/documents
+ * Staff uploads a document (base64). Auth via x-staff-phone or x-admin-phone header.
+ */
+router.post("/staff/documents", async (req, res, next) => {
+  try {
+    const phone = (
+      (req.headers["x-staff-phone"] as string | undefined) ??
+      (req.headers["x-admin-phone"] as string | undefined)
+    )?.trim();
+    if (!phone) {
+      res.status(401).json({ title: "x-staff-phone header required", status: 401 });
+      return;
+    }
+
+    const [staffRow] = await db
+      .select({ id: staffTable.id, companyId: staffTable.companyId, deletedAt: staffTable.deletedAt })
+      .from(staffTable)
+      .where(eq(staffTable.phone, phone))
+      .limit(1);
+
+    if (!staffRow || staffRow.deletedAt) {
+      res.status(401).json({ title: "Staff not found", status: 401 });
+      return;
+    }
+
+    const { docType, label, base64, mimeType } = req.body as {
+      docType?: unknown;
+      label?: unknown;
+      base64?: unknown;
+      mimeType?: unknown;
+    };
+
+    if (!DOC_ALLOWED_TYPES.includes(docType as typeof DOC_ALLOWED_TYPES[number])) {
+      res.status(400).json({ title: "Invalid docType. Must be one of: aadhaar, certificate, photo, other", status: 400 });
+      return;
+    }
+    if (typeof label !== "string" || !label.trim()) {
+      res.status(400).json({ title: "label is required", status: 400 });
+      return;
+    }
+    if (typeof base64 !== "string" || !base64) {
+      res.status(400).json({ title: "base64 is required", status: 400 });
+      return;
+    }
+    const mime = typeof mimeType === "string" ? mimeType.toLowerCase() : "image/jpeg";
+    if (!DOC_ALLOWED_MIMES.includes(mime)) {
+      res.status(400).json({ title: "Only JPEG, PNG and WebP images are allowed", status: 400 });
+      return;
+    }
+    const approxBytes = Math.ceil((base64.length * 3) / 4);
+    if (approxBytes > MAX_DOC_BYTES) {
+      res.status(400).json({ title: "File too large (max 6 MB)", status: 400 });
+      return;
+    }
+
+    const [inserted] = await db
+      .insert(staffDocumentsTable)
+      .values({
+        staffId: staffRow.id,
+        docType: docType as typeof DOC_ALLOWED_TYPES[number],
+        label: label.trim(),
+        filePath: "pending",
+        mimeType: mime,
+      })
+      .returning();
+
+    const filePath = saveDocBase64(base64, mime, staffRow.id, inserted.id);
+    await db
+      .update(staffDocumentsTable)
+      .set({ filePath })
+      .where(eq(staffDocumentsTable.id, inserted.id));
+
+    res.json({
+      id: inserted.id,
+      docType: inserted.docType,
+      label: inserted.label,
+      mimeType: mime,
+      url: docFileUrl(filePath),
+      uploadedAt: inserted.uploadedAt?.toISOString() ?? new Date().toISOString(),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /api/staff/documents
+ * Staff fetches their own documents. Auth via x-staff-phone header.
+ */
+router.get("/staff/documents", async (req, res, next) => {
+  try {
+    const phone = (
+      (req.headers["x-staff-phone"] as string | undefined) ??
+      (req.headers["x-admin-phone"] as string | undefined)
+    )?.trim();
+    if (!phone) {
+      res.status(401).json({ title: "x-staff-phone header required", status: 401 });
+      return;
+    }
+    const [staffRow] = await db
+      .select({ id: staffTable.id, deletedAt: staffTable.deletedAt })
+      .from(staffTable)
+      .where(eq(staffTable.phone, phone))
+      .limit(1);
+    if (!staffRow || staffRow.deletedAt) {
+      res.status(401).json({ title: "Staff not found", status: 401 });
+      return;
+    }
+    const docs = await db
+      .select()
+      .from(staffDocumentsTable)
+      .where(eq(staffDocumentsTable.staffId, staffRow.id))
+      .orderBy(desc(staffDocumentsTable.uploadedAt));
+    res.json(docs.map((d) => ({
+      id: d.id,
+      docType: d.docType,
+      label: d.label,
+      mimeType: d.mimeType,
+      url: docFileUrl(d.filePath),
+      uploadedAt: d.uploadedAt?.toISOString() ?? null,
+    })));
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * DELETE /api/staff/documents/:docId
+ * Staff deletes their own document.
+ */
+router.delete("/staff/documents/:docId", async (req, res, next) => {
+  try {
+    const phone = (
+      (req.headers["x-staff-phone"] as string | undefined) ??
+      (req.headers["x-admin-phone"] as string | undefined)
+    )?.trim();
+    if (!phone) {
+      res.status(401).json({ title: "x-staff-phone header required", status: 401 });
+      return;
+    }
+    const [staffRow] = await db
+      .select({ id: staffTable.id, deletedAt: staffTable.deletedAt })
+      .from(staffTable)
+      .where(eq(staffTable.phone, phone))
+      .limit(1);
+    if (!staffRow || staffRow.deletedAt) {
+      res.status(401).json({ title: "Staff not found", status: 401 });
+      return;
+    }
+    const docId = String(req.params.docId ?? "");
+    const [doc] = await db
+      .select()
+      .from(staffDocumentsTable)
+      .where(and(eq(staffDocumentsTable.id, docId), eq(staffDocumentsTable.staffId, staffRow.id)))
+      .limit(1);
+    if (!doc) {
+      res.status(404).json({ title: "Document not found", status: 404 });
+      return;
+    }
+    try { fs.unlinkSync(doc.filePath); } catch { /* file already gone */ }
+    await db.delete(staffDocumentsTable).where(eq(staffDocumentsTable.id, docId));
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /api/admin/staff/:staffId/documents
+ * Admin fetches documents for a staff member.
+ */
+router.get("/admin/staff/:staffId/documents", requireAdmin, async (req, res, next) => {
+  try {
+    const companyId = res.locals.companyId as string | null;
+    const staffId = String(req.params.staffId ?? "");
+    if (!/^[0-9a-fA-F-]{36}$/.test(staffId)) {
+      res.status(400).json({ title: "Invalid staffId", status: 400 });
+      return;
+    }
+    // Cross-company guard
+    if (companyId) {
+      const [row] = await db.select({ companyId: staffTable.companyId }).from(staffTable).where(eq(staffTable.id, staffId)).limit(1);
+      if (!row || row.companyId !== companyId) {
+        res.status(403).json({ title: "Forbidden", status: 403 });
+        return;
+      }
+    }
+    const docs = await db
+      .select()
+      .from(staffDocumentsTable)
+      .where(eq(staffDocumentsTable.staffId, staffId))
+      .orderBy(desc(staffDocumentsTable.uploadedAt));
+    res.json(docs.map((d) => ({
+      id: d.id,
+      docType: d.docType,
+      label: d.label,
+      mimeType: d.mimeType,
+      url: docFileUrl(d.filePath),
+      uploadedAt: d.uploadedAt?.toISOString() ?? null,
+    })));
   } catch (err) {
     next(err);
   }

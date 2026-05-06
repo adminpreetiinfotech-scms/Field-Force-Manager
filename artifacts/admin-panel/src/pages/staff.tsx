@@ -5,6 +5,7 @@ import {
   useDeactivateStaff,
   useGetStaffProfileStats,
 } from "@workspace/api-client-react";
+import { FileText } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -688,10 +689,97 @@ function monthStartIst(): string {
   return `${ist.getUTCFullYear()}-${String(ist.getUTCMonth() + 1).padStart(2, "0")}-01`;
 }
 
+interface StaffDocItem {
+  id: string;
+  docType: string;
+  label: string;
+  mimeType: string;
+  url: string;
+  uploadedAt: string | null;
+}
+
+const DOC_TYPE_LABELS: Record<string, string> = {
+  aadhaar: "Aadhaar Card",
+  certificate: "Certificate",
+  photo: "Photo",
+  other: "Other",
+};
+
+function StaffDocumentsPanel({ staffId }: { staffId: string }) {
+  const [docs, setDocs] = useState<StaffDocItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [lightbox, setLightbox] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    setLoading(true);
+    adminFetch(`/api/admin/staff/${staffId}/documents`)
+      .then((r) => r.ok ? r.json() : [])
+      .then((data) => setDocs(data as StaffDocItem[]))
+      .catch(() => setDocs([]))
+      .finally(() => setLoading(false));
+  }, [staffId]);
+
+  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+
+  if (docs.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
+        <FileText className="h-8 w-8 opacity-40" />
+        <p className="text-sm">No documents uploaded yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {lightbox && (
+        <div className="fixed inset-0 z-[200] bg-black/80 flex items-center justify-center" onClick={() => setLightbox(null)}>
+          <img src={lightbox} alt="Document" className="max-w-[90vw] max-h-[90vh] rounded-lg shadow-2xl object-contain" onClick={(e) => e.stopPropagation()} />
+          <button className="absolute top-4 right-4 text-white" onClick={() => setLightbox(null)}><XIcon className="h-6 w-6" /></button>
+        </div>
+      )}
+      {docs.map((doc) => (
+        <div key={doc.id} className="flex items-center gap-3 p-3 border rounded-lg bg-muted/30 hover:bg-muted/60 transition-colors">
+          <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <FileText className="h-4 w-4 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold truncate">{doc.label}</p>
+            <p className="text-xs text-muted-foreground">
+              {DOC_TYPE_LABELS[doc.docType] ?? doc.docType}
+              {doc.uploadedAt ? ` · ${format(new Date(doc.uploadedAt), "dd MMM yyyy")}` : ""}
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <button
+              title="Preview"
+              onClick={() => setLightbox(doc.url)}
+              className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Eye className="h-3.5 w-3.5" />
+            </button>
+            <a
+              href={doc.url}
+              download={doc.label}
+              title="Download"
+              className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => toast({ title: "Downloading…", description: doc.label })}
+            >
+              <Download className="h-3.5 w-3.5" />
+            </a>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ViewProfileDialog({ staff, onClose }: { staff: StaffMember; onClose: () => void }) {
   const { data: stats, isLoading } = useGetStaffProfileStats(staff.id);
   const [lightboxUri, setLightboxUri] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [profileTab, setProfileTab] = useState<"performance" | "documents">("performance");
   const { toast } = useToast();
 
   const downloadAttendance = async () => {
@@ -802,8 +890,29 @@ function ViewProfileDialog({ staff, onClose }: { staff: StaffMember; onClose: ()
             )}
           </div>
 
+          {/* Tab switcher: Performance / Documents */}
+          <div className="flex border-b gap-4 text-sm">
+            <button
+              onClick={() => setProfileTab("performance")}
+              className={`pb-2 font-semibold border-b-2 transition-colors ${profileTab === "performance" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            >
+              <span className="flex items-center gap-1.5"><Activity className="h-3.5 w-3.5" />Performance</span>
+            </button>
+            <button
+              onClick={() => setProfileTab("documents")}
+              className={`pb-2 font-semibold border-b-2 transition-colors ${profileTab === "documents" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            >
+              <span className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5" />Documents</span>
+            </button>
+          </div>
+
+          {/* Documents Tab */}
+          {profileTab === "documents" && (
+            <StaffDocumentsPanel staffId={staff.id} />
+          )}
+
           {/* Performance Stats */}
-          <div>
+          {profileTab === "performance" && <div>
             <div className="flex items-center gap-2 mb-2">
               <Activity className="h-4 w-4 text-muted-foreground" />
               <h4 className="text-sm font-semibold">Field Performance</h4>
@@ -927,7 +1036,7 @@ function ViewProfileDialog({ staff, onClose }: { staff: StaffMember; onClose: ()
             ) : (
               <p className="text-sm text-muted-foreground text-center py-4">No activity data available yet.</p>
             )}
-          </div>
+          </div>}
         </div>
 
         <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
