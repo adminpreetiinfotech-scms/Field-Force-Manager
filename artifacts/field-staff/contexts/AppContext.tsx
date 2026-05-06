@@ -867,6 +867,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   void _resolveDemoUser; // suppress unused-variable warning
 
   const signOut = useCallback(async () => {
+    await AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
     setState((s) => ({ ...s, user: null, pendingPhone: null, pendingCompanyName: null, activeTripId: null }));
   }, []);
 
