@@ -230,7 +230,7 @@ export default function Reports() {
 
   // Delivery history state
   const [deliveryHistory, setDeliveryHistory] = useState<DeliveryLogEntry[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [historyTotal, setHistoryTotal] = useState(0);
   const [historyOffset, setHistoryOffset] = useState(0);
   const [historyLoadingMore, setHistoryLoadingMore] = useState(false);
