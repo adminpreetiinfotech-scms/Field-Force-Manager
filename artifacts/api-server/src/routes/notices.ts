@@ -96,7 +96,22 @@ router.post("/notices/admin/create", requireAdmin, async (req, res, next) => {
     let recipientIds: string[] = [];
 
     if (targetType === "specific" && Array.isArray(targetStaffIds) && targetStaffIds.length > 0) {
-      recipientIds = targetStaffIds;
+      // Guard: verify all provided staffIds belong to this company (prevents cross-company targeting)
+      if (companyId) {
+        const validStaff = await db
+          .select({ id: staffTable.id })
+          .from(staffTable)
+          .where(
+            and(
+              inArray(staffTable.id, targetStaffIds),
+              eq(staffTable.companyId, companyId),
+              isNull(staffTable.deletedAt),
+            ),
+          );
+        recipientIds = validStaff.map((s) => s.id);
+      } else {
+        recipientIds = targetStaffIds; // super_admin can target any staff
+      }
     } else {
       // All active, non-deleted staff scoped to this company (if company admin)
       const allStaff = await db
@@ -186,6 +201,38 @@ router.get("/notices/admin/list", requireAdmin, async (req, res, next) => {
       .orderBy(desc(noticesTable.createdAt));
 
     res.json({ notices });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// ─── GET /api/notices/admin/staff-list  (for targeting) ──────────────────────
+// IMPORTANT: must be defined BEFORE /notices/admin/:id to avoid route shadowing
+
+router.get("/notices/admin/staff-list", requireAdmin, async (req, res, next) => {
+  try {
+    const companyId = res.locals.companyId as string | null;
+    const staff = await db
+      .select({
+        id: staffTable.id,
+        name: staffTable.name,
+        phone: staffTable.phone,
+        empCode: staffTable.empCode,
+        area: staffTable.area,
+      })
+      .from(staffTable)
+      .where(
+        and(
+          isNull(staffTable.deletedAt),
+          isNull(staffTable.disabledAt),
+          eq(staffTable.approvalStatus, "approved"),
+          eq(staffTable.role, "staff"),
+          // Scope to caller's company (super_admin sees all)
+          companyId ? eq(staffTable.companyId, companyId) : undefined,
+        ),
+      )
+      .orderBy(staffTable.name);
+    res.json({ staff });
   } catch (e) {
     next(e);
   }
@@ -401,34 +448,6 @@ router.post("/notices/:id/read", async (req, res, next) => {
       );
 
     res.json({ ok: true });
-  } catch (e) {
-    next(e);
-  }
-});
-
-// ─── GET /api/notices/admin/staff-list  (for targeting) ──────────────────────
-
-router.get("/notices/admin/staff-list", requireAdmin, async (req, res, next) => {
-  try {
-    const staff = await db
-      .select({
-        id: staffTable.id,
-        name: staffTable.name,
-        phone: staffTable.phone,
-        empCode: staffTable.empCode,
-        area: staffTable.area,
-      })
-      .from(staffTable)
-      .where(
-        and(
-          isNull(staffTable.deletedAt),
-          isNull(staffTable.disabledAt),
-          eq(staffTable.approvalStatus, "approved"),
-          eq(staffTable.role, "staff"),
-        ),
-      )
-      .orderBy(staffTable.name);
-    res.json({ staff });
   } catch (e) {
     next(e);
   }
