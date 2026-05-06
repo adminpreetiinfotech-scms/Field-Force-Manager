@@ -82,6 +82,7 @@ interface CenterSearchResult {
   companyId: string;
   companyName: string;
   projectName: string | null;
+  courses: string[];
 }
 
 const API_BASE =
