@@ -66,6 +66,7 @@ function StaffCard({
   onDisable,
   onDelete,
   onViewRoute,
+  onResetMpin,
 }: {
   member: StaffMember;
   colors: ReturnType<typeof useColors>;
@@ -74,6 +75,7 @@ function StaffCard({
   onDisable: (id: string, name: string, disabled: boolean) => void;
   onDelete: (id: string, name: string) => void;
   onViewRoute: (id: string) => void;
+  onResetMpin: (id: string, name: string) => void;
 }) {
   const cfg = getStatusConfig(member);
   const isPending = member.approvalStatus === "pending" && !member.disabledAt;
@@ -156,6 +158,17 @@ function StaffCard({
             </Text>
           </TouchableOpacity>
         )}
+        {(isActive || !!member.disabledAt) && (
+          <TouchableOpacity
+            style={[ss.actionBtn, { backgroundColor: "#FEF3C7" }]}
+            onPress={() => onResetMpin(member.id, member.name)}
+          >
+            <Feather name="key" size={14} color="#D97706" />
+            <Text style={[ss.actionTxt, { color: "#D97706" }]}>
+              Reset MPIN
+            </Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity
           style={[ss.actionBtn, { backgroundColor: colors.muted }]}
           onPress={() =>
@@ -203,6 +216,11 @@ export default function AdminStaffScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [downloading, setDownloading] = useState(false);
+
+  // Reset MPIN modal state
+  const [resetMpinModal, setResetMpinModal] = useState<{ id: string; name: string } | null>(null);
+  const [newMpin, setNewMpin] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
 
   const handleDownload = async () => {
     if (!user) return;
@@ -353,6 +371,34 @@ export default function AdminStaffScreen() {
     router.push(`/route/${id}` as any);
   };
 
+  const handleResetMpin = (id: string, name: string) => {
+    setNewMpin("");
+    setResetMpinModal({ id, name });
+  };
+
+  const confirmResetMpin = async () => {
+    if (!resetMpinModal || !user) return;
+    if (!/^\d{4,6}$/.test(newMpin.trim())) {
+      Alert.alert("Validation", "MPIN 4 se 6 digits ka hona chahiye.");
+      return;
+    }
+    setResetLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/staff/${resetMpinModal.id}/reset-mpin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-phone": user.phone },
+        body: JSON.stringify({ newMpin: newMpin.trim() }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setResetMpinModal(null);
+      Alert.alert("✅ MPIN Reset", `${resetMpinModal.name} ka naya MPIN set ho gaya.\nUnhe bata dein: ${newMpin.trim()}`);
+    } catch {
+      Alert.alert("Error", "MPIN reset nahi ho saka. Dobara try karein.");
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   const filtered = staffList.filter((s) => {
     const q = search.toLowerCase();
     const matchesSearch =
@@ -374,6 +420,60 @@ export default function AdminStaffScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
+
+      {/* ── Reset MPIN Modal ─────────────────────────────────────────── */}
+      <Modal
+        visible={!!resetMpinModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setResetMpinModal(null)}
+      >
+        <View style={ss.modalOverlay}>
+          <View style={[ss.modalBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={[ss.modalIconWrap, { backgroundColor: "#FEF3C7" }]}>
+              <Feather name="key" size={22} color="#D97706" />
+            </View>
+            <Text style={[ss.modalTitle, { color: colors.foreground }]}>
+              MPIN Reset
+            </Text>
+            <Text style={[ss.modalSub, { color: colors.mutedForeground }]}>
+              {resetMpinModal?.name} ke liye naya MPIN set karein
+            </Text>
+            <TextInput
+              value={newMpin}
+              onChangeText={(t) => setNewMpin(t.replace(/\D/g, "").slice(0, 6))}
+              placeholder="Naya MPIN (4–6 digits)"
+              placeholderTextColor={colors.mutedForeground}
+              keyboardType="number-pad"
+              maxLength={6}
+              secureTextEntry
+              style={[ss.mpinInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.muted }]}
+            />
+            <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 4 }}>
+              Reset ke baad staff ko yeh MPIN bata dein
+            </Text>
+            <View style={ss.modalBtns}>
+              <TouchableOpacity
+                style={[ss.modalBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+                onPress={() => setResetMpinModal(null)}
+                disabled={resetLoading}
+              >
+                <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[ss.modalBtn, { backgroundColor: "#D97706", opacity: resetLoading ? 0.7 : 1 }]}
+                onPress={() => { void confirmResetMpin(); }}
+                disabled={resetLoading}
+              >
+                {resetLoading
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 14 }}>Set MPIN</Text>
+                }
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
       <View
         style={{
           paddingTop: insets.top + 12 + webTop,
@@ -520,6 +620,7 @@ export default function AdminStaffScreen() {
               onDisable={handleDisable}
               onDelete={handleDelete}
               onViewRoute={handleViewRoute}
+              onResetMpin={handleResetMpin}
             />
           ))
         )}
@@ -600,4 +701,56 @@ const ss = StyleSheet.create({
   actionTxt: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
   emptyBox: { alignItems: "center", paddingTop: 60, gap: 12 },
   emptyTxt: { fontSize: 14, fontFamily: "Inter_500Medium" },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+  },
+  modalBox: {
+    width: "100%",
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 24,
+    alignItems: "center",
+    gap: 10,
+  },
+  modalIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  modalTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  modalSub: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center" },
+  mpinInput: {
+    width: "100%",
+    height: 50,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    paddingHorizontal: 16,
+    fontSize: 20,
+    fontFamily: "Inter_700Bold",
+    textAlign: "center",
+    letterSpacing: 8,
+    marginTop: 4,
+  },
+  modalBtns: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 8,
+    width: "100%",
+  },
+  modalBtn: {
+    flex: 1,
+    height: 46,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "transparent",
+  },
 });

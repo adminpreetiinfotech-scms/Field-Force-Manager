@@ -12,6 +12,13 @@ import { and, count, desc, eq, gte, inArray, isNotNull, isNull, lt, ne, or, sql 
 import ExcelJS from "exceljs";
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { isValidUUID } from "../lib/validation";
+import crypto from "node:crypto";
+
+function hashMpinAdmin(mpin: string): string {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const hash = crypto.scryptSync(mpin, salt, 64).toString("hex");
+  return `${salt}:${hash}`;
+}
 
 const PURPLE    = "FF4F46E5";
 const PURPLE_DK = "FF3730A3";
@@ -563,6 +570,47 @@ router.patch("/admin/staff/:id/enable", requireAdmin, async (req, res, next) => 
 
     req.log.info({ staffId: id }, "Staff enabled");
     res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── POST /api/admin/staff/:id/reset-mpin ────────────────────────────────────
+// Admin sets a new MPIN for any staff in their company.
+// Body: { newMpin: "4–6 digits" }
+
+router.post("/admin/staff/:id/reset-mpin", requireAdmin, async (req, res, next) => {
+  try {
+    const { id } = req.params as { id: string };
+    if (!isValidUUID(id)) {
+      res.status(400).json({ title: "Invalid id", detail: "Expected uuid", status: 400 });
+      return;
+    }
+    const companyId = res.locals.companyId as string | null;
+    const { newMpin } = req.body as { newMpin?: string };
+    if (!newMpin || !/^\d{4,6}$/.test(newMpin.trim())) {
+      res.status(400).json({ title: "Invalid MPIN", detail: "newMpin must be 4–6 digits", status: 400 });
+      return;
+    }
+
+    const filter = companyId
+      ? and(eq(staffTable.id, id), eq(staffTable.companyId, companyId), isNull(staffTable.deletedAt))
+      : and(eq(staffTable.id, id), isNull(staffTable.deletedAt));
+
+    const [row] = await db.select({ id: staffTable.id, name: staffTable.name, phone: staffTable.phone })
+      .from(staffTable).where(filter).limit(1);
+    if (!row) {
+      res.status(404).json({ title: "Staff not found", status: 404 });
+      return;
+    }
+
+    const mpinHash = hashMpinAdmin(newMpin.trim());
+    await db.update(staffTable)
+      .set({ mpinHash, failedMpinAttempts: 0, mpinBlockedUntil: null })
+      .where(eq(staffTable.id, id));
+
+    req.log.info({ staffId: id, adminPhone: res.locals.adminPhone }, "Staff MPIN reset by admin");
+    res.json({ success: true, phone: row.phone });
   } catch (err) {
     next(err);
   }
