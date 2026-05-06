@@ -73,7 +73,7 @@ export default function StaffProfile() {
         style: "destructive",
         onPress: async () => {
           await signOut();
-          router.replace("/(auth)/phone");
+          router.replace("/(auth)/welcome");
         },
       },
     ]);
