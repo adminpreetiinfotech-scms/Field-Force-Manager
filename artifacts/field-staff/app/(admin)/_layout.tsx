@@ -150,6 +150,10 @@ export default function AdminTabsLayout() {
         options={{ href: null, headerShown: false }}
       />
       <Tabs.Screen
+        name="attendance-control"
+        options={{ href: null, headerShown: false }}
+      />
+      <Tabs.Screen
         name="mobilizer/[id]"
         options={{ href: null, headerShown: false }}
       />

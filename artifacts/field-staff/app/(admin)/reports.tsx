@@ -1,4 +1,6 @@
 import { Feather } from "@expo/vector-icons";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
 import { useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
@@ -1725,6 +1727,25 @@ export default function ReportsScreen() {
             <EmptyState icon="alert-circle" title="Could not load KM data" onRetry={() => fetchKmSummary(kmDate)} colors={colors} isError />
           )}
         </View>
+
+        {/* ── Divider ───────────────────────────────────────────────────────── */}
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {/* SECTION 5 — MONTHLY ATTENDANCE REPORT                             */}
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        <View style={[styles.sectionGroup, { paddingTop: 20 }]}>
+          <View style={styles.sectionTitleRow}>
+            <View style={[styles.sectionTitleIcon, { backgroundColor: "#6366F122", borderRadius: 8 }]}>
+              <Feather name="bar-chart" size={15} color="#6366F1" />
+            </View>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              Monthly Attendance Report
+            </Text>
+          </View>
+
+          <MonthlyReportSection colors={colors} adminPhone={user?.phone ?? ""} />
+        </View>
       </ScrollView>
 
       <AdminTripRouteModal
@@ -2464,6 +2485,254 @@ function EmptyState({
   );
 }
 
+// ─── Monthly Report Section ───────────────────────────────────────────────────
+
+type MonthlyAttRow = {
+  staffId: string;
+  staffName: string;
+  empCode: string | null;
+  phone: string | null;
+  staffCategory: string | null;
+  presentDays: number;
+  lateDays: number;
+  absentDays: number;
+  leaveDays: number;
+  avgCheckin: string | null;
+  avgCheckout: string | null;
+  totalGpsKm: number;
+  casualUsed: number;
+  casualBalance: number;
+  sickUsed: number;
+  sickBalance: number;
+};
+
+function MonthlyReportSection({
+  colors,
+  adminPhone,
+}: {
+  colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
+  adminPhone: string;
+}) {
+  const now = new Date();
+  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [rows, setRows] = useState<MonthlyAttRow[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const [xlDownloading, setXlDownloading] = useState(false);
+
+  const base = getApiBase();
+
+  const fetchReport = useCallback(async (y: number, m: number) => {
+    setLoading(true);
+    setError(false);
+    try {
+      const resp = await fetch(`${base}/api/admin/reports/monthly-attendance?year=${y}&month=${m}`, {
+        headers: { "x-admin-phone": adminPhone },
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      setRows(await resp.json());
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [base, adminPhone]);
+
+  React.useEffect(() => { fetchReport(year, month); }, [year, month, fetchReport]);
+
+  function navigateMonth(delta: number) {
+    let m = month + delta;
+    let y = year;
+    if (m < 1) { m = 12; y--; }
+    if (m > 12) { m = 1; y++; }
+    setMonth(m);
+    setYear(y);
+  }
+
+  const onDownloadXlsx = useCallback(async () => {
+    setXlDownloading(true);
+    try {
+      const url = `${base}/api/admin/reports/monthly-attendance/xlsx?year=${year}&month=${month}`;
+      const fname = `monthly-attendance-${year}-${String(month).padStart(2, "0")}.xlsx`;
+      const fileUri = (FileSystem.documentDirectory ?? "") + fname;
+      const dl = await FileSystem.downloadAsync(url, fileUri, {
+        headers: { "x-admin-phone": adminPhone },
+      });
+      if (dl.status !== 200) throw new Error(`HTTP ${dl.status}`);
+      await Sharing.shareAsync(dl.uri, {
+        mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        dialogTitle: "Save Monthly Attendance Report",
+      });
+    } catch (e: any) {
+      Alert.alert("Download Failed", e?.message || "Could not download report.");
+    } finally {
+      setXlDownloading(false);
+    }
+  }, [base, year, month, adminPhone]);
+
+  return (
+    <View>
+      {/* Month navigator */}
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+        <Pressable
+          onPress={() => navigateMonth(-1)}
+          style={({ pressed }) => ({ backgroundColor: colors.muted, borderRadius: colors.radius, padding: 8, opacity: pressed ? 0.7 : 1 })}
+          hitSlop={8}
+        >
+          <Feather name="chevron-left" size={18} color={colors.foreground} />
+        </Pressable>
+        <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: colors.foreground, letterSpacing: -0.2 }}>
+          {MONTH_NAMES[month - 1]} {year}
+        </Text>
+        <Pressable
+          onPress={() => navigateMonth(1)}
+          style={({ pressed }) => ({ backgroundColor: colors.muted, borderRadius: colors.radius, padding: 8, opacity: pressed ? 0.7 : 1 })}
+          hitSlop={8}
+        >
+          <Feather name="chevron-right" size={18} color={colors.foreground} />
+        </Pressable>
+      </View>
+
+      {/* Download button */}
+      <Pressable
+        onPress={onDownloadXlsx}
+        disabled={xlDownloading || loading}
+        style={({ pressed }) => [styles.exportBtn, { backgroundColor: "#6366F1", borderRadius: colors.radius, marginBottom: 14, opacity: pressed || xlDownloading ? 0.75 : 1, alignSelf: "flex-end" }]}
+      >
+        {xlDownloading ? <ActivityIndicator size="small" color="#fff" /> : <Feather name="download" size={15} color="#fff" />}
+        <Text style={[styles.exportBtnText, { color: "#fff" }]}>
+          {xlDownloading ? "Downloading…" : "Download Excel"}
+        </Text>
+      </Pressable>
+
+      {/* Loading */}
+      {loading && (
+        <View style={{ paddingVertical: 32, alignItems: "center" }}>
+          <ActivityIndicator color="#6366F1" />
+          <Text style={{ color: colors.mutedForeground, fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 10 }}>
+            Building report…
+          </Text>
+        </View>
+      )}
+
+      {/* Error */}
+      {error && !loading && (
+        <Pressable
+          onPress={() => fetchReport(year, month)}
+          style={[styles.retryBtn, { backgroundColor: colors.muted, borderColor: colors.border, borderRadius: colors.radius, alignSelf: "center" }]}
+        >
+          <Feather name="refresh-cw" size={14} color={colors.foreground} />
+          <Text style={[styles.retryText, { color: colors.foreground }]}>Retry</Text>
+        </Pressable>
+      )}
+
+      {/* Summary strip */}
+      {!loading && rows && rows.length > 0 && (() => {
+        const totalPresent = rows.reduce((s, r) => s + r.presentDays, 0);
+        const totalLate    = rows.reduce((s, r) => s + r.lateDays,    0);
+        const totalAbsent  = rows.reduce((s, r) => s + r.absentDays,  0);
+        const totalLeave   = rows.reduce((s, r) => s + r.leaveDays,   0);
+        return (
+          <View style={{ flexDirection: "row", backgroundColor: colors.muted, borderRadius: colors.radius, padding: 12, marginBottom: 14, gap: 4 }}>
+            {[
+              { label: "Present", value: totalPresent, color: "#16A34A" },
+              { label: "Late",    value: totalLate,    color: "#D97706" },
+              { label: "Absent",  value: totalAbsent,  color: "#DC2626" },
+              { label: "Leave",   value: totalLeave,   color: "#6366F1" },
+            ].map((s, i) => (
+              <React.Fragment key={s.label}>
+                {i > 0 && <View style={{ width: StyleSheet.hairlineWidth, backgroundColor: colors.border }} />}
+                <View style={{ flex: 1, alignItems: "center" }}>
+                  <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: s.color }}>{s.value}</Text>
+                  <Text style={{ fontSize: 10, fontFamily: "Inter_500Medium", color: colors.mutedForeground }}>{s.label}</Text>
+                </View>
+              </React.Fragment>
+            ))}
+          </View>
+        );
+      })()}
+
+      {/* Per-staff cards */}
+      {!loading && rows && rows.map((r) => (
+        <View
+          key={r.staffId}
+          style={[styles.kmCard, { backgroundColor: colors.card, borderColor: colors.border, borderRadius: colors.radius + 2 }]}
+        >
+          {/* Header row */}
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: colors.foreground }} numberOfLines={1}>
+                {r.staffName}
+              </Text>
+              <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 1 }}>
+                {r.empCode} · {r.staffCategory === "center" ? "Center" : "Field"}
+              </Text>
+            </View>
+            <View style={{ flexDirection: "row", gap: 6 }}>
+              <View style={{ backgroundColor: "#D1FAE5", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
+                <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#166534" }}>{r.presentDays}P</Text>
+              </View>
+              {r.lateDays > 0 && (
+                <View style={{ backgroundColor: "#FEF3C7", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
+                  <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#B45309" }}>{r.lateDays}L</Text>
+                </View>
+              )}
+              {r.absentDays > 0 && (
+                <View style={{ backgroundColor: "#FEE2E2", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
+                  <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: "#B91C1C" }}>{r.absentDays}A</Text>
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Stats row */}
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <View style={{ flex: 1, backgroundColor: colors.muted, borderRadius: 8, padding: 8 }}>
+              <Text style={{ fontSize: 10, fontFamily: "Inter_500Medium", color: colors.mutedForeground }}>Check-In</Text>
+              <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.foreground, marginTop: 2 }}>
+                {r.avgCheckin ?? "—"}
+              </Text>
+              <Text style={{ fontSize: 9, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>avg</Text>
+            </View>
+            <View style={{ flex: 1, backgroundColor: colors.muted, borderRadius: 8, padding: 8 }}>
+              <Text style={{ fontSize: 10, fontFamily: "Inter_500Medium", color: colors.mutedForeground }}>Check-Out</Text>
+              <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.foreground, marginTop: 2 }}>
+                {r.avgCheckout ?? "—"}
+              </Text>
+              <Text style={{ fontSize: 9, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>avg</Text>
+            </View>
+            <View style={{ flex: 1, backgroundColor: colors.muted, borderRadius: 8, padding: 8 }}>
+              <Text style={{ fontSize: 10, fontFamily: "Inter_500Medium", color: colors.mutedForeground }}>GPS KM</Text>
+              <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.foreground, marginTop: 2 }}>
+                {r.totalGpsKm > 0 ? `${r.totalGpsKm}` : "—"}
+              </Text>
+              <Text style={{ fontSize: 9, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>total</Text>
+            </View>
+            <View style={{ flex: 1, backgroundColor: colors.muted, borderRadius: 8, padding: 8 }}>
+              <Text style={{ fontSize: 10, fontFamily: "Inter_500Medium", color: colors.mutedForeground }}>Leave Bal</Text>
+              <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#6366F1", marginTop: 2 }}>
+                {r.casualBalance}C {r.sickBalance}S
+              </Text>
+              <Text style={{ fontSize: 9, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>remaining</Text>
+            </View>
+          </View>
+        </View>
+      ))}
+
+      {/* Empty state */}
+      {!loading && !error && rows?.length === 0 && (
+        <View style={{ alignItems: "center", paddingVertical: 32, gap: 8 }}>
+          <Feather name="inbox" size={28} color={colors.mutedForeground} />
+          <Text style={{ fontSize: 14, fontFamily: "Inter_500Medium", color: colors.mutedForeground }}>
+            No staff data for this month
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
@@ -2903,5 +3172,10 @@ const styles = StyleSheet.create({
   calLegendBox: {
     width: 14,
     height: 14,
+  },
+  kmCard: {
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 10,
   },
 });

@@ -12,6 +12,7 @@ import companiesRouter from "./companies";
 import superAdminRouter from "./super-admin";
 import reportScheduleRouter from "./report-schedule";
 import leavesRouter from "./leaves";
+import attendanceControlRouter from "./attendance-control";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(reportsRouter);
 router.use(noticesRouter);
 router.use(reportScheduleRouter);
 router.use(leavesRouter);
+router.use(attendanceControlRouter);
 
 export default router;

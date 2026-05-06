@@ -440,6 +440,9 @@ export default function AdminDashboard() {
           {/* ── Leave & Holidays ──────────────────────────────────── */}
           <LeaveHolidaysCard />
 
+          {/* ── Attendance Control ────────────────────────────────── */}
+          <AttendanceControlCard />
+
           {/* Live activity */}
           <View
             style={[
@@ -1102,6 +1105,91 @@ function CenterStaffAttendanceCard() {
           ))}
         </View>
       ) : null}
+    </View>
+  );
+}
+
+// ─── Attendance Control Quick-Access Card ─────────────────────────────────────
+
+function AttendanceControlCard() {
+  const colors = useColors();
+  const [shiftInfo, setShiftInfo] = useState<{ fieldShiftStart: string; centerShiftStart: string; lateGraceMinutes: number } | null>(null);
+  const { user } = useApp();
+
+  useEffect(() => {
+    if (!user?.phone) return;
+    let mounted = true;
+    fetch(`${API_BASE}/api/admin/attendance-settings`, { headers: { "x-admin-phone": user.phone } })
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (mounted && d) setShiftInfo(d); })
+      .catch(() => {});
+    return () => { mounted = false; };
+  }, [user?.phone]);
+
+  return (
+    <View
+      style={[
+        styles.section,
+        {
+          backgroundColor: colors.card,
+          borderColor: "#6366F133",
+          borderRadius: colors.radius + 4,
+        },
+      ]}
+    >
+      <View style={[styles.sectionHeader, { marginBottom: 12 }]}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <View style={{ backgroundColor: "#6366F118", borderRadius: 8, padding: 5 }}>
+            <Feather name="sliders" size={14} color="#6366F1" />
+          </View>
+          <View>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              Attendance Control
+            </Text>
+            <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
+              Shift timings, late rules & corrections
+            </Text>
+          </View>
+        </View>
+        <Pressable onPress={() => router.push("/(admin)/attendance-control" as never)} hitSlop={8}>
+          <Text style={{ color: colors.primary, fontSize: 12, fontFamily: "Inter_600SemiBold" }}>
+            Manage →
+          </Text>
+        </Pressable>
+      </View>
+
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        <Pressable
+          onPress={() => router.push("/(admin)/attendance-control" as never)}
+          style={({ pressed }) => ({ flex: 1, backgroundColor: "#EEF2FF", borderRadius: 10, padding: 10, opacity: pressed ? 0.8 : 1 })}
+        >
+          <Text style={{ color: "#6366F1", fontSize: 10, fontFamily: "Inter_500Medium" }}>Field Shift</Text>
+          <Text style={{ color: "#4F46E5", fontSize: 13, fontFamily: "Inter_700Bold", marginTop: 2 }}>
+            {shiftInfo?.fieldShiftStart ?? "09:00"}
+          </Text>
+          <Text style={{ color: "#6366F1", fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 1 }}>start time</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => router.push("/(admin)/attendance-control" as never)}
+          style={({ pressed }) => ({ flex: 1, backgroundColor: "#F0FDF4", borderRadius: 10, padding: 10, opacity: pressed ? 0.8 : 1 })}
+        >
+          <Text style={{ color: "#059669", fontSize: 10, fontFamily: "Inter_500Medium" }}>Center Shift</Text>
+          <Text style={{ color: "#047857", fontSize: 13, fontFamily: "Inter_700Bold", marginTop: 2 }}>
+            {shiftInfo?.centerShiftStart ?? "09:00"}
+          </Text>
+          <Text style={{ color: "#059669", fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 1 }}>start time</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => router.push("/(admin)/attendance-control" as never)}
+          style={({ pressed }) => ({ flex: 1, backgroundColor: "#FFFBEB", borderRadius: 10, padding: 10, opacity: pressed ? 0.8 : 1 })}
+        >
+          <Text style={{ color: "#D97706", fontSize: 10, fontFamily: "Inter_500Medium" }}>Late Grace</Text>
+          <Text style={{ color: "#B45309", fontSize: 13, fontFamily: "Inter_700Bold", marginTop: 2 }}>
+            {shiftInfo?.lateGraceMinutes ?? 15} min
+          </Text>
+          <Text style={{ color: "#D97706", fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 1 }}>grace period</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }

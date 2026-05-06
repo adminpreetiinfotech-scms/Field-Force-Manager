@@ -7,3 +7,4 @@ export * from "./otps";
 export * from "./notices";
 export * from "./report-schedules";
 export * from "./leaves";
+export * from "./attendance-corrections";

@@ -39,6 +39,16 @@ export const companiesTable = pgTable("companies", {
   centerLng: doublePrecision("center_lng"),
   /** Geo-fence: radius in meters within which center staff check-in is valid (default 200m). */
   centerRadiusMeters: integer("center_radius_meters").default(200),
+  /** Shift start time for field staff (HH:MM, IST, default 09:00). */
+  fieldShiftStart: text("field_shift_start").default("09:00"),
+  /** Shift end time for field staff (HH:MM, IST, default 18:00). */
+  fieldShiftEnd: text("field_shift_end").default("18:00"),
+  /** Shift start time for center staff (HH:MM, IST, default 09:00). */
+  centerShiftStart: text("center_shift_start").default("09:00"),
+  /** Shift end time for center staff (HH:MM, IST, default 18:00). */
+  centerShiftEnd: text("center_shift_end").default("18:00"),
+  /** Grace period in minutes after shift start before check-in is marked late (default 15). */
+  lateGraceMinutes: integer("late_grace_minutes").default(15),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
