@@ -62,7 +62,7 @@ const GROUND_ROLES = [
   "Other Staff",
 ];
 
-const TRAINER_ROLES = ["Trainer", "IT Trainer", "Soft Skills Trainer"];
+const TRAINER_ROLES = ["Trainer"];
 
 interface Center {
   id: string;
