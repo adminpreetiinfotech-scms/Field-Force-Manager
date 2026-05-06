@@ -21,3 +21,14 @@ run = "pnpm --filter @workspace/field-staff run dev"
 [services.env]
 PORT = "24426"
 BASE_PATH = "/"
+
+[services.production]
+run = ["node", "artifacts/field-staff/server/serve.js"]
+
+[services.production.env]
+PORT = "24426"
+NODE_ENV = "production"
+BASE_PATH = "/"
+
+[services.production.health.startup]
+path = "/status"
