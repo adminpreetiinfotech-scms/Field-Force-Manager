@@ -62,6 +62,8 @@ const GROUND_ROLES = [
   "Other Staff",
 ];
 
+const TRAINER_ROLES = ["Trainer", "IT Trainer", "Soft Skills Trainer"];
+
 interface Center {
   id: string;
   name: string;
@@ -445,6 +447,7 @@ export default function RegisterStaffScreen() {
                   onPress={() => {
                     setStaffCategoryGroup("academic");
                     setCenterStaffRole("");
+                    setTrainerCourse("");
                     setShowRolePicker(false);
                   }}
                   style={[
@@ -485,6 +488,7 @@ export default function RegisterStaffScreen() {
                   onPress={() => {
                     setStaffCategoryGroup("ground");
                     setCenterStaffRole("");
+                    setTrainerCourse("");
                     setShowRolePicker(false);
                   }}
                   style={[
@@ -571,6 +575,7 @@ export default function RegisterStaffScreen() {
                             onPress={() => {
                               setCenterStaffRole(role);
                               setDesignation(role);
+                              if (!TRAINER_ROLES.includes(role)) setTrainerCourse("");
                               setShowRolePicker(false);
                             }}
                             style={({ pressed }) => [
@@ -835,8 +840,9 @@ export default function RegisterStaffScreen() {
 
           </View>
 
-          {/* ── Section: Course (center staff only, shown after center selected) ── */}
-          {staffCategory === "center" && selectedCenterResult && (
+          {/* ── Section: Course (center staff only, trainer designation, shown after center selected) ── */}
+          {staffCategory === "center" && selectedCenterResult &&
+            staffCategoryGroup === "academic" && TRAINER_ROLES.includes(centerStaffRole) && (
             <>
               <SectionHeader label="COURSE / SUBJECT" colors={colors} />
               <View style={[styles.form]}>
