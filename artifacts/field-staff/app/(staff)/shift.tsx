@@ -20,6 +20,7 @@ import {
 } from "react-native";
 import { KmDayDetailSheet, ReportStatBox, getApiBase } from "@/components/KmDayDetailSheet";
 import { CenterAttendanceScreen } from "@/components/CenterAttendanceScreen";
+import { CompanyBrand } from "@/components/CompanyBrand";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
@@ -327,6 +328,22 @@ export default function StaffHome() {
               </View>
             </View>
           </View>
+
+          {/* ── Company Logo Strip ──────────────────────────────── */}
+          {(user?.companyLogoUrl || user?.companyName) && (
+            <View style={{ marginTop: 10, marginBottom: 2 }}>
+              <CompanyBrand
+                companyName={user?.companyName || user?.organization}
+                companyLogoUrl={user?.companyLogoUrl}
+                schemeName={user?.companySchemeName || user?.projectName}
+                size="sm"
+                centered={false}
+                nameColor="#FFFFFF"
+                schemeColor="rgba(255,255,255,0.65)"
+                logoBackground="rgba(255,255,255,0.15)"
+              />
+            </View>
+          )}
 
           <ReportContextBar
             organization={user?.companyName || user?.centerName || user?.organization}

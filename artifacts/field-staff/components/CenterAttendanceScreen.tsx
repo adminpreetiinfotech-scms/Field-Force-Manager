@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { CompanyBrand } from "@/components/CompanyBrand";
 import { NotifBell } from "@/components/NoticePopup";
 import { AttendanceRecord, GeoPoint, useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
@@ -212,6 +213,22 @@ export function CenterAttendanceScreen() {
               </View>
             </View>
           </View>
+
+          {/* ── Company Logo Strip ──────────────────────────────── */}
+          {(user?.companyLogoUrl || user?.companyName) && (
+            <View style={{ marginTop: 10, marginBottom: 2 }}>
+              <CompanyBrand
+                companyName={user?.companyName || user?.organization}
+                companyLogoUrl={user?.companyLogoUrl}
+                schemeName={user?.companySchemeName || user?.projectName}
+                size="sm"
+                centered={false}
+                nameColor="#FFFFFF"
+                schemeColor="rgba(255,255,255,0.65)"
+                logoBackground="rgba(255,255,255,0.15)"
+              />
+            </View>
+          )}
 
           {/* Geo-fence banner */}
           <View style={{ marginTop: 14, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: geofenceBg }}>
