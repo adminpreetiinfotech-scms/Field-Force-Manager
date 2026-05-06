@@ -8,7 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Download, FileSpreadsheet, Loader2, X, Search, Users, CalendarCheck, TrendingUp, ChevronDown, ChevronUp, Camera, ExternalLink, Mail, Clock, Bell, Plus, Send, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ImageOff, ImageIcon, Filter, CheckCircle2, XCircle, History } from "lucide-react";
+import { Download, FileSpreadsheet, Loader2, X, Search, Users, CalendarCheck, TrendingUp, ChevronDown, ChevronUp, Camera, ExternalLink, Mail, Clock, Bell, Plus, Send, Trash2, ArrowUpDown, ArrowUp, ArrowDown, ImageOff, ImageIcon, Filter, CheckCircle2, XCircle, History, ChevronLeft, ChevronRight, BarChart3 } from "lucide-react";
 import { format, subMonths } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
@@ -1621,6 +1621,246 @@ export default function Reports() {
           </CardContent>
         </Card>
       )}
+
+
+      {/* ── Monthly Attendance Report ──────────────────────────────── */}
+      <MonthlyAttendanceSection />
     </div>
+  );
+}
+
+interface MonthlyAttRow {
+  staffId: string;
+  staffName: string;
+  empCode: string;
+  phone: string;
+  staffCategory: string;
+  presentDays: number;
+  lateDays: number;
+  absentDays: number;
+  leaveDays: number;
+  avgCheckin: string | null;
+  avgCheckout: string | null;
+  totalGpsKm: number;
+  casualUsed: number;
+  sickUsed: number;
+  casualBalance: number;
+  sickBalance: number;
+}
+
+function MonthlyAttendanceSection() {
+  const now = new Date();
+  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [rows, setRows] = useState<MonthlyAttRow[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const { toast } = useToast();
+
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+  const prevMonth = () => {
+    if (month === 1) { setYear(y => y - 1); setMonth(12); }
+    else setMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1;
+    if (isCurrentMonth) return;
+    if (month === 12) { setYear(y => y + 1); setMonth(1); }
+    else setMonth(m => m + 1);
+  };
+  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1;
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetchWithAuth(`/api/admin/reports/monthly-attendance?year=${year}&month=${month}`);
+      if (res.ok) {
+        setRows(await res.json());
+      } else {
+        toast({ title: "Failed to load report", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Network error", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  }, [year, month]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const handleDownload = async () => {
+    setIsDownloading(true);
+    try {
+      await downloadBlob(
+        `/api/admin/reports/monthly-attendance/xlsx?year=${year}&month=${month}`,
+        `Monthly_Attendance_${MONTHS[month - 1]}_${year}.xlsx`
+      );
+    } catch (e: any) {
+      toast({ title: "Download failed", description: e.message, variant: "destructive" });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const field = rows?.filter(r => r.staffCategory === "field") ?? [];
+  const center = rows?.filter(r => r.staffCategory === "center") ?? [];
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <BarChart3 className="h-5 w-5 text-violet-500" />
+            <div>
+              <CardTitle className="text-base">Monthly Attendance Report</CardTitle>
+              <CardDescription className="mt-0.5">
+                Present / late / absent / leave days, GPS KM, and leave balances per staff.
+              </CardDescription>
+            </div>
+          </div>
+
+          {/* Month navigator */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={prevMonth}
+              className="w-8 h-8 rounded-lg border border-border hover:bg-muted flex items-center justify-center transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="text-sm font-semibold w-24 text-center tabular-nums">
+              {MONTHS[month - 1]} {year}
+            </span>
+            <button
+              onClick={nextMonth}
+              disabled={isCurrentMonth}
+              className="w-8 h-8 rounded-lg border border-border hover:bg-muted flex items-center justify-center transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownload}
+              disabled={isDownloading || !rows}
+              className="ml-2 gap-1.5"
+            >
+              {isDownloading
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />}
+              Excel
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+
+      <CardContent>
+        {loading && (
+          <div className="flex items-center justify-center py-10 text-muted-foreground gap-2">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Loading…
+          </div>
+        )}
+        {!loading && rows && rows.length === 0 && (
+          <p className="text-sm text-muted-foreground text-center py-10">
+            No staff data for {MONTHS[month - 1]} {year}.
+          </p>
+        )}
+        {!loading && rows && rows.length > 0 && (
+          <div className="space-y-6">
+            {[
+              { label: "Field Staff", color: "bg-indigo-500", data: field },
+              { label: "Center Staff", color: "bg-emerald-500", data: center },
+            ].filter(g => g.data.length > 0).map(({ label, color, data }) => (
+              <div key={label}>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className={`w-2 h-2 rounded-full ${color}`} />
+                  <span className="text-sm font-semibold">{label}</span>
+                  <Badge variant="outline" className="text-[10px]">{data.length} staff</Badge>
+                </div>
+                <div className="overflow-x-auto rounded-md border">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-muted/50 border-b text-xs text-muted-foreground uppercase tracking-wide">
+                        <th className="px-3 py-2.5 text-left font-semibold">Staff</th>
+                        <th className="px-3 py-2.5 text-center font-semibold text-emerald-700">Present</th>
+                        <th className="px-3 py-2.5 text-center font-semibold text-amber-700">Late</th>
+                        <th className="px-3 py-2.5 text-center font-semibold text-red-700">Absent</th>
+                        <th className="px-3 py-2.5 text-center font-semibold text-blue-700">Leave</th>
+                        <th className="px-3 py-2.5 text-center font-semibold">Avg In</th>
+                        <th className="px-3 py-2.5 text-center font-semibold">Avg Out</th>
+                        <th className="px-3 py-2.5 text-right font-semibold">GPS KM</th>
+                        <th className="px-3 py-2.5 text-center font-semibold">CL Bal</th>
+                        <th className="px-3 py-2.5 text-center font-semibold">SL Bal</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {data.map((r) => (
+                        <tr key={r.staffId} className="hover:bg-muted/30 transition-colors">
+                          <td className="px-3 py-2.5">
+                            <p className="font-medium text-sm">{r.staffName}</p>
+                            <p className="text-[10px] text-muted-foreground">{r.empCode} · {r.phone}</p>
+                          </td>
+                          <td className="px-3 py-2.5 text-center">
+                            <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-700">
+                              {r.presentDays}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2.5 text-center">
+                            {r.lateDays > 0 ? (
+                              <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700">
+                                {r.lateDays}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">0</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2.5 text-center">
+                            {r.absentDays > 0 ? (
+                              <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-700">
+                                {r.absentDays}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">0</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2.5 text-center">
+                            {r.leaveDays > 0 ? (
+                              <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-700">
+                                {r.leaveDays}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">0</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2.5 text-center text-xs tabular-nums">
+                            {r.avgCheckin ?? "—"}
+                          </td>
+                          <td className="px-3 py-2.5 text-center text-xs tabular-nums">
+                            {r.avgCheckout ?? "—"}
+                          </td>
+                          <td className="px-3 py-2.5 text-right text-xs tabular-nums font-medium">
+                            {r.totalGpsKm > 0 ? r.totalGpsKm.toFixed(1) : "—"}
+                          </td>
+                          <td className="px-3 py-2.5 text-center text-xs">
+                            <span className="tabular-nums">{r.casualBalance}</span>
+                            <span className="text-muted-foreground">/{12 - r.casualUsed + r.casualBalance}</span>
+                          </td>
+                          <td className="px-3 py-2.5 text-center text-xs">
+                            <span className="tabular-nums">{r.sickBalance}</span>
+                            <span className="text-muted-foreground">/{6 - r.sickUsed + r.sickBalance}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

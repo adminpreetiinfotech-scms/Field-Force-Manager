@@ -24,6 +24,7 @@ import TrainingCenters from "@/pages/training-centers";
 import LiveMap from "@/pages/live-map";
 import CenterAttendance from "@/pages/center-attendance";
 import FieldAttendance from "@/pages/field-attendance";
+import AttendanceControl from "@/pages/attendance-control";
 import { AdminLayout } from "@/components/admin-layout";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -110,6 +111,7 @@ function Router() {
       <ProtectedRoute path="/live-map" component={LiveMap} />
       <ProtectedRoute path="/center-attendance" component={CenterAttendance} />
       <ProtectedRoute path="/field-attendance" component={FieldAttendance} />
+      <ProtectedRoute path="/attendance-control" component={AttendanceControl} />
       <SuperAdminRoute path="/super-admin/companies/:id" component={({ params }: any) => (
         <SuperAdminCompanyDetail companyId={params.id} />
       )} />

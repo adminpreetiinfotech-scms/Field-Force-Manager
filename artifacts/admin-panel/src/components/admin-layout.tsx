@@ -3,21 +3,22 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   LayoutDashboard, Users, UserSquare2, FileText, LogOut, Building2, ShieldCheck,
   Bell, Map, Settings, UserPlus, UserCheck, ClipboardList, CreditCard, UserCog,
-  GraduationCap,
+  GraduationCap, SlidersHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const navItems = [
-  { href: "/dashboard",         label: "Dashboard",         icon: LayoutDashboard, color: "text-cyan-400" },
-  { href: "/staff",             label: "Staff Management",  icon: Users,            color: "text-violet-400" },
-  { href: "/training-centers",  label: "Training Centers",  icon: Building2,        color: "text-emerald-400" },
-  { href: "/center-attendance", label: "Center Attendance", icon: UserCheck,        color: "text-sky-400" },
-  { href: "/field-attendance",  label: "Field Attendance",  icon: ClipboardList,    color: "text-indigo-400" },
-  { href: "/candidates",        label: "Candidates",        icon: UserSquare2,      color: "text-pink-400" },
-  { href: "/live-map",          label: "Live Staff Map",    icon: Map,              color: "text-orange-400" },
-  { href: "/notices",           label: "Notices",           icon: Bell,             color: "text-yellow-400" },
-  { href: "/reports",           label: "Reports",           icon: FileText,         color: "text-teal-400" },
-  { href: "/settings",          label: "Company Settings",  icon: Settings,         color: "text-slate-400" },
+  { href: "/dashboard",           label: "Dashboard",           icon: LayoutDashboard,  color: "text-cyan-400" },
+  { href: "/staff",               label: "Staff Management",    icon: Users,             color: "text-violet-400" },
+  { href: "/training-centers",    label: "Training Centers",    icon: Building2,         color: "text-emerald-400" },
+  { href: "/center-attendance",   label: "Center Attendance",   icon: UserCheck,         color: "text-sky-400" },
+  { href: "/field-attendance",    label: "Field Attendance",    icon: ClipboardList,     color: "text-indigo-400" },
+  { href: "/attendance-control",  label: "Attendance Control",  icon: SlidersHorizontal, color: "text-purple-400" },
+  { href: "/candidates",          label: "Candidates",          icon: UserSquare2,       color: "text-pink-400" },
+  { href: "/live-map",            label: "Live Staff Map",      icon: Map,               color: "text-orange-400" },
+  { href: "/notices",             label: "Notices",             icon: Bell,              color: "text-yellow-400" },
+  { href: "/reports",             label: "Reports",             icon: FileText,          color: "text-teal-400" },
+  { href: "/settings",            label: "Company Settings",    icon: Settings,          color: "text-slate-400" },
 ];
 
 const superAdminItems = [
