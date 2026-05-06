@@ -26,6 +26,7 @@ import CenterAttendance from "@/pages/center-attendance";
 import FieldAttendance from "@/pages/field-attendance";
 import AttendanceControl from "@/pages/attendance-control";
 import Leaves from "@/pages/leaves";
+import StaffPerformance from "@/pages/staff-performance";
 import { AdminLayout } from "@/components/admin-layout";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -114,6 +115,7 @@ function Router() {
       <ProtectedRoute path="/field-attendance" component={FieldAttendance} />
       <ProtectedRoute path="/attendance-control" component={AttendanceControl} />
       <ProtectedRoute path="/leaves" component={Leaves} />
+      <ProtectedRoute path="/staff-performance" component={StaffPerformance} />
       <SuperAdminRoute path="/super-admin/companies/:id" component={({ params }: any) => (
         <SuperAdminCompanyDetail companyId={params.id} />
       )} />

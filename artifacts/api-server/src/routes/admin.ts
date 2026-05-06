@@ -6,9 +6,10 @@ import {
   companiesTable,
   centersTable,
   db,
+  leavesTable,
   staffTable,
 } from "@workspace/db";
-import { and, count, desc, eq, gte, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, isNotNull, isNull, lt, ne, or, sql, sum } from "drizzle-orm";
 import ExcelJS from "exceljs";
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { isValidUUID } from "../lib/validation";
@@ -2512,6 +2513,201 @@ router.get("/admin/daily-km-summary/xlsx", requireAdmin, async (req, res, next) 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     await wb.xlsx.write(res);
   } catch (err) { next(err); }
+});
+
+// ─── GET /api/admin/staff-performance ────────────────────────────────────────
+// Per-staff aggregated metrics for a given month (attendance, KM, candidates, leaves).
+
+router.get("/admin/staff-performance", requireAdmin, async (req, res, next) => {
+  try {
+    const companyId = res.locals.companyId as string | null;
+    const IST_MS = 5.5 * 60 * 60 * 1000;
+    const nowIST = new Date(Date.now() + IST_MS);
+
+    // Parse ?month=YYYY-MM (default: current month)
+    const rawMonth = (req.query.month as string | undefined)?.trim();
+    const MONTH_RE = /^\d{4}-\d{2}$/;
+    const monthStr = rawMonth && MONTH_RE.test(rawMonth)
+      ? rawMonth
+      : `${nowIST.getUTCFullYear()}-${String(nowIST.getUTCMonth() + 1).padStart(2, "0")}`;
+
+    const [yearStr, monStr] = monthStr.split("-");
+    const year  = parseInt(yearStr!, 10);
+    const month = parseInt(monStr!, 10);
+
+    // Month window in UTC (IST midnight → IST end-of-month)
+    const monthStartIST = new Date(`${monthStr}-01T00:00:00+05:30`);
+    const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    const monthEndIST   = new Date(`${monthStr}-${String(lastDay).padStart(2, "0")}T23:59:59+05:30`);
+
+    // Year window for leaves (Jan 1 → Dec 31)
+    const yearStartStr = `${year}-01-01`;
+    const yearEndStr   = `${year}-12-31`;
+
+    // ── 1. Staff list ──────────────────────────────────────────────────────────
+    const staffFilter = companyId
+      ? and(eq(staffTable.companyId, companyId), eq(staffTable.role, "staff"), isNull(staffTable.deletedAt), eq(staffTable.approvalStatus, "approved"))
+      : and(eq(staffTable.role, "staff"), isNull(staffTable.deletedAt), eq(staffTable.approvalStatus, "approved"));
+
+    const staffList = await db
+      .select({
+        id:                staffTable.id,
+        name:              staffTable.name,
+        phone:             staffTable.phone,
+        empCode:           staffTable.empCode,
+        staffCategory:     staffTable.staffCategory,
+        designation:       staffTable.designation,
+        area:              staffTable.area,
+        disabledAt:        staffTable.disabledAt,
+      })
+      .from(staffTable)
+      .where(staffFilter)
+      .orderBy(staffTable.name);
+
+    if (staffList.length === 0) {
+      res.json({ month: monthStr, workingDays: 0, staff: [] });
+      return;
+    }
+
+    const staffIds = staffList.map((s) => s.id);
+    const staffPhones = staffList.map((s) => s.phone);
+
+    // ── 2. Check-in days per staff for the month ───────────────────────────────
+    const checkinEvents = await db
+      .select({
+        staffId:    activityEventsTable.staffId,
+        occurredAt: activityEventsTable.occurredAt,
+      })
+      .from(activityEventsTable)
+      .where(
+        and(
+          eq(activityEventsTable.kind, "checkin"),
+          inArray(activityEventsTable.staffId, staffIds),
+          gte(activityEventsTable.occurredAt, monthStartIST),
+          lt(activityEventsTable.occurredAt, new Date(monthEndIST.getTime() + 1000)),
+        ),
+      );
+
+    // Count distinct IST dates per staff
+    const checkinDays = new Map<string, Set<string>>();
+    for (const ev of checkinEvents) {
+      const dateStr = new Date((ev.occurredAt as Date).getTime() + IST_MS).toISOString().slice(0, 10);
+      const set = checkinDays.get(ev.staffId) ?? new Set<string>();
+      set.add(dateStr);
+      checkinDays.set(ev.staffId, set);
+    }
+
+    // ── 3. GPS KM per staff for the month (trip-end events) ───────────────────
+    const tripEndEvents = await db
+      .select({
+        staffId:    activityEventsTable.staffId,
+        payload:    activityEventsTable.payload,
+      })
+      .from(activityEventsTable)
+      .where(
+        and(
+          eq(activityEventsTable.kind, "trip-end"),
+          inArray(activityEventsTable.staffId, staffIds),
+          gte(activityEventsTable.occurredAt, monthStartIST),
+          lt(activityEventsTable.occurredAt, new Date(monthEndIST.getTime() + 1000)),
+        ),
+      );
+
+    const gpsKmByStaff = new Map<string, number>();
+    for (const ev of tripEndEvents) {
+      const p = (ev.payload ?? {}) as { distanceKm?: number };
+      const km = typeof p.distanceKm === "number" ? p.distanceKm : 0;
+      gpsKmByStaff.set(ev.staffId, (gpsKmByStaff.get(ev.staffId) ?? 0) + km);
+    }
+
+    // ── 4. Candidates registered by staff this month ───────────────────────────
+    const candRows = await db
+      .select({
+        submittedByPhone: candidatesTable.submittedByPhone,
+        status:           candidatesTable.status,
+      })
+      .from(candidatesTable)
+      .where(
+        and(
+          companyId ? eq(candidatesTable.companyId, companyId) : undefined,
+          inArray(candidatesTable.submittedByPhone, staffPhones),
+          gte(candidatesTable.createdAt, monthStartIST),
+          lt(candidatesTable.createdAt, new Date(monthEndIST.getTime() + 1000)),
+        ),
+      );
+
+    // phone → { total, approved }
+    const candByPhone = new Map<string, { total: number; approved: number }>();
+    for (const c of candRows) {
+      const phone = c.submittedByPhone ?? "";
+      if (!phone) continue;
+      const acc = candByPhone.get(phone) ?? { total: 0, approved: 0 };
+      acc.total++;
+      if (c.status === "approved" || c.status === "verified" || c.status === "enrolled") acc.approved++;
+      candByPhone.set(phone, acc);
+    }
+
+    // ── 5. Approved leave days per staff for the year ─────────────────────────
+    const leaveRows = await db
+      .select({
+        staffId:   leavesTable.staffId,
+        totalDays: leavesTable.totalDays,
+      })
+      .from(leavesTable)
+      .where(
+        and(
+          companyId ? eq(leavesTable.companyId, companyId) : undefined,
+          inArray(leavesTable.staffId, staffIds),
+          eq(leavesTable.status, "approved"),
+          gte(leavesTable.startDate, yearStartStr),
+          lt(leavesTable.startDate,  yearEndStr + "Z"), // text comparison safe for YYYY-MM-DD
+        ),
+      );
+
+    const leaveByStaff = new Map<string, number>();
+    for (const l of leaveRows) {
+      leaveByStaff.set(l.staffId, (leaveByStaff.get(l.staffId) ?? 0) + (l.totalDays ?? 1));
+    }
+
+    // ── 6. Working days in the month (Mon–Sat) ─────────────────────────────────
+    let workingDays = 0;
+    for (let d = 1; d <= lastDay; d++) {
+      const dow = new Date(Date.UTC(year, month - 1, d)).getUTCDay();
+      if (dow !== 0) workingDays++; // exclude Sunday
+    }
+
+    // ── Assemble response ──────────────────────────────────────────────────────
+    const round1 = (n: number) => Math.round(n * 10) / 10;
+
+    const staffOut = staffList.map((s) => {
+      const presentDays    = checkinDays.get(s.id)?.size ?? 0;
+      const gpsKm          = round1(gpsKmByStaff.get(s.id) ?? 0);
+      const cand           = candByPhone.get(s.phone);
+      const leaveDaysYTD   = leaveByStaff.get(s.id) ?? 0;
+      const attendancePct  = workingDays > 0 ? Math.round((presentDays / workingDays) * 100) : 0;
+
+      return {
+        id:                s.id,
+        name:              s.name,
+        phone:             s.phone,
+        empCode:           s.empCode,
+        staffCategory:     s.staffCategory,
+        designation:       s.designation ?? null,
+        area:              s.area ?? null,
+        isDisabled:        !!s.disabledAt,
+        presentDays,
+        attendancePct,
+        gpsKm,
+        candidatesThisMonth:         cand?.total    ?? 0,
+        candidatesApprovedThisMonth: cand?.approved ?? 0,
+        leaveDaysYTD,
+      };
+    });
+
+    res.json({ month: monthStr, workingDays, staff: staffOut });
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;
