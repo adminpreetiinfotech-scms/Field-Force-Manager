@@ -1,4 +1,4 @@
-import { companiesTable, db, staffTable } from "@workspace/db";
+import { centersTable, companiesTable, db, staffTable } from "@workspace/db";
 import { and, eq, isNull } from "drizzle-orm";
 import { Router } from "express";
 import crypto from "node:crypto";
@@ -12,7 +12,7 @@ function toLogoUrl(filePath: string | null | undefined): string | null {
 
 const router = Router();
 
-async function getCompanyBranding(companyId: string | null | undefined) {
+async function getCompanyBranding(companyId: string | null | undefined, centerId?: string | null) {
   const empty = { companyName: null, companyLogoUrl: null, companySchemeName: null, companyTcId: null, companyCenterLat: null, companyCenterLng: null, companyCenterRadiusMeters: null as number | null };
   if (!companyId) return empty;
   try {
@@ -30,14 +30,36 @@ async function getCompanyBranding(companyId: string | null | undefined) {
       .where(eq(companiesTable.id, companyId))
       .limit(1);
     if (!co) return empty;
+
+    let geoLat: number | null = co.centerLat ?? null;
+    let geoLng: number | null = co.centerLng ?? null;
+    let geoRadius: number | null = co.centerRadiusMeters ?? 200;
+
+    if (centerId) {
+      try {
+        const [center] = await db
+          .select({ lat: centersTable.lat, lng: centersTable.lng, radiusMeters: centersTable.radiusMeters })
+          .from(centersTable)
+          .where(eq(centersTable.id, centerId))
+          .limit(1);
+        if (center?.lat != null && center?.lng != null) {
+          geoLat = center.lat;
+          geoLng = center.lng;
+          geoRadius = center.radiusMeters ?? 200;
+        }
+      } catch {
+        // fallback to company-level if center lookup fails
+      }
+    }
+
     return {
-      companyName:             co.name ?? null,
-      companyLogoUrl:          toLogoUrl(co.logoPath),
-      companySchemeName:       co.projectName ?? null,
-      companyTcId:             co.tcId ?? null,
-      companyCenterLat:        co.centerLat ?? null,
-      companyCenterLng:        co.centerLng ?? null,
-      companyCenterRadiusMeters: co.centerRadiusMeters ?? 200,
+      companyName:               co.name ?? null,
+      companyLogoUrl:            toLogoUrl(co.logoPath),
+      companySchemeName:         co.projectName ?? null,
+      companyTcId:               co.tcId ?? null,
+      companyCenterLat:          geoLat,
+      companyCenterLng:          geoLng,
+      companyCenterRadiusMeters: geoRadius,
     };
   } catch {
     return empty;
@@ -245,8 +267,8 @@ router.post("/auth/login-mpin", async (req, res, next) => {
       .set({ failedMpinAttempts: 0, mpinBlockedUntil: null })
       .where(eq(staffTable.id, row.id));
 
-    // Fetch company branding for the response
-    const branding = await getCompanyBranding(row.companyId);
+    // Fetch company branding for the response (centerId overrides company-level geofence)
+    const branding = await getCompanyBranding(row.companyId, row.centerId);
 
     req.log.info({ phone }, "MPIN login successful");
     res.json({ user: { ...toUserDTO(row), ...branding } });
@@ -301,7 +323,7 @@ router.post("/auth/set-mpin", async (req, res, next) => {
       .set({ mpinHash, failedMpinAttempts: 0, mpinBlockedUntil: null })
       .where(eq(staffTable.id, row.id));
 
-    const branding = await getCompanyBranding(row.companyId);
+    const branding = await getCompanyBranding(row.companyId, row.centerId);
     req.log.info({ phone }, "MPIN set successfully");
     res.json({ user: { ...toUserDTO(row), ...branding } });
   } catch (err) {

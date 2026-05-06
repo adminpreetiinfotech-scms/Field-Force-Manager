@@ -1,4 +1,4 @@
-import { activityEventsTable, candidatesTable, companiesTable, db, staffTable } from "@workspace/db";
+import { activityEventsTable, candidatesTable, centersTable, companiesTable, db, staffTable } from "@workspace/db";
 import { isCompanySubscriptionBlocked } from "./companies";
 import { requireAdmin } from "./admin";
 import { and, count, desc, eq, gt, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
@@ -1229,14 +1229,41 @@ router.post("/activity", async (req, res, next) => {
       gpsPath: gpsPath && gpsPath.length > 0 ? gpsPath : null,
     };
 
-    // Look up the staff's company_id and staffCategory
+    // Look up the staff's company_id, staffCategory, and centerId
     const [staffRow] = await db
-      .select({ companyId: staffTable.companyId, staffCategory: staffTable.staffCategory })
+      .select({ companyId: staffTable.companyId, staffCategory: staffTable.staffCategory, centerId: staffTable.centerId })
       .from(staffTable)
       .where(eq(staffTable.id, input.staffId))
       .limit(1);
     const companyId = staffRow?.companyId ?? null;
     const staffCategory = staffRow?.staffCategory ?? "field";
+    const staffCenterId = staffRow?.centerId ?? null;
+
+    // Helper: resolve geofence origin for center staff.
+    // Prefers the staff's assigned center (centersTable) over the company-level fallback.
+    async function resolveGeofence(): Promise<{ lat: number; lng: number; radius: number } | null> {
+      if (staffCenterId) {
+        const [center] = await db
+          .select({ lat: centersTable.lat, lng: centersTable.lng, radiusMeters: centersTable.radiusMeters })
+          .from(centersTable)
+          .where(eq(centersTable.id, staffCenterId))
+          .limit(1);
+        if (center?.lat != null && center?.lng != null) {
+          return { lat: center.lat, lng: center.lng, radius: center.radiusMeters ?? 200 };
+        }
+      }
+      if (companyId) {
+        const [co] = await db
+          .select({ centerLat: companiesTable.centerLat, centerLng: companiesTable.centerLng, centerRadiusMeters: companiesTable.centerRadiusMeters })
+          .from(companiesTable)
+          .where(eq(companiesTable.id, companyId))
+          .limit(1);
+        if (co?.centerLat != null && co?.centerLng != null) {
+          return { lat: co.centerLat, lng: co.centerLng, radius: co.centerRadiusMeters ?? 200 };
+        }
+      }
+      return null;
+    }
 
     // Block check-in if company subscription is expired/inactive
     if (input.kind === "checkin" && companyId) {
@@ -1244,9 +1271,6 @@ router.post("/activity", async (req, res, next) => {
         .select({
           subscriptionActive: companiesTable.subscriptionActive,
           subscriptionEndDate: companiesTable.subscriptionEndDate,
-          centerLat: companiesTable.centerLat,
-          centerLng: companiesTable.centerLng,
-          centerRadiusMeters: companiesTable.centerRadiusMeters,
         })
         .from(companiesTable)
         .where(eq(companiesTable.id, companyId))
@@ -1255,36 +1279,29 @@ router.post("/activity", async (req, res, next) => {
         res.status(403).json({ title: "Subscription expired. Contact admin.", status: 403 });
         return;
       }
-      // Geo-fence check for center staff
-      if (staffCategory === "center" && company?.centerLat != null && company?.centerLng != null) {
+      // Geo-fence check for center staff (per-center takes priority over company-level)
+      if (staffCategory === "center") {
         const loc = input.location;
         if (loc) {
-          const distM = haversineMeters(loc.latitude, loc.longitude, company.centerLat, company.centerLng);
-          const radius = company.centerRadiusMeters ?? 200;
-          payload.distanceFromCenterM = Math.round(distM);
-          payload.outsideGeofence = distM > radius;
+          const geo = await resolveGeofence();
+          if (geo) {
+            const distM = haversineMeters(loc.latitude, loc.longitude, geo.lat, geo.lng);
+            payload.distanceFromCenterM = Math.round(distM);
+            payload.outsideGeofence = distM > geo.radius;
+          }
         }
       }
     }
 
-    // Geo-fence check for center staff on checkout too
-    if (input.kind === "checkout" && companyId && staffCategory === "center") {
-      const [company] = await db
-        .select({
-          centerLat: companiesTable.centerLat,
-          centerLng: companiesTable.centerLng,
-          centerRadiusMeters: companiesTable.centerRadiusMeters,
-        })
-        .from(companiesTable)
-        .where(eq(companiesTable.id, companyId))
-        .limit(1);
-      if (company?.centerLat != null && company?.centerLng != null) {
-        const loc = input.location;
-        if (loc) {
-          const distM = haversineMeters(loc.latitude, loc.longitude, company.centerLat, company.centerLng);
-          const radius = company.centerRadiusMeters ?? 200;
+    // Geo-fence check for center staff on checkout too (per-center takes priority)
+    if (input.kind === "checkout" && staffCategory === "center") {
+      const loc = input.location;
+      if (loc) {
+        const geo = await resolveGeofence();
+        if (geo) {
+          const distM = haversineMeters(loc.latitude, loc.longitude, geo.lat, geo.lng);
           payload.distanceFromCenterM = Math.round(distM);
-          payload.outsideGeofence = distM > radius;
+          payload.outsideGeofence = distM > geo.radius;
         }
       }
     }
