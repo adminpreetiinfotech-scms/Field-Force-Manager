@@ -4,7 +4,19 @@
     "appVersionSource": "local"
   },
   "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_DOMAIN": "field-force-manager-Mobilization.replit.app"
+      }
+    },
     "preview": {
+      "distribution": "internal",
+      "channel": "preview",
       "android": {
         "buildType": "apk"
       },
@@ -13,6 +25,7 @@
       }
     },
     "production": {
+      "channel": "production",
       "android": {
         "buildType": "app-bundle"
       },
@@ -21,6 +34,7 @@
       }
     },
     "production-apk": {
+      "channel": "production",
       "android": {
         "buildType": "apk"
       },

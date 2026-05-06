@@ -8,12 +8,21 @@
     "scheme": "field-staff",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "updates": {
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "url": "https://u.expo.dev/7269d38c-5007-43e3-95b0-658cd5353200"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "splash": {
       "image": "./assets/images/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#0B2545"
     },
     "ios": {
+      "bundleIdentifier": "com.anilyadav.fieldstaff",
       "supportsTablet": false,
       "infoPlist": {
         "NSCameraUsageDescription": "We use the camera to capture a live selfie at every check-in and a photo of your vehicle odometer. This proves you were on site.",
@@ -65,7 +74,8 @@
           "androidMode": "default",
           "androidCollapsedTitle": "SCMS"
         }
-      ]
+      ],
+      "expo-updates"
     ],
     "experiments": {
       "typedRoutes": true,

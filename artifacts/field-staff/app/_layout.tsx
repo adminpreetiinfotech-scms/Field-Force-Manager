@@ -26,6 +26,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppProvider } from "@/contexts/AppContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { useOtaUpdate } from "@/hooks/useOtaUpdate";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -92,6 +93,9 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   const router = useRouter();
+
+  // Check for OTA updates (no-op in Expo Go / dev builds)
+  useOtaUpdate();
 
   // Handle taps on push notifications (app in background / killed)
   useEffect(() => {
