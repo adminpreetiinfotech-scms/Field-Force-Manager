@@ -2239,4 +2239,231 @@ router.get("/admin/staff/export", requireAdmin, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ─── GET /api/admin/daily-km-summary ──────────────────────────────────────────
+// Returns GPS + Odometer KM comparison for all field staff for a given date.
+
+type DailyKmRow = {
+  staffId: string;
+  staffName: string;
+  empCode: string | null;
+  phone: string | null;
+  vehicleType: string | null;
+  status: "present" | "partial" | "absent";
+  checkInTime: string | null;
+  checkOutTime: string | null;
+  startOdometer: number | null;
+  endOdometer: number | null;
+  odometerKm: number | null;
+  gpsKm: number | null;
+  variancePct: number | null;
+};
+
+async function buildDailyKmRows(companyId: string | null, date: string): Promise<DailyKmRow[]> {
+  const companyFilter = companyId
+    ? and(eq(staffTable.companyId, companyId), eq(staffTable.staffCategory, "field"), eq(staffTable.role, "staff"))
+    : and(eq(staffTable.staffCategory, "field"), eq(staffTable.role, "staff"));
+
+  const fieldStaff = await db
+    .select({ id: staffTable.id, name: staffTable.name, empCode: staffTable.empCode, phone: staffTable.phone })
+    .from(staffTable)
+    .where(and(companyFilter, isNull(staffTable.deletedAt)));
+
+  if (fieldStaff.length === 0) return [];
+
+  const fromUtc = new Date(date + "T00:00:00+05:30");
+  const toUtc   = new Date(date + "T23:59:59+05:30");
+  const staffIds = fieldStaff.map((s) => s.id);
+
+  const events = await db
+    .select({
+      staffId:    activityEventsTable.staffId,
+      kind:       activityEventsTable.kind,
+      occurredAt: activityEventsTable.occurredAt,
+      payload:    activityEventsTable.payload,
+    })
+    .from(activityEventsTable)
+    .where(
+      and(
+        inArray(activityEventsTable.staffId, staffIds),
+        or(
+          eq(activityEventsTable.kind, "checkin"),
+          eq(activityEventsTable.kind, "checkout"),
+          eq(activityEventsTable.kind, "trip-end"),
+        ),
+        gte(activityEventsTable.occurredAt, fromUtc),
+        lt(activityEventsTable.occurredAt, new Date(toUtc.getTime() + 1000)),
+      ),
+    )
+    .orderBy(activityEventsTable.occurredAt);
+
+  type Accum = {
+    checkInTime: string | null;
+    checkOutTime: string | null;
+    startOdometer: number | null;
+    endOdometer: number | null;
+    vehicleType: string | null;
+    gpsKm: number;
+  };
+
+  const accumMap = new Map<string, Accum>();
+  for (const ev of events) {
+    if (!accumMap.has(ev.staffId)) {
+      accumMap.set(ev.staffId, { checkInTime: null, checkOutTime: null, startOdometer: null, endOdometer: null, vehicleType: null, gpsKm: 0 });
+    }
+    const acc = accumMap.get(ev.staffId)!;
+    const p = (ev.payload ?? {}) as Record<string, unknown>;
+    if (ev.kind === "checkin") {
+      if (!acc.checkInTime) {
+        acc.checkInTime = ev.occurredAt.toISOString();
+        if (typeof p.startOdometerKm === "number") acc.startOdometer = p.startOdometerKm;
+        if (typeof p.vehicleType === "string") acc.vehicleType = p.vehicleType;
+      }
+    } else if (ev.kind === "checkout") {
+      acc.checkOutTime = ev.occurredAt.toISOString();
+      if (typeof p.endOdometerKm === "number") acc.endOdometer = p.endOdometerKm;
+    } else if (ev.kind === "trip-end") {
+      if (typeof p.distanceKm === "number") acc.gpsKm += p.distanceKm;
+    }
+  }
+
+  return fieldStaff.map((s) => {
+    const acc = accumMap.get(s.id);
+    const startOdometer = acc?.startOdometer ?? null;
+    const endOdometer   = acc?.endOdometer   ?? null;
+    const odometerKm =
+      startOdometer !== null && endOdometer !== null && endOdometer >= startOdometer
+        ? Math.round((endOdometer - startOdometer) * 10) / 10
+        : null;
+    const rawGps = acc?.gpsKm ?? 0;
+    const gpsKm = rawGps > 0 ? Math.round(rawGps * 10) / 10 : null;
+    let variancePct: number | null = null;
+    if (odometerKm !== null && gpsKm !== null) {
+      const denom = Math.max(odometerKm, gpsKm, 1);
+      variancePct = Math.round((Math.abs(odometerKm - gpsKm) / denom) * 1000) / 10;
+    }
+    const checkInTime  = acc?.checkInTime  ?? null;
+    const checkOutTime = acc?.checkOutTime ?? null;
+    let status: "present" | "partial" | "absent" = "absent";
+    if (checkInTime && checkOutTime) status = "present";
+    else if (checkInTime) status = "partial";
+    return { staffId: s.id, staffName: s.name, empCode: s.empCode, phone: s.phone, vehicleType: acc?.vehicleType ?? null, status, checkInTime, checkOutTime, startOdometer, endOdometer, odometerKm, gpsKm, variancePct };
+  });
+}
+
+router.get("/admin/daily-km-summary", requireAdmin, async (req, res, next) => {
+  try {
+    const companyId = res.locals.companyId as string | null;
+    const { date }  = req.query as { date?: string };
+    const todayIST  = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const resolvedDate = date?.trim() || todayIST;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(resolvedDate)) {
+      res.status(400).json({ title: "date must be YYYY-MM-DD", status: 400 });
+      return;
+    }
+    const rows = await buildDailyKmRows(companyId, resolvedDate);
+    res.json(rows);
+  } catch (err) { next(err); }
+});
+
+// ─── GET /api/admin/daily-km-summary/xlsx ─────────────────────────────────────
+
+router.get("/admin/daily-km-summary/xlsx", requireAdmin, async (req, res, next) => {
+  try {
+    const companyId = res.locals.companyId as string | null;
+    const { date }  = req.query as { date?: string };
+    const todayIST  = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const resolvedDate = date?.trim() || todayIST;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(resolvedDate)) {
+      res.status(400).json({ title: "date must be YYYY-MM-DD", status: 400 });
+      return;
+    }
+
+    let organization: string | null = null;
+    if (companyId) {
+      try {
+        const [co] = await db
+          .select({ name: companiesTable.name, projectName: companiesTable.projectName })
+          .from(companiesTable).where(eq(companiesTable.id, companyId)).limit(1);
+        if (co) organization = co.projectName ? `${co.name} — ${co.projectName}` : co.name;
+      } catch { /* non-fatal */ }
+    }
+
+    const rows = await buildDailyKmRows(companyId, resolvedDate);
+
+    const COLS = 13;
+    const GREEN_BG = "FFD1FAE5";
+    const RED_BG   = "FFFEE2E2";
+
+    function toIST(iso: string | null): string {
+      if (!iso) return "";
+      const local = new Date(new Date(iso).getTime() + 5.5 * 60 * 60 * 1000);
+      return local.toISOString().slice(11, 16);
+    }
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = "SCMS"; wb.modified = new Date();
+    const ws = wb.addWorksheet("Daily KM Summary", { properties: { tabColor: { argb: PURPLE } } });
+    ws.columns = [
+      { width: 5 }, { width: 24 }, { width: 13 }, { width: 14 },
+      { width: 12 }, { width: 10 }, { width: 12 }, { width: 12 },
+      { width: 13 }, { width: 13 }, { width: 10 }, { width: 10 }, { width: 12 },
+    ];
+
+    ws.mergeCells(1, 1, 1, COLS);
+    const r1 = ws.getCell(1, 1);
+    r1.value = organization ?? "Daily KM Summary";
+    r1.font = { bold: true, size: 13, color: { argb: WHITE }, name: "Calibri" };
+    r1.fill = { type: "pattern", pattern: "solid", fgColor: { argb: PURPLE } };
+    r1.alignment = { horizontal: "center", vertical: "middle" };
+    ws.getRow(1).height = 26;
+
+    ws.mergeCells(2, 1, 2, COLS);
+    const r2 = ws.getCell(2, 1);
+    r2.value = `DAILY KM SUMMARY — ${resolvedDate}`;
+    r2.font = { bold: true, size: 14, color: { argb: AMBER }, name: "Calibri" };
+    r2.fill = { type: "pattern", pattern: "solid", fgColor: { argb: PURPLE } };
+    r2.alignment = { horizontal: "center", vertical: "middle" };
+    ws.getRow(2).height = 28;
+
+    ws.getRow(3).values = ["S.No", "Staff Name", "Emp Code", "Mobile", "Vehicle", "Status", "Check-In", "Check-Out", "Start Odo", "End Odo", "Odo KM", "GPS KM", "Variance %"];
+    ws.getRow(3).height = 26;
+    ws.getRow(3).eachCell((cell) => {
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: PURPLE_DK } };
+      cell.font = { color: { argb: WHITE }, bold: true, size: 10, name: "Calibri" };
+      cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+      cell.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
+    });
+
+    const altFill: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: LGRAY } };
+    rows.forEach((r, idx) => {
+      const isHigh = r.variancePct !== null && r.variancePct > 15;
+      const dataRow = ws.addRow([
+        idx + 1, r.staffName, r.empCode ?? "", r.phone ?? "",
+        r.vehicleType ?? "", r.status,
+        toIST(r.checkInTime), toIST(r.checkOutTime),
+        r.startOdometer ?? "", r.endOdometer ?? "",
+        r.odometerKm ?? "", r.gpsKm ?? "",
+        r.variancePct != null ? `${r.variancePct}%` : "",
+      ]);
+      dataRow.height = 20;
+      dataRow.eachCell((cell) => {
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+        cell.border = { top: { style: "hair" }, bottom: { style: "hair" }, left: { style: "hair" }, right: { style: "hair" } };
+        if (idx % 2 === 1) cell.fill = altFill;
+      });
+      if (r.variancePct !== null) {
+        const varCell = dataRow.getCell(13);
+        varCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: isHigh ? RED_BG : GREEN_BG } };
+        varCell.font = { bold: true, color: { argb: isHigh ? "FFB91C1C" : "FF166534" }, name: "Calibri" };
+      }
+    });
+
+    ws.autoFilter = { from: "A3", to: { row: 3, column: COLS } };
+    const fname = `km-summary-${resolvedDate}.xlsx`;
+    res.setHeader("Content-Disposition", `attachment; filename="${fname}"`);
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    await wb.xlsx.write(res);
+  } catch (err) { next(err); }
+});
+
 export default router;

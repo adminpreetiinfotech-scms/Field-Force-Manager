@@ -35,8 +35,8 @@ import { TripRouteMapView } from "@/components/TripRouteMapView";
 import { getApiBase } from "@/components/KmDayDetailSheet";
 import { useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
-import { buildCsv, exportCsvFile, formatLocalTime } from "@/utils/csvExport";
-import { downloadXlsxFile } from "@/utils/xlsxExport";
+import { buildCsv, escCsv, exportCsvFile, formatLocalTime } from "@/utils/csvExport";
+import { downloadKmSummaryXlsx, downloadXlsxFile } from "@/utils/xlsxExport";
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
@@ -119,6 +119,22 @@ function csvPresetDates(p: CsvPreset): { from: string; to: string } {
   if (p === "30d") return { from: daysAgoISO(29), to: t };
   return { from: t, to: t };
 }
+
+type DailyKmRow = {
+  staffId: string;
+  staffName: string;
+  empCode: string | null;
+  phone: string | null;
+  vehicleType: string | null;
+  status: "present" | "partial" | "absent";
+  checkInTime: string | null;
+  checkOutTime: string | null;
+  startOdometer: number | null;
+  endOdometer: number | null;
+  odometerKm: number | null;
+  gpsKm: number | null;
+  variancePct: number | null;
+};
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
@@ -274,6 +290,69 @@ export default function ReportsScreen() {
       setXlDownloading(false);
     }
   }, [xlDates, xlStaffId, xlReportType, user?.companyId, user?.name]);
+
+  // ── Daily KM Summary state ─────────────────────────────────────────────────
+  const [kmDate, setKmDate] = useState(todayISO());
+  const [kmRows, setKmRows] = useState<DailyKmRow[] | null>(null);
+  const [kmLoading, setKmLoading] = useState(false);
+  const [kmError, setKmError] = useState(false);
+  const [kmExporting, setKmExporting] = useState(false);
+  const [kmXlDownloading, setKmXlDownloading] = useState(false);
+
+  const fetchKmSummary = useCallback(async (date: string) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+    setKmLoading(true);
+    setKmError(false);
+    try {
+      const base = getApiBase();
+      const resp = await fetch(`${base}/api/admin/daily-km-summary?date=${date}`, {
+        headers: { "x-admin-phone": user?.phone ?? "" },
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      setKmRows(await resp.json());
+    } catch {
+      setKmError(true);
+    } finally {
+      setKmLoading(false);
+    }
+  }, [user?.phone]);
+
+  React.useEffect(() => { fetchKmSummary(kmDate); }, [kmDate, fetchKmSummary]);
+
+  const onExportKmCsv = useCallback(async () => {
+    if (!kmRows?.length) return;
+    setKmExporting(true);
+    try {
+      const header = ["Staff Name", "Emp Code", "Mobile", "Vehicle", "Status", "Check-In", "Check-Out", "Start Odo (km)", "End Odo (km)", "Odo KM", "GPS KM", "Variance %"].join(",");
+      const lines = kmRows.map((r) =>
+        [
+          escCsv(r.staffName), escCsv(r.empCode ?? ""), escCsv(r.phone ?? ""),
+          escCsv(r.vehicleType ?? ""), escCsv(r.status),
+          escCsv(r.checkInTime ? formatLocalTime(r.checkInTime) : ""),
+          escCsv(r.checkOutTime ? formatLocalTime(r.checkOutTime) : ""),
+          escCsv(r.startOdometer ?? ""), escCsv(r.endOdometer ?? ""),
+          escCsv(r.odometerKm ?? ""), escCsv(r.gpsKm ?? ""),
+          escCsv(r.variancePct != null ? `${r.variancePct}%` : ""),
+        ].join(","),
+      );
+      await exportCsvFile([header, ...lines].join("\r\n"), `km-summary-${kmDate}.csv`);
+    } catch (e: any) {
+      Alert.alert("Export failed", e?.message || "Could not export CSV.");
+    } finally {
+      setKmExporting(false);
+    }
+  }, [kmRows, kmDate]);
+
+  const onExportKmXlsx = useCallback(async () => {
+    setKmXlDownloading(true);
+    try {
+      await downloadKmSummaryXlsx(kmDate, user?.phone ?? "");
+    } catch (e: any) {
+      Alert.alert("Download Failed", e?.message || "Could not download Excel.");
+    } finally {
+      setKmXlDownloading(false);
+    }
+  }, [kmDate, user?.phone]);
 
   const renderTrip = useCallback(
     ({ item, index }: { item: TripReportRow; index: number }) => (
@@ -1415,6 +1494,236 @@ export default function ReportsScreen() {
               </Text>
             </Pressable>
           </View>
+        </View>
+
+        {/* ── Divider ─────────────────────────────────────────────────────── */}
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {/* SECTION 4 — DAILY KM SUMMARY                                      */}
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        <View style={[styles.sectionGroup, { marginTop: 4, paddingBottom: 8 }]}>
+          <View style={styles.sectionTitleRow}>
+            <View style={[styles.sectionTitleIcon, { backgroundColor: "#2563EB18", borderRadius: 8 }]}>
+              <Feather name="bar-chart-2" size={15} color="#2563EB" />
+            </View>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              Daily KM Summary
+            </Text>
+          </View>
+          <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginBottom: 14 }}>
+            GPS vs Odometer comparison for all field staff on a given date.
+          </Text>
+
+          {/* Date picker row */}
+          <Text style={[styles.filterLabel, { color: colors.mutedForeground }]}>DATE</Text>
+          <View style={{ flexDirection: "row", gap: 8, alignItems: "center", marginBottom: 14 }}>
+            <TextInput
+              value={kmDate}
+              onChangeText={setKmDate}
+              placeholder="YYYY-MM-DD"
+              style={[
+                styles.dateInput,
+                {
+                  flex: 1,
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  color: colors.foreground,
+                  borderRadius: colors.radius,
+                  fontFamily: "Inter_500Medium",
+                },
+              ]}
+              placeholderTextColor={colors.mutedForeground}
+              keyboardType="numbers-and-punctuation"
+              maxLength={10}
+            />
+            <Pressable
+              onPress={() => fetchKmSummary(kmDate)}
+              style={({ pressed }) => ({
+                backgroundColor: colors.primary,
+                borderRadius: colors.radius,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                opacity: pressed || kmLoading ? 0.75 : 1,
+                flexDirection: "row" as const,
+                alignItems: "center" as const,
+                gap: 6,
+              })}
+            >
+              {kmLoading
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Feather name="refresh-cw" size={14} color="#fff" />}
+              <Text style={{ color: "#fff", fontSize: 13, fontFamily: "Inter_600SemiBold" }}>
+                {kmLoading ? "Loading…" : "Refresh"}
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* Loading spinner */}
+          {kmLoading && (
+            <View style={{ alignItems: "center", paddingVertical: 32 }}>
+              <ActivityIndicator color={colors.primary} />
+            </View>
+          )}
+
+          {/* Data */}
+          {!kmLoading && !kmError && kmRows && kmRows.length > 0 && (
+            <>
+              {/* Summary strip */}
+              <View style={[styles.calSummaryRow, { backgroundColor: colors.muted, borderRadius: colors.radius, marginBottom: 12 }]}>
+                <View style={styles.calSummaryItem}>
+                  <Text style={[styles.calSummaryNum, { color: "#16a34a" }]}>
+                    {kmRows.filter((r) => r.status !== "absent").length}
+                  </Text>
+                  <Text style={[styles.calSummaryLabel, { color: colors.mutedForeground }]}>present</Text>
+                </View>
+                <View style={[styles.calSummaryDivider, { backgroundColor: colors.border }]} />
+                <View style={styles.calSummaryItem}>
+                  <Text style={[styles.calSummaryNum, { color: "#2563EB" }]}>
+                    {kmRows.reduce((s, r) => s + (r.odometerKm ?? 0), 0).toFixed(1)}
+                  </Text>
+                  <Text style={[styles.calSummaryLabel, { color: colors.mutedForeground }]}>odo km</Text>
+                </View>
+                <View style={[styles.calSummaryDivider, { backgroundColor: colors.border }]} />
+                <View style={styles.calSummaryItem}>
+                  <Text style={[styles.calSummaryNum, { color: colors.foreground }]}>
+                    {kmRows.reduce((s, r) => s + (r.gpsKm ?? 0), 0).toFixed(1)}
+                  </Text>
+                  <Text style={[styles.calSummaryLabel, { color: colors.mutedForeground }]}>gps km</Text>
+                </View>
+              </View>
+
+              {/* Per-staff cards */}
+              {kmRows.map((r, idx) => {
+                const isHigh   = r.variancePct !== null && r.variancePct > 15;
+                const isAbsent = r.status === "absent";
+                return (
+                  <View
+                    key={r.staffId}
+                    style={{
+                      backgroundColor: idx % 2 === 0 ? colors.card : colors.muted,
+                      borderColor: colors.border,
+                      borderWidth: StyleSheet.hairlineWidth,
+                      borderRadius: colors.radius,
+                      marginBottom: 6,
+                      padding: 12,
+                    }}
+                  >
+                    {/* Name + vehicle + status badge */}
+                    <View style={{ flexDirection: "row", alignItems: "center", marginBottom: isAbsent ? 0 : 10 }}>
+                      <Text style={{ flex: 1, fontSize: 14, fontFamily: "Inter_700Bold", color: colors.foreground }} numberOfLines={1}>
+                        {r.staffName}
+                      </Text>
+                      {r.vehicleType && (
+                        <Text style={{ fontSize: 16, marginRight: 6 }}>
+                          {r.vehicleType === "2-wheeler" ? "🏍️" : "🚗"}
+                        </Text>
+                      )}
+                      <View style={{
+                        backgroundColor: isAbsent ? colors.muted : r.status === "present" ? "#D1FAE5" : "#FEF3C7",
+                        borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3,
+                      }}>
+                        <Text style={{
+                          fontSize: 10, fontFamily: "Inter_700Bold",
+                          color: isAbsent ? colors.mutedForeground : r.status === "present" ? "#065F46" : "#92400E",
+                          textTransform: "uppercase", letterSpacing: 0.4,
+                        }}>
+                          {r.status}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* 4-column KM breakdown */}
+                    {!isAbsent && (
+                      <View style={{ flexDirection: "row" }}>
+                        {[
+                          { label: "Start Odo", value: r.startOdometer, color: colors.foreground },
+                          { label: "End Odo",   value: r.endOdometer,   color: colors.foreground },
+                          { label: "Odo KM",    value: r.odometerKm,    color: "#2563EB" },
+                          { label: "GPS KM",    value: r.gpsKm,         color: colors.foreground },
+                        ].map((col) => (
+                          <View key={col.label} style={{ flex: 1, alignItems: "center" }}>
+                            <Text style={{ fontSize: 10, color: colors.mutedForeground, fontFamily: "Inter_500Medium", marginBottom: 2 }}>
+                              {col.label}
+                            </Text>
+                            <Text style={{ fontSize: 13, fontFamily: "Inter_700Bold", color: col.color }}>
+                              {col.value != null ? String(col.value) : "—"}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+
+                    {/* Absent note */}
+                    {isAbsent && (
+                      <Text style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
+                        No check-in recorded
+                      </Text>
+                    )}
+
+                    {/* Variance banner */}
+                    {r.variancePct !== null && (
+                      <View style={{
+                        marginTop: 8,
+                        backgroundColor: isHigh ? "#FEE2E2" : "#D1FAE5",
+                        borderRadius: colors.radius - 2,
+                        paddingHorizontal: 10, paddingVertical: 4,
+                        alignSelf: "flex-start",
+                      }}>
+                        <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: isHigh ? "#B91C1C" : "#065F46" }}>
+                          {isHigh ? "⚠️" : "✓"} Variance {r.variancePct}%
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+
+              {/* Export bar */}
+              <View style={[styles.summaryCard, { backgroundColor: colors.card, borderColor: colors.border, borderRadius: colors.radius + 2, marginTop: 10 }]}>
+                <View style={styles.summaryLeft}>
+                  <Text style={[styles.summaryCount, { color: "#2563EB" }]}>
+                    {kmRows.filter((r) => r.status !== "absent").length}
+                  </Text>
+                  <Text style={[styles.summaryCountLabel, { color: colors.mutedForeground }]}>
+                    active · {kmDate}
+                  </Text>
+                </View>
+                <View style={{ flexDirection: "row", gap: 8 }}>
+                  <Pressable
+                    onPress={onExportKmCsv}
+                    disabled={kmExporting}
+                    style={({ pressed }) => [styles.exportBtn, { backgroundColor: "#2563EB", borderRadius: colors.radius, opacity: pressed || kmExporting ? 0.75 : 1 }]}
+                  >
+                    {kmExporting ? <ActivityIndicator size="small" color="#fff" /> : <Feather name="download" size={15} color="#fff" />}
+                    <Text style={[styles.exportBtnText, { color: "#fff" }]}>
+                      {kmExporting ? "…" : "CSV"}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={onExportKmXlsx}
+                    disabled={kmXlDownloading}
+                    style={({ pressed }) => [styles.exportBtn, { backgroundColor: "#16A34A", borderRadius: colors.radius, opacity: pressed || kmXlDownloading ? 0.75 : 1 }]}
+                  >
+                    {kmXlDownloading ? <ActivityIndicator size="small" color="#fff" /> : <Feather name="file-text" size={15} color="#fff" />}
+                    <Text style={[styles.exportBtnText, { color: "#fff" }]}>
+                      {kmXlDownloading ? "…" : "Excel"}
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            </>
+          )}
+
+          {/* Empty state */}
+          {!kmLoading && !kmError && kmRows?.length === 0 && (
+            <EmptyState icon="inbox" title="No field staff found" sub="No field staff data for this date." onRetry={() => fetchKmSummary(kmDate)} colors={colors} />
+          )}
+
+          {/* Error state */}
+          {kmError && (
+            <EmptyState icon="alert-circle" title="Could not load KM data" onRetry={() => fetchKmSummary(kmDate)} colors={colors} isError />
+          )}
         </View>
       </ScrollView>
 

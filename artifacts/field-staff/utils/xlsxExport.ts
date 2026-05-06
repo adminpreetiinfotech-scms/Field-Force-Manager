@@ -72,3 +72,48 @@ export async function downloadXlsxFile(
     Alert.alert("Saved", `Excel report saved:\n${result.uri}`);
   }
 }
+
+export async function downloadKmSummaryXlsx(date: string, adminPhone: string): Promise<void> {
+  const url = `${API_BASE}/api/admin/daily-km-summary/xlsx?date=${encodeURIComponent(date)}`;
+  const filename = `km-summary-${date}.xlsx`;
+  const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+  if (Platform.OS === "web") {
+    const response = await fetch(url, { headers: { "x-admin-phone": adminPhone } });
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(body || `Server error ${response.status}`);
+    }
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
+    return;
+  }
+
+  const docDir: string | null = (FileSystem as unknown as { documentDirectory: string | null }).documentDirectory;
+  const localUri = `${docDir ?? ""}${filename}`;
+  const result = await FileSystem.downloadAsync(url, localUri, {
+    headers: { "x-admin-phone": adminPhone, Accept: XLSX_MIME },
+  });
+
+  if (result.status !== 200) {
+    throw new Error(`Download failed (HTTP ${result.status})`);
+  }
+
+  const canShare = await Sharing.isAvailableAsync();
+  if (canShare) {
+    await Sharing.shareAsync(result.uri, {
+      mimeType: XLSX_MIME,
+      dialogTitle: "Share KM Summary Excel",
+      UTI: "com.microsoft.excel.xlsx",
+    });
+  } else {
+    Alert.alert("Saved", `KM Summary saved:\n${result.uri}`);
+  }
+}
