@@ -513,7 +513,11 @@ router.get("/centers/search", async (req, res, next) => {
   try {
     const { q } = req.query as { q?: string };
     const query = q?.trim() ?? "";
-    if (query.length < 2) { res.json([]); return; }
+    const conditions = [
+      eq(centersTable.approvalStatus, "approved"),
+      eq(companiesTable.approvalStatus, "approved"),
+      ...(query.length >= 1 ? [ilike(centersTable.name, `%${query}%`)] : []),
+    ];
     const rows = await db
       .select({
         id: centersTable.id,
@@ -528,15 +532,9 @@ router.get("/centers/search", async (req, res, next) => {
       })
       .from(centersTable)
       .innerJoin(companiesTable, eq(centersTable.companyId, companiesTable.id))
-      .where(
-        and(
-          eq(centersTable.approvalStatus, "approved"),
-          eq(companiesTable.approvalStatus, "approved"),
-          ilike(centersTable.name, `%${query}%`),
-        ),
-      )
+      .where(and(...conditions))
       .orderBy(centersTable.name)
-      .limit(15);
+      .limit(100);
     res.json(rows);
   } catch (err) { next(err); }
 });

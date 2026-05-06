@@ -6,6 +6,7 @@ import {
   Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -134,12 +135,12 @@ export default function RegisterStaffScreen() {
   const [block, setBlock] = useState("");
   const [staffPinCode, setStaffPinCode] = useState("");
 
-  // Center direct search (primary flow)
-  const [centerQuery, setCenterQuery] = useState("");
-  const [centerSuggestions, setCenterSuggestions] = useState<CenterSearchResult[]>([]);
+  // Center modal picker (primary flow)
+  const [allCenters, setAllCenters] = useState<CenterSearchResult[]>([]);
+  const [allCentersLoading, setAllCentersLoading] = useState(false);
   const [selectedCenterResult, setSelectedCenterResult] = useState<CenterSearchResult | null>(null);
-  const [centerSearchLoading, setCenterSearchLoading] = useState(false);
-  const [showCenterSuggestions, setShowCenterSuggestions] = useState(false);
+  const [showCenterModal, setShowCenterModal] = useState(false);
+  const [modalSearchQuery, setModalSearchQuery] = useState("");
 
   // Admin code (fallback)
   const [adminCode, setAdminCode] = useState("");
@@ -161,33 +162,30 @@ export default function RegisterStaffScreen() {
   const pinCodeRef = useRef<TextInput>(null);
   const adminCodeRef = useRef<TextInput>(null);
 
-  // ── Company name search (debounced 400ms) ────────────────────────────
-  // ── Center name search (debounced 400ms) ─────────────────────────────────
+  // ── Load all centers on mount ─────────────────────────────────────────────
   useEffect(() => {
-    const q = centerQuery.trim();
-    if (q.length < 2) {
-      setCenterSuggestions([]);
-      setShowCenterSuggestions(false);
-      return;
-    }
-    if (selectedCenterResult && selectedCenterResult.name === q) return;
-    let cancelled = false;
-    const timer = setTimeout(() => {
-      setCenterSearchLoading(true);
-      searchCenters(q).then((data) => {
-        if (cancelled) return;
-        setCenterSuggestions(data);
-        setShowCenterSuggestions(data.length > 0);
-        setCenterSearchLoading(false);
-      });
-    }, 400);
-    return () => { cancelled = true; clearTimeout(timer); };
-  }, [centerQuery, selectedCenterResult]);
+    setAllCentersLoading(true);
+    searchCenters("").then((data) => {
+      setAllCenters(data);
+      setAllCentersLoading(false);
+    });
+  }, []);
+
+  const filteredModalCenters = allCenters.filter((c) => {
+    const q = modalSearchQuery.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      c.name.toLowerCase().includes(q) ||
+      (c.companyName?.toLowerCase() ?? "").includes(q) ||
+      (c.district?.toLowerCase() ?? "").includes(q) ||
+      (c.state?.toLowerCase() ?? "").includes(q)
+    );
+  });
 
   const selectCenterResult = (c: CenterSearchResult) => {
     setSelectedCenterResult(c);
-    setCenterQuery(c.name);
-    setShowCenterSuggestions(false);
+    setShowCenterModal(false);
+    setModalSearchQuery("");
     setCenterName(c.name);
     if (c.state) setState_(c.state);
     if (c.district) setDistrict(c.district);
@@ -197,9 +195,6 @@ export default function RegisterStaffScreen() {
 
   const clearCenterResult = () => {
     setSelectedCenterResult(null);
-    setCenterQuery("");
-    setCenterSuggestions([]);
-    setShowCenterSuggestions(false);
     setCenterName("");
     setState_("");
     setDistrict("");
@@ -230,28 +225,9 @@ export default function RegisterStaffScreen() {
     return () => { cancelled = true; };
   }, [adminCode, selectedCenterResult]);
 
-  const selectCenter = (c: Center) => {
-    setCenterId(c.id);
-    setCenterName(c.name);
-    if (c.state) setState_(c.state);
-    if (c.district) setDistrict(c.district);
-    if (c.block) setBlock(c.block);
-    setShowCenterPicker(false);
-  };
-
   const selectedTcId = selectedCenterResult?.tcId
     ?? centers.find((c) => c.id === centerId)?.tcId
     ?? null;
-
-  const clearCenter = () => {
-    setCenterId(null);
-    setCenterName("");
-    setState_("");
-    setDistrict("");
-    setBlock("");
-  };
-
-  const selectedCenter = centers.find((c) => c.id === centerId) ?? null;
 
   const isValidEmail = (e: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
@@ -762,10 +738,10 @@ export default function RegisterStaffScreen() {
           <SectionHeader label="TRAINING CENTER *" colors={colors} />
           <View style={[styles.form]}>
 
-            {/* ── Primary: search center by name ── */}
+            {/* Center picker button */}
             <View>
               <Text style={[styles.label, { color: colors.mutedForeground }]}>
-                CENTER KA NAAM DHUNDEIN
+                TRAINING CENTER CHUNEIN *
               </Text>
 
               {selectedCenterResult ? (
@@ -790,178 +766,29 @@ export default function RegisterStaffScreen() {
                   </Pressable>
                 </View>
               ) : (
-                <>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                    <TextInput
-                      value={centerQuery}
-                      onChangeText={(t) => {
-                        setCenterQuery(t);
-                        setSelectedCenterResult(null);
-                      }}
-                      placeholder="e.g. Nistha Skill Palamu, Ranchi Center..."
-                      placeholderTextColor={colors.mutedForeground}
-                      autoCapitalize="words"
-                      returnKeyType="search"
-                      style={[
-                        styles.textField,
-                        {
-                          flex: 1,
-                          color: colors.foreground,
-                          borderColor: colors.border,
-                          borderRadius: colors.radius,
-                          backgroundColor: colors.background,
-                          fontFamily: "Inter_400Regular",
-                        },
-                      ]}
-                    />
-                    {centerSearchLoading && <ActivityIndicator size="small" color={colors.primary} />}
-                  </View>
-                  <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
-                    Apne training center ka naam type karein (2+ akshar) — list auto-aayegi
-                  </Text>
-
-                  {showCenterSuggestions && (
-                    <View style={[styles.roleDropdown, { borderColor: colors.border, backgroundColor: colors.card, borderRadius: colors.radius, marginTop: 4 }]}>
-                      {centerSuggestions.map((c) => (
-                        <Pressable
-                          key={c.id}
-                          onPress={() => selectCenterResult(c)}
-                          style={({ pressed }) => [
-                            styles.roleOption,
-                            { backgroundColor: pressed ? colors.primary + "10" : "transparent", paddingVertical: 14 },
-                          ]}
-                        >
-                          <View style={{ flex: 1 }}>
-                            <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>{c.name}</Text>
-                            <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>
-                              {c.companyName}
-                              {c.district ? ` • ${c.district}` : ""}
-                              {c.state ? `, ${c.state}` : ""}
-                            </Text>
-                          </View>
-                          <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
-                        </Pressable>
-                      ))}
-                    </View>
+                <Pressable
+                  onPress={() => setShowCenterModal(true)}
+                  style={[
+                    styles.roleSelector,
+                    {
+                      borderColor: colors.border,
+                      backgroundColor: colors.background,
+                      borderRadius: colors.radius,
+                    },
+                  ]}
+                >
+                  {allCentersLoading ? (
+                    <ActivityIndicator size="small" color={colors.primary} style={{ marginRight: 8 }} />
+                  ) : (
+                    <Feather name="home" size={16} color={colors.mutedForeground} style={{ marginRight: 8 }} />
                   )}
-                </>
+                  <Text style={{ flex: 1, color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 15 }}>
+                    {allCentersLoading ? "Centers load ho rahe hain..." : `-- Center chunein${allCenters.length > 0 ? ` (${allCenters.length} available)` : ""} --`}
+                  </Text>
+                  <Feather name="chevron-down" size={16} color={colors.mutedForeground} />
+                </Pressable>
               )}
             </View>
-
-            {/* ── Fallback: admin invite code ── */}
-            {!selectedCenterResult && (
-              <View>
-                <Text style={[styles.label, { color: colors.mutedForeground }]}>
-                  YA ADMIN INVITE CODE DAALEN
-                </Text>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <TextInput
-                    ref={adminCodeRef}
-                    value={adminCode}
-                    onChangeText={(t) => setAdminCode(t.replace(/[^a-zA-Z0-9]/g, "").slice(0, 6))}
-                    placeholder="e.g. A3BZ90"
-                    placeholderTextColor={colors.mutedForeground}
-                    returnKeyType="done"
-                    autoCapitalize="characters"
-                    style={[
-                      styles.textField,
-                      {
-                        flex: 1,
-                        color: colors.foreground,
-                        borderColor: centersLoaded && centers.length > 0 ? colors.primary : colors.border,
-                        borderRadius: colors.radius,
-                        backgroundColor: colors.background,
-                        fontFamily: "Inter_500Medium",
-                        letterSpacing: 3,
-                      },
-                    ]}
-                  />
-                  {centersLoading && <ActivityIndicator size="small" color={colors.primary} />}
-                  {centersLoaded && centers.length > 0 && !centersLoading && (
-                    <View style={{ width: 32, height: 32, borderRadius: 999, backgroundColor: colors.primary + "18", alignItems: "center", justifyContent: "center" }}>
-                      <Feather name="check" size={16} color={colors.primary} />
-                    </View>
-                  )}
-                </View>
-                <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
-                  {centersLoaded && centers.length > 0
-                    ? `✓ ${centers.length} center${centers.length > 1 ? "s" : ""} mila — neeche choose karein`
-                    : "Admin ne invite code diya ho toh yahan daalen"}
-                </Text>
-              </View>
-            )}
-
-            {/* Center picker from admin code */}
-            {centersLoaded && centers.length > 0 && !selectedCenterResult && (
-              <View>
-                <Text style={[styles.label, { color: colors.mutedForeground }]}>
-                  TRAINING CENTER CHUNEIN *
-                </Text>
-                {selectedCenter ? (
-                  <View style={[styles.centerCard, { borderColor: colors.primary, backgroundColor: colors.primary + "0A", borderRadius: colors.radius }]}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: colors.primary, fontFamily: "Inter_700Bold", fontSize: 14 }}>{selectedCenter.name}</Text>
-                      {selectedCenter.tcId && (
-                        <Text style={{ color: colors.primary + "AA", fontFamily: "Inter_500Medium", fontSize: 11, marginTop: 2 }}>TC ID: {selectedCenter.tcId}</Text>
-                      )}
-                      <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>
-                        {[selectedCenter.block, selectedCenter.district, selectedCenter.state].filter(Boolean).join(", ")}
-                      </Text>
-                    </View>
-                    <Pressable onPress={clearCenter} hitSlop={8}>
-                      <Feather name="x" size={18} color={colors.mutedForeground} />
-                    </Pressable>
-                  </View>
-                ) : (
-                  <Pressable
-                    onPress={() => setShowCenterPicker((p) => !p)}
-                    style={[styles.roleSelector, { borderColor: colors.primary + "44", backgroundColor: colors.background, borderRadius: colors.radius }]}
-                  >
-                    <Feather name="home" size={16} color={colors.primary} />
-                    <Text style={{ flex: 1, color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 15, marginLeft: 6 }}>
-                      Center chunein...
-                    </Text>
-                    <Feather name={showCenterPicker ? "chevron-up" : "chevron-down"} size={16} color={colors.mutedForeground} />
-                  </Pressable>
-                )}
-                {showCenterPicker && !selectedCenter && (
-                  <View style={[styles.roleDropdown, { borderColor: colors.border, backgroundColor: colors.card, borderRadius: colors.radius }]}>
-                    {centers.map((c) => (
-                      <Pressable
-                        key={c.id}
-                        onPress={() => selectCenter(c)}
-                        style={({ pressed }) => [styles.roleOption, { backgroundColor: pressed ? colors.primary + "10" : "transparent", paddingVertical: 14 }]}
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>{c.name}</Text>
-                          {(c.district || c.state) && (
-                            <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>
-                              {[c.block, c.district, c.state].filter(Boolean).join(", ")}
-                            </Text>
-                          )}
-                        </View>
-                        <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
-                      </Pressable>
-                    ))}
-                  </View>
-                )}
-              </View>
-            )}
-
-            {/* Manual center name fallback */}
-            {!selectedCenterResult && (
-              <FieldInput
-                ref={centerRef}
-                label="CENTER / BRANCH NAME (manual)"
-                value={centerName}
-                onChangeText={setCenterName}
-                placeholder="e.g. Ranchi Training Center"
-                returnKeyType="next"
-                onSubmitEditing={() => stateRef.current?.focus()}
-                colors={colors}
-                autoCapitalize="words"
-              />
-            )}
 
             {/* TC ID — shown when a center with tcId is selected */}
             {selectedTcId ? (
@@ -1069,6 +896,134 @@ export default function RegisterStaffScreen() {
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* ── Center Picker Modal ──────────────────────────────────────── */}
+      <Modal
+        visible={showCenterModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => { setShowCenterModal(false); setModalSearchQuery(""); }}
+      >
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
+          {/* Header */}
+          <View style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: 16,
+            paddingTop: 16,
+            paddingBottom: 12,
+            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomColor: colors.border,
+            gap: 12,
+          }}>
+            <Pressable
+              onPress={() => { setShowCenterModal(false); setModalSearchQuery(""); }}
+              hitSlop={10}
+              style={{ padding: 4 }}
+            >
+              <Feather name="x" size={22} color={colors.foreground} />
+            </Pressable>
+            <Text style={{ flex: 1, fontSize: 17, fontFamily: "Inter_700Bold", color: colors.foreground }}>
+              Training Center Chunein
+            </Text>
+          </View>
+
+          {/* Search bar */}
+          <View style={{
+            flexDirection: "row",
+            alignItems: "center",
+            margin: 12,
+            paddingHorizontal: 12,
+            borderWidth: StyleSheet.hairlineWidth,
+            borderColor: colors.border,
+            borderRadius: colors.radius,
+            backgroundColor: colors.card,
+            gap: 8,
+          }}>
+            <Feather name="search" size={16} color={colors.mutedForeground} />
+            <TextInput
+              value={modalSearchQuery}
+              onChangeText={setModalSearchQuery}
+              placeholder="Center ka naam ya jila dhundein..."
+              placeholderTextColor={colors.mutedForeground}
+              autoCapitalize="none"
+              returnKeyType="search"
+              style={{ flex: 1, height: 44, color: colors.foreground, fontFamily: "Inter_400Regular", fontSize: 15 }}
+            />
+            {modalSearchQuery.length > 0 && (
+              <Pressable onPress={() => setModalSearchQuery("")} hitSlop={8}>
+                <Feather name="x-circle" size={16} color={colors.mutedForeground} />
+              </Pressable>
+            )}
+          </View>
+
+          {/* Center list */}
+          {allCentersLoading ? (
+            <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 12 }}>
+                Centers load ho rahe hain...
+              </Text>
+            </View>
+          ) : filteredModalCenters.length === 0 ? (
+            <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 32 }}>
+              <Feather name="search" size={32} color={colors.mutedForeground + "66"} />
+              <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium", fontSize: 15, marginTop: 12, textAlign: "center" }}>
+                {modalSearchQuery ? `"${modalSearchQuery}" ke liye koi center nahi mila` : "Koi approved center nahi hai"}
+              </Text>
+            </View>
+          ) : (
+            <ScrollView
+              contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 32 }}
+              keyboardShouldPersistTaps="handled"
+            >
+              <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12, marginBottom: 8, marginLeft: 4 }}>
+                {filteredModalCenters.length} center{filteredModalCenters.length !== 1 ? "s" : ""} available
+              </Text>
+              {filteredModalCenters.map((c) => (
+                <Pressable
+                  key={c.id}
+                  onPress={() => selectCenterResult(c)}
+                  style={({ pressed }) => ({
+                    flexDirection: "row",
+                    alignItems: "center",
+                    padding: 14,
+                    marginBottom: 8,
+                    borderWidth: StyleSheet.hairlineWidth,
+                    borderColor: colors.border,
+                    borderRadius: colors.radius,
+                    backgroundColor: pressed ? colors.primary + "10" : colors.card,
+                    gap: 12,
+                  })}
+                >
+                  <View style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 8,
+                    backgroundColor: colors.primary + "15",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}>
+                    <Feather name="home" size={16} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold", fontSize: 14 }}>{c.name}</Text>
+                    <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12, marginTop: 2 }}>
+                      {c.companyName}{c.projectName ? ` • ${c.projectName}` : ""}
+                    </Text>
+                    {(c.district || c.state) && (
+                      <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 11, marginTop: 2 }}>
+                        {[c.block, c.district, c.state].filter(Boolean).join(", ")}
+                      </Text>
+                    )}
+                  </View>
+                  <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
+                </Pressable>
+              ))}
+            </ScrollView>
+          )}
+        </View>
+      </Modal>
     </View>
   );
 }
