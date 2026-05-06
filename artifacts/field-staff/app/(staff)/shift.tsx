@@ -193,9 +193,14 @@ export default function StaffHome() {
   };
 
   const onCheckOut = async () => {
-    // Center staff and field staff with a vehicle both go through the check-out screen
-    if (user?.vehicleType || user?.staffCategory === "center") {
-      router.push(`/attendance/check-out?gpsKm=${totalKmRef.current.toFixed(2)}` as never);
+    // Center staff and field staff with a vehicle (profile OR selected at check-in) go through the check-out screen
+    const checkinVehicleType = lastEntry?.checkinVehicleType;
+    const hasVehicle = !!(checkinVehicleType || user?.vehicleType);
+    if (hasVehicle || user?.staffCategory === "center") {
+      const vt = checkinVehicleType ?? user?.vehicleType ?? "";
+      router.push(
+        `/attendance/check-out?gpsKm=${totalKmRef.current.toFixed(2)}&vehicleType=${encodeURIComponent(vt)}` as never
+      );
       return;
     }
     Alert.alert(

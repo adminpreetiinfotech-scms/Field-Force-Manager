@@ -32,7 +32,7 @@ function haversineM(lat1: number, lon1: number, lat2: number, lon2: number): num
 export default function CheckOutScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { gpsKm } = useLocalSearchParams<{ gpsKm: string }>();
+  const { gpsKm, vehicleType: vehicleTypeParam } = useLocalSearchParams<{ gpsKm: string; vehicleType: string }>();
   const { user, addAttendance, endTrip } = useApp();
   const [permission, requestPermission] = useCameraPermissions();
   const [odometerKm, setOdometerKm] = useState("");
@@ -248,7 +248,7 @@ export default function CheckOutScreen() {
               <Feather name="truck" size={16} color={colors.primary} />
               <View style={{ flex: 1 }}>
                 <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold", fontSize: 13 }}>
-                  {user?.vehicleType === "2-wheeler" ? "2-Wheeler" : "4-Wheeler"}
+                  {(vehicleTypeParam || user?.vehicleType) === "2-wheeler" ? "🏍️ 2-Wheeler" : "🚗 4-Wheeler"}
                   {user?.vehicleNumber ? `  ·  ${user.vehicleNumber}` : ""}
                 </Text>
                 {gpsKmNum > 0 && (
