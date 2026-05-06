@@ -607,6 +607,7 @@ router.get("/activity/leaderboard", async (req, res, next) => {
     const companyId = (req.query.companyId as string | undefined)?.trim() || null;
 
     // Pull all trip-end events in the window (distanceKm lives here).
+    // Only include field staff — center staff don't do vehicle trips.
     const rows = await db
       .select({
         staffId: activityEventsTable.staffId,
@@ -614,12 +615,14 @@ router.get("/activity/leaderboard", async (req, res, next) => {
         payload: activityEventsTable.payload,
       })
       .from(activityEventsTable)
+      .innerJoin(staffTable, eq(activityEventsTable.staffId, staffTable.id))
       .where(
         and(
           eq(activityEventsTable.kind, "trip-end"),
           gte(activityEventsTable.occurredAt, periodStart),
           lt(activityEventsTable.occurredAt, new Date(now.getTime() + 1)),
           companyId ? eq(activityEventsTable.companyId, companyId) : undefined,
+          eq(staffTable.staffCategory, "field"),
         ),
       );
 
