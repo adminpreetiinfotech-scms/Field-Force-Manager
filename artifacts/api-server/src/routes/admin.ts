@@ -301,7 +301,7 @@ router.get("/admin/staff-list", requireAdmin, async (_req, res, next) => {
     const companyFilter = companyId
       ? and(
           ne(staffTable.role, "super_admin"),
-          eq(staffTable.companyId, companyId),
+          or(eq(staffTable.companyId, companyId), isNull(staffTable.companyId)),
         )
       : ne(staffTable.role, "super_admin");
 
@@ -478,7 +478,9 @@ router.patch("/admin/staff/:id/approve", requireAdmin, async (req, res, next) =>
       res.status(404).json({ title: "Staff not found", status: 404 });
       return;
     }
-    await db.update(staffTable).set({ approvalStatus: "approved" }).where(eq(staffTable.id, id));
+    await db.update(staffTable)
+      .set({ approvalStatus: "approved", ...(companyId ? { companyId } : {}) })
+      .where(eq(staffTable.id, id));
     res.json({ success: true });
   } catch (err) {
     next(err);
