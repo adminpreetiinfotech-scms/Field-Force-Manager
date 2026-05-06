@@ -67,6 +67,8 @@ export default function MpinScreen() {
               pathname: "/(auth)/pending-approval",
               params: { name: user.name, phone: user.phone, role: user.role },
             });
+          } else if (user.role === "super_admin") {
+            router.replace("/(super-admin)/dashboard");
           } else if (user.role === "admin") {
             router.replace("/(admin)/dashboard");
           } else {
@@ -88,7 +90,8 @@ export default function MpinScreen() {
           if (Platform.OS !== "web") {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
           }
-          if (user.role === "admin") router.replace("/(admin)/dashboard");
+          if (user.role === "super_admin") router.replace("/(super-admin)/dashboard");
+          else if (user.role === "admin") router.replace("/(admin)/dashboard");
           else router.replace("/(staff)/shift");
         } catch (e: unknown) {
           if (Platform.OS !== "web") {
