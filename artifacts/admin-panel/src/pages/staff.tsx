@@ -1322,6 +1322,26 @@ export default function StaffManagement() {
   const [allStaff, setAllStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddStaff, setShowAddStaff] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleStaffExport = async () => {
+    setDownloading(true);
+    try {
+      const res = await adminFetch("/api/admin/staff/export");
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `staff-list-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      toast({ title: "Export failed", description: e.message, variant: "destructive" });
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const fetchStaff = useCallback(async () => {
     setLoading(true);
@@ -1373,6 +1393,10 @@ export default function StaffManagement() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight">Staff Management</h1>
         <div className="flex items-center gap-2 flex-wrap justify-end">
+          <Button variant="outline" onClick={handleStaffExport} disabled={downloading} className="gap-1.5">
+            {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            {downloading ? "Downloading…" : "Download Excel"}
+          </Button>
           <Button onClick={() => setShowAddStaff(true)} className="gap-1.5">
             <UserPlus className="h-4 w-4" />
             Add Staff

@@ -125,6 +125,7 @@ export type RegisterData = {
   designation?: string | null;
   block?: string | null;
   staffPinCode?: string | null;
+  trainerCourse?: string | null;
 };
 
 type AppState = {
@@ -603,6 +604,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       designation: (data as any).designation ?? null,
       block: (data as any).block ?? null,
       staffPinCode: (data as any).staffPinCode ?? null,
+      trainerCourse: data.trainerCourse ?? null,
     } as Parameters<typeof registerStaff>[0]);
     const user: User = {
       id: staff.id,

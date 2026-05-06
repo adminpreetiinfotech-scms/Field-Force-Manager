@@ -529,6 +529,7 @@ router.get("/centers/search", async (req, res, next) => {
         companyId: centersTable.companyId,
         companyName: companiesTable.name,
         projectName: companiesTable.projectName,
+        courses: centersTable.courses,
       })
       .from(centersTable)
       .innerJoin(companiesTable, eq(centersTable.companyId, companiesTable.id))

@@ -55,7 +55,7 @@ router.post("/staff/register", async (req, res, next) => {
     const {
       kind, name, phone, organization, centerName, projectName, email, state, district,
       empCode, area, adminCode, adminRegistrationKey, companyId, staffCategory, centerStaffRole, centerId,
-      staffCategoryGroup, designation, block, staffPinCode,
+      staffCategoryGroup, designation, block, staffPinCode, trainerCourse,
     } = req.body as {
       kind?: string;
       name?: string;
@@ -78,6 +78,7 @@ router.post("/staff/register", async (req, res, next) => {
       designation?: string | null;
       block?: string | null;
       staffPinCode?: string | null;
+      trainerCourse?: string | null;
     };
 
     if (!kind || !["admin", "staff"].includes(kind)) {
@@ -225,6 +226,7 @@ router.post("/staff/register", async (req, res, next) => {
         designation: designation?.trim() || null,
         block: block?.trim() || null,
         staffPinCode: staffPinCode?.trim() || null,
+        trainerCourse: staffCategory === "center" ? (trainerCourse?.trim() || null) : null,
       })
       .returning();
 

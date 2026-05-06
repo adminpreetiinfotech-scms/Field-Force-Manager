@@ -1,5 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
+import * as FileSystem from "expo-file-system";
+import * as Sharing from "expo-sharing";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -200,6 +202,31 @@ export default function AdminStaffScreen() {
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    if (!user) return;
+    setDownloading(true);
+    try {
+      const url = `${API_BASE}/api/admin/staff/export?adminPhone=${encodeURIComponent(user.phone)}`;
+      const fileName = `staff-list-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      const fileUri = `${FileSystem.cacheDirectory}${fileName}`;
+      const { uri } = await FileSystem.downloadAsync(url, fileUri);
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(uri, {
+          mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          dialogTitle: "Staff List Excel",
+        });
+      } else {
+        Alert.alert("Downloaded", `File saved to:\n${uri}`);
+      }
+    } catch (e: any) {
+      Alert.alert("Download failed", e?.message || "Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const approveStaff = useApproveStaff();
   const rejectStaff = useRejectStaff();
@@ -357,9 +384,34 @@ export default function AdminStaffScreen() {
           backgroundColor: colors.card,
         }}
       >
-        <Text style={[ss.title, { color: colors.foreground }]}>
-          Staff Management
-        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <Text style={[ss.title, { color: colors.foreground }]}>
+            Staff Management
+          </Text>
+          <TouchableOpacity
+            onPress={() => { void handleDownload(); }}
+            disabled={downloading}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 5,
+              backgroundColor: colors.primary + "15",
+              borderRadius: 8,
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+              borderWidth: 1,
+              borderColor: colors.primary + "30",
+            }}
+          >
+            {downloading
+              ? <ActivityIndicator size="small" color={colors.primary} />
+              : <Feather name="download" size={14} color={colors.primary} />
+            }
+            <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold", fontSize: 12 }}>
+              {downloading ? "..." : "Excel"}
+            </Text>
+          </TouchableOpacity>
+        </View>
         {pendingCount > 0 && (
           <Text style={[ss.pendingNote, { color: "#D97706" }]}>
             {pendingCount} pending approval

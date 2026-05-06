@@ -142,6 +142,11 @@ export default function RegisterStaffScreen() {
   const [showCenterModal, setShowCenterModal] = useState(false);
   const [modalSearchQuery, setModalSearchQuery] = useState("");
 
+  // Course picker
+  const [trainerCourse, setTrainerCourse] = useState("");
+  const [showCourseModal, setShowCourseModal] = useState(false);
+  const [courseModalSearch, setCourseModalSearch] = useState("");
+
   // Admin code (fallback)
   const [adminCode, setAdminCode] = useState("");
   const [centers, setCenters] = useState<Center[]>([]);
@@ -199,6 +204,7 @@ export default function RegisterStaffScreen() {
     setState_("");
     setDistrict("");
     setBlock("");
+    setTrainerCourse("");
   };
 
   // ── Fetch centers when admin code is 6 chars ─────────────────────────────
@@ -276,6 +282,7 @@ export default function RegisterStaffScreen() {
         block: block.trim() || undefined,
         staffPinCode: staffPinCode.trim() || undefined,
         centerId: selectedCenterResult?.id ?? centerId ?? undefined,
+        trainerCourse: staffCategory === "center" ? (trainerCourse.trim() || undefined) : undefined,
       });
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -827,6 +834,72 @@ export default function RegisterStaffScreen() {
 
           </View>
 
+          {/* ── Section: Course (center staff only, shown after center selected) ── */}
+          {staffCategory === "center" && selectedCenterResult && (
+            <>
+              <SectionHeader label="COURSE / SUBJECT" colors={colors} />
+              <View style={[styles.form]}>
+                <View>
+                  <Text style={[styles.label, { color: colors.mutedForeground }]}>
+                    COURSE / SUBJECT (optional)
+                  </Text>
+                  {selectedCenterResult.courses && selectedCenterResult.courses.length > 0 ? (
+                    <>
+                      <Pressable
+                        onPress={() => setShowCourseModal(true)}
+                        style={[
+                          styles.roleSelector,
+                          {
+                            borderColor: trainerCourse ? colors.primary : colors.border,
+                            backgroundColor: trainerCourse ? colors.primary + "0A" : colors.background,
+                            borderRadius: colors.radius,
+                          },
+                        ]}
+                      >
+                        <Feather name="book-open" size={16} color={trainerCourse ? colors.primary : colors.mutedForeground} style={{ marginRight: 8 }} />
+                        <Text style={{ flex: 1, color: trainerCourse ? colors.primary : colors.mutedForeground, fontFamily: trainerCourse ? "Inter_600SemiBold" : "Inter_400Regular", fontSize: 15 }}>
+                          {trainerCourse || "-- Course chunein --"}
+                        </Text>
+                        {trainerCourse ? (
+                          <Pressable onPress={() => setTrainerCourse("")} hitSlop={8}>
+                            <Feather name="x" size={16} color={colors.mutedForeground} />
+                          </Pressable>
+                        ) : (
+                          <Feather name="chevron-down" size={16} color={colors.mutedForeground} />
+                        )}
+                      </Pressable>
+                      <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
+                        {selectedCenterResult.courses.length} courses available at this center
+                      </Text>
+                    </>
+                  ) : (
+                    <TextInput
+                      value={trainerCourse}
+                      onChangeText={setTrainerCourse}
+                      placeholder="e.g. Computer Basics, Retail, Beauty & Wellness"
+                      placeholderTextColor={colors.mutedForeground}
+                      style={[
+                        styles.inputRow,
+                        styles.input,
+                        {
+                          borderColor: colors.border,
+                          backgroundColor: colors.background,
+                          borderRadius: colors.radius,
+                          color: colors.foreground,
+                          paddingHorizontal: 14,
+                          fontFamily: "Inter_400Regular",
+                          fontSize: 15,
+                        },
+                      ]}
+                      autoCapitalize="words"
+                      returnKeyType="done"
+                    />
+                  )}
+                </View>
+              </View>
+            </>
+          )}
+
           {/* ── Section: Location ─────────────────────────────────────────── */}
           <SectionHeader label="LOCATION" colors={colors} />
           <View style={[styles.form]}>
@@ -1022,6 +1095,120 @@ export default function RegisterStaffScreen() {
               ))}
             </ScrollView>
           )}
+        </View>
+      </Modal>
+
+      {/* ── Course Picker Modal ────────────────────────────────────────── */}
+      <Modal
+        visible={showCourseModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => { setShowCourseModal(false); setCourseModalSearch(""); }}
+      >
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
+          <View style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: 16,
+            paddingTop: 16,
+            paddingBottom: 12,
+            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomColor: colors.border,
+            gap: 12,
+          }}>
+            <Pressable
+              onPress={() => { setShowCourseModal(false); setCourseModalSearch(""); }}
+              hitSlop={10}
+              style={{ padding: 4 }}
+            >
+              <Feather name="x" size={22} color={colors.foreground} />
+            </Pressable>
+            <Text style={{ flex: 1, fontSize: 17, fontFamily: "Inter_700Bold", color: colors.foreground }}>
+              Course / Subject Chunein
+            </Text>
+          </View>
+
+          <View style={{
+            flexDirection: "row",
+            alignItems: "center",
+            margin: 12,
+            paddingHorizontal: 12,
+            borderWidth: StyleSheet.hairlineWidth,
+            borderColor: colors.border,
+            borderRadius: colors.radius,
+            backgroundColor: colors.card,
+            gap: 8,
+          }}>
+            <Feather name="search" size={16} color={colors.mutedForeground} />
+            <TextInput
+              value={courseModalSearch}
+              onChangeText={setCourseModalSearch}
+              placeholder="Course dhundein..."
+              placeholderTextColor={colors.mutedForeground}
+              autoCapitalize="none"
+              returnKeyType="search"
+              style={{ flex: 1, height: 44, color: colors.foreground, fontFamily: "Inter_400Regular", fontSize: 15 }}
+            />
+            {courseModalSearch.length > 0 && (
+              <Pressable onPress={() => setCourseModalSearch("")} hitSlop={8}>
+                <Feather name="x-circle" size={16} color={colors.mutedForeground} />
+              </Pressable>
+            )}
+          </View>
+
+          <ScrollView
+            contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 32 }}
+            keyboardShouldPersistTaps="handled"
+          >
+            {(selectedCenterResult?.courses ?? [])
+              .filter((c) => !courseModalSearch.trim() || c.toLowerCase().includes(courseModalSearch.trim().toLowerCase()))
+              .map((course) => (
+                <Pressable
+                  key={course}
+                  onPress={() => {
+                    setTrainerCourse(course);
+                    setShowCourseModal(false);
+                    setCourseModalSearch("");
+                  }}
+                  style={({ pressed }) => ({
+                    flexDirection: "row",
+                    alignItems: "center",
+                    padding: 16,
+                    marginBottom: 8,
+                    borderWidth: StyleSheet.hairlineWidth,
+                    borderColor: trainerCourse === course ? colors.primary : colors.border,
+                    borderRadius: colors.radius,
+                    backgroundColor: trainerCourse === course
+                      ? colors.primary + "12"
+                      : pressed ? colors.primary + "08" : colors.card,
+                    gap: 12,
+                  })}
+                >
+                  <View style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 8,
+                    backgroundColor: trainerCourse === course ? colors.primary + "20" : colors.muted,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}>
+                    <Feather name="book-open" size={15} color={trainerCourse === course ? colors.primary : colors.mutedForeground} />
+                  </View>
+                  <Text style={{
+                    flex: 1,
+                    color: trainerCourse === course ? colors.primary : colors.foreground,
+                    fontFamily: trainerCourse === course ? "Inter_600SemiBold" : "Inter_400Regular",
+                    fontSize: 15,
+                  }}>
+                    {course}
+                  </Text>
+                  {trainerCourse === course && (
+                    <Feather name="check-circle" size={18} color={colors.primary} />
+                  )}
+                </Pressable>
+              ))
+            }
+          </ScrollView>
         </View>
       </Modal>
     </View>

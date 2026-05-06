@@ -60,6 +60,8 @@ export const staffTable = pgTable("staff", {
   block: text("block"),
   /** PIN code of staff's base location */
   staffPinCode: text("staff_pin_code"),
+  /** Course / subject the trainer teaches (for center staff with academic role). */
+  trainerCourse: text("trainer_course"),
   /** Training center this staff member is linked to (nullable). */
   centerId: uuid("center_id").references(() => centersTable.id, { onDelete: "set null" }),
   /** JSON-encoded array of dismissed dashboard hint keys (e.g. ["dashboard_hint_center"]). */

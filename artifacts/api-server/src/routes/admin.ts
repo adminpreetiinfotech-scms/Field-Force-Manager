@@ -2155,4 +2155,86 @@ router.delete("/admin/hints", requireAdmin, async (req, res, next) => {
   }
 });
 
+// ─── GET /api/admin/staff/export ─────────────────────────────────────────────
+// Download all staff for the company as a styled Excel workbook.
+
+router.get("/admin/staff/export", requireAdmin, async (req, res, next) => {
+  try {
+    const companyId = res.locals.companyId as string | null;
+    const companyFilter = companyId
+      ? and(eq(staffTable.companyId, companyId), ne(staffTable.role, "super_admin"), isNull(staffTable.deletedAt))
+      : and(ne(staffTable.role, "super_admin"), isNull(staffTable.deletedAt));
+
+    const rows = await db.select().from(staffTable).where(companyFilter).orderBy(staffTable.name);
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Staff List");
+
+    ws.columns = [
+      { header: "S.No",           key: "sno",             width: 6  },
+      { header: "Emp Code",       key: "empCode",          width: 13 },
+      { header: "Name",           key: "name",             width: 24 },
+      { header: "Phone",          key: "phone",            width: 14 },
+      { header: "Email",          key: "email",            width: 26 },
+      { header: "Role",           key: "role",             width: 10 },
+      { header: "Staff Type",     key: "staffCategory",    width: 13 },
+      { header: "Center Role",    key: "centerStaffRole",  width: 18 },
+      { header: "Trainer Course", key: "trainerCourse",    width: 24 },
+      { header: "Center Name",    key: "centerName",       width: 26 },
+      { header: "Project/Scheme", key: "projectName",      width: 16 },
+      { header: "State",          key: "state",            width: 14 },
+      { header: "District",       key: "district",         width: 14 },
+      { header: "Block",          key: "block",            width: 14 },
+      { header: "Status",         key: "status",           width: 12 },
+      { header: "Registered On",  key: "createdAt",        width: 14 },
+    ];
+
+    const headerRow = ws.getRow(1);
+    headerRow.height = 28;
+    headerRow.eachCell((cell) => {
+      cell.fill   = { type: "pattern", pattern: "solid", fgColor: { argb: PURPLE } };
+      cell.font   = { color: { argb: WHITE }, bold: true, size: 11 };
+      cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+      cell.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
+    });
+
+    const altFill: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: LGRAY } };
+
+    rows.forEach((r, idx) => {
+      const status = r.disabledAt ? "Disabled" : (r.approvalStatus === "approved" ? "Active" : r.approvalStatus);
+      const row = ws.addRow({
+        sno:            idx + 1,
+        empCode:        r.empCode,
+        name:           r.name,
+        phone:          r.phone,
+        email:          r.email ?? "",
+        role:           r.role,
+        staffCategory:  r.staffCategory ?? "field",
+        centerStaffRole: r.centerStaffRole ?? "",
+        trainerCourse:  (r as any).trainerCourse ?? "",
+        centerName:     r.centerName ?? "",
+        projectName:    r.projectName ?? "",
+        state:          r.state ?? "",
+        district:       r.district ?? "",
+        block:          r.block ?? "",
+        status,
+        createdAt:      r.createdAt ? r.createdAt.toISOString().slice(0, 10) : "",
+      });
+      row.height = 20;
+      if (idx % 2 === 1) row.eachCell((cell) => { cell.fill = altFill; });
+      row.eachCell((cell) => {
+        cell.alignment = { vertical: "middle" };
+        cell.border = { top: { style: "hair" }, bottom: { style: "hair" }, left: { style: "hair" }, right: { style: "hair" } };
+      });
+    });
+
+    ws.autoFilter = { from: "A1", to: { row: 1, column: ws.columns.length } };
+
+    const fname = `staff-list-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    res.setHeader("Content-Disposition", `attachment; filename="${fname}"`);
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    await wb.xlsx.write(res);
+  } catch (err) { next(err); }
+});
+
 export default router;
