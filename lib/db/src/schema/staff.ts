@@ -66,6 +66,8 @@ export const staffTable = pgTable("staff", {
   centerId: uuid("center_id").references(() => centersTable.id, { onDelete: "set null" }),
   /** JSON-encoded array of dismissed dashboard hint keys (e.g. ["dashboard_hint_center"]). */
   dismissedHints: text("dismissed_hints"),
+  /** Expo push token for in-app push notifications. Updated after each login. */
+  expoPushToken: text("expo_push_token"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

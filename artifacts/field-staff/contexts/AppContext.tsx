@@ -14,7 +14,8 @@ import {
   enqueueActivity,
   initActivityQueue,
 } from "@/services/activitySync";
-import { AppState } from "react-native";
+import { AppState, Platform } from "react-native";
+import { registerForPushNotificationsAsync } from "@/services/pushNotifications";
 
 export type UserRole = "staff" | "admin" | "super_admin";
 
@@ -446,6 +447,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setAdminPhoneGetter(() => state.user?.phone ?? null);
   }, [state.user]);
+
+  // Register for push notifications whenever the logged-in user changes.
+  // Fire-and-forget — never blocks login or any other flow.
+  useEffect(() => {
+    if (!state.user?.phone || Platform.OS === "web") return;
+    void registerForPushNotificationsAsync(state.user.phone).catch(() => {});
+  }, [state.user?.phone]);
 
   // Initialise the offline activity queue on mount.
   useEffect(() => {

@@ -12,6 +12,7 @@ import { isValidUUID } from "../lib/validation";
 import fs from "fs";
 import path from "path";
 import { sendSmsSilent } from "../lib/twilio";
+import { sendPushSilent } from "../lib/push";
 import { downloadLogoBuffer } from "../lib/logoStorage";
 import { generateCandidatePdf, type PdfReportOpts } from "../services/pdf";
 import { requireAdmin } from "./admin";
@@ -883,11 +884,37 @@ router.patch("/admin/candidates/:id/status", requireAdmin, async (req, res, next
         message,
       });
 
-      // Also send SMS (fire-and-forget) for actionable statuses only
-      if (status !== "pending") {
-        const smsBody = `Nistha Skill: ${message}`.slice(0, 320);
-        void sendSmsSilent(candidate.submittedByPhone, smsBody, req.log.warn.bind(req.log));
-      }
+      // Fire-and-forget push + SMS to the mobilizer
+      void (async () => {
+        try {
+          if (candidate.submittedByPhone) {
+            const [mobilizer] = await db
+              .select({ expoPushToken: staffTable.expoPushToken })
+              .from(staffTable)
+              .where(eq(staffTable.phone, candidate.submittedByPhone))
+              .limit(1);
+            if (mobilizer?.expoPushToken) {
+              await sendPushSilent(
+                [mobilizer.expoPushToken],
+                `Candidate ${statusLabel}`,
+                message,
+                { type: "candidate_status", candidateId: candidate.id, status },
+                req.log.warn.bind(req.log),
+              );
+            }
+            if (status !== "pending") {
+              const smsBody = `Nistha Skill: ${message}`.slice(0, 320);
+              await sendSmsSilent(
+                candidate.submittedByPhone,
+                smsBody,
+                req.log.warn.bind(req.log),
+              );
+            }
+          }
+        } catch {
+          /* push/sms failure must not affect response */
+        }
+      })();
     }
 
     res.json(toDto(updated));

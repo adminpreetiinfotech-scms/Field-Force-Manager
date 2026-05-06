@@ -16,6 +16,7 @@ import {
 import { Router, type IRouter } from "express";
 import { requireAdmin } from "./admin";
 import { isValidUUID } from "../lib/validation";
+import { sendPushSilent } from "../lib/push";
 
 const router: IRouter = Router();
 
@@ -146,6 +147,32 @@ router.post("/leaves/apply", async (req, res, next) => {
       .returning();
 
     res.status(201).json({ leave });
+
+    // Fire-and-forget push to company admins
+    void (async () => {
+      try {
+        if (!staff.companyId) return;
+        const admins = await db
+          .select({ expoPushToken: staffTable.expoPushToken })
+          .from(staffTable)
+          .where(
+            and(
+              eq(staffTable.companyId, staff.companyId),
+              eq(staffTable.role, "admin"),
+              isNull(staffTable.deletedAt),
+              isNull(staffTable.disabledAt),
+            ),
+          );
+        await sendPushSilent(
+          admins.map((a) => a.expoPushToken),
+          "New Leave Request",
+          `${staff.name} applied for ${leaveType} leave (${totalDays} day${totalDays > 1 ? "s" : ""}).`,
+          { type: "leave_applied", leaveId: leave!.id },
+        );
+      } catch {
+        /* push failure must not affect response */
+      }
+    })();
   } catch (err) {
     next(err);
   }
@@ -382,6 +409,30 @@ router.patch("/admin/leaves/:id", requireAdmin, async (req, res, next) => {
       .returning();
 
     res.json({ leave: updated });
+
+    // Fire-and-forget push to the staff member who applied
+    void (async () => {
+      try {
+        if (!updated?.staffId) return;
+        const [member] = await db
+          .select({ expoPushToken: staffTable.expoPushToken })
+          .from(staffTable)
+          .where(eq(staffTable.id, updated.staffId))
+          .limit(1);
+        if (!member?.expoPushToken) return;
+        const isApproved = action === "approve";
+        await sendPushSilent(
+          [member.expoPushToken],
+          isApproved ? "Leave Approved ✓" : "Leave Rejected",
+          isApproved
+            ? "Your leave request has been approved."
+            : `Your leave request was rejected.${updated.rejectionReason ? ` Reason: ${updated.rejectionReason}` : ""}`,
+          { type: "leave_reviewed", leaveId: updated.id, status: updated.status },
+        );
+      } catch {
+        /* push failure must not affect response */
+      }
+    })();
   } catch (err) {
     next(err);
   }

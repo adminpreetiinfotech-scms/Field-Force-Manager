@@ -17,6 +17,7 @@ import {
 } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import { sendSmsSilent } from "../lib/twilio";
+import { sendPushSilent } from "../lib/push";
 import { isValidUUID } from "../lib/validation";
 import { requireAdmin } from "./admin";
 
@@ -137,11 +138,11 @@ router.post("/notices/admin/create", requireAdmin, async (req, res, next) => {
       );
     }
 
-    // Fire-and-forget SMS to recipients (capped at 50 to control costs)
+    // Fire-and-forget SMS + push to recipients (SMS capped at 50 to control costs)
     void (async () => {
       try {
-        const phones = await db
-          .select({ phone: staffTable.phone })
+        const staffRows = await db
+          .select({ phone: staffTable.phone, expoPushToken: staffTable.expoPushToken })
           .from(staffTable)
           .where(inArray(staffTable.id, recipientIds.slice(0, 50)));
 
@@ -154,11 +155,20 @@ router.post("/notices/admin/create", requireAdmin, async (req, res, next) => {
 
         const smsBody = `${priorityTag}SCMS Notice:\n${notice.title}\n${notice.message}`.slice(0, 320);
 
-        await Promise.allSettled(
-          phones.map(({ phone }) => sendSmsSilent(phone, smsBody, req.log.warn.bind(req.log))),
-        );
+        await Promise.allSettled([
+          ...staffRows.map(({ phone }) =>
+            sendSmsSilent(phone, smsBody, req.log.warn.bind(req.log)),
+          ),
+          sendPushSilent(
+            staffRows.map((r) => r.expoPushToken),
+            notice.title,
+            notice.message.slice(0, 200),
+            { type: "notice", noticeId: notice.id },
+            req.log.warn.bind(req.log),
+          ),
+        ]);
       } catch {
-        // SMS failure must not affect the main response
+        // SMS/push failure must not affect the main response
       }
     })();
 

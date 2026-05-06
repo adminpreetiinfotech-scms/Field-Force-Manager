@@ -55,7 +55,17 @@
           "locationAlwaysAndWhenInUsePermission": "Allow SCMS to use your location to stamp check-ins and auto-track field trips."
         }
       ],
-      "react-native-document-scanner-plugin"
+      "react-native-document-scanner-plugin",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#2563EB",
+          "sounds": [],
+          "androidMode": "default",
+          "androidCollapsedTitle": "SCMS"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

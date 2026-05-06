@@ -13,7 +13,8 @@ import {
 } from "@expo-google-fonts/noto-sans-devanagari";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { setBaseUrl } from "@workspace/api-client-react";
-import { Stack } from "expo-router";
+import * as Notifications from "expo-notifications";
+import { useRouter, Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect } from "react";
@@ -90,6 +91,38 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
+  const router = useRouter();
+
+  // Handle taps on push notifications (app in background / killed)
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const data = response.notification.request.content.data as
+          | Record<string, string>
+          | undefined;
+        try {
+          switch (data?.type) {
+            case "notice":
+              router.push("/(staff)/notices" as never);
+              break;
+            case "leave_applied":
+              router.push("/(admin)/leaves" as never);
+              break;
+            case "leave_reviewed":
+              router.push("/(staff)/leaves" as never);
+              break;
+            case "candidate_status":
+              router.push("/(staff)/candidates" as never);
+              break;
+          }
+        } catch {
+          /* navigation may fail if screen isn't mounted yet */
+        }
+      },
+    );
+    return () => sub.remove();
+  }, [router]);
+
   const [fontsLoaded, fontError] = useFonts(
     Platform.OS === "web"
       ? {}

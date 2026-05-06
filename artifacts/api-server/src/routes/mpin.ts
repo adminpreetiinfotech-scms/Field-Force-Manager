@@ -409,4 +409,35 @@ router.post("/auth/promote-super-admin", async (req, res, next) => {
   }
 });
 
+// ─── POST /api/auth/push-token ────────────────────────────────────────────────
+// Staff saves their Expo push token after login. Upserts into staff.expo_push_token.
+
+router.post("/auth/push-token", async (req, res, next) => {
+  try {
+    const phone =
+      (req.headers["x-staff-phone"] as string | undefined) ??
+      (req.headers["x-admin-phone"] as string | undefined);
+    if (!phone?.trim()) {
+      res.status(401).json({ title: "Phone header required", status: 401 });
+      return;
+    }
+    const { token } = req.body as { token?: string };
+    if (
+      !token ||
+      (!token.startsWith("ExponentPushToken[") &&
+        !token.startsWith("ExpoPushToken["))
+    ) {
+      res.status(400).json({ title: "Invalid Expo push token", status: 400 });
+      return;
+    }
+    await db
+      .update(staffTable)
+      .set({ expoPushToken: token })
+      .where(eq(staffTable.phone, phone.trim()));
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;
