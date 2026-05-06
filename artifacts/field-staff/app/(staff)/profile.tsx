@@ -64,19 +64,11 @@ export default function StaffProfile() {
   const kmHistory = kmHistoryData?.entries ?? [];
 
   const [selectedKmDay, setSelectedKmDay] = useState<string | null>(null);
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
 
-  const onSignOut = () => {
-    Alert.alert("Sign out", "End your session on this device?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign out",
-        style: "destructive",
-        onPress: async () => {
-          await signOut();
-          router.replace("/(auth)/welcome");
-        },
-      },
-    ]);
+  const doSignOut = async () => {
+    await signOut();
+    router.replace("/(auth)/welcome");
   };
 
   const webBottomPad = Platform.OS === "web" ? 84 : 84;
@@ -518,15 +510,39 @@ export default function StaffProfile() {
         </View>
       </View>
 
-      <Button
-        label="Sign out"
-        onPress={onSignOut}
-        variant="ghost"
-        size="lg"
-        fullWidth
-        style={{ marginTop: 18 }}
-        icon={<Feather name="log-out" size={18} color={colors.foreground} />}
-      />
+      {confirmSignOut ? (
+        <View style={{ marginTop: 18, gap: 10 }}>
+          <Text style={{ color: colors.mutedForeground, fontSize: 13, fontFamily: "Inter_500Medium", textAlign: "center" }}>
+            Is session se sign out karein?
+          </Text>
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <Button
+              label="Cancel"
+              onPress={() => setConfirmSignOut(false)}
+              variant="ghost"
+              size="lg"
+              style={{ flex: 1 }}
+            />
+            <Button
+              label="Sign out"
+              onPress={doSignOut}
+              size="lg"
+              style={{ flex: 1, backgroundColor: "#DC2626" }}
+              icon={<Feather name="log-out" size={16} color="#fff" />}
+            />
+          </View>
+        </View>
+      ) : (
+        <Button
+          label="Sign out"
+          onPress={() => setConfirmSignOut(true)}
+          variant="ghost"
+          size="lg"
+          fullWidth
+          style={{ marginTop: 18 }}
+          icon={<Feather name="log-out" size={18} color={colors.foreground} />}
+        />
+      )}
 
       <Text
         style={{

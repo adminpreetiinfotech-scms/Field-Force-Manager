@@ -23,18 +23,11 @@ export default function AdminProfile() {
   const insets = useSafeAreaInsets();
   const { user, signOut, attendance, staffLocations } = useApp();
 
-  const onSignOut = () => {
-    Alert.alert("Sign out", "End your session?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign out",
-        style: "destructive",
-        onPress: async () => {
-          await signOut();
-          router.replace("/(auth)/welcome");
-        },
-      },
-    ]);
+  const [confirmSignOut, setConfirmSignOut] = React.useState(false);
+
+  const doSignOut = async () => {
+    await signOut();
+    router.replace("/(auth)/welcome");
   };
 
   const onHelpSupport = () => {
@@ -197,15 +190,39 @@ export default function AdminProfile() {
         </View>
       </View>
 
-      <Button
-        label="Sign out"
-        onPress={onSignOut}
-        variant="ghost"
-        size="lg"
-        fullWidth
-        style={{ marginTop: 18 }}
-        icon={<Feather name="log-out" size={18} color={colors.foreground} />}
-      />
+      {confirmSignOut ? (
+        <View style={{ marginTop: 18, gap: 10 }}>
+          <Text style={{ color: colors.mutedForeground, fontSize: 13, fontFamily: "Inter_500Medium", textAlign: "center" }}>
+            Is session se sign out karein?
+          </Text>
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <Button
+              label="Cancel"
+              onPress={() => setConfirmSignOut(false)}
+              variant="ghost"
+              size="lg"
+              style={{ flex: 1 }}
+            />
+            <Button
+              label="Sign out"
+              onPress={doSignOut}
+              size="lg"
+              style={{ flex: 1, backgroundColor: "#DC2626" }}
+              icon={<Feather name="log-out" size={16} color="#fff" />}
+            />
+          </View>
+        </View>
+      ) : (
+        <Button
+          label="Sign out"
+          onPress={() => setConfirmSignOut(true)}
+          variant="ghost"
+          size="lg"
+          fullWidth
+          style={{ marginTop: 18 }}
+          icon={<Feather name="log-out" size={18} color={colors.foreground} />}
+        />
+      )}
 
       <Text
         style={{
