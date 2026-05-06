@@ -144,9 +144,9 @@ router.post("/staff/register", async (req, res, next) => {
 
     // Auto-generate an empCode if not supplied.
     const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
-    const resolvedEmpCode =
-      empCode?.trim() ||
-      (kind === "admin" ? `ADM-${suffix}` : `FS-${suffix}`);
+    const empPrefix =
+      kind === "admin" ? "ADM" : staffCategory === "center" ? "CS" : "FS";
+    const resolvedEmpCode = empCode?.trim() || `${empPrefix}-${suffix}`;
 
     // Admins get a freshly-generated unique invite code (admin_code).
     // Staff never own an admin_code; instead, if they supply one during

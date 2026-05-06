@@ -423,7 +423,7 @@ router.post("/admin/staff/create", requireAdmin, async (req, res, next) => {
     }
 
     const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
-    const empCode = `FS-${suffix}`;
+    const empCode = staffCategory === "center" ? `CS-${suffix}` : `FS-${suffix}`;
 
     const [inserted] = await db
       .insert(staffTable)
