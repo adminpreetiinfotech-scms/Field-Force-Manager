@@ -64,8 +64,6 @@
     "expo-image-manipulator": "~14.0.8",
     "expo-network": "~8.0.8",
     "expo-sharing": "~14.0.8",
-    "react-native-document-scanner-plugin": "^2.0.4",
-    "react-native-maps": "1.20.1",
-    "react-native-webview": "^13.16.1"
+    "react-native-maps": "1.20.1"
   }
 }
