@@ -1,19 +1,43 @@
 /**
- * AutoScanCamera — v3  (Deep Auto Document Scanner)
+ * AutoScanCamera — v4  (Native + WebView Hybrid Document Scanner)
  *
- * Full-screen camera modal with a real document-processing pipeline:
- *  1. Live camera viewfinder with document-type-specific guide frame
- *  2. Torch toggle for low-light
- *  3. One-tap capture → resize to transport size → WebView processing:
- *       a. Grayscale → Gaussian blur → Sobel edges → dilation
- *       b. Projection-profile quad detection + corner refinement
- *       c. Homography (DLT) + perspective warp
- *       d. Brightness / contrast / unsharp-mask enhancement
- *  4. Preview with "Use Document" / "Retake" / "Adjust Manually"
- *  5. DocumentScannerModal fallback for manual corner adjustment
+ * Two-mode scanner:
+ *
+ *  MODE A — Native (EAS Custom Dev Build):
+ *    Uses `react-native-document-scanner-plugin` which calls Android CameraX +
+ *    ML Kit / iOS VisionKit natively for pro-grade edge detection, perspective
+ *    correction, and built-in crop UI. Zero WebView overhead.
+ *
+ *  MODE B — WebView fallback (Expo Go):
+ *    Full-screen camera modal with a real document-processing pipeline:
+ *      1. Live camera viewfinder with document-type-specific guide frame
+ *      2. Torch toggle for low-light
+ *      3. One-tap capture → resize → WebView processing:
+ *           a. Grayscale → Gaussian blur → Sobel edges → dilation
+ *           b. Projection-profile quad detection + corner refinement
+ *           c. Homography (DLT) + perspective warp
+ *           d. Brightness / contrast / unsharp-mask enhancement
+ *      4. Preview with "Use Document" / "Retake" / "Adjust Manually"
+ *      5. DocumentScannerModal fallback for manual corner adjustment
  *
  * Camera-only — gallery upload intentionally disabled.
  */
+
+// ─── Native scanner detection (works only in EAS custom dev build) ────────────
+// Dynamic require so Expo Go / Metro doesn't crash when the native module is absent.
+let NativeDocScanner: null | {
+  scanDocument: (opts: {
+    croppedImageQuality: number;
+    maxNumDocuments: number;
+    letUserAdjustCrop: boolean;
+  }) => Promise<{ scannedImages: string[] }>;
+} = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  NativeDocScanner = (require("react-native-document-scanner-plugin") as { default: typeof NativeDocScanner }).default;
+} catch {
+  // Not available in Expo Go — WebView pipeline will be used instead.
+}
 
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { writeAsStringAsync, cacheDirectory, EncodingType } from "expo-file-system/legacy";
@@ -159,6 +183,7 @@ export default function AutoScanCamera({
   const [autoDetected,  setAutoDetected] = useState(true);
   const [bridgeReady,   setBridgeReady]  = useState(false);
   const [error,         setError]        = useState<string | null>(null);
+  const [nativeLaunching, setNativeLaunching] = useState(false);
 
   // Border glow animation on guide frame
   const glowAnim = useRef(new Animated.Value(0)).current;
@@ -184,7 +209,49 @@ export default function AutoScanCamera({
       setTorchOn(false);
       setError(null);
       setStepIdx(0);
+      setNativeLaunching(false);
     }
+  }, [visible]);
+
+  // ── Native scanner handler (EAS custom build only) ────────────────────────
+  const handleNativeScan = useCallback(async () => {
+    if (!NativeDocScanner) return;
+    setNativeLaunching(true);
+    setError(null);
+    try {
+      const { scannedImages } = await NativeDocScanner.scanDocument({
+        croppedImageQuality: 100,
+        maxNumDocuments: 1,
+        letUserAdjustCrop: true,
+      });
+      if (!scannedImages?.length) {
+        // User cancelled the native scanner
+        setNativeLaunching(false);
+        onCancel();
+        return;
+      }
+      const uri = scannedImages[0];
+      // Convert to JPEG with base64 for consistent output
+      const processed = await ImageManipulator.manipulateAsync(
+        uri,
+        [],
+        { format: ImageManipulator.SaveFormat.JPEG, compress: 0.92, base64: true },
+      );
+      setNativeLaunching(false);
+      onSave({ uri: processed.uri, base64: processed.base64!, mimeType: "image/jpeg" });
+    } catch (err) {
+      setNativeLaunching(false);
+      const msg = err instanceof Error ? err.message : "Native scan failed";
+      setError(`${msg}. Please try again.`);
+    }
+  }, [onCancel, onSave]);
+
+  // Auto-launch native scanner as soon as the modal becomes visible
+  useEffect(() => {
+    if (visible && NativeDocScanner) {
+      handleNativeScan();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
   // Fallback: if DocProcessorBridge doesn't signal ready within 1.5s, unlock anyway.
@@ -362,7 +429,42 @@ export default function AutoScanCamera({
     setPhase("camera");
   }, []);
 
-  // ── Permission screen ─────────────────────────────────────────────────────
+  // ── Native scanner: launching / error screen (shown instead of full UI) ──
+  if (NativeDocScanner) {
+    return (
+      <Modal visible={visible} animationType="fade" statusBarTranslucent onRequestClose={onCancel}>
+        <View style={styles.permRoot}>
+          {nativeLaunching && !error && (
+            <>
+              <ActivityIndicator size="large" color="#3B82F6" />
+              <Text style={[styles.permTitle, { marginTop: 20 }]}>Opening Scanner…</Text>
+              <Text style={styles.permDesc}>
+                Professional document scanner with auto edge-detection is launching.
+              </Text>
+            </>
+          )}
+          {error && (
+            <>
+              <Text style={[styles.permIcon, { fontSize: 40 }]}>⚠️</Text>
+              <Text style={styles.permTitle}>Scan Failed</Text>
+              <Text style={styles.permDesc}>{error}</Text>
+              <TouchableOpacity style={styles.permBtn} onPress={handleNativeScan}>
+                <Text style={styles.permBtnTxt}>Try Again</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.permBtn, { backgroundColor: "#374151", marginTop: 8 }]}
+                onPress={onCancel}
+              >
+                <Text style={styles.permBtnTxt}>Cancel</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </Modal>
+    );
+  }
+
+  // ── Permission screen (WebView / Expo Go mode only) ────────────────────────
   if (visible && (!permission || !permission.granted)) {
     return (
       <Modal visible={visible} animationType="fade" statusBarTranslucent onRequestClose={onCancel}>
