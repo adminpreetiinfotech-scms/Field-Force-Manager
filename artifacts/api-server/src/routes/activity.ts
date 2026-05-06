@@ -1,8 +1,8 @@
 import { activityEventsTable, candidatesTable, companiesTable, db, staffTable } from "@workspace/db";
 import { isCompanySubscriptionBlocked } from "./companies";
 import { requireAdmin } from "./admin";
-import { and, count, desc, eq, gt, gte, inArray, lt, or, sql } from "drizzle-orm";
-import { Router, type IRouter } from "express";
+import { and, count, desc, eq, gt, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import {
   CreateActivityBody,
   ListActivityQueryParams,
@@ -15,6 +15,47 @@ import type {
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
+
+// ─── Phone-based auth helper ─────────────────────────────────────────────────
+// Reads x-staff-phone or x-admin-phone header, looks up staff in DB,
+// returns { companyId, role } — or null if not found / header missing.
+// Super admin returns { companyId: null, role: "super_admin" }.
+async function getCallerInfo(req: Request): Promise<{ companyId: string | null; role: string } | null> {
+  const phone = (
+    (req.headers["x-staff-phone"] as string | undefined) ??
+    (req.headers["x-admin-phone"] as string | undefined)
+  )?.trim();
+  if (!phone) return null;
+  const [row] = await db
+    .select({ companyId: staffTable.companyId, role: staffTable.role, deletedAt: staffTable.deletedAt })
+    .from(staffTable)
+    .where(eq(staffTable.phone, phone))
+    .limit(1);
+  if (!row || row.deletedAt) return null;
+  return { companyId: row.companyId ?? null, role: row.role };
+}
+
+// Middleware: requires valid phone header, sets res.locals.callerCompanyId
+async function requirePhone(req: Request, res: Response, next: NextFunction): Promise<void> {
+  const info = await getCallerInfo(req);
+  if (!info) {
+    res.status(401).json({ title: "Unauthorized", detail: "Valid x-staff-phone or x-admin-phone header required", status: 401 });
+    return;
+  }
+  res.locals.callerCompanyId = info.companyId; // null = super admin
+  next();
+}
+
+// Helper: verify a staffId belongs to the caller's company
+async function verifyStaffInCompany(staffId: string, callerCompanyId: string | null): Promise<boolean> {
+  if (!callerCompanyId) return true; // super admin can see all
+  const [row] = await db
+    .select({ companyId: staffTable.companyId })
+    .from(staffTable)
+    .where(and(eq(staffTable.id, staffId), isNull(staffTable.deletedAt)))
+    .limit(1);
+  return !row || row.companyId === callerCompanyId;
+}
 
 const ALLOWED_KINDS: readonly ActivityKind[] = [
   "checkin",
@@ -180,7 +221,7 @@ function rowToDetail(row: {
   };
 }
 
-router.get("/activity", async (req, res, next) => {
+router.get("/activity", requirePhone, async (req, res, next) => {
   try {
     const parsed = ListActivityQueryParams.safeParse(req.query);
     if (!parsed.success) {
@@ -192,12 +233,12 @@ router.get("/activity", async (req, res, next) => {
       return;
     }
     const { limit, cursor, since, kinds } = parsed.data;
-    // Optional company filter — admin passes their companyId to scope to their data
-    const companyId = req.query.companyId as string | undefined;
+    // Caller's companyId from requirePhone — super admin (null) sees all, others scoped to their company
+    const callerCompanyId = res.locals.callerCompanyId as string | null;
 
     const conds = [] as ReturnType<typeof eq>[];
-    if (companyId?.trim()) {
-      conds.push(eq(activityEventsTable.companyId, companyId.trim()));
+    if (callerCompanyId) {
+      conds.push(eq(activityEventsTable.companyId, callerCompanyId));
     }
 
     if (kinds) {
@@ -270,8 +311,9 @@ router.get("/activity", async (req, res, next) => {
   }
 });
 
-router.get("/activity/ride-calendar", async (req, res, next) => {
+router.get("/activity/ride-calendar", requirePhone, async (req, res, next) => {
   try {
+    const callerCompanyId = res.locals.callerCompanyId as string | null;
     const rawYear = req.query.year as string | undefined;
     const rawMonth = req.query.month as string | undefined;
     const rawStaffId = req.query.staffId as string | undefined;
@@ -301,6 +343,12 @@ router.get("/activity/ride-calendar", async (req, res, next) => {
         detail: "staffId must be a UUID",
         status: 400,
       });
+      return;
+    }
+
+    // Cross-company guard — verify requested staffId belongs to caller's company
+    if (rawStaffId && !(await verifyStaffInCompany(rawStaffId, callerCompanyId))) {
+      res.status(403).json({ title: "Forbidden", detail: "Staff does not belong to your company", status: 403 });
       return;
     }
 
@@ -365,14 +413,21 @@ router.get("/activity/ride-calendar", async (req, res, next) => {
   }
 });
 
-router.get("/activity/attendance-calendar", async (req, res, next) => {
+router.get("/activity/attendance-calendar", requirePhone, async (req, res, next) => {
   try {
+    const callerCompanyId = res.locals.callerCompanyId as string | null;
     const rawStaffId = req.query.staffId as string | undefined;
     const rawYear = req.query.year as string | undefined;
     const rawMonth = req.query.month as string | undefined;
 
     if (!rawStaffId || !/^[0-9a-fA-F-]{36}$/.test(rawStaffId)) {
       res.status(400).json({ title: "Invalid staffId", detail: "staffId must be a UUID", status: 400 });
+      return;
+    }
+
+    // Cross-company guard — verify requested staffId belongs to caller's company
+    if (!(await verifyStaffInCompany(rawStaffId, callerCompanyId))) {
+      res.status(403).json({ title: "Forbidden", detail: "Staff does not belong to your company", status: 403 });
       return;
     }
     const year = parseInt(rawYear ?? "", 10);
@@ -556,8 +611,9 @@ router.get("/activity/attendance-calendar", async (req, res, next) => {
   }
 });
 
-router.get("/activity/leaderboard", async (req, res, next) => {
+router.get("/activity/leaderboard", requirePhone, async (req, res, next) => {
   try {
+    const callerCompanyId = res.locals.callerCompanyId as string | null;
     const rawPeriod = req.query.period as string | undefined;
     if (!rawPeriod || !["daily", "weekly", "monthly"].includes(rawPeriod)) {
       res.status(400).json({
@@ -603,8 +659,8 @@ router.get("/activity/leaderboard", async (req, res, next) => {
       });
     }
 
-    // Optional company filter — scopes leaderboard to a single company.
-    const companyId = (req.query.companyId as string | undefined)?.trim() || null;
+    // Use caller's company scope — super admin (null) sees all, others see only their company
+    const companyId = callerCompanyId;
 
     // Pull all trip-end events in the window (distanceKm lives here).
     // Only include field staff — center staff don't do vehicle trips.
@@ -716,9 +772,9 @@ router.get("/activity/leaderboard", async (req, res, next) => {
   }
 });
 
-router.get("/activity/trip-route/:tripRef", async (req, res, next) => {
+router.get("/activity/trip-route/:tripRef", requirePhone, async (req, res, next) => {
   try {
-    const { tripRef } = req.params;
+    const tripRef = String(req.params.tripRef);
     if (!tripRef || !/^[0-9a-fA-F-]{36}$/.test(tripRef)) {
       res.status(400).json({ title: "Invalid tripRef", detail: "tripRef must be a UUID", status: 400 });
       return;
@@ -997,8 +1053,9 @@ router.get("/activity/trip-report", requireAdmin, async (req, res, next) => {
   }
 });
 
-router.get("/activity/distance-stats", async (req, res, next) => {
+router.get("/activity/distance-stats", requirePhone, async (req, res, next) => {
   try {
+    const callerCompanyId = res.locals.callerCompanyId as string | null;
     const rawDate = req.query.date as string | undefined;
     const rawStaffId = req.query.staffId as string | undefined;
 
@@ -1036,6 +1093,11 @@ router.get("/activity/distance-stats", async (req, res, next) => {
       gte(activityEventsTable.occurredAt, startOfDay),
       lt(activityEventsTable.occurredAt, startOfNextDay),
     ] as ReturnType<typeof eq>[];
+
+    // Scope to caller's company
+    if (callerCompanyId) {
+      conds.push(eq(activityEventsTable.companyId, callerCompanyId));
+    }
 
     if (rawStaffId) {
       conds.push(eq(activityEventsTable.staffId, rawStaffId));
@@ -1092,9 +1154,9 @@ router.get("/activity/distance-stats", async (req, res, next) => {
   }
 });
 
-router.get("/activity/:id", async (req, res, next) => {
+router.get("/activity/:id", requirePhone, async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
     if (!/^[0-9a-fA-F-]{36}$/.test(id)) {
       res
         .status(400)

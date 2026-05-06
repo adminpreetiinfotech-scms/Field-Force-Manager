@@ -195,6 +195,7 @@ router.get("/notices/admin/list", requireAdmin, async (req, res, next) => {
 
 router.get("/notices/admin/:id", requireAdmin, async (req, res, next) => {
   try {
+    const companyId = res.locals.companyId as string | null;
     const id = req.params.id as string;
     if (!id?.trim()) {
       res.status(400).json({ title: "id is required", status: 400 });
@@ -213,6 +214,12 @@ router.get("/notices/admin/:id", requireAdmin, async (req, res, next) => {
 
     if (!notice) {
       res.status(404).json({ title: "Notice not found", status: 404 });
+      return;
+    }
+
+    // Company scope guard — admin can only read their own company's notices
+    if (companyId && notice.companyId !== companyId) {
+      res.status(403).json({ title: "Forbidden", detail: "Notice does not belong to your company", status: 403 });
       return;
     }
 
@@ -240,6 +247,7 @@ router.get("/notices/admin/:id", requireAdmin, async (req, res, next) => {
 
 router.delete("/notices/admin/:id", requireAdmin, async (req, res, next) => {
   try {
+    const companyId = res.locals.companyId as string | null;
     const id = req.params.id as string;
     if (!id?.trim()) {
       res.status(400).json({ title: "id is required", status: 400 });
@@ -249,12 +257,18 @@ router.delete("/notices/admin/:id", requireAdmin, async (req, res, next) => {
       res.status(400).json({ title: "id must be a valid UUID", status: 400 });
       return;
     }
+
+    // Company scope guard — admin can only delete their own company's notices
+    const whereClause = companyId
+      ? and(eq(noticesTable.id, id), eq(noticesTable.companyId, companyId))
+      : eq(noticesTable.id, id);
+
     const deleted = await db
       .delete(noticesTable)
-      .where(eq(noticesTable.id, id))
+      .where(whereClause)
       .returning({ id: noticesTable.id });
     if (deleted.length === 0) {
-      res.status(404).json({ title: "Notice not found", status: 404 });
+      res.status(404).json({ title: "Notice not found or access denied", status: 404 });
       return;
     }
     res.json({ ok: true });

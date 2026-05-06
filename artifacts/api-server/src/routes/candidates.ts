@@ -835,6 +835,12 @@ router.patch("/admin/candidates/:id/status", requireAdmin, async (req, res, next
       return;
     }
 
+    // Company scope guard — admin must belong to the same company as the candidate
+    if (companyId && candidate.companyId && candidate.companyId !== companyId) {
+      res.status(403).json({ title: "Forbidden", detail: "Candidate does not belong to your company", status: 403 });
+      return;
+    }
+
     const [updated] = await db
       .update(candidatesTable)
       .set({
