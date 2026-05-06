@@ -300,10 +300,10 @@ router.get("/admin/staff-list", requireAdmin, async (_req, res, next) => {
     const companyId = res.locals.companyId as string | null;
     const companyFilter = companyId
       ? and(
-          ne(staffTable.role, "super_admin"),
+          eq(staffTable.role, "staff"),
           or(eq(staffTable.companyId, companyId), isNull(staffTable.companyId)),
         )
-      : ne(staffTable.role, "super_admin");
+      : eq(staffTable.role, "staff");
 
     const rows = await db
       .select()
