@@ -4,14 +4,24 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import {
   UserCheck, RefreshCw, Download, AlertTriangle, MapPin, CheckCircle2,
-  XCircle, Clock, ChevronDown,
+  XCircle, Clock, ChevronDown, Building2,
 } from "lucide-react";
+
+interface CenterItem {
+  id: string;
+  name: string;
+  geofenceConfigured: boolean;
+  lat: number | null;
+  lng: number | null;
+  radiusMeters: number;
+}
 
 interface CenterStaffListItem {
   id: string;
   name: string;
   empCode: string;
   centerStaffRole: string | null;
+  centerId: string | null;
   staffCategory: string;
   approvalStatus: string;
   disabledAt: string | null;
@@ -81,13 +91,6 @@ function geofenceBadge(outside: boolean | null, distM: number | null) {
       <span className="inline-flex items-center gap-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
         <XCircle className="h-3 w-3" />
         Outside {distM != null ? `(${distM}m)` : ""}
-        <a
-          href={`${import.meta.env.BASE_URL}settings#geo-fence`}
-          className="text-[10px] text-indigo-600 hover:text-indigo-800 hover:underline font-medium"
-          onClick={(e) => e.stopPropagation()}
-        >
-          Edit fence
-        </a>
       </span>
     );
   }
@@ -124,6 +127,7 @@ function roleFmt(role: string | null): string {
 
 export default function CenterAttendance() {
   const { toast } = useToast();
+  const [centers, setCenters] = useState<CenterItem[]>([]);
   const [staffList, setStaffList] = useState<CenterStaffListItem[]>([]);
   const [rows, setRows] = useState<CenterAttendanceRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -138,15 +142,23 @@ export default function CenterAttendance() {
   const [dateFrom, setDateFrom] = useState(initDateFrom);
   const [dateTo, setDateTo] = useState(initDateTo);
   const [selectedStaffId, setSelectedStaffId] = useState<string>("");
+  const [selectedCenterId, setSelectedCenterId] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>(initStatus);
 
   const loadStaff = useCallback(async () => {
     setStaffLoading(true);
     try {
-      const res = await adminFetch("/api/admin/staff-list");
-      if (!res.ok) throw new Error("Failed to load staff");
-      const all: CenterStaffListItem[] = await res.json();
-      setStaffList(all.filter((s) => s.staffCategory === "center" && !s.disabledAt));
+      const [staffRes, centersRes] = await Promise.all([
+        adminFetch("/api/admin/staff-list"),
+        adminFetch("/api/admin/centers"),
+      ]);
+      if (staffRes.ok) {
+        const all: CenterStaffListItem[] = await staffRes.json();
+        setStaffList(all.filter((s) => s.staffCategory === "center" && !s.disabledAt));
+      }
+      if (centersRes.ok) {
+        setCenters(await centersRes.json());
+      }
     } catch (e: any) {
       toast({ title: "Error loading staff", description: e.message, variant: "destructive" });
     } finally {
@@ -224,7 +236,13 @@ export default function CenterAttendance() {
     }
   };
 
+  // Staff belonging to selected center (for client-side center filter)
+  const centerStaffIds = selectedCenterId
+    ? new Set(staffList.filter((s) => s.centerId === selectedCenterId).map((s) => s.id))
+    : null;
+
   const filteredRows = rows.filter((r) => {
+    if (centerStaffIds && !centerStaffIds.has(r.staffId)) return false;
     if (!statusFilter) return true;
     if (statusFilter === "violations") return r.checkInOutsideGeofence === true || r.checkOutOutsideGeofence === true;
     return r.status === statusFilter;
@@ -280,6 +298,26 @@ export default function CenterAttendance() {
             className="border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
+        {centers.length > 1 && (
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Center</label>
+            <div className="relative">
+              <select
+                value={selectedCenterId}
+                onChange={(e) => { setSelectedCenterId(e.target.value); setSelectedStaffId(""); }}
+                className="border rounded-lg pl-3 pr-8 py-2 text-sm bg-background appearance-none focus:outline-none focus:ring-2 focus:ring-primary min-w-[180px]"
+              >
+                <option value="">All Centers</option>
+                {centers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}{!c.geofenceConfigured ? " ⚠" : ""}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="h-4 w-4 absolute right-2 top-2.5 text-muted-foreground pointer-events-none" />
+            </div>
+          </div>
+        )}
         <div className="space-y-1">
           <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Staff</label>
           <div className="relative">
@@ -289,7 +327,10 @@ export default function CenterAttendance() {
               className="border rounded-lg pl-3 pr-8 py-2 text-sm bg-background appearance-none focus:outline-none focus:ring-2 focus:ring-primary min-w-[180px]"
             >
               <option value="">All Center Staff</option>
-              {staffList.map((s) => (
+              {(selectedCenterId
+                ? staffList.filter((s) => s.centerId === selectedCenterId)
+                : staffList
+              ).map((s) => (
                 <option key={s.id} value={s.id}>{s.name} ({s.empCode})</option>
               ))}
             </select>
@@ -343,7 +384,28 @@ export default function CenterAttendance() {
         </div>
       )}
 
-      {/* Geofence warning */}
+      {/* Unconfigured centers warning */}
+      {centers.filter((c) => !c.geofenceConfigured).length > 0 && (
+        <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 p-4">
+          <Building2 className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-blue-800 dark:text-blue-400">
+              {centers.filter((c) => !c.geofenceConfigured).length} center{centers.filter((c) => !c.geofenceConfigured).length > 1 ? "s" : ""} without geo-fence configured
+            </p>
+            <p className="text-xs text-blue-700 dark:text-blue-500 mt-0.5">
+              {centers.filter((c) => !c.geofenceConfigured).map((c) => c.name).join(", ")} — geo-fence not set, check-ins won't be validated.
+            </p>
+          </div>
+          <a
+            href={`${import.meta.env.BASE_URL}training-centers`}
+            className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline font-medium shrink-0 mt-0.5"
+          >
+            Set up now →
+          </a>
+        </div>
+      )}
+
+      {/* Geofence violations warning */}
       {outsideCount > 0 && (
         <div className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-4">
           <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
@@ -352,14 +414,14 @@ export default function CenterAttendance() {
               {outsideCount} record{outsideCount !== 1 ? "s" : ""} with geo-fence violations
             </p>
             <p className="text-xs text-amber-700 dark:text-amber-500 mt-0.5">
-              These staff members checked in/out from outside the company's defined geo-fence radius. Rows highlighted in red.
+              These staff members checked in/out from outside the defined geo-fence radius. Rows highlighted in red.
             </p>
           </div>
           <a
-            href={`${import.meta.env.BASE_URL}settings#geo-fence`}
+            href={`${import.meta.env.BASE_URL}training-centers`}
             className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline font-medium shrink-0 mt-0.5"
           >
-            Edit fence
+            Configure Geo-fence →
           </a>
         </div>
       )}

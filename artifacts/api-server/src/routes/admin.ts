@@ -374,6 +374,10 @@ router.get("/admin/centers", requireAdmin, async (_req, res, next) => {
         district: c.district ?? null,
         block: c.block ?? null,
         courses: c.courses ?? [],
+        lat: c.lat ?? null,
+        lng: c.lng ?? null,
+        radiusMeters: c.radiusMeters ?? 200,
+        geofenceConfigured: c.lat != null && c.lng != null,
       })),
     );
   } catch (err) {
@@ -874,13 +878,24 @@ router.get("/admin/dashboard/stats", requireAdmin, async (_req, res, next) => {
 
     // ── Company geofence configuration ────────────────────────────────────────
     // Super-admin has no single company, so the hint is not meaningful — default true.
+    // Configured = company-level OR at least one center has lat/lng set.
     let geofenceConfigured = companyId == null;
     if (companyId) {
       const [companyRow] = await db
         .select({ centerLat: companiesTable.centerLat, centerLng: companiesTable.centerLng })
         .from(companiesTable)
         .where(eq(companiesTable.id, companyId));
-      geofenceConfigured = companyRow?.centerLat != null && companyRow?.centerLng != null;
+      if (companyRow?.centerLat != null && companyRow?.centerLng != null) {
+        geofenceConfigured = true;
+      } else {
+        // Fall back: check if any training center has geo-fence configured
+        const [centerWithGeo] = await db
+          .select({ id: centersTable.id })
+          .from(centersTable)
+          .where(and(eq(centersTable.companyId, companyId), isNotNull(centersTable.lat), isNotNull(centersTable.lng)))
+          .limit(1);
+        geofenceConfigured = centerWithGeo != null;
+      }
     }
 
     // ── Center staff attendance summary for today (IST) ──────────────────────
