@@ -281,7 +281,6 @@ export default function Candidates() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [mobilizerFilter, setMobilizerFilter] = useState("");
   const [centerFilter, setCenterFilter] = useState("");
-  const [downloading, setDownloading] = useState(false);
   const [editCandidate, setEditCandidate] = useState<CandidateDto | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -316,40 +315,24 @@ export default function Candidates() {
     }
   };
 
-  const handleDownloadExcel = async () => {
+  const handleDownloadExcel = () => {
     if (!user?.phone) {
       toast({ title: "Not logged in", description: "Please log in again.", variant: "destructive" });
       return;
     }
-    setDownloading(true);
-    try {
-      const params = new URLSearchParams({ format: "xlsx" });
-      if (statusFilter !== "all") params.set("status", statusFilter);
-      if (mobilizerFilter) params.set("mobilizer", mobilizerFilter);
-      if (centerFilter) params.set("skillCentre", centerFilter);
-      const res = await fetch(`/api/admin/candidates/csv?${params.toString()}`, {
-        headers: { "x-admin-phone": user.phone },
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => "Unknown error");
-        throw new Error(`Server error ${res.status}: ${text}`);
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      const centerLabel = centerFilter ? `_${centerFilter.replace(/\s+/g, "_")}` : "";
-      a.download = `candidates${centerLabel}_${new Date().toISOString().slice(0, 10)}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      toast({ title: "Download started", description: "Excel file is being downloaded." });
-    } catch (err: any) {
-      toast({ title: "Download failed", description: err.message, variant: "destructive" });
-    } finally {
-      setDownloading(false);
-    }
+    const params = new URLSearchParams({ format: "xlsx", adminPhone: user.phone });
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    if (mobilizerFilter) params.set("mobilizer", mobilizerFilter);
+    if (centerFilter) params.set("skillCentre", centerFilter);
+    const url = `/api/admin/candidates/csv?${params.toString()}`;
+    const a = document.createElement("a");
+    a.href = url;
+    const centerLabel = centerFilter ? `_${centerFilter.replace(/\s+/g, "_")}` : "";
+    a.download = `candidates${centerLabel}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    toast({ title: "Download started", description: "Excel file is being downloaded." });
   };
 
   const queryParams: any = {};
@@ -500,11 +483,10 @@ export default function Candidates() {
           variant="outline"
           className="shrink-0 gap-2"
           onClick={handleDownloadExcel}
-          disabled={downloading}
           title="Download filtered candidates as Excel"
         >
           <Download className="h-4 w-4" />
-          {downloading ? "Downloading..." : "Download Excel"}
+          Download Excel
         </Button>
       </div>
 
