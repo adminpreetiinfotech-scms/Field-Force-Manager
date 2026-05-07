@@ -735,11 +735,20 @@ router.get("/admin/candidates", requireAdmin, async (req, res, next) => {
       conditions.push(ilike(candidatesTable.course, `%${course.trim()}%`));
     }
 
-    const rows = await db
+    const allRows = await db
       .select()
       .from(candidatesTable)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(candidatesTable.createdAt));
+
+    // Deduplicate by phone — keep most recent (first in DESC order)
+    const seenPhones = new Set<string>();
+    const rows = allRows.filter((r) => {
+      const key = r.phone?.trim() ?? r.id;
+      if (seenPhones.has(key)) return false;
+      seenPhones.add(key);
+      return true;
+    });
 
     res.json(rows.map(toDto));
   } catch (err) {
@@ -776,11 +785,20 @@ router.get("/admin/candidates/csv", requireAdmin, async (req, res, next) => {
         conditions.push(lt(candidatesTable.createdAt, toDate));
       }
     }
-    const rows = await db
+    const allRowsCsv = await db
       .select()
       .from(candidatesTable)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(candidatesTable.createdAt));
+
+    // Deduplicate by phone — keep most recent
+    const seenPhonesCsv = new Set<string>();
+    const rows = allRowsCsv.filter((r) => {
+      const key = r.phone?.trim() ?? r.id;
+      if (seenPhonesCsv.has(key)) return false;
+      seenPhonesCsv.add(key);
+      return true;
+    });
 
     const headers = [
       "Candidate ID", "Name", "Phone", "Parent's Mobile", "Email", "Father's Name", "Mother's Name",
