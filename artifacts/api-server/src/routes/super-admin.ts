@@ -1347,4 +1347,194 @@ router.patch("/super-admin/profile", requireSuperAdmin, async (req, res, next) =
   } catch (err) { next(err); }
 });
 
+// ─── GET /api/super-admin/analytics ──────────────────────────────────────────
+// Detailed platform analytics: plan distribution, payment status, company growth
+
+router.get("/super-admin/analytics", requireSuperAdmin, async (_req, res, next) => {
+  try {
+    const companies = await db
+      .select({
+        id: companiesTable.id,
+        plan: companiesTable.plan,
+        status: companiesTable.status,
+        subscriptionActive: companiesTable.subscriptionActive,
+        paymentStatus: companiesTable.paymentStatus,
+        subscriptionEndDate: companiesTable.subscriptionEndDate,
+        createdAt: companiesTable.createdAt,
+      })
+      .from(companiesTable)
+      .orderBy(companiesTable.createdAt);
+
+    const now = new Date();
+    const thirtyDaysLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    const planDist: Record<string, number> = { basic: 0, standard: 0, premium: 0, none: 0 };
+    const paymentDist: Record<string, number> = { paid: 0, pending: 0, expired: 0, none: 0 };
+    let active = 0, inactive = 0, expiringCount = 0, expiredCount = 0;
+
+    for (const c of companies) {
+      planDist[c.plan ?? "none"] = (planDist[c.plan ?? "none"] ?? 0) + 1;
+      paymentDist[c.paymentStatus ?? "none"] = (paymentDist[c.paymentStatus ?? "none"] ?? 0) + 1;
+      if (c.status === "active") active++; else inactive++;
+      if (c.subscriptionEndDate) {
+        if (c.subscriptionEndDate < now) expiredCount++;
+        else if (c.subscriptionEndDate < thirtyDaysLater) expiringCount++;
+      }
+    }
+
+    // Monthly company registrations for last 6 months
+    const monthly: Record<string, number> = {};
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      monthly[key] = 0;
+    }
+    for (const c of companies) {
+      if (!c.createdAt) continue;
+      const key = `${c.createdAt.getFullYear()}-${String(c.createdAt.getMonth() + 1).padStart(2, "0")}`;
+      if (key in monthly) monthly[key]++;
+    }
+
+    res.json({
+      total: companies.length,
+      active,
+      inactive,
+      expiringIn30Days: expiringCount,
+      expired: expiredCount,
+      planDistribution: planDist,
+      paymentDistribution: paymentDist,
+      monthlyGrowth: Object.entries(monthly).map(([month, count]) => ({ month, count })),
+    });
+  } catch (err) { next(err); }
+});
+
+// ─── GET /api/super-admin/notices ────────────────────────────────────────────
+// List all notices across all companies
+
+router.get("/super-admin/notices", requireSuperAdmin, async (_req, res, next) => {
+  try {
+    const rows = await db
+      .select({
+        id: noticesTable.id,
+        companyId: noticesTable.companyId,
+        companyName: companiesTable.name,
+        title: noticesTable.title,
+        message: noticesTable.message,
+        priority: noticesTable.priority,
+        type: noticesTable.type,
+        targetType: noticesTable.targetType,
+        expiresAt: noticesTable.expiresAt,
+        createdAt: noticesTable.createdAt,
+      })
+      .from(noticesTable)
+      .leftJoin(companiesTable, eq(noticesTable.companyId, companiesTable.id))
+      .orderBy(sql`${noticesTable.createdAt} DESC`)
+      .limit(200);
+
+    res.json(rows.map((r) => ({
+      ...r,
+      companyName: r.companyName ?? "Platform-wide",
+      expiresAt: r.expiresAt?.toISOString() ?? null,
+      createdAt: r.createdAt?.toISOString() ?? null,
+    })));
+  } catch (err) { next(err); }
+});
+
+// ─── POST /api/super-admin/notices ───────────────────────────────────────────
+// Create a notice for a specific company (or platform-wide with companyId=null)
+
+router.post("/super-admin/notices", requireSuperAdmin, async (req, res, next) => {
+  try {
+    const { title, message, priority, type, companyId, expiresAt } = req.body as {
+      title?: string;
+      message?: string;
+      priority?: "normal" | "important" | "urgent";
+      type?: "notice" | "alert" | "reminder";
+      companyId?: string | null;
+      expiresAt?: string | null;
+    };
+
+    if (!title?.trim() || !message?.trim()) {
+      res.status(400).json({ title: "title and message are required", status: 400 });
+      return;
+    }
+
+    if (companyId && !isValidUUID(companyId)) {
+      res.status(400).json({ title: "Invalid companyId", status: 400 });
+      return;
+    }
+
+    const [notice] = await db
+      .insert(noticesTable)
+      .values({
+        title: title.trim(),
+        message: message.trim(),
+        priority: priority ?? "normal",
+        type: type ?? "notice",
+        targetType: "all",
+        companyId: companyId ?? null,
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+      })
+      .returning();
+
+    res.status(201).json({
+      ...notice,
+      expiresAt: notice.expiresAt?.toISOString() ?? null,
+      createdAt: notice.createdAt?.toISOString() ?? null,
+    });
+  } catch (err) { next(err); }
+});
+
+// ─── DELETE /api/super-admin/notices/:id ─────────────────────────────────────
+
+router.delete("/super-admin/notices/:id", requireSuperAdmin, async (req, res, next) => {
+  try {
+    const id = req.params.id as string;
+    if (!isValidUUID(id)) {
+      res.status(400).json({ title: "Invalid notice id", status: 400 });
+      return;
+    }
+    await db.delete(noticesTable).where(eq(noticesTable.id, id));
+    res.json({ message: "Notice deleted", id });
+  } catch (err) { next(err); }
+});
+
+// ─── GET /api/super-admin/audit-logs ─────────────────────────────────────────
+// Recent activity events across all companies
+
+router.get("/super-admin/audit-logs", requireSuperAdmin, async (req, res, next) => {
+  try {
+    const limit = Math.min(Number(req.query.limit ?? 100), 500);
+    const kind = req.query.kind as string | undefined;
+
+    const rows = await db
+      .select({
+        id: activityEventsTable.id,
+        companyId: activityEventsTable.companyId,
+        companyName: companiesTable.name,
+        kind: activityEventsTable.kind,
+        staffId: activityEventsTable.staffId,
+        staffName: activityEventsTable.staffName,
+        occurredAt: activityEventsTable.occurredAt,
+        receivedAt: activityEventsTable.receivedAt,
+      })
+      .from(activityEventsTable)
+      .leftJoin(companiesTable, eq(activityEventsTable.companyId, companiesTable.id))
+      .where(kind ? eq(activityEventsTable.kind, kind as "checkin" | "checkout" | "meter" | "trip-start" | "trip-end") : undefined)
+      .orderBy(sql`${activityEventsTable.occurredAt} DESC`)
+      .limit(limit);
+
+    res.json(rows.map((r) => ({
+      id: r.id,
+      companyId: r.companyId ?? null,
+      companyName: r.companyName ?? "Unknown",
+      kind: r.kind,
+      staffId: r.staffId,
+      staffName: r.staffName,
+      occurredAt: r.occurredAt?.toISOString() ?? null,
+      receivedAt: r.receivedAt?.toISOString() ?? null,
+    })));
+  } catch (err) { next(err); }
+});
+
 export default router;

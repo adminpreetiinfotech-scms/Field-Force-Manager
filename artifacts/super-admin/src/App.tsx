@@ -13,6 +13,10 @@ import PendingPage from "@/pages/pending";
 import StaffPage from "@/pages/staff";
 import ProfilePage from "@/pages/profile";
 import SubscriptionsPage from "@/pages/subscriptions";
+import AnalyticsPage from "@/pages/analytics";
+import NoticesPage from "@/pages/notices";
+import AuditLogsPage from "@/pages/audit-logs";
+import SettingsPage from "@/pages/settings";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -45,6 +49,18 @@ function Router() {
       </Route>
       <Route path="/subscriptions">
         {() => <AuthGuard><Layout><SubscriptionsPage /></Layout></AuthGuard>}
+      </Route>
+      <Route path="/analytics">
+        {() => <AuthGuard><Layout><AnalyticsPage /></Layout></AuthGuard>}
+      </Route>
+      <Route path="/notices">
+        {() => <AuthGuard><Layout><NoticesPage /></Layout></AuthGuard>}
+      </Route>
+      <Route path="/audit-logs">
+        {() => <AuthGuard><Layout><AuditLogsPage /></Layout></AuthGuard>}
+      </Route>
+      <Route path="/settings">
+        {() => <AuthGuard><Layout><SettingsPage /></Layout></AuthGuard>}
       </Route>
       <Route path="/staff">
         {() => <AuthGuard><Layout><StaffPage /></Layout></AuthGuard>}

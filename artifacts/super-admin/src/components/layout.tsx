@@ -7,7 +7,11 @@ import {
   Clock, 
   UserCircle,
   LogOut,
-  CreditCard
+  CreditCard,
+  BarChart2,
+  Bell,
+  Activity,
+  Settings
 } from "lucide-react";
 
 interface LayoutProps {
@@ -24,10 +28,14 @@ export function Layout({ children }: LayoutProps) {
 
   const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/analytics", label: "Analytics", icon: BarChart2 },
     { href: "/companies", label: "Companies", icon: Building2 },
     { href: "/subscriptions", label: "Subscriptions", icon: CreditCard },
     { href: "/pending", label: "Pending Approvals", icon: Clock },
     { href: "/staff", label: "Staff Directory", icon: Users },
+    { href: "/notices", label: "Notices", icon: Bell },
+    { href: "/audit-logs", label: "Audit Logs", icon: Activity },
+    { href: "/settings", label: "Settings", icon: Settings },
     { href: "/profile", label: "My Profile", icon: UserCircle },
   ];
 
