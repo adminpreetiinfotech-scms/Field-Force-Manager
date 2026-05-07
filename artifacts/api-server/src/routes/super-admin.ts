@@ -160,6 +160,98 @@ router.get("/super-admin/pending-companies", requireSuperAdmin, async (_req, res
   }
 });
 
+// ─── POST /api/public/company-register ────────────────────────────────────────
+// Public endpoint — no auth required. Training center self-registration.
+
+router.post("/public/company-register", async (req, res, next) => {
+  try {
+    const {
+      name, contactPersonName, phone, email,
+      state, district, officeAddress, pinCode,
+      projectName, plan, message: noteMsg,
+    } = req.body as Record<string, string | undefined>;
+
+    if (!name?.trim() || name.trim().length < 2) {
+      res.status(400).json({ title: "Organization name is required (min 2 chars)", status: 400 });
+      return;
+    }
+    if (!phone?.trim() || !/^[6-9]\d{9}$/.test(phone.trim())) {
+      res.status(400).json({ title: "Valid 10-digit Indian phone number required", status: 400 });
+      return;
+    }
+    if (!contactPersonName?.trim() || contactPersonName.trim().length < 2) {
+      res.status(400).json({ title: "Contact person name is required", status: 400 });
+      return;
+    }
+    if (!state?.trim()) {
+      res.status(400).json({ title: "State is required", status: 400 });
+      return;
+    }
+    if (!district?.trim()) {
+      res.status(400).json({ title: "District is required", status: 400 });
+      return;
+    }
+
+    // Check for duplicate phone
+    const [existing] = await db
+      .select({ id: companiesTable.id, approvalStatus: companiesTable.approvalStatus })
+      .from(companiesTable)
+      .where(eq(companiesTable.phone, phone.trim()))
+      .limit(1);
+
+    if (existing) {
+      const msg = existing.approvalStatus === "pending"
+        ? "Aapka application pehle se submit hai aur review mein hai."
+        : existing.approvalStatus === "approved"
+        ? "Is phone number se ek company pehle se registered hai."
+        : "Is phone number se ek application pehle reject ho chuki hai. Naye number se apply karein.";
+      res.status(409).json({ title: msg, status: 409 });
+      return;
+    }
+
+    const validPlans = ["basic", "standard", "premium"];
+    const chosenPlan = validPlans.includes(plan ?? "") ? (plan as "basic" | "standard" | "premium") : "basic";
+
+    const [company] = await db
+      .insert(companiesTable)
+      .values({
+        name: name.trim(),
+        contactPersonName: contactPersonName.trim(),
+        adminName: contactPersonName.trim(),
+        phone: phone.trim(),
+        email: email?.trim() || null,
+        state: state.trim(),
+        district: district.trim(),
+        officeAddress: officeAddress?.trim() || null,
+        pinCode: pinCode?.trim() || null,
+        projectName: projectName?.trim() || null,
+        plan: chosenPlan,
+        approvalStatus: "pending",
+        status: "inactive",
+        subscriptionActive: false,
+      })
+      .returning();
+
+    // Send acknowledgement SMS to applicant
+    const { sendSmsSilent } = await import("../lib/twilio");
+    const ackSms = `Dhanyavaad ${contactPersonName.trim()}! Aapki SCMS registration request mil gayi hai. Hamare team review karke aapko 24-48 ghante mein contact karegi. -SCMS Platform`;
+    await sendSmsSilent(phone.trim(), ackSms, (msg) =>
+      req.log.warn({ phone: phone.trim(), msg }, "Ack SMS failed for self-registration"),
+    );
+
+    req.log.info({ companyId: company.id, name: company.name, phone: phone.trim() }, "Self-registration submitted");
+
+    res.status(201).json({
+      message: "Application submitted successfully",
+      companyId: company.id,
+      name: company.name,
+      status: "pending",
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ─── POST /api/super-admin/companies/:id/approve ──────────────────────────────
 // Approve a pending company and its admin(s).
 
@@ -172,7 +264,7 @@ router.post("/super-admin/companies/:id/approve", requireSuperAdmin, async (req,
     }
     const [company] = await db
       .update(companiesTable)
-      .set({ approvalStatus: "approved" })
+      .set({ approvalStatus: "approved", status: "active", subscriptionActive: true })
       .where(eq(companiesTable.id, id))
       .returning();
     if (!company) {
@@ -184,6 +276,17 @@ router.post("/super-admin/companies/:id/approve", requireSuperAdmin, async (req,
       .update(staffTable)
       .set({ approvalStatus: "approved" })
       .where(and(eq(staffTable.companyId, id), eq(staffTable.role, "admin"), eq(staffTable.approvalStatus, "pending")));
+
+    // Send approval SMS if phone exists
+    if (company.phone) {
+      const { sendSmsSilent } = await import("../lib/twilio");
+      const contactName = company.contactPersonName ?? company.adminName ?? "Team";
+      const sms = `Badhai ho ${contactName}! Aapki ${company.name} ki SCMS registration approve ho gayi hai. Ab aap apne admin panel pe login kar sakte hain. Koi madad chahiye toh humse sampark karein. -SCMS Platform`;
+      await sendSmsSilent(company.phone, sms, (msg) =>
+        req.log.warn({ companyId: company.id, msg }, "Approval SMS failed"),
+      );
+    }
+
     res.json({ message: "Company approved successfully", company: toCompanyDTO(company) });
   } catch (err) {
     next(err);
@@ -213,6 +316,17 @@ router.post("/super-admin/companies/:id/reject", requireSuperAdmin, async (req, 
       .update(staffTable)
       .set({ approvalStatus: "rejected" })
       .where(and(eq(staffTable.companyId, id), eq(staffTable.role, "admin"), eq(staffTable.approvalStatus, "pending")));
+
+    // Send rejection SMS if phone exists
+    if (company.phone) {
+      const { sendSmsSilent } = await import("../lib/twilio");
+      const contactName = company.contactPersonName ?? company.adminName ?? "Aapka";
+      const sms = `${contactName}, afsos ke saath batana padh raha hai ki ${company.name} ki SCMS registration request abhi approve nahi ho saki. Adhik jaankari ke liye humse sampark karein. -SCMS Platform`;
+      await sendSmsSilent(company.phone, sms, (msg) =>
+        req.log.warn({ companyId: company.id, msg }, "Rejection SMS failed"),
+      );
+    }
+
     res.json({ message: "Company rejected", company: toCompanyDTO(company) });
   } catch (err) {
     next(err);

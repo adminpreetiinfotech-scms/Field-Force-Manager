@@ -16,6 +16,7 @@ import SubscriptionsPage from "@/pages/subscriptions";
 import AnalyticsPage from "@/pages/analytics";
 import RemindersPage from "@/pages/reminders";
 import RevenuePage from "@/pages/revenue";
+import RegisterPage from "@/pages/register";
 import NoticesPage from "@/pages/notices";
 import AuditLogsPage from "@/pages/audit-logs";
 import SettingsPage from "@/pages/settings";
@@ -34,6 +35,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={LoginPage} />
+      <Route path="/register" component={RegisterPage} />
       <Route path="/dashboard">
         {() => <AuthGuard><Layout><DashboardPage /></Layout></AuthGuard>}
       </Route>
