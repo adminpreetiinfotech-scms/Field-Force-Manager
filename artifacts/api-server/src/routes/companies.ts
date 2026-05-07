@@ -79,6 +79,7 @@ function toCompanyDTO(c: typeof companiesTable.$inferSelect) {
     centerLng: c.centerLng ?? null,
     centerRadiusMeters: c.centerRadiusMeters ?? 200,
     portalUrl: c.portalUrl ?? null,
+    customMonthlyFee: c.customMonthlyFee ?? null,
     createdAt: c.createdAt?.toISOString() ?? null,
   };
 }

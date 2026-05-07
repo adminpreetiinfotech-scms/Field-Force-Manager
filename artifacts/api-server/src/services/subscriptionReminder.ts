@@ -1,3 +1,16 @@
+// Revenue plan prices — keep in sync with super-admin.ts PLAN_PRICE_MONTHLY
+export const PLAN_PRICE_MONTHLY: Record<string, number> = {
+  basic: 5000,
+  standard: 10000,
+  premium: 20000,
+};
+
+/** Returns the effective monthly fee for a company: custom if set, else plan default. */
+export function effectiveMonthlyFee(plan: string | null, customMonthlyFee: number | null): number {
+  if (customMonthlyFee !== null && customMonthlyFee > 0) return customMonthlyFee;
+  return PLAN_PRICE_MONTHLY[plan ?? ""] ?? 0;
+}
+
 import cron from "node-cron";
 import { companiesTable, db, staffTable } from "@workspace/db";
 import { and, eq, isNull, isNotNull, lte, gte, sql } from "drizzle-orm";

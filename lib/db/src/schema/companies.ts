@@ -53,6 +53,8 @@ export const companiesTable = pgTable("companies", {
   lateGraceMinutes: integer("late_grace_minutes").default(15),
   /** Last time a subscription expiry reminder SMS was sent. Used to avoid duplicate reminders. */
   subscriptionReminderSentAt: timestamp("subscription_reminder_sent_at", { withTimezone: true }),
+  /** Custom monthly fee in INR. If set, overrides standard plan price for revenue calculations. */
+  customMonthlyFee: integer("custom_monthly_fee"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

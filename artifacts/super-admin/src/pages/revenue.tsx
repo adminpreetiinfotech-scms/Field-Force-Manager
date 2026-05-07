@@ -28,7 +28,7 @@ interface RevenueData {
     expiredMRR: number;
     collectionRate: number;
   };
-  planRevenue: Record<string, { count: number; mrr: number }>;
+  planRevenue: Record<string, { count: number; mrr: number; customCount: number }>;
   pendingCompanies: Array<{
     id: string;
     name: string;
@@ -37,6 +37,7 @@ interface RevenueData {
     paymentStatus: string | null;
     subscriptionEndDate: string | null;
     estimatedAmount: number;
+    isCustomPrice?: boolean;
   }>;
   monthlyTrend: Array<{
     month: string;
@@ -261,6 +262,9 @@ export default function RevenuePage() {
                         <span className={`h-2.5 w-2.5 rounded-full ${cols.dot}`} />
                         <span className="capitalize font-medium">{plan}</span>
                         <span className="text-muted-foreground text-xs">× {info.count}</span>
+                        {info.customCount > 0 && (
+                          <span className="text-[10px] text-violet-600 font-medium">{info.customCount} custom</span>
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="font-semibold">{fmtFull(info.mrr)}</span>
@@ -359,6 +363,9 @@ export default function RevenuePage() {
                           <span className="text-sm font-medium truncate">{c.name}</span>
                           {c.plan && (
                             <Badge className={`text-xs capitalize ${cols.badge}`}>{c.plan}</Badge>
+                          )}
+                          {c.isCustomPrice && (
+                            <span className="text-[10px] text-violet-600 font-medium">custom price</span>
                           )}
                         </div>
                         <div className="flex items-center gap-3 mt-0.5">

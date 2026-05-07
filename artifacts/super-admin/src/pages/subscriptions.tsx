@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import {
-  CheckCircle2, XCircle, AlertCircle, Clock, CreditCard, Search, CalendarDays
+  CheckCircle2, XCircle, AlertCircle, Clock, CreditCard, Search, CalendarDays, Pencil, X, Check
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,22 @@ interface Company {
   adminName?: string;
   state?: string;
   district?: string;
+  customMonthlyFee?: number | null;
+}
+
+const PLAN_DEFAULTS: Record<string, number> = {
+  basic: 5000,
+  standard: 10000,
+  premium: 20000,
+};
+
+function effectiveFee(c: Company): number {
+  if (c.customMonthlyFee && c.customMonthlyFee > 0) return c.customMonthlyFee;
+  return PLAN_DEFAULTS[c.plan] ?? 0;
+}
+
+function fmt(n: number) {
+  return `₹${n.toLocaleString("en-IN")}`;
 }
 
 function daysLeft(dateStr?: string): number | null {
@@ -46,6 +62,81 @@ function SubBadge({ days }: { days: number | null }) {
   if (days <= 7) return <Badge className="text-xs bg-red-500 hover:bg-red-600">{days}d left</Badge>;
   if (days <= 30) return <Badge className="text-xs bg-amber-500 hover:bg-amber-600">{days}d left</Badge>;
   return <Badge variant="outline" className="text-xs text-green-700 border-green-300">{days}d left</Badge>;
+}
+
+function InlineFeeEditor({
+  companyId,
+  currentFee,
+  planDefault,
+  onSave,
+}: {
+  companyId: string;
+  currentFee: number | null;
+  planDefault: number;
+  onSave: (fee: number | null) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState<string>("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const isCustom = currentFee !== null && currentFee > 0;
+  const displayFee = isCustom ? currentFee! : planDefault;
+
+  function startEdit() {
+    setVal(isCustom ? String(currentFee) : String(planDefault));
+    setEditing(true);
+    setTimeout(() => inputRef.current?.select(), 10);
+  }
+
+  function save() {
+    const n = parseInt(val.replace(/[^\d]/g, ""), 10);
+    if (!isNaN(n) && n > 0) {
+      onSave(n === planDefault ? null : n);
+    } else if (val.trim() === "" || n === 0) {
+      onSave(null);
+    }
+    setEditing(false);
+  }
+
+  function cancel() { setEditing(false); }
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1">
+        <span className="text-xs text-muted-foreground">₹</span>
+        <Input
+          ref={inputRef}
+          value={val}
+          onChange={(e) => setVal(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") cancel(); }}
+          className="h-7 w-24 text-xs px-1.5 py-0"
+          inputMode="numeric"
+          autoFocus
+        />
+        <button onClick={save} className="text-green-600 hover:text-green-700">
+          <Check className="h-3.5 w-3.5" />
+        </button>
+        <button onClick={cancel} className="text-muted-foreground hover:text-foreground">
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={startEdit}
+      className="flex items-center gap-1.5 group text-left"
+      title="Click to set custom price"
+    >
+      <span className={`text-xs font-medium ${isCustom ? "text-violet-700" : "text-muted-foreground"}`}>
+        {fmt(displayFee)}
+      </span>
+      {isCustom && (
+        <span className="text-[10px] text-violet-500 font-medium leading-none">custom</span>
+      )}
+      <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+    </button>
+  );
 }
 
 function PaymentBadge({ status }: { status?: string }) {
@@ -181,10 +272,11 @@ export default function SubscriptionsPage() {
       {/* Table */}
       <div className="border border-border rounded-lg overflow-hidden bg-card">
         {/* Header */}
-        <div className="hidden sm:grid grid-cols-[1fr_auto_auto_auto_auto_auto] gap-4 px-4 py-2 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground uppercase tracking-wide">
+        <div className="hidden sm:grid grid-cols-[1fr_auto_auto_auto_auto_auto_auto] gap-4 px-4 py-2 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground uppercase tracking-wide">
           <span>Company</span>
           <span>Plan</span>
-          <span>Subscription</span>
+          <span>Monthly Fee</span>
+          <span>Expires</span>
           <span>End Date</span>
           <span>Payment</span>
           <span>Active</span>
@@ -196,6 +288,7 @@ export default function SubscriptionsPage() {
               <div key={i} className="flex items-center gap-4 px-4 py-3">
                 <Skeleton className="h-4 w-40" />
                 <Skeleton className="h-5 w-16 ml-auto" />
+                <Skeleton className="h-5 w-20" />
                 <Skeleton className="h-5 w-20" />
                 <Skeleton className="h-5 w-24" />
                 <Skeleton className="h-5 w-14" />
@@ -216,7 +309,7 @@ export default function SubscriptionsPage() {
                 <div
                   key={c.id}
                   data-testid={`row-sub-${c.id}`}
-                  className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto_auto_auto] gap-2 sm:gap-4 px-4 py-3 items-center hover:bg-muted/30 transition-colors"
+                  className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto_auto_auto_auto] gap-2 sm:gap-4 px-4 py-3 items-center hover:bg-muted/30 transition-colors"
                 >
                   {/* Company name */}
                   <div className="min-w-0">
@@ -254,6 +347,14 @@ export default function SubscriptionsPage() {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {/* Monthly fee — inline editable */}
+                  <InlineFeeEditor
+                    companyId={c.id}
+                    currentFee={c.customMonthlyFee ?? null}
+                    planDefault={PLAN_DEFAULTS[c.plan] ?? 0}
+                    onSave={(fee) => updateMutation.mutate({ id: c.id, data: { customMonthlyFee: fee } })}
+                  />
 
                   {/* Days remaining */}
                   <div className="flex items-center">

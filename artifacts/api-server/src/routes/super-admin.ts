@@ -553,6 +553,7 @@ router.patch("/super-admin/companies/:id", requireSuperAdmin, async (req, res, n
     const {
       status, subscriptionActive, name, projectName, state, district,
       plan, subscriptionStartDate, subscriptionEndDate, paymentStatus,
+      customMonthlyFee,
     } = req.body as {
       status?: "active" | "inactive";
       subscriptionActive?: boolean;
@@ -564,6 +565,7 @@ router.patch("/super-admin/companies/:id", requireSuperAdmin, async (req, res, n
       subscriptionStartDate?: string | null;
       subscriptionEndDate?: string | null;
       paymentStatus?: "paid" | "pending" | "expired" | null;
+      customMonthlyFee?: number | null;
     };
 
     const updates: Partial<typeof companiesTable.$inferInsert> = {};
@@ -581,6 +583,9 @@ router.patch("/super-admin/companies/:id", requireSuperAdmin, async (req, res, n
       updates.subscriptionEndDate = subscriptionEndDate ? new Date(subscriptionEndDate) : null;
     }
     if (paymentStatus !== undefined) updates.paymentStatus = paymentStatus ?? undefined;
+    if (customMonthlyFee !== undefined) {
+      updates.customMonthlyFee = customMonthlyFee === null ? null : Math.max(0, Math.round(Number(customMonthlyFee)));
+    }
 
     const [updated] = await db
       .update(companiesTable)
@@ -1550,6 +1555,7 @@ router.get("/super-admin/revenue", requireSuperAdmin, async (_req, res, next) =>
         subscriptionEndDate: companiesTable.subscriptionEndDate,
         status: companiesTable.status,
         createdAt: companiesTable.createdAt,
+        customMonthlyFee: companiesTable.customMonthlyFee,
       })
       .from(companiesTable)
       .where(eq(companiesTable.approvalStatus, "approved"));
@@ -1560,20 +1566,24 @@ router.get("/super-admin/revenue", requireSuperAdmin, async (_req, res, next) =>
     let pendingMRR = 0;
     let expiredMRR = 0;
 
-    const planRevenue: Record<string, { count: number; mrr: number }> = {
-      basic: { count: 0, mrr: 0 },
-      standard: { count: 0, mrr: 0 },
-      premium: { count: 0, mrr: 0 },
+    const planRevenue: Record<string, { count: number; mrr: number; customCount: number }> = {
+      basic: { count: 0, mrr: 0, customCount: 0 },
+      standard: { count: 0, mrr: 0, customCount: 0 },
+      premium: { count: 0, mrr: 0, customCount: 0 },
     };
 
     const pendingCompanies: Array<{
       id: string; name: string; phone: string | null;
       plan: string | null; paymentStatus: string | null;
       subscriptionEndDate: string | null; estimatedAmount: number;
+      isCustomPrice: boolean;
     }> = [];
 
     for (const c of companies) {
-      const price = PLAN_PRICE_MONTHLY[c.plan ?? ""] ?? 0;
+      // Use custom fee if set, otherwise standard plan price
+      const price = c.customMonthlyFee && c.customMonthlyFee > 0
+        ? c.customMonthlyFee
+        : PLAN_PRICE_MONTHLY[c.plan ?? ""] ?? 0;
       if (!c.plan || price === 0) continue;
 
       totalMRR += price;
@@ -1581,6 +1591,7 @@ router.get("/super-admin/revenue", requireSuperAdmin, async (_req, res, next) =>
       if (c.plan && planRevenue[c.plan]) {
         planRevenue[c.plan].count += 1;
         planRevenue[c.plan].mrr += price;
+        if (c.customMonthlyFee && c.customMonthlyFee > 0) planRevenue[c.plan].customCount += 1;
       }
 
       if (c.paymentStatus === "paid") {
@@ -1595,6 +1606,7 @@ router.get("/super-admin/revenue", requireSuperAdmin, async (_req, res, next) =>
           paymentStatus: c.paymentStatus,
           subscriptionEndDate: c.subscriptionEndDate?.toISOString() ?? null,
           estimatedAmount: price,
+          isCustomPrice: !!(c.customMonthlyFee && c.customMonthlyFee > 0),
         });
       } else if (c.paymentStatus === "expired") {
         expiredMRR += price;
@@ -1661,7 +1673,9 @@ router.get("/super-admin/revenue", requireSuperAdmin, async (_req, res, next) =>
 
     for (const c of companies) {
       if (!c.subscriptionEndDate || !c.plan) continue;
-      const price = PLAN_PRICE_MONTHLY[c.plan] ?? 0;
+      const price = c.customMonthlyFee && c.customMonthlyFee > 0
+        ? c.customMonthlyFee
+        : PLAN_PRICE_MONTHLY[c.plan] ?? 0;
       const end = c.subscriptionEndDate;
       if (end >= now && end <= in30) { renewalIn30++; renewalMrrIn30 += price; }
       if (end >= now && end <= in60) { renewalIn60++; renewalMrrIn60 += price; }
