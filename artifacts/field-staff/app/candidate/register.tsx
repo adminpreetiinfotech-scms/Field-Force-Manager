@@ -815,7 +815,11 @@ export default function CandidateRegisterScreen() {
   const selectCenter = (c: { id: string; name: string; tcId: string | null; courses: string[] }) => {
     setSkillCentreName(c.name);
     setCenterTcId(c.tcId ?? null);
-    if (c.courses && c.courses.length > 0) setCenterCourses(c.courses);
+    if (c.courses && c.courses.length > 0) {
+      setCenterCourses(c.courses);
+      // Auto-select if only one course available
+      if (c.courses.length === 1) setCourse(c.courses[0]!);
+    }
     setShowCenterSearch(false);
     setCenterSearchQuery("");
     setCenterSearchResults([]);
@@ -1445,6 +1449,12 @@ export default function CandidateRegisterScreen() {
               )}
               <View style={{ marginBottom: 4 }}>
                 <TextBox label="Skill Centre Name / कौशल केंद्र का नाम" value={skillCentreName} onChangeText={setSkillCentreName} />
+                {centerTcId ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4, backgroundColor: ACCENT + "12", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 5 }}>
+                    <Feather name="check-circle" size={12} color={ACCENT} />
+                    <Text style={{ fontSize: 11, color: ACCENT, fontFamily: F_ENG_MED }}>TC ID: {centerTcId}</Text>
+                  </View>
+                ) : null}
                 <TouchableOpacity
                   onPress={() => { setShowCenterSearch(true); void searchCenters(""); }}
                   style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4, paddingVertical: 4 }}
