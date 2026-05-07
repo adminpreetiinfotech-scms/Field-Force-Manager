@@ -1147,7 +1147,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ phone: user.phone }),
       });
       if (!res.ok) return;
-      const data = (await res.json()) as { exists: boolean; approvalStatus: string | null };
+      const data = (await res.json()) as { exists: boolean; approvalStatus: string | null; centerId?: string | null };
       if (!data.exists || data.approvalStatus === "rejected") {
         setState((s) => ({
           ...s,
@@ -1157,6 +1157,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           activeTripId: null,
         }));
         await AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+      } else {
+        // Always sync centerId from server — ensures center lock is always up to date
+        const freshCenterId = data.centerId ?? null;
+        if (stateRef.current.user && stateRef.current.user.centerId !== freshCenterId) {
+          setState((s) => s.user ? ({ ...s, user: { ...s.user, centerId: freshCenterId } }) : s);
+        }
       }
     } catch {
       // Offline — do not logout.
