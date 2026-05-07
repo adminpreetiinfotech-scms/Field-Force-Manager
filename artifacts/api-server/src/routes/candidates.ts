@@ -17,7 +17,7 @@ import { sendSmsSilent } from "../lib/twilio";
 import { sendPushSilent } from "../lib/push";
 import { downloadLogoBuffer } from "../lib/logoStorage";
 import { generateCandidatePdf, type PdfReportOpts } from "../services/pdf";
-import { requireAdmin } from "./admin";
+import { getAdminCompanyId, requireAdmin } from "./admin";
 
 const PDF_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"] as const;
 
@@ -1182,6 +1182,36 @@ router.get("/candidates/:id/pdf", async (req, res, next) => {
     if (!candidate) {
       res.status(404).json({ title: "Candidate not found", status: 404 });
       return;
+    }
+
+    // Company isolation: if caller identifies as admin or staff, verify their company matches
+    const adminPhone = req.headers["x-admin-phone"] as string | undefined;
+    const staffPhone = req.headers["x-staff-phone"] as string | undefined;
+    if (adminPhone) {
+      const adminInfo = await getAdminCompanyId(adminPhone);
+      if (!adminInfo) {
+        res.status(403).json({ title: "Forbidden", status: 403 });
+        return;
+      }
+      // super_admin (null companyId) can access all
+      if (adminInfo.companyId !== null && adminInfo.companyId !== candidate.companyId) {
+        res.status(403).json({ title: "Forbidden", status: 403 });
+        return;
+      }
+    } else if (staffPhone) {
+      const [staffRow] = await db
+        .select({ companyId: staffTable.companyId })
+        .from(staffTable)
+        .where(eq(staffTable.phone, staffPhone.trim()))
+        .limit(1);
+      if (!staffRow) {
+        res.status(403).json({ title: "Forbidden", status: 403 });
+        return;
+      }
+      if (staffRow.companyId !== null && staffRow.companyId !== candidate.companyId) {
+        res.status(403).json({ title: "Forbidden", status: 403 });
+        return;
+      }
     }
 
     const pdfFilePath = path.join(CANDIDATES_DIR, candidate.id, "profile.pdf");
