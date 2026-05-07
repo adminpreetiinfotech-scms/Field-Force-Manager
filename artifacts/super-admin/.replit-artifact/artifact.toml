@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/super-admin/"
+title = "SCMS Super Admin"
+version = "1.0.0"
+id = "artifacts/super-admin"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/super-admin/" ]
+localPort = 20029
+
+[services.development]
+run = "pnpm --filter @workspace/super-admin run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/super-admin", "run", "build" ]
+publicDir = "artifacts/super-admin/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20029"
+BASE_PATH = "/super-admin/"

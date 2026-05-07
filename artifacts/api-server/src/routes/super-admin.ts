@@ -1126,6 +1126,137 @@ router.delete(
 // ─── GET /api/super-admin/profile ─────────────────────────────────────────────
 // Get current super admin's own profile
 
+// ─── GET /api/super-admin/dashboard ───────────────────────────────────────────
+// Global stats across ALL companies for the super admin overview.
+
+router.get("/super-admin/dashboard", requireSuperAdmin, async (_req, res, next) => {
+  try {
+    const [totalCompanies] = await db.select({ count: count() }).from(companiesTable);
+    const [activeCompanies] = await db.select({ count: count() }).from(companiesTable)
+      .where(eq(companiesTable.status, "active"));
+    const [totalStaff] = await db.select({ count: count() }).from(staffTable)
+      .where(isNull(staffTable.deletedAt));
+    const [totalCandidates] = await db.select({ count: count() }).from(candidatesTable);
+    const recentCompanies = await db.select({
+      id: companiesTable.id,
+      name: companiesTable.name,
+      status: companiesTable.status,
+      subscriptionActive: companiesTable.subscriptionActive,
+      plan: companiesTable.plan,
+      createdAt: companiesTable.createdAt,
+    }).from(companiesTable).orderBy(sql`${companiesTable.createdAt} desc`).limit(5);
+
+    res.json({
+      totalCompanies: Number(totalCompanies?.count ?? 0),
+      activeCompanies: Number(activeCompanies?.count ?? 0),
+      totalStaff: Number(totalStaff?.count ?? 0),
+      totalCandidates: Number(totalCandidates?.count ?? 0),
+      recentCompanies: recentCompanies.map((c) => ({
+        ...c,
+        createdAt: c.createdAt?.toISOString() ?? null,
+      })),
+    });
+  } catch (err) { next(err); }
+});
+
+// ─── POST /api/super-admin/companies ──────────────────────────────────────────
+// Create a new company (and optionally its first admin account).
+
+router.post("/super-admin/companies", requireSuperAdmin, async (req, res, next) => {
+  try {
+    const {
+      name, adminName, phone, email, state, district,
+      projectName, plan, subscriptionStartDate, subscriptionEndDate,
+      adminPhone, adminInitialMpin,
+    } = req.body as {
+      name?: string;
+      adminName?: string | null;
+      phone?: string | null;
+      email?: string | null;
+      state?: string | null;
+      district?: string | null;
+      projectName?: string | null;
+      plan?: "basic" | "standard" | "premium" | null;
+      subscriptionStartDate?: string | null;
+      subscriptionEndDate?: string | null;
+      adminPhone?: string | null;
+      adminInitialMpin?: string | null;
+    };
+
+    if (!name?.trim() || name.trim().length < 2) {
+      res.status(400).json({ title: "Company name required (min 2 chars)", status: 400 });
+      return;
+    }
+
+    const [company] = await db
+      .insert(companiesTable)
+      .values({
+        name: name.trim(),
+        adminName: adminName?.trim() || null,
+        phone: phone?.trim() || null,
+        email: email?.trim() || null,
+        state: state?.trim() || null,
+        district: district?.trim() || null,
+        projectName: projectName?.trim() || null,
+        plan: plan ?? "basic",
+        subscriptionActive: true,
+        status: "active",
+        approvalStatus: "approved",
+        subscriptionStartDate: subscriptionStartDate ? new Date(subscriptionStartDate) : null,
+        subscriptionEndDate: subscriptionEndDate ? new Date(subscriptionEndDate) : null,
+      })
+      .returning();
+
+    if (!company) {
+      res.status(500).json({ title: "Failed to create company", status: 500 });
+      return;
+    }
+
+    // Optionally create first admin account
+    let admin = null;
+    if (adminPhone?.trim() && /^[6-9]\d{9}$/.test(adminPhone.trim())) {
+      const [existingStaff] = await db.select({ id: staffTable.id }).from(staffTable)
+        .where(eq(staffTable.phone, adminPhone.trim())).limit(1);
+
+      if (!existingStaff) {
+        let mpinHash: string | null = null;
+        if (adminInitialMpin && /^\d{4,6}$/.test(adminInitialMpin)) {
+          const salt = crypto.randomBytes(16).toString("hex");
+          const hash = crypto.scryptSync(adminInitialMpin, salt, 64).toString("hex");
+          mpinHash = `${salt}:${hash}`;
+        }
+        const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
+        const adminCode = Math.random().toString(36).slice(2, 8).toUpperCase();
+        const [createdAdmin] = await db.insert(staffTable).values({
+          companyId: company.id,
+          empCode: `ADM-${suffix}`,
+          name: adminName?.trim() || "Admin",
+          phone: adminPhone.trim(),
+          role: "admin",
+          email: email?.trim() || null,
+          organization: company.name,
+          projectName: company.projectName ?? null,
+          state: company.state ?? null,
+          district: company.district ?? null,
+          adminCode,
+          approvalStatus: "approved",
+          mpinHash,
+        }).returning();
+        admin = createdAdmin ? {
+          id: createdAdmin.id,
+          empCode: createdAdmin.empCode,
+          name: createdAdmin.name,
+          phone: createdAdmin.phone,
+          adminCode: createdAdmin.adminCode,
+        } : null;
+      }
+    }
+
+    req.log.info({ companyId: company.id }, "New company created by super-admin");
+    res.status(201).json({ company: toCompanyDTO(company), admin });
+  } catch (err) { next(err); }
+});
+
 router.get("/super-admin/profile", requireSuperAdmin, async (req, res, next) => {
   try {
     const phone = req.headers["x-admin-phone"] as string;
