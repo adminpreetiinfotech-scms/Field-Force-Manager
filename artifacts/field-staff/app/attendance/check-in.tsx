@@ -394,15 +394,20 @@ export default function CheckInScreen() {
           {user?.staffCategory !== "center" && <Check ok={false} label="Vehicle + Odometer (Steps 2–3)" />}
         </View>
 
-        {photo && centerGeofenceWarning && centerGeofenceWarning.outside && (
-          <View style={[styles.geofenceWarning, { backgroundColor: "#FEF3C718", borderColor: "#D97706" }]}>
-            <Feather name="alert-triangle" size={14} color="#D97706" />
-            <Text style={{ color: "#92400E", fontSize: 12, fontFamily: "Inter_500Medium", flex: 1 }}>
-              You are {centerGeofenceWarning.distanceM} m from center. Check-in will be flagged outside geo-fence.
-            </Text>
+        {centerGeofenceWarning && centerGeofenceWarning.outside && (
+          <View style={[styles.geofenceWarning, { backgroundColor: "rgba(220,38,38,0.12)", borderColor: "#DC2626" }]}>
+            <Feather name="x-circle" size={14} color="#DC2626" />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: "#DC2626", fontSize: 12, fontFamily: "Inter_700Bold" }}>
+                Outside geo-fence — Check-in blocked
+              </Text>
+              <Text style={{ color: "#FCA5A5", fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 }}>
+                You are {centerGeofenceWarning.distanceM} m from center. Move closer to check in.
+              </Text>
+            </View>
           </View>
         )}
-        {photo && centerGeofenceWarning && !centerGeofenceWarning.outside && (
+        {centerGeofenceWarning && !centerGeofenceWarning.outside && (
           <View style={[styles.geofenceWarning, { backgroundColor: "#34D39918", borderColor: "#34D399" }]}>
             <Feather name="check-circle" size={14} color="#34D399" />
             <Text style={{ color: "#34D399", fontSize: 12, fontFamily: "Inter_500Medium", flex: 1 }}>
@@ -422,9 +427,10 @@ export default function CheckInScreen() {
             <Button
               label={user?.staffCategory !== "center" ? "Next: Vehicle" : "Confirm check-in"}
               onPress={confirmSelfie}
+              disabled={!!(centerGeofenceWarning?.outside)}
               loading={submitting}
               size="lg"
-              style={{ flex: 1 }}
+              style={{ flex: 1, opacity: centerGeofenceWarning?.outside ? 0.4 : 1 }}
               icon={<Feather name={user?.staffCategory !== "center" ? "arrow-right" : "check"} size={18} color="#fff" />}
             />
           </View>

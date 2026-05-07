@@ -9,7 +9,7 @@ import {
   noticesTable,
   staffTable,
 } from "@workspace/db";
-import { and, count, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import crypto from "node:crypto";
 import { isValidUUID } from "../lib/validation";
@@ -1892,6 +1892,158 @@ router.get("/super-admin/audit-logs", requireSuperAdmin, async (req, res, next) 
       occurredAt: r.occurredAt?.toISOString() ?? null,
       receivedAt: r.receivedAt?.toISOString() ?? null,
     })));
+  } catch (err) { next(err); }
+});
+
+// ─── GET /api/super-admin/center-attendance ────────────────────────────────────
+// Daily attendance log for center staff across all (or one) company.
+// Query params: date (YYYY-MM-DD, default today IST), companyId (optional)
+
+router.get("/super-admin/center-attendance", requireSuperAdmin, async (req, res, next) => {
+  try {
+    const { date, companyId } = req.query as { date?: string; companyId?: string };
+
+    // Parse date — default to today in IST (UTC+5:30)
+    let targetDate: Date;
+    if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      targetDate = new Date(date + "T00:00:00+05:30");
+    } else {
+      const now = new Date();
+      const ist = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
+      targetDate = new Date(`${ist.toISOString().slice(0, 10)}T00:00:00+05:30`);
+    }
+    const dayStart = new Date(targetDate.getTime());
+    const dayEnd = new Date(targetDate.getTime() + 24 * 60 * 60 * 1000);
+
+    // Get all center staff for the filter
+    const staffWhere = companyId && isValidUUID(companyId)
+      ? and(eq(staffTable.staffCategory, "center"), eq(staffTable.companyId, companyId), isNull(staffTable.deletedAt))
+      : and(eq(staffTable.staffCategory, "center"), isNull(staffTable.deletedAt));
+
+    const centerStaff = await db
+      .select({
+        id: staffTable.id,
+        name: staffTable.name,
+        empCode: staffTable.empCode,
+        companyId: staffTable.companyId,
+        phone: staffTable.phone,
+      })
+      .from(staffTable)
+      .where(staffWhere);
+
+    if (centerStaff.length === 0) {
+      res.json({ date: targetDate.toISOString().slice(0, 10), summary: { total: 0, present: 0, absent: 0, outsideFence: 0, complianceRate: 0 }, records: [] });
+      return;
+    }
+
+    const staffIds = centerStaff.map((s) => s.id);
+
+    // Get company names for all involved companies
+    const companyIds = [...new Set(centerStaff.map((s) => s.companyId).filter(Boolean))] as string[];
+    const companies = companyIds.length > 0
+      ? await db.select({ id: companiesTable.id, name: companiesTable.name }).from(companiesTable).where(inArray(companiesTable.id, companyIds))
+      : [];
+    const companyMap = Object.fromEntries(companies.map((c) => [c.id, c.name]));
+
+    // Fetch checkin + checkout events for all center staff on this day
+    const events = await db
+      .select({
+        staffId: activityEventsTable.staffId,
+        kind: activityEventsTable.kind,
+        occurredAt: activityEventsTable.occurredAt,
+        payload: activityEventsTable.payload,
+      })
+      .from(activityEventsTable)
+      .where(
+        and(
+          inArray(activityEventsTable.staffId, staffIds),
+          inArray(activityEventsTable.kind, ["checkin", "checkout"]),
+          gte(activityEventsTable.occurredAt, dayStart),
+          lte(activityEventsTable.occurredAt, dayEnd),
+        ),
+      )
+      .orderBy(desc(activityEventsTable.occurredAt));
+
+    // Group by staffId — find first checkin and last checkout
+    type StaffEvents = { checkin?: { time: Date; payload: Record<string, unknown> }; checkout?: { time: Date; payload: Record<string, unknown> } };
+    const byStaff: Record<string, StaffEvents> = {};
+    for (const e of events) {
+      if (!byStaff[e.staffId]) byStaff[e.staffId] = {};
+      const p = (e.payload ?? {}) as Record<string, unknown>;
+      if (e.kind === "checkin") {
+        // Keep earliest checkin
+        const cur = byStaff[e.staffId].checkin;
+        if (!cur || e.occurredAt < cur.time) byStaff[e.staffId].checkin = { time: e.occurredAt, payload: p };
+      } else if (e.kind === "checkout") {
+        // Keep latest checkout
+        const cur = byStaff[e.staffId].checkout;
+        if (!cur || e.occurredAt > cur.time) byStaff[e.staffId].checkout = { time: e.occurredAt, payload: p };
+      }
+    }
+
+    // Build records
+    let presentCount = 0;
+    let outsideFenceCount = 0;
+
+    const records = centerStaff.map((s) => {
+      const ev = byStaff[s.id];
+      const checkin = ev?.checkin ?? null;
+      const checkout = ev?.checkout ?? null;
+      const isPresent = !!checkin;
+      if (isPresent) presentCount++;
+
+      const outsideGeofence = !!(checkin?.payload?.outsideGeofence);
+      const distanceFromCenterM = typeof checkin?.payload?.distanceFromCenterM === "number"
+        ? checkin.payload.distanceFromCenterM
+        : null;
+      if (outsideGeofence) outsideFenceCount++;
+
+      const durationMin = checkin && checkout
+        ? Math.round((checkout.time.getTime() - checkin.time.getTime()) / 60000)
+        : null;
+
+      return {
+        staffId: s.id,
+        staffName: s.name,
+        empCode: s.empCode ?? null,
+        phone: s.phone ?? null,
+        companyId: s.companyId ?? null,
+        companyName: s.companyId ? (companyMap[s.companyId] ?? "Unknown") : "Unknown",
+        status: isPresent ? (checkout ? "present" : "partial") : "absent",
+        checkinTime: checkin?.time?.toISOString() ?? null,
+        checkoutTime: checkout?.time?.toISOString() ?? null,
+        durationMin,
+        outsideGeofence,
+        distanceFromCenterM,
+      };
+    });
+
+    // Sort: present first, then partial, then absent; within each group sort by name
+    const statusOrder: Record<string, number> = { present: 0, partial: 1, absent: 2 };
+    records.sort((a, b) => {
+      const so = (statusOrder[a.status] ?? 3) - (statusOrder[b.status] ?? 3);
+      if (so !== 0) return so;
+      return a.staffName.localeCompare(b.staffName);
+    });
+
+    const total = centerStaff.length;
+    const complianceRate = presentCount > 0
+      ? Math.round(((presentCount - outsideFenceCount) / presentCount) * 100)
+      : 100;
+
+    res.json({
+      date: targetDate.toISOString().slice(0, 10),
+      summary: {
+        total,
+        present: presentCount,
+        partial: records.filter((r) => r.status === "partial").length,
+        absent: total - presentCount,
+        outsideFence: outsideFenceCount,
+        complianceRate,
+        attendanceRate: total > 0 ? Math.round((presentCount / total) * 100) : 0,
+      },
+      records,
+    });
   } catch (err) { next(err); }
 });
 

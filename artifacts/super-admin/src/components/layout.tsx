@@ -13,7 +13,8 @@ import {
   Activity,
   Settings,
   AlarmClock,
-  IndianRupee
+  IndianRupee,
+  MapPin,
 } from "lucide-react";
 
 interface LayoutProps {
@@ -35,6 +36,7 @@ export function Layout({ children }: LayoutProps) {
     { href: "/companies", label: "Companies", icon: Building2 },
     { href: "/subscriptions", label: "Subscriptions", icon: CreditCard },
     { href: "/reminders", label: "Sub. Reminders", icon: AlarmClock },
+    { href: "/center-attendance", label: "Center Attendance", icon: MapPin },
     { href: "/pending", label: "Pending Approvals", icon: Clock },
     { href: "/staff", label: "Staff Directory", icon: Users },
     { href: "/notices", label: "Notices", icon: Bell },

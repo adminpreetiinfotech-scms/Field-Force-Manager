@@ -20,6 +20,7 @@ import RegisterPage from "@/pages/register";
 import NoticesPage from "@/pages/notices";
 import AuditLogsPage from "@/pages/audit-logs";
 import SettingsPage from "@/pages/settings";
+import CenterAttendancePage from "@/pages/center-attendance";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -71,6 +72,9 @@ function Router() {
       </Route>
       <Route path="/settings">
         {() => <AuthGuard><Layout><SettingsPage /></Layout></AuthGuard>}
+      </Route>
+      <Route path="/center-attendance">
+        {() => <AuthGuard><Layout><CenterAttendancePage /></Layout></AuthGuard>}
       </Route>
       <Route path="/staff">
         {() => <AuthGuard><Layout><StaffPage /></Layout></AuthGuard>}
