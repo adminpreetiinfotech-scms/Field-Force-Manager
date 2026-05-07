@@ -339,6 +339,7 @@ export default function Candidates() {
   if (debouncedSearch) queryParams.search = debouncedSearch;
   if (statusFilter !== "all") queryParams.status = statusFilter;
   if (mobilizerFilter) queryParams.mobilizer = mobilizerFilter;
+  if (centerFilter) queryParams.skillCentre = centerFilter;
 
   const { data: candidates, isLoading } = useListCandidates(queryParams);
   const updateStatus = useUpdateCandidateStatus();
