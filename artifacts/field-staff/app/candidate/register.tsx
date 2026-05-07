@@ -772,12 +772,29 @@ export default function CandidateRegisterScreen() {
   const [centerCourses, setCenterCourses] = useState<string[]>([]);
   const [showCoursePicker, setShowCoursePicker] = useState(false);
 
-  // Fetch center data on mount if user has a centerId — locks the center for this staff
+  // effectiveCenterId: always fetch fresh from server on form open — does NOT rely on
+  // cached session or OTA timing. Falls back to user?.centerId while server responds.
+  const [effectiveCenterId, setEffectiveCenterId] = useState<string | null>(user?.centerId ?? null);
   useEffect(() => {
-    const centerId = user?.centerId;
-    if (!centerId) return;
+    if (!user?.phone) return;
     const base = getApiBase();
-    fetch(`${base}/api/centers/${centerId}`)
+    fetch(`${base}/api/auth/check-phone`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: user.phone }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { centerId?: string | null } | null) => {
+        if (data?.centerId) setEffectiveCenterId(data.centerId);
+      })
+      .catch(() => {});
+  }, [user?.phone]);
+
+  // Fetch center data when effectiveCenterId is known — locks center & courses for this staff
+  useEffect(() => {
+    if (!effectiveCenterId) return;
+    const base = getApiBase();
+    fetch(`${base}/api/centers/${effectiveCenterId}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data: { name?: string; courses?: string[]; tcId?: string | null } | null) => {
         if (!data) return;
@@ -790,7 +807,7 @@ export default function CandidateRegisterScreen() {
         if (data.tcId) setCenterTcId(data.tcId);
       })
       .catch(() => {});
-  }, [user?.centerId]);
+  }, [effectiveCenterId]);
 
   const [centerTcId, setCenterTcId] = useState<string | null>(null);
 
@@ -1457,16 +1474,16 @@ export default function CandidateRegisterScreen() {
                   label="Skill Centre Name / कौशल केंद्र का नाम"
                   value={skillCentreName}
                   onChangeText={setSkillCentreName}
-                  editable={!user?.centerId}
+                  editable={!effectiveCenterId}
                 />
                 {centerTcId ? (
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4, backgroundColor: ACCENT + "12", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 5 }}>
-                    <Feather name={user?.centerId ? "lock" : "check-circle"} size={12} color={ACCENT} />
+                    <Feather name={effectiveCenterId ? "lock" : "check-circle"} size={12} color={ACCENT} />
                     <Text style={{ fontSize: 11, color: ACCENT, fontFamily: F_ENG_MED }}>TC ID: {centerTcId}</Text>
                   </View>
                 ) : null}
                 {/* Only show center search if staff is not locked to a specific center */}
-                {!user?.centerId && (
+                {!effectiveCenterId && (
                   <TouchableOpacity
                     onPress={() => { setShowCenterSearch(true); void searchCenters(""); }}
                     style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4, paddingVertical: 4 }}
