@@ -507,17 +507,34 @@ router.get("/companies/public-search", async (req, res, next) => {
 });
 
 // ─── GET /api/centers/search?q=name ────────────────────────────────────────────
-// Public endpoint: search all approved centers by name (for staff registration).
+// Company-scoped center search — only returns centers belonging to the caller's company.
+// Caller is identified via x-staff-phone header.
 // IMPORTANT: Must be defined BEFORE /centers/:centerId to avoid route conflict.
 router.get("/centers/search", async (req, res, next) => {
   try {
     const { q } = req.query as { q?: string };
     const query = q?.trim() ?? "";
-    const conditions = [
+
+    // Resolve caller's companyId from x-staff-phone header (company-scoped search)
+    const callerPhone = (req.headers["x-staff-phone"] as string | undefined)?.trim();
+    let callerCompanyId: string | null = null;
+    if (callerPhone) {
+      const [staffRow] = await db
+        .select({ companyId: staffTable.companyId })
+        .from(staffTable)
+        .where(eq(staffTable.phone, callerPhone))
+        .limit(1);
+      callerCompanyId = staffRow?.companyId ?? null;
+    }
+
+    const conditions: ReturnType<typeof eq>[] = [
       eq(centersTable.approvalStatus, "approved"),
       eq(companiesTable.approvalStatus, "approved"),
-      ...(query.length >= 1 ? [ilike(centersTable.name, `%${query}%`)] : []),
     ];
+    // Restrict to caller's company — prevents cross-company center visibility
+    if (callerCompanyId) conditions.push(eq(centersTable.companyId, callerCompanyId));
+    if (query.length >= 1) conditions.push(ilike(centersTable.name, `%${query}%`));
+
     const rows = await db
       .select({
         id: centersTable.id,

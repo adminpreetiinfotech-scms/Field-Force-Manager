@@ -804,7 +804,9 @@ export default function CandidateRegisterScreen() {
     setCenterSearchLoading(true);
     try {
       const base = getApiBase();
-      const r = await fetch(`${base}/api/centers/search?q=${encodeURIComponent(q)}`);
+      const headers: Record<string, string> = {};
+      if (user?.phone) headers["x-staff-phone"] = user.phone;
+      const r = await fetch(`${base}/api/centers/search?q=${encodeURIComponent(q)}`, { headers });
       if (r.ok) {
         const data = await r.json() as Array<{ id: string; name: string; tcId: string | null; courses: string[] }>;
         setCenterSearchResults(data);
