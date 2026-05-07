@@ -271,11 +271,11 @@ function FieldLabel({ label, required }: { label: string; required?: boolean }) 
 }
 
 function TextBox({
-  label, value, onChangeText, placeholder, keyboardType = "default", required, multiline, error,
+  label, value, onChangeText, placeholder, keyboardType = "default", required, multiline, error, editable = true,
 }: {
   label: string; value: string; onChangeText: (v: string) => void;
   placeholder?: string; keyboardType?: "default" | "numeric" | "phone-pad" | "email-address";
-  required?: boolean; multiline?: boolean; error?: string;
+  required?: boolean; multiline?: boolean; error?: string; editable?: boolean;
 }) {
   return (
     <View style={styles.fieldCell}>
@@ -287,7 +287,8 @@ function TextBox({
         placeholderTextColor={MUTED}
         keyboardType={keyboardType}
         multiline={multiline}
-        style={[styles.textBox, multiline && { height: 54, textAlignVertical: "top" }, error ? { borderColor: "#DC2626", borderWidth: 1.5 } : {}]}
+        editable={editable}
+        style={[styles.textBox, multiline && { height: 54, textAlignVertical: "top" }, error ? { borderColor: "#DC2626", borderWidth: 1.5 } : {}, !editable && { backgroundColor: "#F3F4F6", color: "#6B7280" }]}
       />
       {error ? <Text style={{ color: "#DC2626", fontSize: 11, marginTop: 3, fontFamily: "Inter_400Regular" }}>{error}</Text> : null}
     </View>
@@ -771,7 +772,7 @@ export default function CandidateRegisterScreen() {
   const [centerCourses, setCenterCourses] = useState<string[]>([]);
   const [showCoursePicker, setShowCoursePicker] = useState(false);
 
-  // Fetch center data on mount if user has a centerId
+  // Fetch center data on mount if user has a centerId — locks the center for this staff
   useEffect(() => {
     const centerId = user?.centerId;
     if (!centerId) return;
@@ -780,12 +781,13 @@ export default function CandidateRegisterScreen() {
       .then((r) => (r.ok ? r.json() : null))
       .then((data: { name?: string; courses?: string[]; tcId?: string | null } | null) => {
         if (!data) return;
-        if (data.courses && data.courses.length > 0) setCenterCourses(data.courses);
-        if (data.name) setSkillCentreName((prev) => (prev ? prev : data.name ?? ""));
-        // Auto-fill center TC ID into the form header context if available
-        if (data.tcId) {
-          setCenterTcId(data.tcId);
+        if (data.courses && data.courses.length > 0) {
+          setCenterCourses(data.courses);
+          // Auto-select course if only one option
+          if (data.courses.length === 1) setCourse((prev) => prev || data.courses![0]!);
         }
+        if (data.name) setSkillCentreName(data.name);
+        if (data.tcId) setCenterTcId(data.tcId);
       })
       .catch(() => {});
   }, [user?.centerId]);
@@ -1449,22 +1451,30 @@ export default function CandidateRegisterScreen() {
                 <TextBox label="Course Name / कोर्स का नाम" value={course} onChangeText={setCourse} placeholder="e.g. Tailoring, Computer" />
               )}
               <View style={{ marginBottom: 4 }}>
-                <TextBox label="Skill Centre Name / कौशल केंद्र का नाम" value={skillCentreName} onChangeText={setSkillCentreName} />
+                <TextBox
+                  label="Skill Centre Name / कौशल केंद्र का नाम"
+                  value={skillCentreName}
+                  onChangeText={setSkillCentreName}
+                  editable={!user?.centerId}
+                />
                 {centerTcId ? (
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4, backgroundColor: ACCENT + "12", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 5 }}>
-                    <Feather name="check-circle" size={12} color={ACCENT} />
+                    <Feather name={user?.centerId ? "lock" : "check-circle"} size={12} color={ACCENT} />
                     <Text style={{ fontSize: 11, color: ACCENT, fontFamily: F_ENG_MED }}>TC ID: {centerTcId}</Text>
                   </View>
                 ) : null}
-                <TouchableOpacity
-                  onPress={() => { setShowCenterSearch(true); void searchCenters(""); }}
-                  style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4, paddingVertical: 4 }}
-                >
-                  <Feather name="search" size={12} color={ACCENT} />
-                  <Text style={{ fontSize: 11, color: ACCENT, fontFamily: F_ENG_MED }}>
-                    Search & select center
-                  </Text>
-                </TouchableOpacity>
+                {/* Only show center search if staff is not locked to a specific center */}
+                {!user?.centerId && (
+                  <TouchableOpacity
+                    onPress={() => { setShowCenterSearch(true); void searchCenters(""); }}
+                    style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4, paddingVertical: 4 }}
+                  >
+                    <Feather name="search" size={12} color={ACCENT} />
+                    <Text style={{ fontSize: 11, color: ACCENT, fontFamily: F_ENG_MED }}>
+                      Search & select center
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
             <PhotoBox

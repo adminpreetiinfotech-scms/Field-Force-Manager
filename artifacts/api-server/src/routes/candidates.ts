@@ -2,6 +2,7 @@ import {
   candidateAuditLogTable,
   candidateNotificationsTable,
   candidatesTable,
+  centersTable,
   companiesTable,
   db,
   staffTable,
@@ -513,11 +514,12 @@ router.post("/candidates", async (req, res, next) => {
       return;
     }
 
-    // Security: verify submitter is an approved staff member. Also capture their company_id.
+    // Security: verify submitter is an approved staff member. Also capture their company_id and center_id.
     let submitterCompanyId: string | null = null;
+    let submitterCenterId: string | null = null;
     if (body.submittedByPhone) {
       const [staffRow] = await db
-        .select({ approvalStatus: staffTable.approvalStatus, companyId: staffTable.companyId })
+        .select({ approvalStatus: staffTable.approvalStatus, companyId: staffTable.companyId, centerId: staffTable.centerId })
         .from(staffTable)
         .where(eq(staffTable.phone, body.submittedByPhone))
         .limit(1);
@@ -530,6 +532,7 @@ router.post("/candidates", async (req, res, next) => {
         return;
       }
       submitterCompanyId = staffRow?.companyId ?? null;
+      submitterCenterId = staffRow?.centerId ?? null;
     }
 
     // Block candidate registration if company subscription is expired/inactive
@@ -549,6 +552,21 @@ router.post("/candidates", async (req, res, next) => {
           res.status(403).json({ title: "Subscription expired. Contact admin.", status: 403 });
           return;
         }
+      }
+    }
+
+    // Enforce: candidates must be registered under staff's assigned center only.
+    let assignedCenterName: string | null = null;
+    let assignedCenterTcId: string | null = null;
+    if (submitterCenterId) {
+      const [centerRow] = await db
+        .select({ name: centersTable.name, tcId: centersTable.tcId })
+        .from(centersTable)
+        .where(eq(centersTable.id, submitterCenterId))
+        .limit(1);
+      if (centerRow) {
+        assignedCenterName = centerRow.name;
+        assignedCenterTcId = centerRow.tcId ?? null;
       }
     }
 
@@ -575,8 +593,9 @@ router.post("/candidates", async (req, res, next) => {
         pin: body.pin?.trim() || null,
         area: body.area?.trim() || null,
         course: body.course?.trim() || null,
-        skillCentreName: body.skillCentreName?.trim() || null,
-        centerTcId: body.centerTcId?.trim() || null,
+        // Always use staff's assigned center — overrides whatever the client sent
+        skillCentreName: assignedCenterName ?? body.skillCentreName?.trim() ?? null,
+        centerTcId: assignedCenterTcId ?? body.centerTcId?.trim() ?? null,
         aadhaarNumber: body.aadhaarNumber?.trim() || null,
         education: body.education?.trim() || null,
         yearOfPassing: body.yearOfPassing?.trim() || null,
