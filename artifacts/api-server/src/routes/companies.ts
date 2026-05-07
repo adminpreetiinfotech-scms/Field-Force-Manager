@@ -77,6 +77,7 @@ function toCompanyDTO(c: typeof companiesTable.$inferSelect) {
     centerLat: c.centerLat ?? null,
     centerLng: c.centerLng ?? null,
     centerRadiusMeters: c.centerRadiusMeters ?? 200,
+    portalUrl: c.portalUrl ?? null,
     createdAt: c.createdAt?.toISOString() ?? null,
   };
 }
@@ -349,7 +350,7 @@ router.patch("/companies/:id/profile", async (req, res, next) => {
       res.status(400).json({ title: "id must be a valid UUID", status: 400 });
       return;
     }
-    const { name, adminName, email, state, district, projectName, centerName, tcId, adminPhone, contactPersonName, phone: companyPhone, officeAddress, pinCode } = req.body as {
+    const { name, adminName, email, state, district, projectName, centerName, tcId, adminPhone, contactPersonName, phone: companyPhone, officeAddress, pinCode, portalUrl } = req.body as {
       name?: string;
       adminName?: string;
       email?: string | null;
@@ -363,6 +364,7 @@ router.patch("/companies/:id/profile", async (req, res, next) => {
       phone?: string | null;
       officeAddress?: string | null;
       pinCode?: string | null;
+      portalUrl?: string | null;
     };
     const phone =
       (req.headers["x-admin-phone"] as string | undefined) ?? adminPhone;
@@ -398,6 +400,7 @@ router.patch("/companies/:id/profile", async (req, res, next) => {
     if (companyPhone !== undefined) updates.phone = companyPhone?.trim() || null;
     if (officeAddress !== undefined) updates.officeAddress = officeAddress?.trim() || null;
     if (pinCode !== undefined) updates.pinCode = pinCode?.trim() || null;
+    if (portalUrl !== undefined) updates.portalUrl = portalUrl?.trim() || null;
     if (centerLat !== undefined) {
       if (typeof centerLat === "number" && (centerLat < -90 || centerLat > 90)) {
         res.status(400).json({ title: "centerLat must be between -90 and 90", status: 400 });

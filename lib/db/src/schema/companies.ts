@@ -39,6 +39,8 @@ export const companiesTable = pgTable("companies", {
   centerLng: doublePrecision("center_lng"),
   /** Geo-fence: radius in meters within which center staff check-in is valid (default 200m). */
   centerRadiusMeters: integer("center_radius_meters").default(200),
+  /** Government portal login URL for this company (optional). */
+  portalUrl: text("portal_url"),
   /** Shift start time for field staff (HH:MM, IST, default 09:00). */
   fieldShiftStart: text("field_shift_start").default("09:00"),
   /** Shift end time for field staff (HH:MM, IST, default 18:00). */

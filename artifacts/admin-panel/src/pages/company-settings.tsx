@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Building2, Save, Loader2, Upload, X, ImageIcon,
   MapPin, Layers, RefreshCw, RotateCcw, SlidersHorizontal,
-  Eye, EyeOff, School, User, Phone, Mail, Home, ChevronDown,
+  Eye, EyeOff, School, User, Phone, Mail, Home, ChevronDown, Link2,
 } from "lucide-react";
 import TrainingCenters from "./training-centers";
 import { DASHBOARD_HINT_PREFIX, DASHBOARD_HINT_KEYS, DASHBOARD_HINT_LABELS, DASHBOARD_HINT_DESCRIPTIONS, type HintKey } from "@/lib/dashboard-hints";
@@ -32,6 +32,7 @@ interface CompanyProfile {
   pinCode: string | null;
   projectName: string | null;
   logoUrl: string | null;
+  portalUrl: string | null;
 }
 
 function clearLocalHints(): void {
@@ -158,6 +159,7 @@ export default function CompanySettings() {
   const [officeAddress, setOfficeAddress] = useState("");
   const [pinCode, setPinCode] = useState("");
   const [projectName, setProjectName] = useState("");
+  const [portalUrl, setPortalUrl] = useState("");
   const [showSchemePicker, setShowSchemePicker] = useState(false);
 
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -188,6 +190,7 @@ export default function CompanySettings() {
       setOfficeAddress(data.officeAddress ?? "");
       setPinCode(data.pinCode ?? "");
       setProjectName(data.projectName ?? "");
+      setPortalUrl(data.portalUrl ?? "");
       setLogoPreview(data.logoUrl ?? null);
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
@@ -241,6 +244,7 @@ export default function CompanySettings() {
           officeAddress: officeAddress.trim() || null,
           pinCode: pinCode.trim() || null,
           projectName: projectName.trim() || null,
+          portalUrl: portalUrl.trim() || null,
         }),
       });
       if (!profileRes.ok) throw new Error((await profileRes.json().catch(() => ({}))).title ?? "Profile update failed");
@@ -474,6 +478,22 @@ export default function CompanySettings() {
                   onChange={e => setEmail(e.target.value)}
                   placeholder="contact@organization.com"
                 />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-1.5">
+                  <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
+                  Government Portal Login URL
+                </Label>
+                <Input
+                  type="url"
+                  value={portalUrl}
+                  onChange={e => setPortalUrl(e.target.value)}
+                  placeholder="e.g. https://jsdms.jharkhand.gov.in/login"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Yeh URL sidebar mein "Portal Login" button ke roop mein dikhega.
+                </p>
               </div>
             </div>
           </div>

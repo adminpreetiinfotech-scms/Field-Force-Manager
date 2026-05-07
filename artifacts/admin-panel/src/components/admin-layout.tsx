@@ -3,9 +3,10 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   LayoutDashboard, Users, UserSquare2, FileText, LogOut, Building2, ShieldCheck,
   Bell, Map, Settings, UserPlus, UserCheck, ClipboardList, CreditCard, UserCog,
-  GraduationCap, SlidersHorizontal, CalendarDays, BarChart2,
+  GraduationCap, SlidersHorizontal, CalendarDays, BarChart2, ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
 
 const navItems = [
   { href: "/dashboard",           label: "Dashboard",           icon: LayoutDashboard,  color: "text-cyan-400" },
@@ -34,6 +35,18 @@ const superAdminItems = [
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
+  const [portalUrl, setPortalUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const companyId = (user as any)?.companyId;
+    if (!companyId || user?.role === "super_admin") return;
+    fetch(`/api/companies/${companyId}/branding`)
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { portalUrl?: string | null } | null) => {
+        if (data?.portalUrl) setPortalUrl(data.portalUrl);
+      })
+      .catch(() => {});
+  }, [(user as any)?.companyId]);
 
   if (!user || (user.role !== "admin" && user.role !== "super_admin")) {
     return <Redirect to="/login" />;
@@ -127,6 +140,21 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             </>
           )}
         </nav>
+
+        {/* Portal Login button */}
+        {portalUrl && (
+          <div className="px-3 pb-2">
+            <a
+              href={portalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 text-emerald-300 hover:bg-emerald-400/10 hover:text-emerald-200 border border-emerald-400/20 hover:border-emerald-400/40"
+            >
+              <ExternalLink className="h-4 w-4 shrink-0" />
+              Portal Login
+            </a>
+          </div>
+        )}
 
         {/* User footer */}
         <div className="p-3" style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
