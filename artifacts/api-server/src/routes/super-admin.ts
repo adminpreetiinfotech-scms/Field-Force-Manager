@@ -1843,6 +1843,161 @@ router.post("/super-admin/notices", requireSuperAdmin, async (req, res, next) =>
   } catch (err) { next(err); }
 });
 
+// ─── POST /api/super-admin/notices/broadcast ─────────────────────────────────
+// Bulk broadcast: send a notice + SMS + push to staff of selected companies.
+// Body: { title, message, priority?, type?, companyIds: string[] | "all",
+//         channels: { sms: bool, push: bool, inApp: bool },
+//         adminOnly?: bool, expiresAt?: string }
+// Returns per-company delivery summary synchronously; SMS/push fire-and-forget.
+
+router.post("/super-admin/notices/broadcast", requireSuperAdmin, async (req, res, next) => {
+  try {
+    const {
+      title, message, priority, type, companyIds, channels, adminOnly, expiresAt,
+    } = req.body as {
+      title?: string;
+      message?: string;
+      priority?: "normal" | "important" | "urgent";
+      type?: "notice" | "alert" | "reminder";
+      companyIds?: string[] | "all";
+      channels?: { sms?: boolean; push?: boolean; inApp?: boolean };
+      adminOnly?: boolean;
+      expiresAt?: string | null;
+    };
+
+    if (!title?.trim() || !message?.trim()) {
+      res.status(400).json({ title: "title and message are required", status: 400 });
+      return;
+    }
+    if (!companyIds || (Array.isArray(companyIds) && companyIds.length === 0)) {
+      res.status(400).json({ title: "companyIds is required", status: 400 });
+      return;
+    }
+
+    const sendSms = channels?.sms !== false;
+    const sendPush = channels?.push !== false;
+    const sendInApp = channels?.inApp !== false;
+    const priorityVal = (["normal", "important", "urgent"].includes(priority ?? "")) ? priority! : "normal";
+    const typeVal = (["notice", "alert", "reminder"].includes(type ?? "")) ? type! : "notice";
+
+    // Resolve company list
+    let targetCompanyIds: string[];
+    if (companyIds === "all") {
+      const allCos = await db
+        .select({ id: companiesTable.id })
+        .from(companiesTable)
+        .where(eq(companiesTable.approvalStatus, "approved"));
+      targetCompanyIds = allCos.map((c) => c.id);
+    } else {
+      targetCompanyIds = companyIds.filter(isValidUUID);
+    }
+
+    if (targetCompanyIds.length === 0) {
+      res.status(400).json({ title: "No valid companies found", status: 400 });
+      return;
+    }
+
+    // Build SMS prefix
+    const priorityTag = priorityVal === "urgent" ? "[URGENT] " : priorityVal === "important" ? "[IMPORTANT] " : "";
+    const smsBody = `${priorityTag}SCMS Notice:\n${title!.trim()}\n${message!.trim()}`.slice(0, 320);
+
+    // Per-company stats
+    type CompanyResult = {
+      companyId: string;
+      companyName: string;
+      staffCount: number;
+      noticeId: string | null;
+    };
+    const results: CompanyResult[] = [];
+
+    for (const cid of targetCompanyIds) {
+      try {
+        // Get company name
+        const [co] = await db.select({ name: companiesTable.name }).from(companiesTable).where(eq(companiesTable.id, cid)).limit(1);
+        const companyName = co?.name ?? "Unknown";
+
+        // Get staff for this company
+        const roleFilter = adminOnly ? eq(staffTable.role, "admin") : undefined;
+        const staffRows = await db
+          .select({ id: staffTable.id, phone: staffTable.phone, expoPushToken: staffTable.expoPushToken })
+          .from(staffTable)
+          .where(and(
+            eq(staffTable.companyId, cid),
+            isNull(staffTable.deletedAt),
+            isNull(staffTable.disabledAt),
+            eq(staffTable.approvalStatus, "approved"),
+            roleFilter,
+          ));
+
+        if (staffRows.length === 0) {
+          results.push({ companyId: cid, companyName, staffCount: 0, noticeId: null });
+          continue;
+        }
+
+        // Create in-app notice per company
+        let noticeId: string | null = null;
+        if (sendInApp) {
+          const [notice] = await db
+            .insert(noticesTable)
+            .values({
+              companyId: cid,
+              title: title!.trim(),
+              message: message!.trim(),
+              priority: priorityVal,
+              type: typeVal,
+              targetType: "all",
+              expiresAt: expiresAt ? new Date(expiresAt) : null,
+            })
+            .returning({ id: noticesTable.id });
+          noticeId = notice.id;
+
+          await db.insert(noticeRecipientsTable).values(
+            staffRows.map((s) => ({ noticeId: notice.id, staffId: s.id })),
+          );
+        }
+
+        results.push({ companyId: cid, companyName, staffCount: staffRows.length, noticeId });
+
+        // Fire-and-forget SMS + push (capped per company at 100)
+        const capped = staffRows.slice(0, 100);
+        void (async () => {
+          try {
+            const tasks: Promise<unknown>[] = [];
+            if (sendSms) {
+              tasks.push(...capped.map((s) => sendSmsSilent(s.phone, smsBody)));
+            }
+            if (sendPush) {
+              tasks.push(sendPushSilent(
+                capped.map((s) => s.expoPushToken),
+                title!.trim(),
+                message!.trim().slice(0, 200),
+                { type: "notice" },
+              ));
+            }
+            await Promise.allSettled(tasks);
+          } catch { /* swallow */ }
+        })();
+      } catch {
+        // Skip company on error, continue broadcast
+      }
+    }
+
+    const totalStaff = results.reduce((s, r) => s + r.staffCount, 0);
+    const companiesReached = results.filter((r) => r.staffCount > 0).length;
+
+    res.status(201).json({
+      message: "Broadcast sent",
+      summary: {
+        totalCompanies: targetCompanyIds.length,
+        companiesReached,
+        totalStaff,
+        channels: { sms: sendSms, push: sendPush, inApp: sendInApp },
+      },
+      results,
+    });
+  } catch (err) { next(err); }
+});
+
 // ─── DELETE /api/super-admin/notices/:id ─────────────────────────────────────
 
 router.delete("/super-admin/notices/:id", requireSuperAdmin, async (req, res, next) => {
