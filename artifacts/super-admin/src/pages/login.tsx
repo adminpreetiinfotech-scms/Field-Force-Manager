@@ -70,7 +70,7 @@ export default function LoginPage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.title ?? "Login failed");
-      if (json.role !== "super_admin") {
+      if (json.user?.role !== "super_admin") {
         mpinForm.setError("mpin", { message: "Not authorized as super admin" });
         return;
       }
