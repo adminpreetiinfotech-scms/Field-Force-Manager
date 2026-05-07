@@ -1,0 +1,162 @@
+Before final APK/Production release, perform complete end-to-end testing of the SCMS system.
+
+Test all modules carefully and fix any issue found.
+
+===================================
+1. AUTH & LOGIN TEST
+===================================
+
+- Admin login
+- Staff login
+- MPIN setup on first login
+- MPIN reset flow
+- Wrong MPIN handling
+- Session persistence after app restart
+- Logout flow
+
+===================================
+2. COMPANY & CENTER TEST
+===================================
+
+- Company registration
+- Multi-center creation
+- Center edit/delete
+- Center geo-fence setup
+- Center radius save/load
+- Company-wise data isolation
+- One company cannot see another company data
+
+===================================
+3. CENTER STAFF ATTENDANCE TEST
+===================================
+
+- Check-in with selfie + GPS
+- Check-out flow
+- Inside geo-fence detection
+- Outside geo-fence warning
+- Geo-fence radius calculation
+- Attendance reports
+- Present/Absent status
+- Excel export
+
+===================================
+4. FIELD STAFF TRACKING TEST
+===================================
+
+- Shift start/end
+- GPS tracking
+- Live location update
+- Route history
+- Total KM calculation
+- Trip creation
+- Odometer photo upload
+- Current location accuracy
+- Background tracking while app minimized
+
+===================================
+5. CANDIDATE REGISTRATION TEST
+===================================
+
+- Full registration flow
+- Aadhaar capture
+- Auto crop/document processing
+- PDF generation
+- Multi-page PDF layout
+- Duplicate Aadhaar detection
+- Duplicate phone detection
+- Document upload validation
+
+===================================
+6. PDF TESTING
+===================================
+
+Verify generated PDF:
+
+- Correct A4 layout
+- Aadhaar front/back same page
+- Education certificate page
+- Bank passbook page
+- Caste certificate/self declaration page
+- Image quality readable
+- Print-ready formatting
+
+===================================
+7. REPORTS & EXPORT TEST
+===================================
+
+- Staff Ride Report
+- Daily Vehicle KM sheet
+- Center Attendance sheet
+- Excel export
+- Filtered export
+- Summary footer rows
+- Row counts
+- Email scheduling (if enabled)
+
+===================================
+8. LIVE MAP & GEOFENCE TEST
+===================================
+
+- Live staff markers
+- Outside-fence markers
+- Radius display
+- Map legend
+- Route preview
+- GPS breadcrumb trail
+- Current location accuracy
+
+===================================
+9. ADMIN PANEL TEST
+===================================
+
+- Dashboard loading
+- Filters
+- Search
+- Sorting
+- Role permissions
+- Notes
+- Notifications
+- Company settings
+
+===================================
+10. PERFORMANCE & STABILITY TEST
+===================================
+
+- No app crashes
+- No invalid route errors
+- UUID validation
+- Slow internet handling
+- App reopen behavior
+- Memory usage
+- Android low-RAM device testing
+
+===================================
+11. SECURITY TEST
+===================================
+
+- Unauthorized access blocked
+- Company isolation verified
+- Admin-only actions protected
+- Invalid API requests handled safely
+
+===================================
+12. FINAL BUILD TEST
+===================================
+
+- Preview APK test
+- Production build test
+- Install on multiple Android phones
+- Camera permissions
+- GPS permissions
+- Background location permissions
+
+===================================
+FINAL TASK
+===================================
+
+After all tests:
+- Fix all critical bugs
+- Remove unused/demo/test code
+- Clean console errors
+- Verify production environment variables
+- Prepare final stable release build

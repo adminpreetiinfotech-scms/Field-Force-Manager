@@ -1,6 +1,7 @@
 import { centersTable, companiesTable, db, staffTable } from "@workspace/db";
 import { and, eq, ilike, or } from "drizzle-orm";
 import { Router, type IRouter } from "express";
+import { logger } from "../lib/logger";
 import { uploadLogoBuffer } from "../lib/logoStorage";
 import { isValidUUID } from "../lib/validation";
 import { getAdminCompanyId } from "./admin";
@@ -22,7 +23,7 @@ async function saveLogoToGCS(
     const mime = mimeType || "image/jpeg";
     return await uploadLogoBuffer(buf, mime, companyId);
   } catch (err) {
-    console.error("[companies] logo upload failed:", err);
+    logger.error({ err }, "[companies] logo upload failed");
     return null;
   }
 }
