@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCMS – Marketing Templates</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Poppins', sans-serif; background: #0f172a; color: #fff; }
+
+  /* ── NAV ── */
+  nav {
+    background: #1e293b;
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border-bottom: 1px solid #334155;
+    position: sticky; top: 0; z-index: 100;
+  }
+  nav h1 { font-size: 18px; font-weight: 700; color: #38bdf8; }
+  nav span { color: #94a3b8; font-size: 13px; }
+  .nav-tabs { display: flex; gap: 8px; margin-left: auto; }
+  .nav-tab {
+    padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500;
+    cursor: pointer; border: none; transition: all 0.2s;
+  }
+  .nav-tab.active { background: #38bdf8; color: #0f172a; }
+  .nav-tab:not(.active) { background: #334155; color: #94a3b8; }
+  .nav-tab:not(.active):hover { background: #475569; color: #fff; }
+
+  /* ── SECTIONS ── */
+  .section { display: none; padding: 40px 32px; }
+  .section.active { display: block; }
+
+  .section-title {
+    font-size: 22px; font-weight: 700; color: #f1f5f9; margin-bottom: 8px;
+  }
+  .section-subtitle {
+    font-size: 14px; color: #64748b; margin-bottom: 32px;
+  }
+
+  /* ── INSTAGRAM POSTS ── */
+  .posts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, 540px);
+    gap: 32px;
+    justify-content: center;
+  }
+
+  .post-wrapper { display: flex; flex-direction: column; gap: 12px; }
+  .post-label {
+    font-size: 12px; color: #64748b; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+  .post-actions { display: flex; gap: 8px; }
+  .btn {
+    padding: 7px 14px; border-radius: 6px; font-size: 12px;
+    font-weight: 600; cursor: pointer; border: none; font-family: 'Poppins', sans-serif;
+  }
+  .btn-primary { background: #38bdf8; color: #0f172a; }
+  .btn-secondary { background: #334155; color: #94a3b8; }
+  .btn:hover { opacity: 0.85; }
+
+  /* Post 1 – GPS Attendance */
+  .post1 {
+    width: 540px; height: 540px;
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0c2340 100%);
+    border-radius: 16px; overflow: hidden; position: relative;
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 36px;
+  }
+  .post1 .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(56,189,248,0.15); border: 1px solid rgba(56,189,248,0.3);
+    padding: 6px 14px; border-radius: 20px; font-size: 11px; color: #38bdf8;
+    font-weight: 600; letter-spacing: 0.5px; width: fit-content;
+  }
+  .post1 .main-text {
+    font-size: 36px; font-weight: 800; line-height: 1.15;
+    color: #fff;
+  }
+  .post1 .main-text span { color: #38bdf8; }
+  .post1 .sub-text {
+    font-size: 14px; color: #94a3b8; margin-top: 12px; line-height: 1.6;
+  }
+  .post1 .features {
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .post1 .feat-item {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; color: #e2e8f0; font-weight: 500;
+  }
+  .post1 .feat-icon {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; flex-shrink: 0;
+  }
+  .post1 .brand {
+    font-size: 13px; font-weight: 700; color: #475569;
+    letter-spacing: 2px; text-transform: uppercase;
+  }
+  .post1 .circle1 {
+    position: absolute; width: 200px; height: 200px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(56,189,248,0.08), transparent);
+    right: -60px; top: -60px;
+  }
+  .post1 .circle2 {
+    position: absolute; width: 150px; height: 150px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(14,165,233,0.06), transparent);
+    left: -40px; bottom: 80px;
+  }
+
+  /* Post 2 – Benefits */
+  .post2 {
+    width: 540px; height: 540px;
+    background: linear-gradient(160deg, #0d1117 0%, #161b27 100%);
+    border-radius: 16px; overflow: hidden; position: relative;
+    display: flex; flex-direction: column; padding: 36px; gap: 20px;
+    border: 1px solid #1e2d3d;
+  }
+  .post2 .top-bar {
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .post2 .logo-text {
+    font-size: 16px; font-weight: 800; color: #38bdf8; letter-spacing: 1px;
+  }
+  .post2 .tag {
+    background: #22c55e22; border: 1px solid #22c55e44;
+    color: #22c55e; padding: 4px 12px; border-radius: 20px; font-size: 11px;
+    font-weight: 600;
+  }
+  .post2 .headline {
+    font-size: 30px; font-weight: 800; color: #fff; line-height: 1.2;
+  }
+  .post2 .headline em { color: #22c55e; font-style: normal; }
+  .post2 .cards-row {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px; flex: 1;
+  }
+  .post2 .card {
+    background: #1e293b; border-radius: 12px; padding: 16px;
+    border: 1px solid #334155; display: flex; flex-direction: column; gap: 8px;
+  }
+  .post2 .card-icon { font-size: 22px; }
+  .post2 .card-title { font-size: 13px; font-weight: 700; color: #f1f5f9; }
+  .post2 .card-desc { font-size: 11px; color: #64748b; line-height: 1.5; }
+  .post2 .footer-text {
+    font-size: 11px; color: #475569; text-align: center; font-weight: 500;
+  }
+
+  /* Post 3 – WhatsApp Story */
+  .post3 {
+    width: 540px; height: 960px;
+    background: linear-gradient(180deg, #0f172a 0%, #1a2744 40%, #0f172a 100%);
+    border-radius: 16px; overflow: hidden; position: relative;
+    display: flex; flex-direction: column; padding: 48px 40px;
+    align-items: center; gap: 24px;
+  }
+  .post3 .top-logo {
+    display: flex; align-items: center; gap: 10px; align-self: flex-start;
+  }
+  .post3 .logo-icon {
+    width: 44px; height: 44px; background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+    border-radius: 12px; display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  .post3 .logo-name { font-size: 20px; font-weight: 800; color: #fff; }
+  .post3 .logo-sub { font-size: 10px; color: #64748b; letter-spacing: 1px; }
+  .post3 .hero-text {
+    text-align: center; margin-top: 20px;
+  }
+  .post3 .hero-text h2 {
+    font-size: 36px; font-weight: 900; line-height: 1.15; color: #fff;
+  }
+  .post3 .hero-text h2 span { color: #38bdf8; }
+  .post3 .hero-text p {
+    font-size: 14px; color: #94a3b8; margin-top: 12px; line-height: 1.7;
+  }
+  .post3 .stats-row {
+    display: flex; gap: 16px; width: 100%;
+  }
+  .post3 .stat {
+    flex: 1; background: #1e293b; border-radius: 14px; padding: 18px 12px;
+    text-align: center; border: 1px solid #334155;
+  }
+  .post3 .stat-num { font-size: 28px; font-weight: 800; color: #38bdf8; }
+  .post3 .stat-label { font-size: 10px; color: #64748b; margin-top: 4px; font-weight: 500; }
+  .post3 .feat-list { width: 100%; display: flex; flex-direction: column; gap: 14px; }
+  .post3 .feat-row {
+    display: flex; align-items: center; gap: 14px;
+    background: #1e293b; border-radius: 12px; padding: 14px 18px;
+    border: 1px solid #334155;
+  }
+  .post3 .feat-ico { font-size: 20px; }
+  .post3 .feat-info h4 { font-size: 14px; font-weight: 700; color: #f1f5f9; }
+  .post3 .feat-info p { font-size: 11px; color: #64748b; margin-top: 2px; }
+  .post3 .cta {
+    width: 100%; background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+    border-radius: 14px; padding: 18px; text-align: center; margin-top: 8px;
+  }
+  .post3 .cta h3 { font-size: 18px; font-weight: 800; color: #0f172a; }
+  .post3 .cta p { font-size: 12px; color: #0c4a6e; margin-top: 4px; font-weight: 500; }
+  .post3 .glow {
+    position: absolute; width: 300px; height: 300px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(56,189,248,0.06), transparent);
+    top: 200px; left: 50%; transform: translateX(-50%);
+    pointer-events: none;
+  }
+
+  /* ── WHATSAPP TEXT ── */
+  .wa-wrapper { max-width: 700px; margin: 0 auto; }
+  .wa-card {
+    background: #1e293b; border-radius: 16px; padding: 28px 32px;
+    border: 1px solid #334155; margin-bottom: 20px;
+  }
+  .wa-card-title {
+    font-size: 13px; font-weight: 600; color: #38bdf8;
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;
+  }
+  .wa-text {
+    background: #0f172a; border-radius: 12px; padding: 20px;
+    font-size: 14px; line-height: 1.9; color: #e2e8f0;
+    white-space: pre-wrap; font-family: inherit;
+    border: 1px solid #1e293b;
+  }
+  .copy-btn {
+    margin-top: 12px; padding: 8px 18px; background: #334155;
+    border: none; border-radius: 8px; color: #94a3b8;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    font-family: 'Poppins', sans-serif; transition: all 0.2s;
+  }
+  .copy-btn:hover { background: #475569; color: #fff; }
+  .copy-btn.copied { background: #22c55e22; color: #22c55e; border: 1px solid #22c55e44; }
+
+  /* ── BROCHURE ── */
+  .brochure-preview {
+    background: #fff; color: #0f172a; border-radius: 16px;
+    overflow: hidden; max-width: 800px; margin: 0 auto;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+  }
+  .brochure-header {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+    padding: 48px 48px 56px; position: relative; overflow: hidden;
+  }
+  .brochure-header .br-badge {
+    display: inline-block; background: rgba(56,189,248,0.2);
+    border: 1px solid rgba(56,189,248,0.4);
+    color: #38bdf8; padding: 6px 16px; border-radius: 20px;
+    font-size: 11px; font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase; margin-bottom: 20px;
+  }
+  .brochure-header h1 {
+    font-size: 42px; font-weight: 900; color: #fff; line-height: 1.1;
+    margin-bottom: 12px;
+  }
+  .brochure-header h1 span { color: #38bdf8; }
+  .brochure-header .tagline {
+    font-size: 16px; color: #94a3b8; line-height: 1.6; max-width: 500px;
+  }
+  .brochure-header .br-circles {
+    position: absolute; right: -40px; top: -40px;
+    width: 250px; height: 250px; border-radius: 50%;
+    border: 40px solid rgba(56,189,248,0.05);
+  }
+  .brochure-header .br-circles2 {
+    position: absolute; right: 60px; bottom: -60px;
+    width: 180px; height: 180px; border-radius: 50%;
+    border: 30px solid rgba(56,189,248,0.04);
+  }
+  .brochure-body { padding: 48px; }
+  .br-section-title {
+    font-size: 11px; font-weight: 700; color: #38bdf8;
+    text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px;
+  }
+  .br-features-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 40px;
+  }
+  .br-feat {
+    background: #f8fafc; border-radius: 12px; padding: 20px;
+    border-left: 3px solid #38bdf8;
+  }
+  .br-feat-icon { font-size: 24px; margin-bottom: 10px; }
+  .br-feat-title { font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 6px; }
+  .br-feat-desc { font-size: 12px; color: #64748b; line-height: 1.6; }
+  .br-benefits {
+    background: linear-gradient(135deg, #0f172a, #1e3a5f);
+    border-radius: 16px; padding: 32px; margin-bottom: 40px;
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px;
+  }
+  .br-benefit { text-align: center; }
+  .br-benefit-num { font-size: 32px; font-weight: 900; color: #38bdf8; }
+  .br-benefit-label { font-size: 11px; color: #94a3b8; margin-top: 6px; line-height: 1.4; }
+  .br-quote {
+    background: #f0f9ff; border-radius: 12px; padding: 24px 28px;
+    border-left: 4px solid #38bdf8; margin-bottom: 40px;
+  }
+  .br-quote p {
+    font-size: 15px; color: #0f172a; line-height: 1.7; font-style: italic;
+  }
+  .br-quote .author { font-size: 12px; color: #64748b; margin-top: 10px; font-weight: 600; font-style: normal; }
+  .br-footer {
+    background: #0f172a; padding: 32px 48px;
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 16px;
+  }
+  .br-footer .company { font-size: 18px; font-weight: 800; color: #38bdf8; }
+  .br-footer .contact { font-size: 13px; color: #64748b; line-height: 1.7; }
+  .br-footer .cta-btn {
+    background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+    color: #0f172a; padding: 12px 28px; border-radius: 10px;
+    font-size: 14px; font-weight: 700; white-space: nowrap;
+    border: none; cursor: pointer; font-family: 'Poppins', sans-serif;
+  }
+
+  .print-btn {
+    display: block; margin: 24px auto 0;
+    padding: 12px 32px; background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+    color: #0f172a; font-size: 14px; font-weight: 700;
+    border-radius: 10px; border: none; cursor: pointer;
+    font-family: 'Poppins', sans-serif;
+  }
+  .print-btn:hover { opacity: 0.9; }
+
+  /* ── PRINT ── */
+  @media print {
+    body { background: #fff; }
+    nav, .nav-tabs, .section-title, .section-subtitle,
+    .post-wrapper, .post-actions, .wa-wrapper, .print-btn { display: none !important; }
+    .section { display: block !important; padding: 0; }
+    #brochure-section { display: block !important; }
+    .brochure-preview { box-shadow: none; border-radius: 0; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <h1>SCMS</h1>
+  <span>Marketing Templates</span>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showSection('instagram')">📸 Instagram Posts</button>
+    <button class="nav-tab" onclick="showSection('whatsapp')">💬 WhatsApp</button>
+    <button class="nav-tab" onclick="showSection('brochure')">📄 Brochure</button>
+  </div>
+</nav>
+
+<!-- ═══════════════ INSTAGRAM ═══════════════ -->
+<div id="instagram-section" class="section active">
+  <div class="section-title">Instagram / Facebook Posts</div>
+  <div class="section-subtitle">Screenshot karein aur post karein — 1080x1080 square format</div>
+
+  <div class="posts-grid">
+
+    <!-- Post 1 -->
+    <div class="post-wrapper">
+      <div class="post-label">Post 1 — GPS Attendance Feature</div>
+      <div class="post1" id="post1">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div>
+          <div class="badge">🚀 Digital Transformation</div>
+        </div>
+        <div>
+          <div class="main-text">
+            GPS-Based<br><span>Attendance</span><br>for Skill Centers
+          </div>
+          <div class="sub-text">
+            Selfie + Location-verified check-in. No more fake attendance — real-time, tamper-proof.
+          </div>
+        </div>
+        <div class="features">
+          <div class="feat-item">
+            <div class="feat-icon">📍</div>
+            Geo-fence based attendance
+          </div>
+          <div class="feat-item">
+            <div class="feat-icon">🤳</div>
+            Selfie verification at check-in
+          </div>
+          <div class="feat-item">
+            <div class="feat-icon">⚡</div>
+            Works offline, syncs later
+          </div>
+        </div>
+        <div class="brand">SCMS — Skill Center Management System</div>
+      </div>
+      <div class="post-actions">
+        <button class="btn btn-primary" onclick="downloadPost('post1', 'scms-gps-attendance.png')">⬇ Screenshot</button>
+      </div>
+    </div>
+
+    <!-- Post 2 -->
+    <div class="post-wrapper">
+      <div class="post-label">Post 2 — Go Digital Benefits</div>
+      <div class="post2" id="post2">
+        <div class="top-bar">
+          <div class="logo-text">SCMS</div>
+          <div class="tag">✅ Go Paperless</div>
+        </div>
+        <div class="headline">Skill Center ko<br><em>Digital</em> banayein</div>
+        <div class="cards-row">
+          <div class="card">
+            <div class="card-icon">📊</div>
+            <div class="card-title">Auto Reports</div>
+            <div class="card-desc">Excel & PDF reports ek click mein — MIS, attendance, candidate</div>
+          </div>
+          <div class="card">
+            <div class="card-icon">🗺️</div>
+            <div class="card-title">Live Tracking</div>
+            <div class="card-desc">Field staff ka real-time location map pe dekhe</div>
+          </div>
+          <div class="card">
+            <div class="card-icon">👤</div>
+            <div class="card-title">Candidate Mgmt</div>
+            <div class="card-desc">Registration se lekar placement tak complete tracking</div>
+          </div>
+          <div class="card">
+            <div class="card-icon">🔔</div>
+            <div class="card-title">Push Notifications</div>
+            <div class="card-desc">Notices, updates seedha staff ke phone pe bheje</div>
+          </div>
+        </div>
+        <div class="footer-text">DDU-GKY • PMKVY • JSDMS • State Skill Programs</div>
+      </div>
+      <div class="post-actions">
+        <button class="btn btn-primary" onclick="downloadPost('post2', 'scms-go-digital.png')">⬇ Screenshot</button>
+      </div>
+    </div>
+
+    <!-- Post 3 – WhatsApp Story / Tall -->
+    <div class="post-wrapper">
+      <div class="post-label">Story / Status — Vertical Format (1080×1920)</div>
+      <div class="post3" id="post3">
+        <div class="glow"></div>
+        <div class="top-logo">
+          <div class="logo-icon">🎓</div>
+          <div>
+            <div class="logo-name">SCMS</div>
+            <div class="logo-sub">SKILL CENTER MANAGEMENT</div>
+          </div>
+        </div>
+        <div class="hero-text">
+          <h2>Apna Training<br>Center <span>Smart</span><br>Banayein</h2>
+          <p>DDU-GKY aur PMKVY centers ke liye complete digital management solution</p>
+        </div>
+        <div class="stats-row">
+          <div class="stat">
+            <div class="stat-num">100%</div>
+            <div class="stat-label">Paperless Operations</div>
+          </div>
+          <div class="stat">
+            <div class="stat-num">Live</div>
+            <div class="stat-label">Staff Tracking</div>
+          </div>
+          <div class="stat">
+            <div class="stat-num">Auto</div>
+            <div class="stat-label">MIS Reports</div>
+          </div>
+        </div>
+        <div class="feat-list">
+          <div class="feat-row">
+            <div class="feat-ico">📍</div>
+            <div class="feat-info">
+              <h4>GPS Attendance</h4>
+              <p>Selfie + location verified, tamper-proof</p>
+            </div>
+          </div>
+          <div class="feat-row">
+            <div class="feat-ico">📋</div>
+            <div class="feat-info">
+              <h4>Candidate Management</h4>
+              <p>Registration, audit, approval sab ek jagah</p>
+            </div>
+          </div>
+          <div class="feat-row">
+            <div class="feat-ico">📊</div>
+            <div class="feat-info">
+              <h4>Auto Report Generation</h4>
+              <p>Excel, PDF reports ek click mein</p>
+            </div>
+          </div>
+          <div class="feat-row">
+            <div class="feat-ico">📴</div>
+            <div class="feat-info">
+              <h4>Offline Mode</h4>
+              <p>Internet nahi, phir bhi kaam karta hai</p>
+            </div>
+          </div>
+        </div>
+        <div class="cta">
+          <h3>Demo ke liye contact karein</h3>
+          <p>Free demo aur onboarding available</p>
+        </div>
+      </div>
+      <div class="post-actions">
+        <button class="btn btn-primary" onclick="downloadPost('post3', 'scms-story.png')">⬇ Screenshot</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════ WHATSAPP ═══════════════ -->
+<div id="whatsapp-section" class="section">
+  <div class="section-title">WhatsApp Message Templates</div>
+  <div class="section-subtitle">Copy karein aur seedha WhatsApp pe paste karein</div>
+
+  <div class="wa-wrapper">
+
+    <div class="wa-card">
+      <div class="wa-card-title">📢 Message 1 — Introduction</div>
+      <div class="wa-text" id="wa1">🎓 *SCMS — Skill Center Management System*
+
+Namaskar! 🙏
+
+Kya aapka training center (DDU-GKY/PMKVY/JSDMS) abhi bhi manual registers aur Excel sheets use kar raha hai?
+
+SCMS ke saath apne center ko *fully digital* banayein:
+
+✅ *GPS + Selfie Attendance* — Fake attendance band
+✅ *Live Staff Tracking* — Field staff kahan hai, real-time dekhe
+✅ *Auto MIS Reports* — Excel & PDF ek click mein
+✅ *Candidate Management* — Registration se placement tak
+✅ *Offline Mode* — Internet nahi to bhi kaam karta hai
+✅ *Push Notifications* — Staff ko seedha phone pe notices
+
+🏆 DDU-GKY, PMKVY aur State Skill programs ke liye specially designed
+
+📱 *Free Demo available!*
+Abhi contact karein 👇</div>
+      <button class="copy-btn" onclick="copyText('wa1', this)">📋 Copy Message</button>
+    </div>
+
+    <div class="wa-card">
+      <div class="wa-card-title">🚀 Message 2 — Feature Highlight (GPS)</div>
+      <div class="wa-text" id="wa2">📍 *GPS-Based Attendance System — SCMS*
+
+Kya aap jaante hain ki aapke training center ki attendance *verified* aur *tamper-proof* ho sakti hai?
+
+*SCMS ka GPS Attendance feature:*
+
+🗺️ Geo-fence set karein → Staff center ke andar ho tabhi check-in hoga
+🤳 Selfie lena zaroori → Real person verify hota hai
+⏱️ Live dashboard → Admin ko real-time pata chalta hai
+📊 Auto report → Month-end attendance automatically ready
+
+❌ No more fake attendance
+❌ No more paper registers
+❌ No more manual Excel
+
+✅ Sab kuch automatic, sab kuch verified
+
+*Demo dekhna chahenge?* Contact karein 👇</div>
+      <button class="copy-btn" onclick="copyText('wa2', this)">📋 Copy Message</button>
+    </div>
+
+    <div class="wa-card">
+      <div class="wa-card-title">📊 Message 3 — Report Automation</div>
+      <div class="wa-text" id="wa3">📊 *MIS Reports ka jhanjhat khatam — SCMS ke saath*
+
+Training center mein report banana kitna time leta hai?
+👉 Attendance compile karna — 2-3 ghante
+👉 Candidate list update karna — 1-2 ghante
+👉 Daily outcome report — roz ka kaam
+
+*SCMS ke saath:*
+⚡ Attendance report → *1 click*
+⚡ Candidate MIS → *1 click*
+⚡ Daily outcome → *Auto generate*
+⚡ Excel & PDF dono format
+
+Aapka staff productive kaam mein lagega, reports mein nahi!
+
+🎯 DDU-GKY, PMKVY, JSDMS compliant reports
+🎯 Multi-center support
+🎯 Cloud backup — data kabhi nahi jayega
+
+*Free demo + onboarding ke liye message karein* 👇</div>
+      <button class="copy-btn" onclick="copyText('wa3', this)">📋 Copy Message</button>
+    </div>
+
+    <div class="wa-card">
+      <div class="wa-card-title">💼 Message 4 — Admin/Manager ke liye</div>
+      <div class="wa-text" id="wa4">💼 *Training Center Directors/Managers ke liye*
+
+Kya aap chahte hain ki:
+✔ Bina office aaye pata chale ki center mein kya ho raha hai?
+✔ Field staff real-time kahan hai?
+✔ Candidates ki progress automatically track ho?
+✔ Government compliance reports ready rahein?
+
+*SCMS Admin Panel — Sab kuch ek jagah:*
+
+🖥️ *Live Dashboard* — Today's attendance, active staff, candidates
+🗺️ *Live Map* — Field staff ka exact location
+📋 *Candidate Pipeline* — Registration → Training → Placement
+📱 *Broadcast Notices* — Ek click mein sab staff ko SMS + notification
+⬇️ *Report Downloads* — MIS, attendance, daily outcomes
+
+Android app + Web admin panel — kahi bhi, kabhi bhi access
+
+🏢 Currently serving multiple centers across Jharkhand
+
+*Apne center ke liye free demo schedule karein* 📅</div>
+      <button class="copy-btn" onclick="copyText('wa4', this)">📋 Copy Message</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════ BROCHURE ═══════════════ -->
+<div id="brochure-section" class="section">
+  <div class="section-title">Printable Brochure — A4</div>
+  <div class="section-subtitle">Print karein ya PDF save karein — Ctrl+P / Cmd+P</div>
+
+  <div class="brochure-preview">
+    <div class="brochure-header">
+      <div class="br-circles"></div>
+      <div class="br-circles2"></div>
+      <div class="br-badge">DDU-GKY • PMKVY • JSDMS</div>
+      <h1>Skill Center<br><span>Digital Banayein</span></h1>
+      <div class="tagline">
+        SCMS — Ek complete digital management platform jo aapke training center ko paperless, transparent aur efficient banata hai.
+      </div>
+    </div>
+
+    <div class="brochure-body">
+
+      <div class="br-section-title">🚀 Key Features</div>
+      <div class="br-features-grid">
+        <div class="br-feat">
+          <div class="br-feat-icon">📍</div>
+          <div class="br-feat-title">GPS + Selfie Attendance</div>
+          <div class="br-feat-desc">Geo-fence aur selfie verification se 100% verified attendance. Center ke andar ho tabhi check-in hoga. Fake attendance bilkul impossible.</div>
+        </div>
+        <div class="br-feat">
+          <div class="br-feat-icon">🗺️</div>
+          <div class="br-feat-title">Live Staff Tracking</div>
+          <div class="br-feat-desc">Admin dashboard pe real-time map mein dekhe ki field staff kahan hai. KM tracking aur shift timer auto-calculate hota hai.</div>
+        </div>
+        <div class="br-feat">
+          <div class="br-feat-icon">👥</div>
+          <div class="br-feat-title">Candidate Management</div>
+          <div class="br-feat-desc">Registration se lekar placement tak complete lifecycle tracking. Approval workflow, audit trail, aur document management.</div>
+        </div>
+        <div class="br-feat">
+          <div class="br-feat-icon">📊</div>
+          <div class="br-feat-title">Auto Report Generation</div>
+          <div class="br-feat-desc">Attendance, MIS, daily outcome — sab reports ek click mein Excel aur PDF format mein download karein.</div>
+        </div>
+        <div class="br-feat">
+          <div class="br-feat-icon">📴</div>
+          <div class="br-feat-title">Offline Mode</div>
+          <div class="br-feat-desc">Internet nahi to bhi kaam karta hai. Data local store hoti hai aur internet aate hi automatically sync ho jaata hai.</div>
+        </div>
+        <div class="br-feat">
+          <div class="br-feat-icon">🔔</div>
+          <div class="br-feat-title">Notices & Broadcast</div>
+          <div class="br-feat-desc">Ek click mein poore staff ko SMS aur push notification bheje. Leave management aur holiday calendar bhi included.</div>
+        </div>
+      </div>
+
+      <div class="br-section-title">📈 Results</div>
+      <div class="br-benefits">
+        <div class="br-benefit">
+          <div class="br-benefit-num">100%</div>
+          <div class="br-benefit-label">Paperless Operations</div>
+        </div>
+        <div class="br-benefit">
+          <div class="br-benefit-num">80%</div>
+          <div class="br-benefit-label">Report Time Saved</div>
+        </div>
+        <div class="br-benefit">
+          <div class="br-benefit-num">Real-time</div>
+          <div class="br-benefit-label">Staff Visibility</div>
+        </div>
+      </div>
+
+      <div class="br-quote">
+        <p>"Pehle attendance register manually fill karna padta tha aur month end mein reports compile karne mein pura din jaata tha. SCMS se ye sab automatic ho gaya — humara staff ab actual kaam pe focus kar sakta hai."</p>
+        <div class="author">— Training Center Manager, Jharkhand</div>
+      </div>
+
+      <div class="br-section-title">✅ Supported Programs</div>
+      <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:40px;">
+        <span style="background:#f0f9ff;color:#0ea5e9;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;border:1px solid #bae6fd;">DDU-GKY</span>
+        <span style="background:#f0fdf4;color:#16a34a;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;border:1px solid #bbf7d0;">PMKVY</span>
+        <span style="background:#fef3c7;color:#d97706;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;border:1px solid #fde68a;">JSDMS</span>
+        <span style="background:#fdf4ff;color:#9333ea;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;border:1px solid #e9d5ff;">State Skill Programs</span>
+      </div>
+
+    </div>
+
+    <div class="br-footer">
+      <div>
+        <div class="company">SCMS</div>
+        <div class="contact">
+          Skill Center Management System<br>
+          By Praiaiti Infotech
+        </div>
+      </div>
+      <button class="cta-btn" onclick="window.print()">🖨️ Print / Save PDF</button>
+    </div>
+  </div>
+
+  <button class="print-btn" onclick="window.print()">🖨️ Print Brochure / Save as PDF</button>
+</div>
+
+<script>
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(name + '-section').classList.add('active');
+  event.target.classList.add('active');
+}
+
+function copyText(id, btn) {
+  const text = document.getElementById(id).innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✅ Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = '📋 Copy Message';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
+function downloadPost(id, filename) {
+  alert('Post screenshot karne ke liye:\n\n1. Browser mein F12 (DevTools) kholein\n2. Post pe right-click → "Capture node screenshot"\n\nYa simply phone se screenshot lein!');
+}
+</script>
+</body>
+</html>
