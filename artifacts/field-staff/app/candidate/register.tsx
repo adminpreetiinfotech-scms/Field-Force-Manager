@@ -768,13 +768,16 @@ export default function CandidateRegisterScreen() {
 
   // ─ Course (populated from center if centerId is set)
   const [course, setCourse] = useState("");
-  const [skillCentreName, setSkillCentreName] = useState("");
+  // Pre-fill from user's own centre immediately; server fetch will confirm/override
+  const [skillCentreName, setSkillCentreName] = useState(user?.centerName ?? "");
   const [centerCourses, setCenterCourses] = useState<string[]>([]);
   const [showCoursePicker, setShowCoursePicker] = useState(false);
 
   // effectiveCenterId: always fetch fresh from server on form open — does NOT rely on
   // cached session or OTA timing. Falls back to user?.centerId while server responds.
   const [effectiveCenterId, setEffectiveCenterId] = useState<string | null>(user?.centerId ?? null);
+  // Centre is locked if the staff member has an assigned centre (from profile or server)
+  const isCentreLocked = !!(user?.centerName || effectiveCenterId);
   useEffect(() => {
     if (!user?.phone) return;
     const base = getApiBase();
@@ -954,7 +957,9 @@ export default function CandidateRegisterScreen() {
     setPoliceStation(d.policeStation ?? ""); setPostOffice(d.postOffice ?? "");
     setDistrict(d.district ?? ""); setState(d.state ?? "Jharkhand");
     setPin(d.pin ?? ""); setArea(d.area ?? "");
-    setCourse(d.course ?? ""); setSkillCentreName(d.skillCentreName ?? "");
+    setCourse(d.course ?? "");
+    // Only restore skillCentreName from draft if centre is not locked to this staff member
+    if (!user?.centerName && !effectiveCenterId) setSkillCentreName(d.skillCentreName ?? "");
     setAadhaarNumber(d.aadhaarNumber ?? ""); setBpl(d.bpl ?? "No");
     setBplNumber(d.bplNumber ?? "");
     setEducation(d.education ?? null); setYearOfPassing(d.yearOfPassing ?? "");
@@ -1474,16 +1479,18 @@ export default function CandidateRegisterScreen() {
                   label="Skill Centre Name / कौशल केंद्र का नाम"
                   value={skillCentreName}
                   onChangeText={setSkillCentreName}
-                  editable={!effectiveCenterId}
+                  editable={!isCentreLocked}
                 />
-                {centerTcId ? (
+                {isCentreLocked && (
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4, backgroundColor: ACCENT + "12", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 5 }}>
-                    <Feather name={effectiveCenterId ? "lock" : "check-circle"} size={12} color={ACCENT} />
-                    <Text style={{ fontSize: 11, color: ACCENT, fontFamily: F_ENG_MED }}>TC ID: {centerTcId}</Text>
+                    <Feather name="lock" size={12} color={ACCENT} />
+                    <Text style={{ fontSize: 11, color: ACCENT, fontFamily: F_ENG_MED }}>
+                      {centerTcId ? `TC ID: ${centerTcId}` : "Assigned centre — cannot be changed"}
+                    </Text>
                   </View>
-                ) : null}
+                )}
                 {/* Only show center search if staff is not locked to a specific center */}
-                {!effectiveCenterId && (
+                {!isCentreLocked && (
                   <TouchableOpacity
                     onPress={() => { setShowCenterSearch(true); void searchCenters(""); }}
                     style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4, paddingVertical: 4 }}
