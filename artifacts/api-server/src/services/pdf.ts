@@ -829,6 +829,7 @@ export async function generateCandidatePdf(
         path: c.casteCertPath,
         selfDecl: c.casteCertAvailable === "no",
       },
+      ...(c.otherDocPath ? [{ label: "Other Document  /  अन्य दस्तावेज़", path: c.otherDocPath }] : []),
     ];
 
     for (let pi = 0; pi < docPages.length; pi++) {

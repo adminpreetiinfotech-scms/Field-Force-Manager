@@ -111,6 +111,10 @@ export default function CheckInScreen() {
 
   const submitFinal = async () => {
     if (!photo || !user) return;
+    if (selectedVehicleType && !meterPhotoUri) {
+      Alert.alert("Odometer photo required", "Please capture the odometer photo before submitting check-in.");
+      return;
+    }
     setSubmitting(true);
     try {
       const kmVal = odometerKm.trim() ? parseFloat(odometerKm.trim()) : null;
@@ -309,7 +313,7 @@ export default function CheckInScreen() {
               >
                 <Feather name={meterPhotoUri ? "check-circle" : "camera"} size={16} color={meterPhotoUri ? "#34D399" : "rgba(255,255,255,0.6)"} />
                 <Text style={{ color: meterPhotoUri ? "#34D399" : "rgba(255,255,255,0.6)", fontSize: 13, fontFamily: "Inter_500Medium", flex: 1 }}>
-                  {meterPhotoUri ? "Odometer photo captured" : "Capture odometer photo (optional)"}
+                  {meterPhotoUri ? "Odometer photo captured" : "Capture odometer photo *"}
                 </Text>
                 {meterPhotoUri && (
                   <Pressable onPress={() => setMeterPhotoUri(null)} hitSlop={8}>

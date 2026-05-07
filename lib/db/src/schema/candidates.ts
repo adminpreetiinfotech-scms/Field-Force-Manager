@@ -60,6 +60,7 @@ export const candidatesTable = pgTable("candidates", {
   casteCertAvailable: text("caste_cert_available"),
   casteName: text("caste_name"),
   signaturePath: text("signature_path"),
+  otherDocPath: text("other_doc_path"),
   pdfPath: text("pdf_path"),
   // Submission
   mobilizer: text("mobilizer"),

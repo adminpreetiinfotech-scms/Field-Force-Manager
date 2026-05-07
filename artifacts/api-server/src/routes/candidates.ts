@@ -465,6 +465,8 @@ router.post("/candidates", async (req, res, next) => {
       casteCertMime?: string | null;
       signatureBase64?: string | null;
       signatureMime?: string | null;
+      otherDocBase64?: string | null;
+      otherDocMime?: string | null;
       candidateIdCode?: string | null;
       casteCertAvailable?: string | null;
       casteName?: string | null;
@@ -503,6 +505,7 @@ router.post("/candidates", async (req, res, next) => {
       validateBase64File(body.bankPassbookBase64, body.bankPassbookMime, "Bank passbook");
       validateBase64File(body.casteCertBase64, body.casteCertMime, "Caste certificate");
       validateBase64File(body.signatureBase64, body.signatureMime, "Signature");
+      validateBase64File(body.otherDocBase64, body.otherDocMime, "Other document");
     } catch (validationErr) {
       const e = validationErr as Error & { status?: number };
       res.status(e.status ?? 400).json({ title: e.message, status: e.status ?? 400 });
@@ -604,6 +607,7 @@ router.post("/candidates", async (req, res, next) => {
     const bankPassbookPath = saveBase64(body.bankPassbookBase64, body.bankPassbookMime, candidateDir, "bank-passbook");
     const casteCertPath = saveBase64(body.casteCertBase64, body.casteCertMime, candidateDir, "caste-cert");
     const signaturePath = saveBase64(body.signatureBase64, body.signatureMime ?? "image/png", candidateDir, "signature");
+    const otherDocPath = saveBase64(body.otherDocBase64, body.otherDocMime, candidateDir, "other-doc");
 
     const candidateWithFiles = {
       ...candidate,
@@ -614,6 +618,7 @@ router.post("/candidates", async (req, res, next) => {
       bankPassbookPath,
       casteCertPath,
       signaturePath,
+      otherDocPath,
     };
     const pdfFilePath = path.join(candidateDir, "profile.pdf");
     try {
@@ -639,6 +644,7 @@ router.post("/candidates", async (req, res, next) => {
         bankPassbookPath: bankPassbookPath ?? undefined,
         casteCertPath: casteCertPath ?? undefined,
         signaturePath: signaturePath ?? undefined,
+        otherDocPath: otherDocPath ?? undefined,
         pdfPath: pdfExists ? pdfFilePath : undefined,
       })
       .where(eq(candidatesTable.id, candidate.id))

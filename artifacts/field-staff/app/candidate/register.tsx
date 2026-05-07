@@ -792,6 +792,35 @@ export default function CandidateRegisterScreen() {
 
   const [centerTcId, setCenterTcId] = useState<string | null>(null);
 
+  // ─ Center search modal
+  const [showCenterSearch, setShowCenterSearch] = useState(false);
+  const [centerSearchQuery, setCenterSearchQuery] = useState("");
+  const [centerSearchResults, setCenterSearchResults] = useState<Array<{ id: string; name: string; tcId: string | null; courses: string[] }>>([]);
+  const [centerSearchLoading, setCenterSearchLoading] = useState(false);
+
+  const searchCenters = async (q: string) => {
+    setCenterSearchLoading(true);
+    try {
+      const base = getApiBase();
+      const r = await fetch(`${base}/api/centers/search?q=${encodeURIComponent(q)}`);
+      if (r.ok) {
+        const data = await r.json() as Array<{ id: string; name: string; tcId: string | null; courses: string[] }>;
+        setCenterSearchResults(data);
+      }
+    } catch { /* ignore */ } finally {
+      setCenterSearchLoading(false);
+    }
+  };
+
+  const selectCenter = (c: { id: string; name: string; tcId: string | null; courses: string[] }) => {
+    setSkillCentreName(c.name);
+    setCenterTcId(c.tcId ?? null);
+    if (c.courses && c.courses.length > 0) setCenterCourses(c.courses);
+    setShowCenterSearch(false);
+    setCenterSearchQuery("");
+    setCenterSearchResults([]);
+  };
+
   // ─ Identity
   const [aadhaarNumber, setAadhaarNumber] = useState("");
   const [bpl, setBpl] = useState<string | null>("No");
@@ -1269,6 +1298,52 @@ export default function CandidateRegisterScreen() {
         }}
       />
 
+      {/* Center Search Modal */}
+      <Modal visible={showCenterSearch} animationType="slide" transparent onRequestClose={() => setShowCenterSearch(false)}>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}>
+          <View style={{ backgroundColor: "#fff", borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: "80%", paddingBottom: 24 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", padding: 16, borderBottomWidth: 1, borderBottomColor: "#eee" }}>
+              <Text style={{ flex: 1, fontSize: 16, fontFamily: F_ENG_SEM, color: "#111" }}>Search Training Center</Text>
+              <TouchableOpacity onPress={() => setShowCenterSearch(false)} hitSlop={8}>
+                <Feather name="x" size={20} color="#555" />
+              </TouchableOpacity>
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center", margin: 12, borderWidth: 1, borderColor: "#ccc", borderRadius: 8, paddingHorizontal: 10, backgroundColor: "#fafafa" }}>
+              <Feather name="search" size={14} color="#888" />
+              <TextInput
+                value={centerSearchQuery}
+                onChangeText={(t) => { setCenterSearchQuery(t); void searchCenters(t); }}
+                placeholder="Center ka naam type karein..."
+                placeholderTextColor="#aaa"
+                style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 8, fontSize: 14, fontFamily: F_ENG_REG, color: "#111" }}
+                autoFocus
+              />
+              {centerSearchLoading && <ActivityIndicator size="small" color={ACCENT} />}
+            </View>
+            <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 400 }}>
+              {centerSearchResults.length === 0 && !centerSearchLoading && (
+                <Text style={{ textAlign: "center", color: "#aaa", padding: 24, fontFamily: F_ENG_REG, fontSize: 13 }}>
+                  {centerSearchQuery.length === 0 ? "Type to search centers..." : "No centers found"}
+                </Text>
+              )}
+              {centerSearchResults.map((c) => (
+                <TouchableOpacity
+                  key={c.id}
+                  onPress={() => selectCenter(c)}
+                  style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#f0f0f0" }}
+                >
+                  <Text style={{ fontSize: 14, fontFamily: F_ENG_MED, color: "#111" }}>{c.name}</Text>
+                  <View style={{ flexDirection: "row", gap: 12, marginTop: 2 }}>
+                    {c.tcId && <Text style={{ fontSize: 11, color: "#666", fontFamily: F_ENG_REG }}>TC ID: {c.tcId}</Text>}
+                    {c.courses && c.courses.length > 0 && <Text style={{ fontSize: 11, color: ACCENT, fontFamily: F_ENG_REG }}>{c.courses.length} course{c.courses.length > 1 ? "s" : ""}</Text>}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       {/* Nav header */}
       <View style={[styles.navHeader, { paddingTop: insets.top + webTop }]}>
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
@@ -1368,7 +1443,18 @@ export default function CandidateRegisterScreen() {
               ) : (
                 <TextBox label="Course Name / कोर्स का नाम" value={course} onChangeText={setCourse} placeholder="e.g. Tailoring, Computer" />
               )}
-              <TextBox label="Skill Centre Name / कौशल केंद्र का नाम" value={skillCentreName} onChangeText={setSkillCentreName} />
+              <View style={{ marginBottom: 4 }}>
+                <TextBox label="Skill Centre Name / कौशल केंद्र का नाम" value={skillCentreName} onChangeText={setSkillCentreName} />
+                <TouchableOpacity
+                  onPress={() => { setShowCenterSearch(true); void searchCenters(""); }}
+                  style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4, paddingVertical: 4 }}
+                >
+                  <Feather name="search" size={12} color={ACCENT} />
+                  <Text style={{ fontSize: 11, color: ACCENT, fontFamily: F_ENG_MED }}>
+                    Search & select center
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
             <PhotoBox
               label="Passport Photo"

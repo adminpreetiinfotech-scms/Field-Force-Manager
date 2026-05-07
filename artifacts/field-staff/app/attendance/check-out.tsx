@@ -93,6 +93,10 @@ export default function CheckOutScreen() {
       setPhase("selfie");
       return;
     }
+    if (!isCenterStaff && !meterPhotoUri) {
+      Alert.alert("Odometer photo required", "Please capture the odometer photo before ending shift.");
+      return;
+    }
     setSubmitting(true);
     try {
       let loc: GeoPoint | null = currentLoc;
@@ -344,7 +348,7 @@ export default function CheckOutScreen() {
                   flex: 1,
                 }}
               >
-                {meterPhotoUri ? "Odometer photo captured" : "Capture odometer photo (optional)"}
+                {meterPhotoUri ? "Odometer photo captured" : "Capture odometer photo *"}
               </Text>
               {meterPhotoUri && (
                 <Pressable onPress={() => setMeterPhotoUri(null)} hitSlop={8}>
