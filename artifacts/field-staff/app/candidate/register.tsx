@@ -771,6 +771,8 @@ export default function CandidateRegisterScreen() {
   // Pre-fill from user's own centre immediately; server fetch will confirm/override
   const [skillCentreName, setSkillCentreName] = useState(user?.centerName ?? "");
   const [centerCourses, setCenterCourses] = useState<string[]>([]);
+  const [centerTcId, setCenterTcId] = useState<string | null>(null);
+  const [centerDataLoading, setCenterDataLoading] = useState(false);
   const [showCoursePicker, setShowCoursePicker] = useState(false);
 
   // effectiveCenterId: always fetch fresh from server on form open — does NOT rely on
@@ -778,6 +780,7 @@ export default function CandidateRegisterScreen() {
   const [effectiveCenterId, setEffectiveCenterId] = useState<string | null>(user?.centerId ?? null);
   // Centre is locked if the staff member has an assigned centre (from profile or server)
   const isCentreLocked = !!(user?.centerName || effectiveCenterId);
+
   useEffect(() => {
     if (!user?.phone) return;
     const base = getApiBase();
@@ -793,9 +796,10 @@ export default function CandidateRegisterScreen() {
       .catch(() => {});
   }, [user?.phone]);
 
-  // Fetch center data when effectiveCenterId is known — locks center & courses for this staff
+  // Fetch center data when effectiveCenterId is known — locks center name, TC ID & courses
   useEffect(() => {
     if (!effectiveCenterId) return;
+    setCenterDataLoading(true);
     const base = getApiBase();
     fetch(`${base}/api/centers/${effectiveCenterId}`)
       .then((r) => (r.ok ? r.json() : null))
@@ -809,10 +813,9 @@ export default function CandidateRegisterScreen() {
         if (data.name) setSkillCentreName(data.name);
         if (data.tcId) setCenterTcId(data.tcId);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setCenterDataLoading(false));
   }, [effectiveCenterId]);
-
-  const [centerTcId, setCenterTcId] = useState<string | null>(null);
 
   // ─ Center search modal
   const [showCenterSearch, setShowCenterSearch] = useState(false);
@@ -1004,7 +1007,10 @@ export default function CandidateRegisterScreen() {
     setCaste(null); setPwd("No"); setDisabilityType("");
     setAddress(""); setVillage(""); setPoliceStation(""); setPostOffice("");
     setDistrict(""); setState("Jharkhand"); setPin(""); setArea("");
-    setCourse(""); setSkillCentreName(""); setAadhaarNumber("");
+    setCourse("");
+    // If centre is locked, preserve centre name, courses, and TC ID for next candidate
+    if (!isCentreLocked) { setSkillCentreName(""); setCenterCourses([]); setCenterTcId(null); }
+    setAadhaarNumber("");
     setBpl("No"); setBplNumber(""); setEducation(null); setYearOfPassing("");
     setBankAccount(""); setBankName(""); setBankBranch(""); setIfsc("");
     setMobilizer(user?.name ?? "");
@@ -1019,7 +1025,7 @@ export default function CandidateRegisterScreen() {
     autoSyncTriggeredRef.current = false;
     const all = await loadAllDrafts();
     setDraftCount(all.length);
-  }, [user?.name]);
+  }, [user?.name, isCentreLocked]);
 
   // ── Load draft from route param & count drafts ──────────────────────────────
 
@@ -1443,8 +1449,16 @@ export default function CandidateRegisterScreen() {
           {/* Course + Photo row */}
           <View style={[styles.borderRow, { alignItems: "flex-start" }]}>
             <View style={{ flex: 1, paddingRight: 8 }}>
-              {/* Course — dropdown if center has courses, else free-text */}
-              {centerCourses.length > 0 ? (
+              {/* Course — loading spinner → dropdown (if locked center) → free-text */}
+              {centerDataLoading && isCentreLocked ? (
+                <View style={{ marginBottom: 8 }}>
+                  <Text style={[styles.fieldLabel, { color: LABEL_COLOR }]}>Course Name / कोर्स का नाम</Text>
+                  <View style={[styles.coursePickerBtn, { justifyContent: "center", alignItems: "center", flexDirection: "row", gap: 8, borderColor: BORDER }]}>
+                    <ActivityIndicator size="small" color={ACCENT} />
+                    <Text style={{ color: MUTED, fontFamily: F_ENG_REG, fontSize: 12 }}>Courses load ho rahe hain...</Text>
+                  </View>
+                </View>
+              ) : centerCourses.length > 0 ? (
                 <View style={{ marginBottom: 8 }}>
                   <Text style={[styles.fieldLabel, { color: LABEL_COLOR }]}>Course Name / कोर्स का नाम</Text>
                   <TouchableOpacity
