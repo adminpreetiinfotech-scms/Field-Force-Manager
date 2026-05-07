@@ -1151,6 +1151,7 @@ export default function CandidateRegisterScreen() {
         area: area.trim() || null,
         course: course.trim() || null,
         skillCentreName: skillCentreName.trim() || null,
+        centerTcId: centerTcId || null,
         aadhaarNumber: aadhaarNumber.trim() || null,
         education: education || null,
         yearOfPassing: yearOfPassing.trim() || null,

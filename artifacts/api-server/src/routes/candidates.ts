@@ -34,7 +34,7 @@ type CompanyBranding = {
 };
 
 function buildPdfOpts(
-  candidate: { skillCentreName?: string | null; mobilizer?: string | null; submittedBy?: string | null; createdAt?: Date | null },
+  candidate: { skillCentreName?: string | null; centerTcId?: string | null; mobilizer?: string | null; submittedBy?: string | null; createdAt?: Date | null },
   query?: Record<string, string>,
   branding?: CompanyBranding,
 ): PdfReportOpts {
@@ -43,12 +43,12 @@ function buildPdfOpts(
     staffName:         query?.["staffName"]?.trim()    || candidate.mobilizer?.trim() || candidate.submittedBy?.trim() || null,
     reportDate:        fmtDMY(candidate.createdAt ? new Date(candidate.createdAt) : new Date()),
     // Do NOT pass companyName — always keep the original JSDMS Jharkhand government header.
-    // Only pass tcId so Training Centre ID shows without overriding the brand design.
+    // Candidate's own centerTcId takes priority; fall back to company-level tcId.
     companyName:       null,
     companyLogoPath:   null,
     companyLogoBuffer: null,
     schemeName:        null,
-    tcId:              branding?.tcId ?? null,
+    tcId:              candidate.centerTcId?.trim() || branding?.tcId || null,
   };
 }
 
@@ -436,6 +436,7 @@ router.post("/candidates", async (req, res, next) => {
       area?: string | null;
       course?: string | null;
       skillCentreName?: string | null;
+      centerTcId?: string | null;
       aadhaarNumber?: string | null;
       education?: string | null;
       yearOfPassing?: string | null;
@@ -575,6 +576,7 @@ router.post("/candidates", async (req, res, next) => {
         area: body.area?.trim() || null,
         course: body.course?.trim() || null,
         skillCentreName: body.skillCentreName?.trim() || null,
+        centerTcId: body.centerTcId?.trim() || null,
         aadhaarNumber: body.aadhaarNumber?.trim() || null,
         education: body.education?.trim() || null,
         yearOfPassing: body.yearOfPassing?.trim() || null,

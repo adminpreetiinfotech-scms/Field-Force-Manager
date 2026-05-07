@@ -40,6 +40,7 @@ export const candidatesTable = pgTable("candidates", {
   // Course
   course: text("course"),
   skillCentreName: text("skill_centre_name"),
+  centerTcId: text("center_tc_id"),
   // Identity docs
   aadhaarNumber: text("aadhaar_number"),
   // Education
