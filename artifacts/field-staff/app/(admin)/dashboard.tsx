@@ -52,14 +52,17 @@ type CandidateStats = {
 const _domain = process.env.EXPO_PUBLIC_DOMAIN || "field-force-manager-Mobilization.replit.app";
 const API_BASE = _domain ? `https://${_domain}` : "";
 
-function useCandidateStats() {
+function useCandidateStats(phone: string | undefined) {
   const [stats, setStats] = useState<CandidateStats | null>(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
+    if (!phone) return;
     let mounted = true;
     const load = () => {
-      fetch(`${API_BASE}/api/admin/candidate-stats`)
-        .then((r) => r.json())
+      fetch(`${API_BASE}/api/admin/candidate-stats`, {
+        headers: { "x-admin-phone": phone },
+      })
+        .then((r) => r.ok ? r.json() : Promise.reject(r.status))
         .then((d) => { if (mounted) setStats(d as CandidateStats); })
         .catch(() => {})
         .finally(() => { if (mounted) setLoading(false); });
@@ -67,7 +70,7 @@ function useCandidateStats() {
     load();
     const timer = setInterval(load, 60_000);
     return () => { mounted = false; clearInterval(timer); };
-  }, []);
+  }, [phone]);
   return { stats, loading };
 }
 
@@ -83,7 +86,7 @@ export default function AdminDashboard() {
   const popupNotice = unreadNotices[0] ?? null;
 
   const today = new Date().toISOString().slice(0, 10);
-  const { stats: candidateStats, loading: candidateStatsLoading } = useCandidateStats();
+  const { stats: candidateStats, loading: candidateStatsLoading } = useCandidateStats(user?.phone);
 
   const distanceParams = { date: today };
   const {
@@ -707,14 +710,22 @@ type StaffItem = {
 
 function StaffManagementSection() {
   const colors = useColors();
+  const { user } = useApp();
   const [staff, setStaff] = useState<StaffItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<StaffItem | null>(null);
 
+  const authHeaders: Record<string, string> = user?.phone
+    ? { "x-admin-phone": user.phone }
+    : {};
+
   const load = async () => {
+    if (!user?.phone) return;
     try {
-      const res = await fetch(`${API_BASE}/api/admin/staff-list`);
+      const res = await fetch(`${API_BASE}/api/admin/staff-list`, {
+        headers: authHeaders,
+      });
       if (res.ok) {
         const data = (await res.json()) as StaffItem[];
         setStaff(data.filter((s) => s.role !== "admin"));
@@ -726,7 +737,7 @@ function StaffManagementSection() {
     }
   };
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [user?.phone]);
 
   const handleDisableToggle = async (item: StaffItem) => {
     const action = item.disabledAt ? "enable" : "disable";
@@ -742,7 +753,10 @@ function StaffManagementSection() {
           onPress: async () => {
             setActionLoading(item.id);
             try {
-              const res = await fetch(`/api/admin/staff/${item.id}/${action}`, { method: "PATCH" });
+              const res = await fetch(`${API_BASE}/api/admin/staff/${item.id}/${action}`, {
+                method: "PATCH",
+                headers: authHeaders,
+              });
               if (!res.ok) {
                 const err = await res.json().catch(() => ({})) as Record<string, unknown>;
                 Alert.alert("Error", String(err["title"] ?? "Action failed"));
@@ -764,7 +778,10 @@ function StaffManagementSection() {
     setDeleteTarget(null);
     setActionLoading(item.id);
     try {
-      const res = await fetch(`/api/admin/staff/${item.id}`, { method: "DELETE" });
+      const res = await fetch(`${API_BASE}/api/admin/staff/${item.id}`, {
+        method: "DELETE",
+        headers: authHeaders,
+      });
       if (!res.ok) {
         const err = await res.json().catch(() => ({})) as Record<string, unknown>;
         Alert.alert("Error", String(err["title"] ?? "Delete failed"));
