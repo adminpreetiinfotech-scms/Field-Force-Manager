@@ -317,7 +317,10 @@ export default function Candidates() {
   };
 
   const handleDownloadExcel = async () => {
-    if (!user?.phone) return;
+    if (!user?.phone) {
+      toast({ title: "Not logged in", description: "Please log in again.", variant: "destructive" });
+      return;
+    }
     setDownloading(true);
     try {
       const params = new URLSearchParams({ format: "xlsx" });
@@ -327,15 +330,20 @@ export default function Candidates() {
       const res = await fetch(`/api/admin/candidates/csv?${params.toString()}`, {
         headers: { "x-admin-phone": user.phone },
       });
-      if (!res.ok) throw new Error("Download failed");
+      if (!res.ok) {
+        const text = await res.text().catch(() => "Unknown error");
+        throw new Error(`Server error ${res.status}: ${text}`);
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       const centerLabel = centerFilter ? `_${centerFilter.replace(/\s+/g, "_")}` : "";
       a.download = `candidates${centerLabel}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
       toast({ title: "Download started", description: "Excel file is being downloaded." });
     } catch (err: any) {
       toast({ title: "Download failed", description: err.message, variant: "destructive" });
