@@ -6,7 +6,7 @@ export function authHeaders() {
 }
 
 export async function apiFetch(path: string, init?: RequestInit) {
-  const res = await fetch(`${BASE}/api${path}`, {
+  const res = await fetch(`/api${path}`, {
     ...init,
     headers: { ...authHeaders(), ...(init?.headers ?? {}) },
   });

@@ -40,7 +40,7 @@ export default function LoginPage() {
   async function onPhoneSubmit(data: PhoneForm) {
     setLoading(true);
     try {
-      const res = await fetch(`${BASE}/api/auth/check-phone`, {
+      const res = await fetch(`/api/auth/check-phone`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: data.phone }),
@@ -63,7 +63,7 @@ export default function LoginPage() {
   async function onMpinSubmit(data: MpinForm) {
     setLoading(true);
     try {
-      const res = await fetch(`${BASE}/api/auth/login-mpin`, {
+      const res = await fetch(`/api/auth/login-mpin`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone, mpin: data.mpin }),
