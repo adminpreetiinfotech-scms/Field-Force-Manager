@@ -6,7 +6,8 @@ import {
   Users, 
   Clock, 
   UserCircle,
-  LogOut
+  LogOut,
+  CreditCard
 } from "lucide-react";
 
 interface LayoutProps {
@@ -24,6 +25,7 @@ export function Layout({ children }: LayoutProps) {
   const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/companies", label: "Companies", icon: Building2 },
+    { href: "/subscriptions", label: "Subscriptions", icon: CreditCard },
     { href: "/pending", label: "Pending Approvals", icon: Clock },
     { href: "/staff", label: "Staff Directory", icon: Users },
     { href: "/profile", label: "My Profile", icon: UserCircle },

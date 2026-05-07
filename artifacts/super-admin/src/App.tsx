@@ -12,6 +12,7 @@ import CompanyDetailPage from "@/pages/company-detail";
 import PendingPage from "@/pages/pending";
 import StaffPage from "@/pages/staff";
 import ProfilePage from "@/pages/profile";
+import SubscriptionsPage from "@/pages/subscriptions";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -41,6 +42,9 @@ function Router() {
       </Route>
       <Route path="/pending">
         {() => <AuthGuard><Layout><PendingPage /></Layout></AuthGuard>}
+      </Route>
+      <Route path="/subscriptions">
+        {() => <AuthGuard><Layout><SubscriptionsPage /></Layout></AuthGuard>}
       </Route>
       <Route path="/staff">
         {() => <AuthGuard><Layout><StaffPage /></Layout></AuthGuard>}
