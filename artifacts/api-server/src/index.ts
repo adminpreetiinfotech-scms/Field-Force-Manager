@@ -2,6 +2,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { ensureSeed, startDemoPulse } from "./lib/seed";
 import { startReportScheduler } from "./services/reportScheduler";
+import { startSubscriptionReminderScheduler } from "./services/subscriptionReminder";
 
 const rawPort = process.env["PORT"];
 
@@ -29,6 +30,7 @@ app.listen(port, async (err) => {
     await ensureSeed();
     startDemoPulse();
     startReportScheduler();
+    startSubscriptionReminderScheduler();
   } catch (seedErr) {
     logger.error({ err: seedErr }, "Failed to bootstrap seed data");
   }

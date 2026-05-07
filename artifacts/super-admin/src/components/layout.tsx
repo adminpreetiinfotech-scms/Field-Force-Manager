@@ -11,7 +11,8 @@ import {
   BarChart2,
   Bell,
   Activity,
-  Settings
+  Settings,
+  AlarmClock
 } from "lucide-react";
 
 interface LayoutProps {
@@ -31,6 +32,7 @@ export function Layout({ children }: LayoutProps) {
     { href: "/analytics", label: "Analytics", icon: BarChart2 },
     { href: "/companies", label: "Companies", icon: Building2 },
     { href: "/subscriptions", label: "Subscriptions", icon: CreditCard },
+    { href: "/reminders", label: "Sub. Reminders", icon: AlarmClock },
     { href: "/pending", label: "Pending Approvals", icon: Clock },
     { href: "/staff", label: "Staff Directory", icon: Users },
     { href: "/notices", label: "Notices", icon: Bell },

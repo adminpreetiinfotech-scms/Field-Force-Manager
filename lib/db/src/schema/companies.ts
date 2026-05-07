@@ -51,6 +51,8 @@ export const companiesTable = pgTable("companies", {
   centerShiftEnd: text("center_shift_end").default("18:00"),
   /** Grace period in minutes after shift start before check-in is marked late (default 15). */
   lateGraceMinutes: integer("late_grace_minutes").default(15),
+  /** Last time a subscription expiry reminder SMS was sent. Used to avoid duplicate reminders. */
+  subscriptionReminderSentAt: timestamp("subscription_reminder_sent_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

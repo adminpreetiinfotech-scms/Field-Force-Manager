@@ -6,9 +6,10 @@ import {
   centersTable,
   companiesTable,
   db,
+  noticesTable,
   staffTable,
 } from "@workspace/db";
-import { and, count, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, count, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import crypto from "node:crypto";
 import { isValidUUID } from "../lib/validation";
@@ -1344,6 +1345,68 @@ router.patch("/super-admin/profile", requireSuperAdmin, async (req, res, next) =
       .returning({ id: staffTable.id, name: staffTable.name, phone: staffTable.phone, email: staffTable.email, empCode: staffTable.empCode });
 
     res.json({ message: "Profile updated", ...updated });
+  } catch (err) { next(err); }
+});
+
+// ─── POST /api/super-admin/subscription-reminders/run ────────────────────────
+// Manually trigger subscription reminder check (for testing or on-demand)
+
+router.post("/super-admin/subscription-reminders/run", requireSuperAdmin, async (_req, res, next) => {
+  try {
+    const { runSubscriptionReminders } = await import("../services/subscriptionReminder");
+    const result = await runSubscriptionReminders();
+    res.json({ message: "Subscription reminder check completed", ...result });
+  } catch (err) { next(err); }
+});
+
+// ─── GET /api/super-admin/subscription-reminders/status ──────────────────────
+// Show companies expiring soon with their reminder status
+
+router.get("/super-admin/subscription-reminders/status", requireSuperAdmin, async (_req, res, next) => {
+  try {
+    const now = new Date();
+    const in30 = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    const rows = await db
+      .select({
+        id: companiesTable.id,
+        name: companiesTable.name,
+        phone: companiesTable.phone,
+        plan: companiesTable.plan,
+        subscriptionEndDate: companiesTable.subscriptionEndDate,
+        subscriptionReminderSentAt: companiesTable.subscriptionReminderSentAt,
+        subscriptionActive: companiesTable.subscriptionActive,
+        status: companiesTable.status,
+      })
+      .from(companiesTable)
+      .where(isNotNull(companiesTable.subscriptionEndDate))
+      .orderBy(companiesTable.subscriptionEndDate);
+
+    const result = rows.map((r) => {
+      const daysLeft = r.subscriptionEndDate
+        ? Math.ceil((r.subscriptionEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        : null;
+      return {
+        id: r.id,
+        name: r.name,
+        phone: r.phone ?? null,
+        plan: r.plan ?? null,
+        subscriptionEndDate: r.subscriptionEndDate?.toISOString() ?? null,
+        subscriptionReminderSentAt: r.subscriptionReminderSentAt?.toISOString() ?? null,
+        subscriptionActive: r.subscriptionActive,
+        status: r.status,
+        daysLeft,
+        urgency: daysLeft === null ? "none"
+          : daysLeft < 0 ? "expired"
+          : daysLeft <= 1 ? "critical"
+          : daysLeft <= 3 ? "urgent"
+          : daysLeft <= 7 ? "warning"
+          : daysLeft <= 30 ? "notice"
+          : "ok",
+      };
+    });
+
+    res.json(result);
   } catch (err) { next(err); }
 });
 
