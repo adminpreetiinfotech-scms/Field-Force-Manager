@@ -15,6 +15,7 @@ import ProfilePage from "@/pages/profile";
 import SubscriptionsPage from "@/pages/subscriptions";
 import AnalyticsPage from "@/pages/analytics";
 import RemindersPage from "@/pages/reminders";
+import RevenuePage from "@/pages/revenue";
 import NoticesPage from "@/pages/notices";
 import AuditLogsPage from "@/pages/audit-logs";
 import SettingsPage from "@/pages/settings";
@@ -53,6 +54,9 @@ function Router() {
       </Route>
       <Route path="/analytics">
         {() => <AuthGuard><Layout><AnalyticsPage /></Layout></AuthGuard>}
+      </Route>
+      <Route path="/revenue">
+        {() => <AuthGuard><Layout><RevenuePage /></Layout></AuthGuard>}
       </Route>
       <Route path="/reminders">
         {() => <AuthGuard><Layout><RemindersPage /></Layout></AuthGuard>}

@@ -1410,6 +1410,173 @@ router.get("/super-admin/subscription-reminders/status", requireSuperAdmin, asyn
   } catch (err) { next(err); }
 });
 
+// ─── GET /api/super-admin/revenue ─────────────────────────────────────────────
+// Revenue dashboard: estimated MRR/ARR by plan, collection breakdown, monthly trend
+
+const PLAN_PRICE_MONTHLY: Record<string, number> = {
+  basic: 5000,
+  standard: 10000,
+  premium: 20000,
+};
+
+router.get("/super-admin/revenue", requireSuperAdmin, async (_req, res, next) => {
+  try {
+    const now = new Date();
+
+    // All companies with subscription info
+    const companies = await db
+      .select({
+        id: companiesTable.id,
+        name: companiesTable.name,
+        phone: companiesTable.phone,
+        plan: companiesTable.plan,
+        paymentStatus: companiesTable.paymentStatus,
+        subscriptionActive: companiesTable.subscriptionActive,
+        subscriptionStartDate: companiesTable.subscriptionStartDate,
+        subscriptionEndDate: companiesTable.subscriptionEndDate,
+        status: companiesTable.status,
+        createdAt: companiesTable.createdAt,
+      })
+      .from(companiesTable)
+      .where(eq(companiesTable.approvalStatus, "approved"));
+
+    // ── KPI calculations ──
+    let totalMRR = 0;
+    let collectedMRR = 0;
+    let pendingMRR = 0;
+    let expiredMRR = 0;
+
+    const planRevenue: Record<string, { count: number; mrr: number }> = {
+      basic: { count: 0, mrr: 0 },
+      standard: { count: 0, mrr: 0 },
+      premium: { count: 0, mrr: 0 },
+    };
+
+    const pendingCompanies: Array<{
+      id: string; name: string; phone: string | null;
+      plan: string | null; paymentStatus: string | null;
+      subscriptionEndDate: string | null; estimatedAmount: number;
+    }> = [];
+
+    for (const c of companies) {
+      const price = PLAN_PRICE_MONTHLY[c.plan ?? ""] ?? 0;
+      if (!c.plan || price === 0) continue;
+
+      totalMRR += price;
+
+      if (c.plan && planRevenue[c.plan]) {
+        planRevenue[c.plan].count += 1;
+        planRevenue[c.plan].mrr += price;
+      }
+
+      if (c.paymentStatus === "paid") {
+        collectedMRR += price;
+      } else if (c.paymentStatus === "pending") {
+        pendingMRR += price;
+        pendingCompanies.push({
+          id: c.id,
+          name: c.name,
+          phone: c.phone ?? null,
+          plan: c.plan,
+          paymentStatus: c.paymentStatus,
+          subscriptionEndDate: c.subscriptionEndDate?.toISOString() ?? null,
+          estimatedAmount: price,
+        });
+      } else if (c.paymentStatus === "expired") {
+        expiredMRR += price;
+      }
+    }
+
+    // ── Monthly subscription starts — last 12 months ──
+    const twelveMonthsAgo = new Date(now);
+    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 11);
+    twelveMonthsAgo.setDate(1);
+    twelveMonthsAgo.setHours(0, 0, 0, 0);
+
+    const monthlyRows = await db
+      .select({
+        month: sql<string>`to_char(${companiesTable.subscriptionStartDate}, 'YYYY-MM')`,
+        plan: companiesTable.plan,
+        count: count(),
+      })
+      .from(companiesTable)
+      .where(
+        and(
+          isNotNull(companiesTable.subscriptionStartDate),
+          isNotNull(companiesTable.plan),
+          sql`${companiesTable.subscriptionStartDate} >= ${twelveMonthsAgo.toISOString()}`,
+          eq(companiesTable.approvalStatus, "approved"),
+        ),
+      )
+      .groupBy(
+        sql`to_char(${companiesTable.subscriptionStartDate}, 'YYYY-MM')`,
+        companiesTable.plan,
+      )
+      .orderBy(sql`to_char(${companiesTable.subscriptionStartDate}, 'YYYY-MM')`);
+
+    // Build full 12-month grid
+    const monthGrid: Record<string, { month: string; basic: number; standard: number; premium: number; total: number; mrr: number }> = {};
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now);
+      d.setMonth(d.getMonth() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      monthGrid[key] = { month: key, basic: 0, standard: 0, premium: 0, total: 0, mrr: 0 };
+    }
+
+    for (const r of monthlyRows) {
+      if (!r.month || !monthGrid[r.month]) continue;
+      const plan = r.plan ?? "";
+      const n = Number(r.count);
+      const price = PLAN_PRICE_MONTHLY[plan] ?? 0;
+      if (plan === "basic") monthGrid[r.month].basic += n;
+      if (plan === "standard") monthGrid[r.month].standard += n;
+      if (plan === "premium") monthGrid[r.month].premium += n;
+      monthGrid[r.month].total += n;
+      monthGrid[r.month].mrr += n * price;
+    }
+
+    const monthlyTrend = Object.values(monthGrid);
+
+    // ── Renewal forecast: subscriptions ending in next 30 / 60 / 90 days ──
+    const in30 = new Date(now.getTime() + 30 * 864e5);
+    const in60 = new Date(now.getTime() + 60 * 864e5);
+    const in90 = new Date(now.getTime() + 90 * 864e5);
+
+    let renewalIn30 = 0, renewalIn60 = 0, renewalIn90 = 0;
+    let renewalMrrIn30 = 0, renewalMrrIn60 = 0, renewalMrrIn90 = 0;
+
+    for (const c of companies) {
+      if (!c.subscriptionEndDate || !c.plan) continue;
+      const price = PLAN_PRICE_MONTHLY[c.plan] ?? 0;
+      const end = c.subscriptionEndDate;
+      if (end >= now && end <= in30) { renewalIn30++; renewalMrrIn30 += price; }
+      if (end >= now && end <= in60) { renewalIn60++; renewalMrrIn60 += price; }
+      if (end >= now && end <= in90) { renewalIn90++; renewalMrrIn90 += price; }
+    }
+
+    res.json({
+      planPrices: PLAN_PRICE_MONTHLY,
+      kpi: {
+        totalCompaniesWithPlan: companies.filter((c) => c.plan).length,
+        totalMRR,
+        totalARR: totalMRR * 12,
+        collectedMRR,
+        pendingMRR,
+        expiredMRR,
+        collectionRate: totalMRR > 0 ? Math.round((collectedMRR / totalMRR) * 100) : 0,
+      },
+      planRevenue,
+      pendingCompanies,
+      monthlyTrend,
+      renewalForecast: {
+        in30Days: { count: renewalIn30, mrr: renewalMrrIn30 },
+        in60Days: { count: renewalIn60, mrr: renewalMrrIn60 },
+        in90Days: { count: renewalIn90, mrr: renewalMrrIn90 },
+      },
+    });
+  } catch (err) { next(err); }
+});
+
 // ─── GET /api/super-admin/analytics ──────────────────────────────────────────
 // Detailed platform analytics: plan distribution, payment status, company growth
 

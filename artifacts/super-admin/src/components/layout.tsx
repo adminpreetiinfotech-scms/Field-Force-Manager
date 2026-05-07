@@ -12,7 +12,8 @@ import {
   Bell,
   Activity,
   Settings,
-  AlarmClock
+  AlarmClock,
+  IndianRupee
 } from "lucide-react";
 
 interface LayoutProps {
@@ -30,6 +31,7 @@ export function Layout({ children }: LayoutProps) {
   const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/analytics", label: "Analytics", icon: BarChart2 },
+    { href: "/revenue", label: "Revenue", icon: IndianRupee },
     { href: "/companies", label: "Companies", icon: Building2 },
     { href: "/subscriptions", label: "Subscriptions", icon: CreditCard },
     { href: "/reminders", label: "Sub. Reminders", icon: AlarmClock },
