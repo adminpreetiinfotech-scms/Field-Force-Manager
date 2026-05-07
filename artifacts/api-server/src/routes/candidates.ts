@@ -1,3 +1,4 @@
+import ExcelJS from "exceljs";
 import {
   candidateAuditLogTable,
   candidateNotificationsTable,
@@ -751,16 +752,19 @@ router.get("/admin/candidates", requireAdmin, async (req, res, next) => {
 router.get("/admin/candidates/csv", requireAdmin, async (req, res, next) => {
   try {
     const companyId = res.locals.companyId as string | null;
-    const { status, mobilizer, from, to } = req.query as {
+    const { status, mobilizer, from, to, skillCentre, format: fmt } = req.query as {
       status?: string;
       mobilizer?: string;
       from?: string; // YYYY-MM-DD
       to?: string;   // YYYY-MM-DD
+      skillCentre?: string;
+      format?: string; // "xlsx" | "csv" (default csv)
     };
     const conditions = [];
     if (companyId) conditions.push(or(eq(candidatesTable.companyId, companyId), isNull(candidatesTable.companyId)));
     if (status?.trim()) conditions.push(eq(candidatesTable.status, status.trim()));
     if (mobilizer?.trim()) conditions.push(ilike(candidatesTable.mobilizer, `%${mobilizer.trim()}%`));
+    if (skillCentre?.trim()) conditions.push(ilike(candidatesTable.skillCentreName, `%${skillCentre.trim()}%`));
     if (from?.trim()) {
       const fromDate = new Date(from.trim());
       if (!isNaN(fromDate.getTime())) conditions.push(gte(candidatesTable.createdAt, fromDate));
@@ -797,6 +801,41 @@ router.get("/admin/candidates/csv", requireAdmin, async (req, res, next) => {
     }
 
     const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const centerLabel = skillCentre?.trim() ? `_${skillCentre.trim().replace(/\s+/g, "_")}` : "";
+
+    if (fmt === "xlsx") {
+      // ── Excel format ──────────────────────────────────────────────────────────
+      const wb = new ExcelJS.Workbook();
+      wb.creator = "SCMS Admin";
+      const ws = wb.addWorksheet("Candidates");
+      ws.columns = headers.map((h) => ({ header: h, key: h, width: 20 }));
+      // Style header row
+      ws.getRow(1).font = { bold: true };
+      ws.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E3A5F" } };
+      ws.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+      for (const r of rows) {
+        const pdfLink = r.pdfPath ? `${baseUrl}/api/candidates/${r.id}/pdf` : "";
+        ws.addRow([
+          r.candidateIdCode ?? "", r.name ?? "", r.phone ?? "", r.parentMobile ?? "", r.email ?? "",
+          r.fatherName ?? "", r.motherName ?? "", r.dob ?? "", r.gender ?? "", r.maritalStatus ?? "",
+          r.religion ?? "", r.caste ?? "", r.pwd ?? "", r.address ?? "", r.village ?? "",
+          r.policeStation ?? "", r.postOffice ?? "", r.district ?? "", r.state ?? "", r.pin ?? "",
+          r.course ?? "", r.skillCentreName ?? "", r.aadhaarNumber ?? "", r.bpl ?? "", r.bplNumber ?? "",
+          r.education ?? "", r.yearOfPassing ?? "", r.bankName ?? "", r.bankAccount ?? "",
+          r.ifsc ?? "", r.bankBranch ?? "", r.mobilizer ?? "", r.status ?? "",
+          r.verifiedBy ?? "", r.verifiedAt?.toISOString().slice(0, 10) ?? "", r.verificationRemarks ?? "",
+          r.submittedBy ?? "", r.createdAt?.toISOString().slice(0, 10) ?? "", pdfLink,
+        ]);
+      }
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader("Content-Disposition", `attachment; filename="candidates${centerLabel}_${dateStr}.xlsx"`);
+      await wb.xlsx.write(res);
+      res.end();
+      return;
+    }
+
+    // ── CSV format (default) ───────────────────────────────────────────────────
     const lines = [headers.join(",")];
     for (const r of rows) {
       const pdfLink = r.pdfPath ? `${baseUrl}/api/candidates/${r.id}/pdf` : "";
@@ -813,10 +852,7 @@ router.get("/admin/candidates/csv", requireAdmin, async (req, res, next) => {
     }
 
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="candidates_${new Date().toISOString().slice(0, 10)}.csv"`,
-    );
+    res.setHeader("Content-Disposition", `attachment; filename="candidates${centerLabel}_${dateStr}.csv"`);
     res.send(lines.join("\r\n"));
   } catch (err) {
     next(err);

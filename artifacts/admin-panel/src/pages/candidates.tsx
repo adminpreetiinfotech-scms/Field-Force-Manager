@@ -280,6 +280,8 @@ export default function Candidates() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [mobilizerFilter, setMobilizerFilter] = useState("");
+  const [centerFilter, setCenterFilter] = useState("");
+  const [downloading, setDownloading] = useState(false);
   const [editCandidate, setEditCandidate] = useState<CandidateDto | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -311,6 +313,34 @@ export default function Candidates() {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleDownloadExcel = async () => {
+    if (!user?.phone) return;
+    setDownloading(true);
+    try {
+      const params = new URLSearchParams({ format: "xlsx" });
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      if (mobilizerFilter) params.set("mobilizer", mobilizerFilter);
+      if (centerFilter) params.set("skillCentre", centerFilter);
+      const res = await fetch(`/api/admin/candidates/csv?${params.toString()}`, {
+        headers: { "x-admin-phone": user.phone },
+      });
+      if (!res.ok) throw new Error("Download failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const centerLabel = centerFilter ? `_${centerFilter.replace(/\s+/g, "_")}` : "";
+      a.download = `candidates${centerLabel}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "Download started", description: "Excel file is being downloaded." });
+    } catch (err: any) {
+      toast({ title: "Download failed", description: err.message, variant: "destructive" });
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -448,12 +478,26 @@ export default function Candidates() {
           <Input
             placeholder="Filter by mobilizer"
             value={mobilizerFilter}
-            onChange={(e) => {
-              setMobilizerFilter(e.target.value);
-            }}
-            onBlur={(e) => setMobilizerFilter(e.target.value)}
+            onChange={(e) => setMobilizerFilter(e.target.value)}
           />
         </div>
+        <div className="w-full sm:w-56">
+          <Input
+            placeholder="Filter by training centre"
+            value={centerFilter}
+            onChange={(e) => setCenterFilter(e.target.value)}
+          />
+        </div>
+        <Button
+          variant="outline"
+          className="shrink-0 gap-2"
+          onClick={handleDownloadExcel}
+          disabled={downloading}
+          title="Download filtered candidates as Excel"
+        >
+          <Download className="h-4 w-4" />
+          {downloading ? "Downloading..." : "Download Excel"}
+        </Button>
       </div>
 
       {/* Bulk action bar */}
