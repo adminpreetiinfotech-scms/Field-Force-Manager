@@ -122,6 +122,7 @@ router.post("/auth/check-phone", async (req, res, next) => {
         mpinHash: staffTable.mpinHash,
         approvalStatus: staffTable.approvalStatus,
         companyId: staffTable.companyId,
+        centerId: staffTable.centerId,
       })
       .from(staffTable)
       .where(
@@ -134,7 +135,7 @@ router.post("/auth/check-phone", async (req, res, next) => {
       .limit(1);
 
     if (rows.length === 0) {
-      res.json({ exists: false, hasMpin: false, approvalStatus: null, companyName: null });
+      res.json({ exists: false, hasMpin: false, approvalStatus: null, companyName: null, centerId: null });
       return;
     }
     const row = rows[0]!;
@@ -144,6 +145,7 @@ router.post("/auth/check-phone", async (req, res, next) => {
       hasMpin: !!row.mpinHash,
       approvalStatus: row.approvalStatus,
       companyName: branding.companyName,
+      centerId: row.centerId ?? null,
     });
   } catch (err) {
     next(err);

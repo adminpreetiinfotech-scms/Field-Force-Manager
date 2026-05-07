@@ -485,11 +485,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 const checkData = (await checkRes.json()) as {
                   exists: boolean;
                   approvalStatus: string | null;
+                  centerId?: string | null;
                 };
                 if (!checkData.exists || checkData.approvalStatus === "rejected") {
                   validatedUser = null;
                   parsed.user = null;
                   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(parsed)).catch(() => {});
+                } else if (validatedUser) {
+                  // Merge fresh centerId from server — ensures staff locked to correct center
+                  // even if their session was saved before centerId was tracked
+                  validatedUser = { ...validatedUser, centerId: checkData.centerId ?? null };
                 }
               }
               // If fetch fails (offline), keep the user logged in.
