@@ -704,12 +704,13 @@ router.get("/candidates/my", async (req, res, next) => {
 router.get("/admin/candidates", requireAdmin, async (req, res, next) => {
   try {
     const companyId = res.locals.companyId as string | null;
-    const { search, status, mobilizer, village, course } = req.query as {
+    const { search, status, mobilizer, village, course, skillCentre } = req.query as {
       search?: string;
       status?: string;
       mobilizer?: string;
       village?: string;
       course?: string;
+      skillCentre?: string;
     };
 
     const conditions = [];
@@ -733,6 +734,9 @@ router.get("/admin/candidates", requireAdmin, async (req, res, next) => {
     }
     if (course?.trim()) {
       conditions.push(ilike(candidatesTable.course, `%${course.trim()}%`));
+    }
+    if (skillCentre?.trim()) {
+      conditions.push(ilike(candidatesTable.skillCentreName, `%${skillCentre.trim()}%`));
     }
 
     const allRows = await db
