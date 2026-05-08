@@ -1041,7 +1041,7 @@ function Pricing() {
             </div>
             <p className="text-gray-500 text-sm mb-6 pb-6 border-b border-gray-100">Perfect for single centers starting out.</p>
             <ul className="space-y-3 mb-8 flex-1">
-              <li className="flex items-center text-gray-700 text-sm"><CheckCircle2 className="w-4 h-4 text-primary mr-3 flex-shrink-0" /> Up to 10 staff</li>
+              <li className="flex items-center text-gray-700 text-sm"><CheckCircle2 className="w-4 h-4 text-primary mr-3 flex-shrink-0" /> Up to 15 staff</li>
               <li className="flex items-center text-gray-700 text-sm"><CheckCircle2 className="w-4 h-4 text-primary mr-3 flex-shrink-0" /> GPS Attendance</li>
               <li className="flex items-center text-gray-700 text-sm"><CheckCircle2 className="w-4 h-4 text-primary mr-3 flex-shrink-0" /> Basic Reporting</li>
             </ul>
@@ -1068,7 +1068,7 @@ function Pricing() {
             </div>
             <p className="text-blue-200 text-sm mb-6 pb-6 border-b border-white/20">For growing regional operations.</p>
             <ul className="space-y-3 mb-8 flex-1">
-              <li className="flex items-center text-white text-sm font-medium"><CheckCircle2 className="w-4 h-4 text-secondary mr-3 flex-shrink-0" /> Up to 50 staff</li>
+              <li className="flex items-center text-white text-sm font-medium"><CheckCircle2 className="w-4 h-4 text-secondary mr-3 flex-shrink-0" /> Up to 30 staff</li>
               <li className="flex items-center text-white text-sm font-medium"><CheckCircle2 className="w-4 h-4 text-secondary mr-3 flex-shrink-0" /> AI Face Verification</li>
               <li className="flex items-center text-white text-sm font-medium"><CheckCircle2 className="w-4 h-4 text-secondary mr-3 flex-shrink-0" /> Offline Mobile App</li>
               <li className="flex items-center text-white text-sm font-medium"><CheckCircle2 className="w-4 h-4 text-secondary mr-3 flex-shrink-0" /> Custom Excel Exports</li>
