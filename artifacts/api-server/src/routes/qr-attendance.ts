@@ -7,7 +7,7 @@
  * GET  /api/admin/qr-attendance            — list QR attendance for a date (admin only)
  */
 
-import { db, staffTable, qrAttendanceTable, centersTable } from "@workspace/db";
+import { db, staffTable, qrAttendanceTable, centersTable, companiesTable } from "@workspace/db";
 import { and, eq, isNull, desc } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import { requireAdmin } from "./admin";
@@ -434,10 +434,10 @@ router.get("/admin/staff/id-cards/pdf", requireAdmin, async (req, res, next) => 
         )
         .orderBy(staffTable.name);
     } else {
-      // All ground staff (or all center staff if group not specified)
+      // "ground" group maps to staffCategory='center' in this schema
       const conds = [isNull(staffTable.deletedAt)];
       if (companyId) conds.push(eq(staffTable.companyId, companyId));
-      if (group === "ground") conds.push(eq(staffTable.staffCategoryGroup, "ground"));
+      if (group === "ground") conds.push(eq(staffTable.staffCategory, "center"));
 
       staffRows = await db
         .select({
@@ -462,8 +462,7 @@ router.get("/admin/staff/id-cards/pdf", requireAdmin, async (req, res, next) => 
     // Fetch company name
     let companyName: string | null = null;
     if (companyId) {
-      const { companiesTable } = await import("@workspace/db");
-      const [co] = await db.select({ name: companiesTable.companyName }).from(companiesTable).where(eq(companiesTable.id, companyId)).limit(1);
+      const [co] = await db.select({ name: companiesTable.name }).from(companiesTable).where(eq(companiesTable.id, companyId)).limit(1);
       companyName = co?.name ?? null;
     }
 

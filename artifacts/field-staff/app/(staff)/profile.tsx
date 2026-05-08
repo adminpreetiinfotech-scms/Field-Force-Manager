@@ -97,9 +97,8 @@ export default function StaffProfile() {
       if (!result?.uri) { setRefUploading(false); return; }
 
       setShowRefCamera(false);
-      const base64 = await FileSystem.readAsStringAsync(result.uri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const base64 = await (FileSystem.readAsStringAsync as any)(result.uri, { encoding: "base64" });
 
       const phoneHeader: Record<string, string> = user.role === "admin"
         ? { "x-admin-phone": user.phone }

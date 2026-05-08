@@ -88,9 +88,8 @@ export default function CheckInScreen() {
     }
     setFaceStatus("verifying");
     try {
-      const base64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const base64 = await (FileSystem.readAsStringAsync as any)(uri, { encoding: "base64" });
       const res = await fetch(`${API_BASE}/api/activity/verify-face`, {
         method: "POST",
         headers: {

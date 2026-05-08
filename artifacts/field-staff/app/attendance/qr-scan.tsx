@@ -147,9 +147,8 @@ export default function QrScanScreen() {
       let selfieBase64: string | null = null;
       if (selfieUri && Platform.OS !== "web") {
         try {
-          selfieBase64 = await FileSystem.readAsStringAsync(selfieUri, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          selfieBase64 = await (FileSystem.readAsStringAsync as any)(selfieUri, { encoding: "base64" });
         } catch {
           // selfie upload is best-effort
         }
