@@ -6,6 +6,24 @@ uri = "file://artifacts/field-staff/assets/images/icon.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "OdprCECnEKtpbyHHwXZbi"
+uri = "file://artifacts/marketing-site/src/assets/hero-dashboard.png"
+type = "image"
+title = "Modern SaaS dashboard mockup"
+
+[[generated]]
+id = "y5FF4rum3vxU73rPIgcPi"
+uri = "file://artifacts/marketing-site/src/assets/mobile-offline.png"
+type = "image"
+title = "Mobile app offline sync"
+
+[[generated]]
+id = "ABVUZgDmz6VUzK8moOnYY"
+uri = "file://artifacts/marketing-site/src/assets/selfie-attendance.png"
+type = "image"
+title = "Face verification selfie app"
+
 [[outputs]]
 id = "1yeSnHvWtcZSWKo1eODFB"
 uri = "file://artifacts/admin-panel/public/user-guide.md"
