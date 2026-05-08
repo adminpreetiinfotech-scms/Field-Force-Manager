@@ -142,7 +142,7 @@ function Hero() {
             className="inline-flex items-center rounded-full px-4 py-2 text-sm font-bold bg-primary/10 border border-primary/20 text-primary mb-8"
           >
             <span className="flex w-2.5 h-2.5 rounded-full bg-secondary mr-3 animate-pulse"></span>
-            #1 Platform for DDU-GKY & PMKVY Centers
+            #1 Platform for JSDMS, DDU-GKY & All State Skill Projects
           </motion.div>
           
           <motion.h1 
