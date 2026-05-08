@@ -47,45 +47,44 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   
-  /* Custom colors for gradients */
   --color-indigo-glow: 243 75% 59%;
   --color-green-glow: 160 84% 39%;
-  --color-orange-glow: 38 92% 50%;
+  --color-orange-glow: 24 95% 53%;
 }
 
 :root {
-  /* Dark Navy Blue Theme */
-  --background: 222 38% 20%;
-  --foreground: 210 40% 98%;
-  
-  --border: 222 28% 34%;
-  --input: 222 28% 34%;
-  --ring: 243 75% 59%; /* Electric Indigo */
-  
-  --card: 222 34% 26%;
-  --card-foreground: 210 40% 98%;
-  --card-border: 222 28% 36%;
-  
-  --popover: 222 34% 26%;
-  --popover-foreground: 210 40% 98%;
-  --popover-border: 222 28% 36%;
-  
-  --primary: 243 75% 59%; /* Electric Indigo */
+  /* Light Theme — Navy + Saffron */
+  --background: 220 20% 97%;
+  --foreground: 222 47% 11%;
+
+  --border: 220 13% 88%;
+  --input: 220 13% 88%;
+  --ring: 222 47% 28%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --card-border: 220 13% 90%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  --popover-border: 220 13% 90%;
+
+  --primary: 222 56% 26%;
   --primary-foreground: 0 0% 100%;
-  --primary-border: 243 75% 59%;
-  
-  --secondary: 160 84% 39%; /* Vibrant Green */
+  --primary-border: 222 56% 26%;
+
+  --secondary: 160 84% 35%;
   --secondary-foreground: 0 0% 100%;
-  --secondary-border: 160 84% 39%;
-  
-  --muted: 222 28% 30%;
-  --muted-foreground: 215 25% 72%;
-  --muted-border: 222 28% 30%;
-  
-  --accent: 38 92% 50%; /* Warm Orange */
+  --secondary-border: 160 84% 35%;
+
+  --muted: 220 14% 93%;
+  --muted-foreground: 220 9% 46%;
+  --muted-border: 220 13% 88%;
+
+  --accent: 24 95% 50%;
   --accent-foreground: 0 0% 100%;
-  --accent-border: 38 92% 50%;
-  
+  --accent-border: 24 95% 50%;
+
   --destructive: 350 89% 60%;
   --destructive-foreground: 210 40% 98%;
   --destructive-border: 350 89% 60%;
@@ -99,44 +98,49 @@
     @apply border-border;
   }
   body {
-    @apply font-sans antialiased bg-background text-foreground selection:bg-primary/30 selection:text-white;
+    @apply font-sans antialiased bg-background text-foreground selection:bg-primary/20 selection:text-primary;
   }
-  
-  /* Custom scrollbar */
+
   ::-webkit-scrollbar {
-    width: 10px;
+    width: 8px;
   }
   ::-webkit-scrollbar-track {
-    @apply bg-background;
+    @apply bg-gray-100;
   }
   ::-webkit-scrollbar-thumb {
-    @apply bg-muted-foreground/30 rounded-full border-2 border-background;
+    @apply bg-gray-300 rounded-full;
   }
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-muted-foreground/50;
+    @apply bg-gray-400;
   }
 }
 
 @layer utilities {
   .text-glow-primary {
-    text-shadow: 0 0 20px hsla(var(--primary) / 0.5);
+    text-shadow: none;
   }
   .text-glow-secondary {
-    text-shadow: 0 0 20px hsla(var(--secondary) / 0.5);
+    text-shadow: none;
   }
   .box-glow-primary {
-    box-shadow: 0 0 40px hsla(var(--primary) / 0.2), inset 0 0 20px hsla(var(--primary) / 0.1);
+    box-shadow: 0 4px 24px hsla(var(--primary) / 0.2);
   }
   .box-glow-accent {
-    box-shadow: 0 0 40px hsla(var(--accent) / 0.2), inset 0 0 20px hsla(var(--accent) / 0.1);
+    box-shadow: 0 4px 24px hsla(var(--accent) / 0.3);
   }
   .glass-card {
-    @apply bg-card/80 backdrop-blur-xl border border-white/10;
+    @apply bg-white border border-gray-200 shadow-sm;
   }
   .gradient-text-primary {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(var(--secondary))];
   }
   .gradient-text-accent {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--accent))] to-[#FF6B6B];
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-[hsl(var(--accent))] to-orange-600;
+  }
+  .section-light {
+    @apply bg-white;
+  }
+  .section-muted {
+    @apply bg-gray-50;
   }
 }
