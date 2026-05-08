@@ -74,10 +74,10 @@ function Navbar() {
             </div>
           </div>
           
-          <div className="hidden md:flex items-center space-x-8">
-            <a href="#features" className="text-gray-600 hover:text-primary font-semibold transition-colors" data-testid="link-features">Features</a>
-            <a href="#how-it-works" className="text-gray-600 hover:text-primary font-semibold transition-colors" data-testid="link-how-it-works">How it works</a>
-            <a href="#pricing" className="text-gray-600 hover:text-primary font-semibold transition-colors" data-testid="link-pricing">Pricing</a>
+          <div className="hidden md:flex items-center gap-2">
+            <a href="#features" className="px-4 py-2 rounded-full border border-gray-300 text-gray-700 hover:border-primary hover:text-primary font-semibold text-sm transition-all hover:bg-primary/5" data-testid="link-features">Features</a>
+            <a href="#how-it-works" className="px-4 py-2 rounded-full border border-gray-300 text-gray-700 hover:border-primary hover:text-primary font-semibold text-sm transition-all hover:bg-primary/5" data-testid="link-how-it-works">How it works</a>
+            <a href="#pricing" className="px-4 py-2 rounded-full border border-gray-300 text-gray-700 hover:border-primary hover:text-primary font-semibold text-sm transition-all hover:bg-primary/5" data-testid="link-pricing">Pricing</a>
             <Button asChild className="bg-accent hover:bg-accent/90 text-white font-bold px-6 py-5 rounded-xl shadow-md transition-all hover:scale-105">
               <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noreferrer" data-testid="button-nav-whatsapp">
                 <PhoneCall className="w-4 h-4 mr-2" />
