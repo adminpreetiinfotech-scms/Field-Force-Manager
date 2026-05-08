@@ -38,7 +38,7 @@ import heroImage from "../assets/hero-dashboard.png";
 import mobileOfflineImage from "../assets/mobile-offline.png";
 import selfieAttendanceImage from "../assets/selfie-attendance.png";
 
-const WHATSAPP_NUMBER = "+919876543210";
+const WHATSAPP_NUMBER = "+919513886363";
 const EMAIL_ADDRESS = "hello@scms.in";
 
 const containerVariants = {
@@ -1202,11 +1202,24 @@ function Footer() {
         <p className="text-blue-300 text-sm mb-6 max-w-md mx-auto">
           Empowering DDU-GKY & PMKVY training centers with technology built for Indian ground realities.
         </p>
-        <div className="flex justify-center gap-6 text-sm font-medium text-blue-300 mb-6">
+        <div className="flex justify-center gap-6 text-sm font-medium text-blue-300 mb-4">
           <a href="#features" className="hover:text-white transition-colors">Features</a>
           <a href="#how-it-works" className="hover:text-white transition-colors">How it works</a>
           <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
           <a href={`mailto:${EMAIL_ADDRESS}`} className="hover:text-white transition-colors">Contact</a>
+        </div>
+        <div className="flex justify-center items-center gap-6 text-sm text-blue-300 mb-6">
+          <a href={`tel:+919513886363`} className="hover:text-white transition-colors flex items-center gap-1.5">
+            📞 +91 95138 86363
+          </a>
+          <span className="text-white/20">|</span>
+          <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noreferrer" className="hover:text-white transition-colors flex items-center gap-1.5">
+            💬 WhatsApp
+          </a>
+          <span className="text-white/20">|</span>
+          <a href={`mailto:${EMAIL_ADDRESS}`} className="hover:text-white transition-colors flex items-center gap-1.5">
+            ✉️ {EMAIL_ADDRESS}
+          </a>
         </div>
         <div className="text-blue-400 text-xs">
           © {new Date().getFullYear()} Preeti Infotech. All rights reserved.
