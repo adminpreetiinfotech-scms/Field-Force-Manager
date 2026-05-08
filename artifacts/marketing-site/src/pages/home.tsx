@@ -66,7 +66,7 @@ function Navbar() {
   return (
     <>
       {/* Scrolling offer ticker */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-orange-500 text-white py-2 overflow-hidden">
+      <div className="fixed top-0 left-0 right-0 z-50 bg-primary text-white py-2 overflow-hidden">
         <div className="flex whitespace-nowrap animate-ticker">
           {Array.from({ length: 6 }).map((_, i) => (
             <span key={i} className="inline-flex items-center gap-4 px-8 text-sm font-semibold">

@@ -147,7 +147,7 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Scrolling offer ticker */}
-      <div className="bg-orange-500 text-white py-2 overflow-hidden sticky top-0 z-20">
+      <div className="bg-primary text-white py-2 overflow-hidden sticky top-0 z-20">
         <div className="flex whitespace-nowrap animate-ticker">
           {Array.from({ length: 6 }).map((_, i) => (
             <span key={i} className="inline-flex items-center gap-4 px-8 text-sm font-semibold">
