@@ -178,7 +178,7 @@ export default function RegisterPage() {
           </div>
           <h1 className="text-2xl font-bold text-gray-900">SCMS ke liye Apply Karein</h1>
           <p className="text-gray-600 text-sm max-w-lg mx-auto">
-            DDU-GKY / PMKVY training center ke liye SCMS ka access paane ke liye yeh form bharein.
+            JSDMS, DDU-GKY & All State Skill Projects ke liye SCMS ka access paane ke liye yeh form bharein.
             Hamare team 24-48 ghante mein aapko contact karegi.
           </p>
         </div>
@@ -283,7 +283,7 @@ export default function RegisterPage() {
                     <FormItem>
                       <FormLabel>Project (optional)</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="DDU-GKY / PMKVY / etc." />
+                        <Input {...field} placeholder="JSDMS / DDU-GKY / State Skill Project / etc." />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
