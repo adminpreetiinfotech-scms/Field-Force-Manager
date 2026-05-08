@@ -52,7 +52,7 @@ const PLANS = [
     id: "standard" as const,
     label: "Standard",
     price: "₹4,999/month",
-    features: ["Up to 30 staff", "All Basic features", "SMS notifications", "Live location tracking", "Priority support"],
+    features: ["Up to 40 staff", "All Basic features", "SMS notifications", "Live location tracking", "Priority support"],
     color: "border-violet-200 bg-violet-50",
     badge: "text-violet-700 bg-violet-100",
     popular: true,
