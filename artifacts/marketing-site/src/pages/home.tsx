@@ -21,7 +21,13 @@ import {
   ScanFace,
   BookOpen,
   BadgeCheck,
-  ChevronRight
+  ChevronRight,
+  Navigation,
+  Timer,
+  Route,
+  Satellite,
+  Radio,
+  Gauge
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useRef } from "react";
@@ -706,6 +712,236 @@ function DeepDive2() {
   );
 }
 
+function TrackingSection() {
+  const features = [
+    {
+      icon: <Navigation className="w-6 h-6" />,
+      title: "GPS Check-in / Check-out",
+      desc: "Staff jab field mein check-in karta hai, uski exact GPS coordinates save hoti hain — latitude, longitude, timestamp ke saath. Check-out par bhi same.",
+      color: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+    },
+    {
+      icon: <Timer className="w-6 h-6" />,
+      title: "Live Shift Timer",
+      desc: "Check-in hote hi live timer shuru ho jaata hai. Admin panel par dikhhta hai kaun kitne ghante field mein hai — real time mein.",
+      color: "bg-blue-500/20 text-blue-300 border-blue-500/30",
+    },
+    {
+      icon: <Gauge className="w-6 h-6" />,
+      title: "KM Tracking",
+      desc: "Staff ne din mein kitna safar kiya — kilometers mein track hota hai. Petrol reimbursement ke liye accurate data, koi estimate nahi.",
+      color: "bg-violet-500/20 text-violet-300 border-violet-500/30",
+    },
+    {
+      icon: <Map className="w-6 h-6" />,
+      title: "Live Staff Map (Admin)",
+      desc: "Admin panel mein ek live interactive map — har staff member ki current location ek hi screen par. Kaun kahan hai, kab se hai — sab ek nazar mein.",
+      color: "bg-amber-500/20 text-amber-300 border-amber-500/30",
+    },
+    {
+      icon: <Route className="w-6 h-6" />,
+      title: "Location History",
+      desc: "Har staff member ka poora din ka location trail — kab kahan gaya, kitni der ruka. Audit ke waqt ya dispute mein solid digital proof.",
+      color: "bg-pink-500/20 text-pink-300 border-pink-500/30",
+    },
+    {
+      icon: <Radio className="w-6 h-6" />,
+      title: "Offline Sync",
+      desc: "Internet nahi hai toh bhi tracking band nahi hoti. Data locally save hota hai aur jab network milta hai, automatically sync ho jaata hai.",
+      color: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30",
+    },
+  ];
+
+  return (
+    <section id="tracking" className="py-32 bg-[#111827] relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-[60vw] h-[60vw] bg-emerald-600/8 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="absolute bottom-0 left-0 w-[40vw] h-[40vw] bg-blue-600/8 rounded-full blur-[100px] pointer-events-none"></div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+
+        {/* Header */}
+        <div className="text-center max-w-4xl mx-auto mb-20">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 mb-8 uppercase tracking-widest"
+          >
+            <Satellite className="w-4 h-4" /> Real-Time Field Tracking
+          </motion.div>
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="text-4xl md:text-6xl font-black text-white mb-6 leading-tight tracking-tight"
+          >
+            Har staff member —{" "}
+            <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+              live map par.
+            </span>
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 }}
+            className="text-xl md:text-2xl text-gray-400 leading-relaxed"
+          >
+            "Kahan ho?" ka zamaana gaya. Admin ek screen par dekh sakta hai kaun kahan hai,
+            kab se field mein hai, aur kitna safar kiya.
+          </motion.p>
+        </div>
+
+        {/* Main layout: map mockup + features */}
+        <div className="grid lg:grid-cols-2 gap-16 items-start mb-16">
+
+          {/* Left: animated map card */}
+          <motion.div
+            initial={{ opacity: 0, x: -40 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7 }}
+            className="relative"
+          >
+            <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/20 to-cyan-500/20 rounded-[2.5rem] blur-2xl opacity-60"></div>
+            <div className="relative rounded-[2rem] overflow-hidden border border-emerald-500/20 bg-[#0d1f1a]/80 backdrop-blur-xl shadow-2xl">
+              {/* Map header bar */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></div>
+                  <span className="text-emerald-300 text-sm font-bold">Live Staff Map</span>
+                </div>
+                <span className="text-gray-500 text-xs font-medium">12 staff online</span>
+              </div>
+              {/* Fake map grid */}
+              <div className="relative h-72 bg-[#0a1a14] overflow-hidden">
+                {/* Grid lines */}
+                <div className="absolute inset-0 opacity-20"
+                  style={{ backgroundImage: "linear-gradient(#1a3a2a 1px, transparent 1px), linear-gradient(90deg, #1a3a2a 1px, transparent 1px)", backgroundSize: "40px 40px" }}
+                ></div>
+                {/* Road lines */}
+                <div className="absolute top-1/2 left-0 right-0 h-px bg-emerald-900/60"></div>
+                <div className="absolute top-0 bottom-0 left-1/3 w-px bg-emerald-900/60"></div>
+                <div className="absolute top-0 bottom-0 left-2/3 w-px bg-emerald-900/40"></div>
+                <div className="absolute top-1/3 left-0 right-0 h-px bg-emerald-900/40"></div>
+
+                {/* Staff pins */}
+                {[
+                  { top: "20%", left: "18%", name: "Raju S.", km: "4.2 km", active: true },
+                  { top: "55%", left: "42%", name: "Priya M.", km: "2.8 km", active: true },
+                  { top: "30%", left: "68%", name: "Amit K.", km: "6.1 km", active: true },
+                  { top: "70%", left: "75%", name: "Sunita D.", km: "1.5 km", active: false },
+                  { top: "65%", left: "25%", name: "Vijay R.", km: "3.9 km", active: true },
+                ].map((pin, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ scale: 0 }}
+                    whileInView={{ scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.15, type: "spring" }}
+                    className="absolute"
+                    style={{ top: pin.top, left: pin.left }}
+                  >
+                    <div className="relative group cursor-pointer">
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white shadow-lg border-2 ${pin.active ? "bg-emerald-500 border-emerald-300" : "bg-gray-500 border-gray-400"}`}>
+                        <MapPin className="w-4 h-4" />
+                      </div>
+                      {pin.active && <div className="absolute inset-0 rounded-full bg-emerald-400/30 animate-ping"></div>}
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900/95 border border-white/20 rounded-xl px-3 py-2 text-xs whitespace-nowrap shadow-xl pointer-events-none">
+                        <div className="font-bold text-white">{pin.name}</div>
+                        <div className="text-emerald-300">{pin.km} today</div>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+              {/* Bottom staff list */}
+              <div className="px-5 py-4 flex gap-3 overflow-x-auto">
+                {["Raju S. • 4.2km", "Priya M. • 2.8km", "Amit K. • 6.1km"].map((s, i) => (
+                  <div key={i} className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2 flex-shrink-0">
+                    <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
+                    <span className="text-xs text-gray-300 font-medium">{s}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Floating check-in card */}
+            <motion.div
+              animate={{ y: [0, -8, 0] }}
+              transition={{ duration: 3.5, repeat: Infinity }}
+              className="absolute -bottom-6 -right-6 bg-gray-900/95 border border-emerald-500/30 rounded-2xl p-4 shadow-2xl hidden md:block"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-300">
+                  <Navigation className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-white text-sm font-bold">Check-in Recorded</div>
+                  <div className="text-emerald-400 text-xs font-medium">28.6139° N, 77.2090° E</div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+
+          {/* Right: feature list */}
+          <div className="grid sm:grid-cols-2 gap-4">
+            {features.map((f, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className={`rounded-2xl border p-5 ${f.color} bg-opacity-10`}
+              >
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 border ${f.color}`}>
+                  {f.icon}
+                </div>
+                <h4 className="font-bold text-white text-base mb-2 leading-tight">{f.title}</h4>
+                <p className="text-gray-400 text-sm leading-relaxed">{f.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+
+        {/* Stats bar */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="relative rounded-[2rem] overflow-hidden border border-emerald-500/20 bg-gradient-to-br from-emerald-950/60 to-cyan-950/60 backdrop-blur-xl p-8 md:p-12"
+        >
+          <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-[80px] pointer-events-none"></div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 relative z-10">
+            {[
+              { number: "GPS", label: "accurate check-in location", sub: "Latitude + Longitude saved" },
+              { number: "Live", label: "staff map — admin panel mein", sub: "Leaflet.js interactive map" },
+              { number: "KM", label: "daily travel tracked", sub: "Reimbursement ke liye ready" },
+              { number: "Offline", label: "sync jab network mile", sub: "Field mein internet nahi toh bhi kaam" },
+            ].map((s, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.12 }}
+                className="text-center"
+              >
+                <div className="text-3xl md:text-4xl font-black bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent mb-2">{s.number}</div>
+                <div className="text-white font-bold text-sm mb-1">{s.label}</div>
+                <div className="text-gray-500 text-xs font-medium">{s.sub}</div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+      </div>
+    </section>
+  );
+}
+
 function Testimonials() {
   const testimonials = [
     {
@@ -960,6 +1196,7 @@ export default function Home() {
       <Features />
       <DeepDive1 />
       <DeepDive2 />
+      <TrackingSection />
       <Testimonials />
       <Pricing />
       <CTA />
