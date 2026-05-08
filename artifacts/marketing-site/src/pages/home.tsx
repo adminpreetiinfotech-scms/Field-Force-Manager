@@ -69,7 +69,10 @@ function Navbar() {
               <img src="/marketing-site/logo.png" alt="Preeti Infotech Logo" className="h-8 w-auto" />
             </div>
             <div className="leading-tight hidden sm:block">
-              <div className="text-xl font-extrabold text-primary tracking-wide">SCMS</div>
+              <div className="flex items-baseline gap-2">
+                <div className="text-xl font-extrabold text-primary tracking-wide">SCMS</div>
+                <div className="text-xs text-gray-500 font-medium">(Skill Center Management System)</div>
+              </div>
               <div className="text-xs text-accent font-bold tracking-widest uppercase">By Preeti Infotech</div>
             </div>
           </div>
