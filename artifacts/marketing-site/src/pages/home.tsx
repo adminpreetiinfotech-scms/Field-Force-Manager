@@ -64,7 +64,23 @@ function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-xl border-b border-gray-200 shadow-sm">
+    <>
+      {/* Scrolling offer ticker */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-orange-500 text-white py-2 overflow-hidden">
+        <div className="flex whitespace-nowrap animate-ticker">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <span key={i} className="inline-flex items-center gap-4 px-8 text-sm font-semibold">
+              <span>🎉 Pehla 1 Mahina BILKUL FREE — Koi Credit Card Nahi</span>
+              <span className="opacity-50">•</span>
+              <span>✅ 1 Month Free Trial — No Advance Payment</span>
+              <span className="opacity-50">•</span>
+              <span>🚀 Abhi Register Karein aur 30 Din Free Istemal Karein</span>
+              <span className="opacity-50">•</span>
+            </span>
+          ))}
+        </div>
+      </div>
+    <nav className="fixed top-9 left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-b border-gray-200 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-18">
           <div className="flex items-center gap-3">
@@ -120,6 +136,7 @@ function Navbar() {
         </motion.div>
       )}
     </nav>
+    </>
   );
 }
 
@@ -132,7 +149,7 @@ function Hero() {
   const opacity = useTransform(scrollYProgress, [0, 1], [1, 0]);
 
   return (
-    <section ref={ref} className="pt-28 pb-16 md:pt-40 md:pb-24 overflow-hidden relative min-h-[90dvh] flex items-center bg-gradient-to-br from-blue-50 via-white to-orange-50">
+    <section ref={ref} className="pt-36 pb-16 md:pt-48 md:pb-24 overflow-hidden relative min-h-[90dvh] flex items-center bg-gradient-to-br from-blue-50 via-white to-orange-50">
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-5%] left-[-5%] w-[45vw] h-[45vw] bg-primary/8 rounded-full blur-[100px]" />
         <div className="absolute bottom-[-5%] right-[-5%] w-[50vw] h-[50vw] bg-accent/8 rounded-full blur-[100px]" />
