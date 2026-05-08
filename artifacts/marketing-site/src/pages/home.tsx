@@ -16,7 +16,12 @@ import {
   X,
   Star,
   Quote,
-  Activity
+  Activity,
+  ClipboardList,
+  ScanFace,
+  BookOpen,
+  BadgeCheck,
+  ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useRef } from "react";
@@ -224,6 +229,146 @@ function Stats() {
             </motion.div>
           ))}
         </div>
+      </div>
+    </section>
+  );
+}
+
+function CandidateSection() {
+  const steps = [
+    {
+      icon: <ClipboardList className="w-7 h-7" />,
+      step: "01",
+      title: "Field mein registration",
+      desc: "Mobilizer candidate ke ghar jaata hai, mobile app par naam, address, DOB, caste, aadhar number — sab directly form mein bharta hai. Paper ki zaroorat nahi.",
+      color: "from-violet-500 to-purple-700",
+      glow: "shadow-violet-500/30"
+    },
+    {
+      icon: <ScanFace className="w-7 h-7" />,
+      step: "02",
+      title: "Live photo & document capture",
+      desc: "Candidate ki live selfie, Aadhar card, aur certificates — sab phone camera se turant capture. Gallery se upload nahi hoga, fraud ka scope zero.",
+      color: "from-blue-500 to-indigo-600",
+      glow: "shadow-blue-500/30"
+    },
+    {
+      icon: <BookOpen className="w-7 h-7" />,
+      step: "03",
+      title: "Batch & course allotment",
+      desc: "Admin panel se candidate ko batch assign karo, course select karo. Attendance automatically us candidate ke naam se track hone lagti hai.",
+      color: "from-emerald-400 to-teal-600",
+      glow: "shadow-emerald-400/30"
+    },
+    {
+      icon: <BadgeCheck className="w-7 h-7" />,
+      step: "04",
+      title: "Approval & audit trail",
+      desc: "Har registration ka digital audit trail — kisne bhara, kab bhara, kahan se bhara. PMKVY/DDU-GKY audit ke liye perfect documented record.",
+      color: "from-orange-400 to-amber-600",
+      glow: "shadow-orange-400/30"
+    }
+  ];
+
+  return (
+    <section id="candidate-registration" className="py-32 bg-black relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-b from-violet-950/30 via-transparent to-transparent pointer-events-none"></div>
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[70vw] h-[30vw] bg-violet-600/10 rounded-full blur-[100px] pointer-events-none"></div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        {/* Header */}
+        <div className="text-center max-w-4xl mx-auto mb-20">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-bold bg-violet-500/20 text-violet-300 border border-violet-500/30 mb-8 uppercase tracking-widest"
+          >
+            <Users className="w-4 h-4" /> Hamara Mukhya Feature
+          </motion.div>
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="text-4xl md:text-6xl font-black text-white mb-6 leading-tight tracking-tight"
+          >
+            Candidate Registration —{" "}
+            <span className="bg-gradient-to-r from-violet-400 to-pink-400 bg-clip-text text-transparent">
+              field se directly digital.
+            </span>
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 }}
+            className="text-xl md:text-2xl text-gray-400 leading-relaxed"
+          >
+            Koi printout nahi. Koi re-entry nahi. Mobilizer seedha field se candidate register karta hai — 
+            real time mein admin panel par dikh jaata hai.
+          </motion.p>
+        </div>
+
+        {/* Steps */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-20">
+          {steps.map((step, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.5, delay: i * 0.12 }}
+              className="relative group"
+            >
+              {i < steps.length - 1 && (
+                <div className="hidden lg:flex absolute top-10 -right-3 z-20 text-gray-600">
+                  <ChevronRight className="w-6 h-6" />
+                </div>
+              )}
+              <div className={`glass-card rounded-3xl p-8 h-full border border-white/10 hover:border-white/20 transition-all duration-300 hover:shadow-2xl ${step.glow}`}>
+                <div className="flex items-start gap-4 mb-6">
+                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center bg-gradient-to-br ${step.color} text-white shadow-lg flex-shrink-0`}>
+                    {step.icon}
+                  </div>
+                  <span className="text-5xl font-black text-white/10 leading-none mt-1">{step.step}</span>
+                </div>
+                <h3 className="text-xl font-bold text-white mb-3 leading-tight">{step.title}</h3>
+                <p className="text-gray-400 leading-relaxed text-sm font-medium">{step.desc}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Big highlight callout */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="relative rounded-[2.5rem] overflow-hidden border border-violet-500/30 bg-gradient-to-br from-violet-950/80 to-indigo-950/80 backdrop-blur-xl p-10 md:p-16"
+        >
+          <div className="absolute top-0 right-0 w-96 h-96 bg-violet-500/10 rounded-full blur-[80px] pointer-events-none"></div>
+          <div className="grid md:grid-cols-3 gap-10 relative z-10">
+            {[
+              { number: "5 min", label: "ek candidate register karne mein", sub: "Pehle 2 din lagte the" },
+              { number: "Zero", label: "duplicate registrations", sub: "Aadhaar-based deduplication" },
+              { number: "100%", label: "paperless process", sub: "Audit-ready digital records" }
+            ].map((stat, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.15 }}
+                className="text-center md:text-left"
+              >
+                <div className="text-5xl md:text-6xl font-black bg-gradient-to-r from-violet-400 to-pink-400 bg-clip-text text-transparent mb-2">{stat.number}</div>
+                <div className="text-white font-bold text-lg mb-1">{stat.label}</div>
+                <div className="text-gray-500 text-sm font-medium">{stat.sub}</div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
       </div>
     </section>
   );
@@ -733,6 +878,7 @@ export default function Home() {
       <Navbar />
       <Hero />
       <Stats />
+      <CandidateSection />
       <Features />
       <DeepDive1 />
       <DeepDive2 />
