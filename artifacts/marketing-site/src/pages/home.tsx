@@ -30,7 +30,16 @@ import {
   Gauge,
   FileText,
   Download,
-  BookMarked
+  BookMarked,
+  QrCode,
+  CreditCard,
+  ShieldCheck,
+  Camera,
+  Printer,
+  ScanLine,
+  LogIn,
+  LogOut,
+  UserCog,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useRef } from "react";
@@ -512,6 +521,12 @@ const features = [
     title: "Multi-Center",
     description: "Ek dashboard, sab centers. Manage your entire state operation centrally.",
     color: "from-indigo-500 to-purple-600"
+  },
+  {
+    icon: <QrCode className="w-8 h-8" />,
+    title: "QR Card Attendance",
+    description: "Phone nahi? No problem. Ground staff ke liye printed QR ID card se attendance — supervisor scan karta hai.",
+    color: "from-purple-500 to-violet-700"
   }
 ];
 
@@ -968,6 +983,224 @@ const testimonials = [
   }
 ];
 
+// ─── QR Card Attendance Section ───────────────────────────────────────────────
+
+function QrCardAttendanceSection() {
+  const steps = [
+    {
+      icon: <Printer className="w-7 h-7" />,
+      step: "01",
+      title: "ID Card ek baar print karo",
+      desc: "Admin panel se ground staff ka QR ID card (Aadhaar card size) PDF mein download karo. Laminate karo — ek baar ka kaam, zindagi bhar kaam aayega.",
+      color: "from-purple-500 to-violet-700",
+      border: "border-purple-200",
+      badge: "bg-purple-50 text-purple-700"
+    },
+    {
+      icon: <Camera className="w-7 h-7" />,
+      step: "02",
+      title: "Supervisor selfie leta hai",
+      desc: "Fraud rokne ke liye — check-in / check-out scan karne se pehle supervisor/trainer apni live selfie kheenchta hai. Gallery se photo allowed nahi.",
+      color: "from-blue-500 to-indigo-600",
+      border: "border-blue-200",
+      badge: "bg-blue-50 text-blue-700"
+    },
+    {
+      icon: <ScanLine className="w-7 h-7" />,
+      step: "03",
+      title: "QR card ko scan karo",
+      desc: "Selfie ke baad supervisor ground staff ka QR card scan karta hai — GPS automatically capture hota hai. Poora kaam 10 second mein.",
+      color: "from-emerald-500 to-teal-600",
+      border: "border-emerald-200",
+      badge: "bg-emerald-50 text-emerald-700"
+    },
+    {
+      icon: <ShieldCheck className="w-7 h-7" />,
+      step: "04",
+      title: "Attendance secure record hoti hai",
+      desc: "HMAC-signed QR token — card copy ya tamper nahi hो sakta. Duplicate check-in blocked, geo-fence enforced, aur admin panel par instantly visible.",
+      color: "from-orange-500 to-amber-600",
+      border: "border-orange-200",
+      badge: "bg-orange-50 text-orange-700"
+    }
+  ];
+
+  const highlights = [
+    { icon: <LogIn className="w-5 h-5" />, label: "Check-In Scan", color: "bg-green-50 text-green-700 border-green-200" },
+    { icon: <LogOut className="w-5 h-5" />, label: "Check-Out Scan", color: "bg-red-50 text-red-700 border-red-200" },
+    { icon: <MapPin className="w-5 h-5" />, label: "GPS Capture", color: "bg-blue-50 text-blue-700 border-blue-200" },
+    { icon: <Camera className="w-5 h-5" />, label: "Selfie Proof", color: "bg-violet-50 text-violet-700 border-violet-200" },
+    { icon: <ShieldCheck className="w-5 h-5" />, label: "Anti-Tamper QR", color: "bg-amber-50 text-amber-700 border-amber-200" },
+    { icon: <UserCog className="w-5 h-5" />, label: "Admin Dashboard", color: "bg-cyan-50 text-cyan-700 border-cyan-200" },
+  ];
+
+  return (
+    <section id="qr-attendance" className="py-24 bg-white relative overflow-hidden">
+      <div className="absolute top-0 left-0 w-96 h-96 bg-purple-50 rounded-full blur-[80px] pointer-events-none opacity-60"></div>
+      <div className="absolute bottom-0 right-0 w-80 h-80 bg-violet-50 rounded-full blur-[80px] pointer-events-none opacity-60"></div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+
+        {/* Header */}
+        <div className="text-center max-w-3xl mx-auto mb-16">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-bold bg-purple-100 text-purple-700 border border-purple-200 mb-6 uppercase tracking-widest"
+          >
+            <QrCode className="w-3.5 h-3.5" /> Naya Feature
+          </motion.div>
+          <motion.h2
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="text-3xl md:text-5xl font-black text-gray-900 mb-4 leading-tight"
+          >
+            Phone nahi? <span className="bg-gradient-to-r from-purple-600 to-violet-700 bg-clip-text text-transparent">QR Card se attendance.</span>
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.15 }}
+            className="text-lg text-gray-600 leading-relaxed"
+          >
+            Center ke andar kaam karne wale ground staff — housekeeping, security, peon — jinke paas smartphone nahi hota,
+            unke liye printed QR ID card se attendance system. Ek baar print karo, roz kaam aao.
+          </motion.p>
+        </div>
+
+        {/* Steps */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5 mb-14">
+          {steps.map((step, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.5, delay: i * 0.1 }}
+              className="relative group"
+            >
+              {i < steps.length - 1 && (
+                <div className="hidden lg:flex absolute top-8 -right-3 z-20 text-gray-300">
+                  <ChevronRight className="w-5 h-5" />
+                </div>
+              )}
+              <div className={`bg-white rounded-2xl p-6 h-full border ${step.border} shadow-sm hover:shadow-md transition-all duration-300`}>
+                <div className="flex items-start justify-between mb-5">
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br ${step.color} text-white shadow-sm`}>
+                    {step.icon}
+                  </div>
+                  <span className={`text-xs font-black px-2 py-1 rounded-lg ${step.badge}`}>{step.step}</span>
+                </div>
+                <h3 className="text-base font-bold text-gray-900 mb-2 leading-tight">{step.title}</h3>
+                <p className="text-gray-500 leading-relaxed text-sm">{step.desc}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Feature highlights row */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mb-12"
+        >
+          <p className="text-center text-xs font-bold uppercase tracking-widest text-gray-400 mb-5">Is feature mein kya kya hai</p>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {highlights.map((h, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.06 }}
+                className={`rounded-xl border px-3 py-3 flex flex-col items-center gap-2 text-center ${h.color}`}
+              >
+                {h.icon}
+                <div className="text-xs font-bold leading-tight">{h.label}</div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Two-column detail cards */}
+        <div className="grid md:grid-cols-2 gap-6 mb-12">
+          {/* ID Card PDF */}
+          <motion.div
+            initial={{ opacity: 0, x: -24 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            className="bg-purple-50 border border-purple-200 rounded-2xl p-7"
+          >
+            <div className="w-11 h-11 rounded-xl bg-purple-100 border border-purple-200 flex items-center justify-center text-purple-700 mb-4">
+              <CreditCard className="w-5 h-5" />
+            </div>
+            <h3 className="text-lg font-black text-gray-900 mb-2">Printable QR ID Card — CR80 Size</h3>
+            <p className="text-gray-600 text-sm leading-relaxed mb-4">
+              Admin panel se PDF download karo — A4 page par 4 cards (Aadhaar / ATM card size — 85.6×54mm). Naam, Emp Code,
+              role, center aur QR code har card par. Laminate karo aur staff ko do — ek baar ka kaam.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {["A4 mein 4 cards", "ATM card size", "Naam + QR code", "Laminate karke use karo"].map((tag) => (
+                <span key={tag} className="text-xs font-semibold bg-purple-100 text-purple-700 border border-purple-200 rounded-full px-3 py-1">{tag}</span>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Security */}
+          <motion.div
+            initial={{ opacity: 0, x: 24 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            className="bg-violet-50 border border-violet-200 rounded-2xl p-7"
+          >
+            <div className="w-11 h-11 rounded-xl bg-violet-100 border border-violet-200 flex items-center justify-center text-violet-700 mb-4">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <h3 className="text-lg font-black text-gray-900 mb-2">Fraud-Proof Security</h3>
+            <p className="text-gray-600 text-sm leading-relaxed mb-4">
+              Har QR code HMAC-signed hota hai — koi copy ya tamper nahi kar sakta. Scanner selfie compulsory hai.
+              Same staff ka ek din mein duplicate check-in/out blocked. GPS geofence enforce hota hai.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {["HMAC-signed QR", "Scanner selfie", "Duplicate blocked", "GPS geofence"].map((tag) => (
+                <span key={tag} className="text-xs font-semibold bg-violet-100 text-violet-700 border border-violet-200 rounded-full px-3 py-1">{tag}</span>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Stats callout */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="bg-gradient-to-br from-purple-700 to-violet-800 rounded-2xl p-8 md:p-12"
+        >
+          <div className="grid md:grid-cols-3 gap-8 text-center md:text-left">
+            {[
+              { number: "0 min", label: "daily setup time", sub: "Card ek baar print, roz kaam" },
+              { number: "10 sec", label: "per scan — checkin ya checkout", sub: "Selfie → QR scan → done" },
+              { number: "100%", label: "fraud-proof attendance", sub: "Signed QR + selfie + GPS" }
+            ].map((stat, i) => (
+              <motion.div key={i} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.12 }}>
+                <div className="text-4xl md:text-5xl font-black text-white mb-1">{stat.number}</div>
+                <div className="text-purple-200 font-semibold text-base mb-0.5">{stat.label}</div>
+                <div className="text-purple-300 text-sm">{stat.sub}</div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+      </div>
+    </section>
+  );
+}
+
 function Testimonials() {
   return (
     <section className="py-24 bg-gray-50 relative">
@@ -1409,6 +1642,7 @@ export default function Home() {
       <DeepDive1 />
       <DeepDive2 />
       <TrackingSection />
+      <QrCardAttendanceSection />
       <Testimonials />
       <UserGuides />
       <Pricing />
