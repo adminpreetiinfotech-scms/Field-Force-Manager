@@ -280,7 +280,7 @@ function CandidateSection() {
   ];
 
   return (
-    <section id="candidate-registration" className="py-32 bg-black relative overflow-hidden">
+    <section id="candidate-registration" className="py-32 bg-[#111827] relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-violet-950/30 via-transparent to-transparent pointer-events-none"></div>
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[70vw] h-[30vw] bg-violet-600/10 rounded-full blur-[100px] pointer-events-none"></div>
 
@@ -555,7 +555,7 @@ function Features() {
 
 function DeepDive1() {
   return (
-    <section className="py-32 bg-black relative overflow-hidden" id="how-it-works">
+    <section className="py-32 bg-[#111827] relative overflow-hidden" id="how-it-works">
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] bg-primary/10 rounded-full blur-[100px] pointer-events-none"></div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid lg:grid-cols-2 gap-20 items-center">
@@ -729,7 +729,7 @@ function Testimonials() {
   ];
 
   return (
-    <section className="py-32 bg-black relative">
+    <section className="py-32 bg-[#111827] relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-20">
           <h2 className="text-4xl md:text-5xl font-black text-white mb-4">Trusted by <span className="text-primary text-glow-primary">Directors</span></h2>
@@ -928,7 +928,7 @@ function CTA() {
 
 function Footer() {
   return (
-    <footer className="bg-black py-16 border-t border-white/10 text-center relative z-20">
+    <footer className="bg-[#0f172a] py-16 border-t border-white/10 text-center relative z-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col items-center justify-center gap-6 mb-8">
           <div className="bg-white/10 p-4 rounded-2xl">

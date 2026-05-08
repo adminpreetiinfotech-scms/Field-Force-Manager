@@ -55,20 +55,20 @@
 
 :root {
   /* Deep Blue/Indigo Dark Theme by Default */
-  --background: 230 40% 5%;
+  --background: 228 35% 13%;
   --foreground: 210 40% 98%;
   
-  --border: 230 25% 15%;
-  --input: 230 25% 15%;
+  --border: 228 25% 22%;
+  --input: 228 25% 22%;
   --ring: 243 75% 59%; /* Electric Indigo */
   
-  --card: 230 35% 8%;
+  --card: 228 32% 17%;
   --card-foreground: 210 40% 98%;
-  --card-border: 230 25% 18%;
+  --card-border: 228 25% 24%;
   
-  --popover: 230 35% 8%;
+  --popover: 228 32% 17%;
   --popover-foreground: 210 40% 98%;
-  --popover-border: 230 25% 18%;
+  --popover-border: 228 25% 24%;
   
   --primary: 243 75% 59%; /* Electric Indigo */
   --primary-foreground: 0 0% 100%;
