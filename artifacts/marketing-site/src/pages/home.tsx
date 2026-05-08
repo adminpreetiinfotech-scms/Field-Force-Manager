@@ -27,7 +27,10 @@ import {
   Route,
   Satellite,
   Radio,
-  Gauge
+  Gauge,
+  FileText,
+  Download,
+  BookMarked
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useRef } from "react";
@@ -1196,6 +1199,154 @@ function Footer() {
   );
 }
 
+// ─── User Guides ──────────────────────────────────────────────────────────────
+
+function UserGuides() {
+  const guides = [
+    {
+      icon: <BookMarked className="w-7 h-7" />,
+      title: "Company Registration Guide",
+      desc: "Naya company account kaise banayein, subscription kaise activate karein, aur pehla admin kaise setup karein — step-by-step guide.",
+      badge: "For Owners",
+      badgeColor: "bg-violet-100 text-violet-700 border-violet-200",
+      cardBorder: "border-violet-200",
+      iconBg: "bg-violet-100 text-violet-700",
+      msgText: "Hi, I need the Company Registration User Guide for SCMS."
+    },
+    {
+      icon: <FileSpreadsheet className="w-7 h-7" />,
+      title: "Admin User Guide",
+      desc: "Staff management, attendance reports download, leave approval, notices broadcast, live map — admin panel ka poora walkthrough.",
+      badge: "For Admins",
+      badgeColor: "bg-blue-100 text-blue-700 border-blue-200",
+      cardBorder: "border-blue-200",
+      iconBg: "bg-blue-100 text-blue-700",
+      msgText: "Hi, I need the Admin Panel User Guide for SCMS."
+    },
+    {
+      icon: <Building2 className="w-7 h-7" />,
+      title: "Center Staff User Guide",
+      desc: "MPIN login, check-in/check-out, leave apply, notice dekhna — center ke andar kaam karne wale staff ke liye complete guide.",
+      badge: "For Center Staff",
+      badgeColor: "bg-emerald-100 text-emerald-700 border-emerald-200",
+      cardBorder: "border-emerald-200",
+      iconBg: "bg-emerald-100 text-emerald-700",
+      msgText: "Hi, I need the Center Staff User Guide for SCMS."
+    },
+    {
+      icon: <MapPin className="w-7 h-7" />,
+      title: "Field Staff User Guide",
+      desc: "GPS check-in, selfie verification, candidate registration, document capture, KM tracking — mobilizers ke liye field app guide.",
+      badge: "For Field Staff",
+      badgeColor: "bg-orange-100 text-orange-700 border-orange-200",
+      cardBorder: "border-orange-200",
+      iconBg: "bg-orange-100 text-orange-700",
+      msgText: "Hi, I need the Field Staff User Guide for SCMS."
+    }
+  ];
+
+  return (
+    <section id="user-guides" className="py-24 bg-gray-50 relative">
+      <div className="absolute top-0 left-0 w-72 h-72 bg-primary/5 rounded-full blur-[80px] pointer-events-none"></div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+
+        {/* Header */}
+        <div className="text-center max-w-3xl mx-auto mb-14">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-bold bg-primary/10 text-primary border border-primary/20 mb-5 uppercase tracking-widest"
+          >
+            <FileText className="w-3.5 h-3.5" /> User Guides
+          </motion.div>
+          <motion.h2
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="text-3xl md:text-5xl font-black text-gray-900 mb-4"
+          >
+            Sabke liye alag <span className="gradient-text-primary">guide hai.</span>
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.15 }}
+            className="text-lg text-gray-600"
+          >
+            Owner se lekar field mobilizer tak — har role ke liye dedicated PDF guide available hai.
+            WhatsApp pe request karo, hum bhej denge!
+          </motion.p>
+        </div>
+
+        {/* Guide cards */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
+          {guides.map((guide, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.1 }}
+              className={`bg-white rounded-2xl border ${guide.cardBorder} shadow-sm p-6 flex flex-col hover:shadow-md hover:-translate-y-1 transition-all duration-300`}
+            >
+              <div className="flex items-start justify-between mb-5">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${guide.iconBg}`}>
+                  {guide.icon}
+                </div>
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${guide.badgeColor}`}>
+                  {guide.badge}
+                </span>
+              </div>
+              <h3 className="text-base font-bold text-gray-900 mb-2 leading-tight">{guide.title}</h3>
+              <p className="text-gray-500 text-sm leading-relaxed mb-6 flex-1">{guide.desc}</p>
+              <a
+                href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(guide.msgText)}`}
+                target="_blank"
+                rel="noreferrer"
+                className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl border ${guide.cardBorder} font-bold text-sm transition-all hover:scale-[1.02] ${guide.iconBg}`}
+              >
+                <Download className="w-4 h-4" />
+                Guide Download Karo
+              </a>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Bottom note */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+              <FileText className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="font-bold text-gray-900 text-base">Aur help chahiye?</div>
+              <div className="text-gray-500 text-sm">Hamare team se seedha WhatsApp par baat karo — live support available hai.</div>
+            </div>
+          </div>
+          <a
+            href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Hi, I need help with SCMS platform.")}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex-shrink-0 flex items-center gap-2 bg-primary text-white font-bold px-6 py-3 rounded-xl hover:bg-primary/90 transition-all hover:scale-105 shadow-sm text-sm"
+          >
+            <PhoneCall className="w-4 h-4" />
+            WhatsApp Support
+          </a>
+        </motion.div>
+
+      </div>
+    </section>
+  );
+}
+
 // ─── Home ─────────────────────────────────────────────────────────────────────
 
 export default function Home() {
@@ -1210,6 +1361,7 @@ export default function Home() {
       <DeepDive2 />
       <TrackingSection />
       <Testimonials />
+      <UserGuides />
       <Pricing />
       <CTA />
       <Footer />
