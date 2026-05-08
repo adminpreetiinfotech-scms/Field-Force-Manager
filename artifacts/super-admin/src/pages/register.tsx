@@ -146,8 +146,24 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      {/* Scrolling offer ticker */}
+      <div className="bg-orange-500 text-white py-2 overflow-hidden sticky top-0 z-20">
+        <div className="flex whitespace-nowrap animate-ticker">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <span key={i} className="inline-flex items-center gap-4 px-8 text-sm font-semibold">
+              <span>🎉 Pehla 1 Mahina BILKUL FREE — Koi Credit Card Nahi</span>
+              <span className="opacity-50">•</span>
+              <span>✅ 1 Month Free Trial — No Advance Payment</span>
+              <span className="opacity-50">•</span>
+              <span>🚀 Abhi Register Karein aur 30 Din Free Istemal Karein</span>
+              <span className="opacity-50">•</span>
+            </span>
+          ))}
+        </div>
+      </div>
+
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+      <div className="bg-white border-b border-gray-200 sticky top-10 z-10">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
