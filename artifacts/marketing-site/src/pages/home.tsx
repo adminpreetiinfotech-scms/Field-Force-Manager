@@ -1246,8 +1246,12 @@ function UserGuides() {
   ];
 
   return (
-    <section id="user-guides" className="py-24 bg-gray-50 relative">
-      <div className="absolute top-0 left-0 w-72 h-72 bg-primary/5 rounded-full blur-[80px] pointer-events-none"></div>
+    <section id="user-guides" className="py-24 bg-primary relative overflow-hidden">
+      {/* Background decoration */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary via-blue-900 to-indigo-900"></div>
+      <motion.div animate={{ scale: [1,1.2,1], opacity:[0.15,0.3,0.15] }} transition={{ duration:8, repeat:Infinity }} className="absolute top-0 right-0 w-[40vw] h-[40vw] bg-accent/20 rounded-full blur-[100px] pointer-events-none" />
+      <motion.div animate={{ scale: [1,1.3,1], opacity:[0.1,0.2,0.1] }} transition={{ duration:10, repeat:Infinity, delay:2 }} className="absolute bottom-0 left-0 w-[35vw] h-[35vw] bg-secondary/20 rounded-full blur-[100px] pointer-events-none" />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
 
         {/* Header */}
@@ -1256,28 +1260,28 @@ function UserGuides() {
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-bold bg-primary/10 text-primary border border-primary/20 mb-5 uppercase tracking-widest"
+            className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-bold bg-white/10 text-white border border-white/20 mb-5 uppercase tracking-widest backdrop-blur-sm"
           >
-            <FileText className="w-3.5 h-3.5" /> User Guides
+            <FileText className="w-3.5 h-3.5" /> Free User Guides — PDF
           </motion.div>
           <motion.h2
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.1 }}
-            className="text-3xl md:text-5xl font-black text-gray-900 mb-4"
+            className="text-3xl md:text-5xl font-black text-white mb-4"
           >
-            Sabke liye alag <span className="gradient-text-primary">guide hai.</span>
+            Har role ke liye <span className="text-accent">alag guide.</span>
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.15 }}
-            className="text-lg text-gray-600"
+            className="text-lg text-blue-200"
           >
-            Owner se lekar field mobilizer tak — har role ke liye dedicated PDF guide available hai.
-            WhatsApp pe request karo, hum bhej denge!
+            Owner se lekar field mobilizer tak — sabke liye dedicated PDF guide bilkul free mein.
+            Ek click mein download karo.
           </motion.p>
         </div>
 
@@ -1286,57 +1290,71 @@ function UserGuides() {
           {guides.map((guide, i) => (
             <motion.div
               key={i}
-              initial={{ opacity: 0, y: 24 }}
+              initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className={`bg-white rounded-2xl border ${guide.cardBorder} shadow-sm p-6 flex flex-col hover:shadow-md hover:-translate-y-1 transition-all duration-300`}
+              className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6 flex flex-col hover:bg-white/15 hover:-translate-y-1 transition-all duration-300 group"
             >
+              {/* Top row */}
               <div className="flex items-start justify-between mb-5">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${guide.iconBg}`}>
+                <div className={`w-13 h-13 w-12 h-12 rounded-xl flex items-center justify-center ${guide.iconBg} shadow-lg`}>
                   {guide.icon}
                 </div>
                 <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${guide.badgeColor}`}>
                   {guide.badge}
                 </span>
               </div>
-              <h3 className="text-base font-bold text-gray-900 mb-2 leading-tight">{guide.title}</h3>
-              <p className="text-gray-500 text-sm leading-relaxed mb-6 flex-1">{guide.desc}</p>
+
+              {/* PDF visual */}
+              <div className="bg-white/5 border border-white/10 rounded-xl p-3 mb-4 flex items-center gap-3">
+                <div className="w-9 h-11 bg-red-500/80 rounded-md flex items-center justify-center flex-shrink-0 shadow">
+                  <FileText className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <div className="text-white text-xs font-bold leading-tight">{guide.title.split(' ').slice(0,2).join(' ')}</div>
+                  <div className="text-blue-300 text-xs">PDF • Free Download</div>
+                </div>
+              </div>
+
+              <h3 className="text-base font-bold text-white mb-2 leading-tight">{guide.title}</h3>
+              <p className="text-blue-200 text-sm leading-relaxed mb-6 flex-1">{guide.desc}</p>
+
               <a
                 href={guide.pdfUrl}
                 download
                 target="_blank"
                 rel="noreferrer"
-                className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl border ${guide.cardBorder} font-bold text-sm transition-all hover:scale-[1.02] ${guide.iconBg}`}
+                className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-white text-primary font-black text-sm transition-all hover:scale-[1.03] shadow-lg group-hover:bg-accent group-hover:text-white"
               >
                 <Download className="w-4 h-4" />
-                PDF Download Karo
+                Download PDF
               </a>
             </motion.div>
           ))}
         </div>
 
-        {/* Bottom note */}
+        {/* Bottom support bar */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm"
+          className="bg-white/10 border border-white/20 backdrop-blur-sm rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4"
         >
           <div className="flex items-center gap-4">
-            <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
-              <FileText className="w-5 h-5" />
+            <div className="w-12 h-12 rounded-xl bg-accent/20 border border-accent/30 flex items-center justify-center text-accent flex-shrink-0">
+              <PhoneCall className="w-5 h-5" />
             </div>
             <div>
-              <div className="font-bold text-gray-900 text-base">Aur help chahiye?</div>
-              <div className="text-gray-500 text-sm">Hamare team se seedha WhatsApp par baat karo — live support available hai.</div>
+              <div className="font-bold text-white text-base">Aur help chahiye?</div>
+              <div className="text-blue-200 text-sm">Hamare team se seedha WhatsApp par baat karo — live support available hai.</div>
             </div>
           </div>
           <a
             href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Hi, I need help with SCMS platform.")}`}
             target="_blank"
             rel="noreferrer"
-            className="flex-shrink-0 flex items-center gap-2 bg-primary text-white font-bold px-6 py-3 rounded-xl hover:bg-primary/90 transition-all hover:scale-105 shadow-sm text-sm"
+            className="flex-shrink-0 flex items-center gap-2 bg-accent text-white font-bold px-6 py-3 rounded-xl hover:bg-accent/90 transition-all hover:scale-105 shadow-lg text-sm"
           >
             <PhoneCall className="w-4 h-4" />
             WhatsApp Support
