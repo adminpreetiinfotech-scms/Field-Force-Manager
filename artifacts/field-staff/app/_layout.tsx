@@ -68,6 +68,10 @@ function RootLayoutNav() {
         options={{ headerShown: false, presentation: "fullScreenModal" }}
       />
       <Stack.Screen
+        name="attendance/qr-scan"
+        options={{ headerShown: false, presentation: "fullScreenModal" }}
+      />
+      <Stack.Screen
         name="route/[staffId]"
         options={{ headerShown: false }}
       />

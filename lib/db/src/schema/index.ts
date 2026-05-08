@@ -9,3 +9,4 @@ export * from "./report-schedules";
 export * from "./leaves";
 export * from "./attendance-corrections";
 export * from "./staff-documents";
+export * from "./qr-attendance";

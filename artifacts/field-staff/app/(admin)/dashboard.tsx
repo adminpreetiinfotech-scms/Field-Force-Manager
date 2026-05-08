@@ -440,6 +440,9 @@ export default function AdminDashboard() {
           {/* ── Center Staff Attendance ──────────────────────────── */}
           <CenterStaffAttendanceCard />
 
+          {/* ── Ground Staff QR Scan ──────────────────────────────── */}
+          <QrScanCard />
+
           {/* ── Leave & Holidays ──────────────────────────────────── */}
           <LeaveHolidaysCard />
 
@@ -1207,6 +1210,76 @@ function AttendanceControlCard() {
           <Text style={{ color: "#D97706", fontSize: 10, fontFamily: "Inter_400Regular", marginTop: 1 }}>grace period</Text>
         </Pressable>
       </View>
+    </View>
+  );
+}
+
+// ─── Ground Staff QR Scan Card ────────────────────────────────────────────────
+
+function QrScanCard() {
+  const colors = useColors();
+  return (
+    <View
+      style={[
+        styles.section,
+        {
+          backgroundColor: colors.card,
+          borderColor: "#7C3AED33",
+          borderRadius: colors.radius + 4,
+        },
+      ]}
+    >
+      <View style={[styles.sectionHeader, { marginBottom: 12 }]}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <View style={{ backgroundColor: "#7C3AED18", borderRadius: 8, padding: 5 }}>
+            <Feather name="maximize" size={14} color="#7C3AED" />
+          </View>
+          <View>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              Ground Staff QR Attendance
+            </Text>
+            <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
+              Scan QR card to mark attendance
+            </Text>
+          </View>
+        </View>
+        <Pressable onPress={() => router.push("/(admin)/qr-attendance" as never)} hitSlop={8}>
+          <Text style={{ color: colors.primary, fontSize: 12, fontFamily: "Inter_600SemiBold" }}>
+            View all →
+          </Text>
+        </Pressable>
+      </View>
+      <View style={{ flexDirection: "row", gap: 10 }}>
+        <Pressable
+          onPress={() => router.push({ pathname: "/attendance/qr-scan", params: { mode: "checkin" } } as never)}
+          style={({ pressed }) => ({
+            flex: 1, backgroundColor: "#16A34A", borderRadius: 10, padding: 14,
+            alignItems: "center", gap: 6, opacity: pressed ? 0.85 : 1,
+          })}
+        >
+          <Feather name="log-in" size={22} color="#fff" />
+          <Text style={{ color: "#fff", fontSize: 13, fontFamily: "Inter_700Bold" }}>Check-In</Text>
+          <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 10, fontFamily: "Inter_400Regular" }}>
+            Scan card to mark in
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => router.push({ pathname: "/attendance/qr-scan", params: { mode: "checkout" } } as never)}
+          style={({ pressed }) => ({
+            flex: 1, backgroundColor: "#DC2626", borderRadius: 10, padding: 14,
+            alignItems: "center", gap: 6, opacity: pressed ? 0.85 : 1,
+          })}
+        >
+          <Feather name="log-out" size={22} color="#fff" />
+          <Text style={{ color: "#fff", fontSize: 13, fontFamily: "Inter_700Bold" }}>Check-Out</Text>
+          <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 10, fontFamily: "Inter_400Regular" }}>
+            Scan card to mark out
+          </Text>
+        </Pressable>
+      </View>
+      <Text style={{ color: colors.mutedForeground, fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 10, textAlign: "center" }}>
+        For ground staff without smartphones — scan their printed ID card
+      </Text>
     </View>
   );
 }

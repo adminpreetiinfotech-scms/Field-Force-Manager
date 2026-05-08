@@ -13,6 +13,7 @@ import superAdminRouter from "./super-admin";
 import reportScheduleRouter from "./report-schedule";
 import leavesRouter from "./leaves";
 import attendanceControlRouter from "./attendance-control";
+import qrAttendanceRouter from "./qr-attendance";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(noticesRouter);
 router.use(reportScheduleRouter);
 router.use(leavesRouter);
 router.use(attendanceControlRouter);
+router.use(qrAttendanceRouter);
 
 export default router;
