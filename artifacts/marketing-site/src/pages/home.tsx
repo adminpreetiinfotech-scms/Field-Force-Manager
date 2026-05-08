@@ -176,14 +176,14 @@ function Hero() {
             transition={{ duration: 0.8, delay: 0.6 }}
             className="flex flex-col sm:flex-row gap-4 w-full justify-center"
           >
-            <Button size="lg" className="text-lg font-bold px-10 py-7 rounded-xl bg-primary text-white hover:bg-primary/90 shadow-lg transition-all hover:scale-105" asChild>
-              <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noreferrer" data-testid="button-hero-demo">
-                Book Free Demo <ArrowRight className="ml-2 w-5 h-5" />
+            <Button size="lg" className="text-lg font-bold px-10 py-7 rounded-xl bg-accent text-white hover:bg-accent/90 shadow-lg transition-all hover:scale-105" asChild>
+              <a href="/super-admin/register" data-testid="button-hero-register">
+                Register Karein — Free <ArrowRight className="ml-2 w-5 h-5" />
               </a>
             </Button>
-            <Button size="lg" variant="outline" className="text-lg font-bold px-10 py-7 rounded-xl border-gray-300 text-gray-700 hover:bg-gray-50 transition-all" asChild>
-              <a href="#how-it-works" data-testid="button-hero-works">
-                How it works
+            <Button size="lg" className="text-lg font-bold px-10 py-7 rounded-xl bg-primary text-white hover:bg-primary/90 shadow-md transition-all hover:scale-105" asChild>
+              <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noreferrer" data-testid="button-hero-demo">
+                Book Free Demo
               </a>
             </Button>
           </motion.div>
@@ -1045,8 +1045,8 @@ function Pricing() {
               <li className="flex items-center text-gray-700 text-sm"><CheckCircle2 className="w-4 h-4 text-primary mr-3 flex-shrink-0" /> GPS Attendance</li>
               <li className="flex items-center text-gray-700 text-sm"><CheckCircle2 className="w-4 h-4 text-primary mr-3 flex-shrink-0" /> Basic Reporting</li>
             </ul>
-            <Button variant="outline" className="w-full py-5 font-bold rounded-xl border-gray-300 text-gray-700 hover:bg-gray-50" asChild>
-              <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noreferrer" data-testid="button-pricing-basic">Start Free Trial</a>
+            <Button className="w-full py-5 font-bold rounded-xl bg-primary text-white hover:bg-primary/90" asChild>
+              <a href="/super-admin/register" data-testid="button-pricing-basic">Start Free Trial →</a>
             </Button>
           </motion.div>
 
@@ -1074,7 +1074,7 @@ function Pricing() {
               <li className="flex items-center text-white text-sm font-medium"><CheckCircle2 className="w-4 h-4 text-secondary mr-3 flex-shrink-0" /> Custom Excel Exports</li>
             </ul>
             <Button className="w-full py-6 text-base font-black rounded-xl bg-white text-primary hover:bg-gray-100 shadow-md hover:scale-[1.02] transition-transform" asChild>
-              <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noreferrer" data-testid="button-pricing-standard">Start Free Trial</a>
+              <a href="/super-admin/register" data-testid="button-pricing-standard">Start Free Trial →</a>
             </Button>
           </motion.div>
 
@@ -1098,8 +1098,8 @@ function Pricing() {
               <li className="flex items-center text-gray-700 text-sm"><CheckCircle2 className="w-4 h-4 text-primary mr-3 flex-shrink-0" /> Priority Support</li>
               <li className="flex items-center text-gray-700 text-sm"><CheckCircle2 className="w-4 h-4 text-primary mr-3 flex-shrink-0" /> Dedicated Account Mgr</li>
             </ul>
-            <Button variant="outline" className="w-full py-5 font-bold rounded-xl border-gray-300 text-gray-700 hover:bg-gray-50" asChild>
-              <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noreferrer" data-testid="button-pricing-premium">Start Free Trial</a>
+            <Button className="w-full py-5 font-bold rounded-xl bg-primary text-white hover:bg-primary/90" asChild>
+              <a href="/super-admin/register" data-testid="button-pricing-premium">Start Free Trial →</a>
             </Button>
           </motion.div>
         </div>
@@ -1151,14 +1151,14 @@ function CTA() {
           className="flex flex-col sm:flex-row justify-center items-center gap-4"
         >
           <Button size="lg" className="bg-accent hover:bg-accent/90 text-white text-lg font-black px-10 py-7 rounded-xl w-full sm:w-auto shadow-lg hover:scale-105 transition-all" asChild>
-            <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noreferrer" data-testid="button-cta-whatsapp">
-              <PhoneCall className="w-6 h-6 mr-3" /> 
-              Chat on WhatsApp
+            <a href="/super-admin/register" data-testid="button-cta-register">
+              <ArrowRight className="w-6 h-6 mr-3" />
+              Register Karein — Free
             </a>
           </Button>
           <Button size="lg" variant="outline" className="border-white/30 bg-white/10 text-white hover:bg-white/20 text-lg font-bold px-10 py-7 rounded-xl w-full sm:w-auto transition-all hover:scale-105" asChild>
-            <a href={`mailto:${EMAIL_ADDRESS}`} data-testid="button-cta-email">
-              <Mail className="w-5 h-5 mr-3" /> Email Us
+            <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noreferrer" data-testid="button-cta-whatsapp">
+              <PhoneCall className="w-5 h-5 mr-3" /> Chat on WhatsApp
             </a>
           </Button>
         </motion.div>
