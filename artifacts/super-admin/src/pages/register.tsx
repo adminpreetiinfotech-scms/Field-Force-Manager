@@ -148,14 +148,23 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-3">
-          <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-            <ShieldCheck className="h-5 w-5 text-primary-foreground" />
+        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
+              <ShieldCheck className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <div>
+              <p className="font-bold text-gray-900 leading-tight">SCMS Platform</p>
+              <p className="text-xs text-gray-500">Skill Center Management System</p>
+            </div>
           </div>
-          <div>
-            <p className="font-bold text-gray-900 leading-tight">SCMS Platform</p>
-            <p className="text-xs text-gray-500">Skill Center Management System</p>
-          </div>
+          <a
+            href="/marketing-site/"
+            className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-primary transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            Website par wapas jaayein
+          </a>
         </div>
       </div>
 
