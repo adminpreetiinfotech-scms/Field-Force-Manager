@@ -286,7 +286,7 @@ function CandidateSection() {
   ];
 
   return (
-    <section id="candidate-registration" className="py-32 bg-[#111827] relative overflow-hidden">
+    <section id="candidate-registration" className="py-32 bg-[#1e2d47] relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-violet-950/30 via-transparent to-transparent pointer-events-none"></div>
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[70vw] h-[30vw] bg-violet-600/10 rounded-full blur-[100px] pointer-events-none"></div>
 
@@ -561,7 +561,7 @@ function Features() {
 
 function DeepDive1() {
   return (
-    <section className="py-32 bg-[#111827] relative overflow-hidden" id="how-it-works">
+    <section className="py-32 bg-[#1a2844] relative overflow-hidden" id="how-it-works">
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] bg-primary/10 rounded-full blur-[100px] pointer-events-none"></div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid lg:grid-cols-2 gap-20 items-center">
@@ -753,7 +753,7 @@ function TrackingSection() {
   ];
 
   return (
-    <section id="tracking" className="py-32 bg-[#111827] relative overflow-hidden">
+    <section id="tracking" className="py-32 bg-[#1e2d47] relative overflow-hidden">
       <div className="absolute top-0 right-0 w-[60vw] h-[60vw] bg-emerald-600/8 rounded-full blur-[120px] pointer-events-none"></div>
       <div className="absolute bottom-0 left-0 w-[40vw] h-[40vw] bg-blue-600/8 rounded-full blur-[100px] pointer-events-none"></div>
 
@@ -805,7 +805,7 @@ function TrackingSection() {
             className="relative"
           >
             <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/20 to-cyan-500/20 rounded-[2.5rem] blur-2xl opacity-60"></div>
-            <div className="relative rounded-[2rem] overflow-hidden border border-emerald-500/20 bg-[#0d1f1a]/80 backdrop-blur-xl shadow-2xl">
+            <div className="relative rounded-[2rem] overflow-hidden border border-emerald-500/30 bg-[#1a3040]/90 backdrop-blur-xl shadow-2xl">
               {/* Map header bar */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
                 <div className="flex items-center gap-2">
@@ -815,7 +815,7 @@ function TrackingSection() {
                 <span className="text-gray-500 text-xs font-medium">12 staff online</span>
               </div>
               {/* Fake map grid */}
-              <div className="relative h-72 bg-[#0a1a14] overflow-hidden">
+              <div className="relative h-72 bg-[#162a35] overflow-hidden">
                 {/* Grid lines */}
                 <div className="absolute inset-0 opacity-20"
                   style={{ backgroundImage: "linear-gradient(#1a3a2a 1px, transparent 1px), linear-gradient(90deg, #1a3a2a 1px, transparent 1px)", backgroundSize: "40px 40px" }}
@@ -965,7 +965,7 @@ function Testimonials() {
   ];
 
   return (
-    <section className="py-32 bg-[#111827] relative">
+    <section className="py-32 bg-[#1a2844] relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-20">
           <h2 className="text-4xl md:text-5xl font-black text-white mb-4">Trusted by <span className="text-primary text-glow-primary">Directors</span></h2>
@@ -1164,7 +1164,7 @@ function CTA() {
 
 function Footer() {
   return (
-    <footer className="bg-[#0f172a] py-16 border-t border-white/10 text-center relative z-20">
+    <footer className="bg-[#162035] py-16 border-t border-white/15 text-center relative z-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col items-center justify-center gap-6 mb-8">
           <div className="bg-white/10 p-4 rounded-2xl">
