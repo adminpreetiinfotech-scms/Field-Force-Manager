@@ -4,288 +4,627 @@ const path = require('path');
 
 const OUTPUT_DIR = path.join(__dirname, '../artifacts/marketing-site/public/guides');
 
-const COLORS = {
-  navy: '#1a3272',
-  saffron: '#f97316',
-  green: '#16a34a',
-  gray: '#64748b',
-  lightGray: '#f1f5f9',
-  darkText: '#1e293b',
-  white: '#ffffff',
+const C = {
+  navy:      '#1a3272',
+  navyLight: '#1e3d87',
+  navyDark:  '#0f1f4a',
+  saffron:   '#f97316',
+  saffronL:  '#fed7aa',
+  green:     '#16a34a',
+  greenL:    '#dcfce7',
+  gray:      '#64748b',
+  grayL:     '#f8fafc',
+  grayM:     '#e2e8f0',
+  dark:      '#0f172a',
+  white:     '#ffffff',
+  red:       '#ef4444',
+  yellow:    '#fef3c7',
+  yellowB:   '#f59e0b',
+  blue:      '#eff6ff',
+  blueB:     '#3b82f6',
 };
 
-function createDoc(filename) {
-  const doc = new PDFDocument({ 
-    size: 'A4', 
-    margins: { top: 60, bottom: 60, left: 60, right: 60 },
-    info: { Creator: 'SCMS by Preeti Infotech' }
+const PAGE_W = 595.28;
+const PAGE_H = 841.89;
+const MARGIN = 50;
+const CONTENT_W = PAGE_W - MARGIN * 2;
+
+function createDoc(filename, title, subject) {
+  const doc = new PDFDocument({
+    size: 'A4',
+    margins: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN },
+    info: {
+      Title: title,
+      Subject: subject,
+      Author: 'SCMS — Preeti Infotech',
+      Creator: 'SCMS Digital Platform',
+      Keywords: 'SCMS, DDU-GKY, PMKVY, skill center, user guide',
+    },
+    autoFirstPage: false,
   });
   const stream = fs.createWriteStream(path.join(OUTPUT_DIR, filename));
   doc.pipe(stream);
-  return { doc, stream };
+  return doc;
 }
 
-function drawHeader(doc, title, subtitle, badgeText) {
-  // Navy header bg
-  doc.rect(0, 0, doc.page.width, 140).fill(COLORS.navy);
-  
-  // Logo area
-  doc.circle(60, 50, 18).fill(COLORS.saffron);
-  doc.fontSize(14).fillColor(COLORS.white).font('Helvetica-Bold').text('SC', 51, 43);
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
-  // Title
-  doc.fontSize(22).fillColor(COLORS.white).font('Helvetica-Bold').text('SCMS', 90, 30);
-  doc.fontSize(9).fillColor('#93c5fd').font('Helvetica').text('Skill Center Management System — By Preeti Infotech', 90, 56);
+function hex(h) { // hex to [r,g,b]
+  const n = parseInt(h.replace('#',''), 16);
+  return [(n>>16)&255,(n>>8)&255,n&255];
+}
 
-  // Badge
-  doc.roundedRect(doc.page.width - 180, 25, 150, 26, 13)
-    .fill(COLORS.saffron);
-  doc.fontSize(9).fillColor(COLORS.white).font('Helvetica-Bold')
-    .text(badgeText, doc.page.width - 175, 32, { width: 140, align: 'center' });
+function drawCoverPage(doc, guideTitle, guideSubtitle, badgeText, badgeColor) {
+  doc.addPage();
+
+  // Full dark navy background
+  doc.rect(0, 0, PAGE_W, PAGE_H).fill(C.navyDark);
+
+  // Top accent bar
+  doc.rect(0, 0, PAGE_W, 6).fill(C.saffron);
+
+  // Decorative circles (top-right)
+  doc.circle(PAGE_W + 40, -40, 180).fill(C.navyLight).fillOpacity(0.5);
+  doc.circle(PAGE_W - 30, 120, 100).fill(C.navy).fillOpacity(0.6);
+  // Decorative circle bottom-left
+  doc.circle(-60, PAGE_H + 60, 200).fill(C.navy).fillOpacity(0.5);
+  doc.fillOpacity(1);
+
+  // SCMS Logo block (top-left)
+  const logoX = 50, logoY = 40;
+  doc.roundedRect(logoX, logoY, 48, 48, 10).fill(C.saffron);
+  doc.fontSize(20).fillColor(C.white).font('Helvetica-Bold')
+     .text('SC', logoX, logoY + 13, { width: 48, align: 'center' });
+
+  doc.fontSize(22).fillColor(C.white).font('Helvetica-Bold')
+     .text('SCMS', logoX + 58, logoY + 6);
+  doc.fontSize(8).fillColor('#93c5fd').font('Helvetica')
+     .text('Skill Center Management System', logoX + 58, logoY + 32)
+     .text('by Preeti Infotech', logoX + 58, logoY + 44);
+
+  // Horizontal divider line
+  doc.moveTo(50, 120).lineTo(PAGE_W - 50, 120).lineWidth(0.5).strokeColor('#1e3a8a').stroke();
+
+  // Center content area
+  const midY = PAGE_H * 0.38;
+
+  // Guide badge
+  const [br, bg, bb] = hex(badgeColor);
+  doc.roundedRect(50, midY - 46, 130, 26, 13)
+     .fill(`rgb(${br},${bg},${bb})`);
+  doc.fontSize(9).fillColor(C.white).font('Helvetica-Bold')
+     .text(badgeText, 50, midY - 38, { width: 130, align: 'center' });
 
   // Guide title
-  doc.fontSize(16).fillColor(COLORS.white).font('Helvetica-Bold').text(title, 60, 85);
-  doc.fontSize(10).fillColor('#bfdbfe').font('Helvetica').text(subtitle, 60, 108);
-  
-  doc.y = 160;
+  doc.fontSize(34).fillColor(C.white).font('Helvetica-Bold')
+     .text(guideTitle, 50, midY, { width: CONTENT_W, lineGap: 4 });
+
+  // Subtitle line
+  const afterTitle = doc.y + 10;
+  doc.moveTo(50, afterTitle).lineTo(50 + 60, afterTitle).lineWidth(3).strokeColor(C.saffron).stroke();
+
+  // Subtitle text
+  doc.fontSize(13).fillColor('#bfdbfe').font('Helvetica')
+     .text(guideSubtitle, 50, afterTitle + 16, { width: CONTENT_W - 80 });
+
+  // Info card (bottom)
+  const cardY = PAGE_H - 180;
+  doc.roundedRect(50, cardY, CONTENT_W, 80, 12).fill('#0f2060');
+
+  doc.fontSize(9).fillColor('#94a3b8').font('Helvetica')
+     .text('PLATFORM', 70, cardY + 16)
+     .text('VERSION', 230, cardY + 16)
+     .text('LANGUAGE', 390, cardY + 16);
+
+  doc.fontSize(11).fillColor(C.white).font('Helvetica-Bold')
+     .text('SCMS Digital', 70, cardY + 30)
+     .text('v2.0 — 2025', 230, cardY + 30)
+     .text('Hindi + English', 390, cardY + 30);
+
+  doc.fontSize(9).fillColor('#64748b').font('Helvetica')
+     .text('scmsdigital.com', 70, cardY + 50)
+     .text('DDU-GKY / PMKVY / JSDMS', 230, cardY + 50)
+     .text('Field Operations Guide', 390, cardY + 50);
+
+  // Bottom strip
+  doc.rect(0, PAGE_H - 50, PAGE_W, 50).fill('#060f28');
+  doc.fontSize(8.5).fillColor('#475569').font('Helvetica')
+     .text('© 2025 Preeti Infotech Pvt. Ltd.  |  All rights reserved  |  scmsdigital.com', 50, PAGE_H - 30, { width: CONTENT_W, align: 'center' });
 }
 
-function sectionTitle(doc, text) {
-  doc.moveDown(0.5);
-  doc.rect(60, doc.y, doc.page.width - 120, 28).fill(COLORS.navy);
-  doc.fontSize(11).fillColor(COLORS.white).font('Helvetica-Bold')
-    .text(text, 70, doc.y - 22, { width: doc.page.width - 140 });
-  doc.moveDown(0.8);
+let _currentPage = 0;
+
+function addContentPage(doc, showHeader = true) {
+  _currentPage++;
+  doc.addPage();
+
+  if (showHeader) {
+    // Slim top header strip
+    doc.rect(0, 0, PAGE_W, 44).fill(C.navy);
+    // Logo dot
+    doc.circle(30, 22, 12).fill(C.saffron);
+    doc.fontSize(8).fillColor(C.white).font('Helvetica-Bold').text('SC', 23, 17);
+    doc.fontSize(10).fillColor(C.white).font('Helvetica-Bold').text('SCMS', 48, 13);
+    doc.fontSize(7).fillColor('#93c5fd').font('Helvetica').text('Skill Center Management System', 48, 27);
+  }
+
+  // Footer
+  drawPageFooter(doc, _currentPage);
+
+  // Reset Y below header
+  doc.y = 64;
 }
 
-function step(doc, number, title, desc) {
+function drawPageFooter(doc, pageNum) {
+  const fy = PAGE_H - 36;
+  doc.rect(0, fy, PAGE_W, 36).fill(C.grayL);
+  doc.moveTo(0, fy).lineTo(PAGE_W, fy).lineWidth(1).strokeColor(C.grayM).stroke();
+  doc.fontSize(7.5).fillColor(C.gray).font('Helvetica')
+     .text('SCMS by Preeti Infotech  •  scmsdigital.com  •  Support: WhatsApp', MARGIN, fy + 12, { width: CONTENT_W - 40, align: 'left' })
+     .text(`Page ${pageNum}`, MARGIN, fy + 12, { width: CONTENT_W, align: 'right' });
+}
+
+function sectionHeader(doc, num, text, color = C.navy) {
+  checkPageBreak(doc, 50);
+  doc.moveDown(0.6);
   const y = doc.y;
-  // Circle number
-  doc.circle(75, y + 8, 10).fill(COLORS.saffron);
-  doc.fontSize(9).fillColor(COLORS.white).font('Helvetica-Bold').text(number, 71, y + 3);
-  // Title + desc
-  doc.fontSize(11).fillColor(COLORS.darkText).font('Helvetica-Bold').text(title, 95, y, { width: doc.page.width - 155 });
-  doc.fontSize(9.5).fillColor(COLORS.gray).font('Helvetica').text(desc, 95, doc.y + 2, { width: doc.page.width - 155 });
-  doc.moveDown(0.9);
+
+  // Left accent bar
+  doc.rect(MARGIN, y, 4, 28).fill(C.saffron);
+
+  // Number circle
+  doc.circle(MARGIN + 22, y + 14, 13).fill(color);
+  doc.fontSize(10).fillColor(C.white).font('Helvetica-Bold')
+     .text(num, MARGIN + 16, y + 8, { width: 13, align: 'center' });
+
+  // Section title
+  doc.fontSize(13).fillColor(color).font('Helvetica-Bold')
+     .text(text, MARGIN + 42, y + 6, { width: CONTENT_W - 50 });
+
+  // Underline
+  doc.moveTo(MARGIN + 42, doc.y + 2).lineTo(PAGE_W - MARGIN, doc.y + 2)
+     .lineWidth(0.5).strokeColor(C.grayM).stroke();
+
+  doc.y += 14;
 }
 
-function bullet(doc, text) {
+function stepCard(doc, num, title, desc) {
+  checkPageBreak(doc, 58);
   const y = doc.y;
-  doc.circle(72, y + 5, 3).fill(COLORS.saffron);
-  doc.fontSize(9.5).fillColor(COLORS.darkText).font('Helvetica').text(text, 85, y, { width: doc.page.width - 145 });
+  const cardH = desc ? 52 : 34;
+
+  // Card background
+  doc.roundedRect(MARGIN, y, CONTENT_W, cardH, 8).fill(C.grayL);
+  // Left border
+  doc.rect(MARGIN, y, 3, cardH).fill(C.saffron);
+
+  // Step number badge
+  doc.roundedRect(MARGIN + 10, y + (cardH/2) - 12, 24, 24, 6).fill(C.navy);
+  doc.fontSize(10).fillColor(C.white).font('Helvetica-Bold')
+     .text(String(num), MARGIN + 10, y + (cardH/2) - 6, { width: 24, align: 'center' });
+
+  // Title
+  doc.fontSize(10.5).fillColor(C.dark).font('Helvetica-Bold')
+     .text(title, MARGIN + 42, y + 10, { width: CONTENT_W - 52 });
+
+  // Description
+  if (desc) {
+    doc.fontSize(9).fillColor(C.gray).font('Helvetica')
+       .text(desc, MARGIN + 42, y + 26, { width: CONTENT_W - 52 });
+  }
+
+  doc.y = y + cardH + 6;
+}
+
+function warningCard(doc, num, title, desc) {
+  checkPageBreak(doc, 58);
+  const y = doc.y;
+  const cardH = desc ? 52 : 34;
+
+  doc.roundedRect(MARGIN, y, CONTENT_W, cardH, 8).fill('#fff7ed');
+  doc.rect(MARGIN, y, 3, cardH).fill(C.red);
+
+  doc.roundedRect(MARGIN + 10, y + (cardH/2) - 12, 24, 24, 6).fill(C.red);
+  doc.fontSize(9).fillColor(C.white).font('Helvetica-Bold')
+     .text('!', MARGIN + 10, y + (cardH/2) - 6, { width: 24, align: 'center' });
+
+  doc.fontSize(10.5).fillColor('#7c2d12').font('Helvetica-Bold')
+     .text(title, MARGIN + 42, y + 10, { width: CONTENT_W - 52 });
+  if (desc) {
+    doc.fontSize(9).fillColor('#92400e').font('Helvetica')
+       .text(desc, MARGIN + 42, y + 26, { width: CONTENT_W - 52 });
+  }
+
+  doc.y = y + cardH + 6;
+}
+
+function bulletPoint(doc, text) {
+  checkPageBreak(doc, 22);
+  const y = doc.y;
+  doc.circle(MARGIN + 8, y + 6, 3.5).fill(C.saffron);
+  doc.fontSize(9.5).fillColor(C.dark).font('Helvetica')
+     .text(text, MARGIN + 20, y, { width: CONTENT_W - 22 });
+  doc.y += 4;
+}
+
+function tipBox(doc, text) {
+  checkPageBreak(doc, 50);
+  const y = doc.y;
+  doc.roundedRect(MARGIN, y, CONTENT_W, 42, 8).fill(C.yellow);
+  doc.rect(MARGIN, y, 4, 42).fill(C.yellowB);
+  doc.fontSize(8).fillColor('#92400e').font('Helvetica-Bold').text('TIP  ', MARGIN + 14, y + 13, { continued: true });
+  doc.fontSize(8).fillColor('#78350f').font('Helvetica').text(text, { width: CONTENT_W - 24 });
+  doc.y = y + 50;
+}
+
+function infoBox(doc, title, text) {
+  checkPageBreak(doc, 54);
+  const y = doc.y;
+  doc.roundedRect(MARGIN, y, CONTENT_W, 48, 8).fill(C.blue);
+  doc.rect(MARGIN, y, 4, 48).fill(C.blueB);
+  doc.fontSize(8.5).fillColor('#1e40af').font('Helvetica-Bold').text(title, MARGIN + 14, y + 12, { width: CONTENT_W - 24 });
+  doc.fontSize(8.5).fillColor('#1e3a8a').font('Helvetica').text(text, MARGIN + 14, y + 26, { width: CONTENT_W - 24 });
+  doc.y = y + 56;
+}
+
+function checkPageBreak(doc, neededHeight) {
+  if (doc.y + neededHeight > PAGE_H - 60) {
+    const pageNum = ++_currentPage;
+    doc.addPage();
+    // Header
+    doc.rect(0, 0, PAGE_W, 44).fill(C.navy);
+    doc.circle(30, 22, 12).fill(C.saffron);
+    doc.fontSize(8).fillColor(C.white).font('Helvetica-Bold').text('SC', 23, 17);
+    doc.fontSize(10).fillColor(C.white).font('Helvetica-Bold').text('SCMS', 48, 13);
+    doc.fontSize(7).fillColor('#93c5fd').font('Helvetica').text('Skill Center Management System', 48, 27);
+    drawPageFooter(doc, pageNum);
+    doc.y = 64;
+  }
+}
+
+function subHeading(doc, text) {
+  checkPageBreak(doc, 26);
   doc.moveDown(0.4);
+  doc.fontSize(10).fillColor(C.navy).font('Helvetica-Bold').text(text, MARGIN, doc.y);
+  doc.moveDown(0.3);
 }
 
-function note(doc, text) {
-  doc.rect(60, doc.y, doc.page.width - 120, 32).fill('#fef3c7');
-  doc.rect(60, doc.y - 32, 4, 32).fill(COLORS.saffron);
-  doc.fontSize(9).fillColor('#92400e').font('Helvetica-Bold')
-    .text('NOTE: ', 70, doc.y - 28, { continued: true })
-    .font('Helvetica').text(text, { width: doc.page.width - 150 });
-  doc.moveDown(0.8);
+function para(doc, text) {
+  checkPageBreak(doc, 26);
+  doc.fontSize(9.5).fillColor(C.dark).font('Helvetica').text(text, MARGIN, doc.y, { width: CONTENT_W, lineGap: 2 });
+  doc.moveDown(0.5);
 }
 
-function drawFooter(doc, pageNum) {
-  const y = doc.page.height - 45;
-  doc.rect(0, y, doc.page.width, 45).fill(COLORS.navy);
-  doc.fontSize(8).fillColor('#93c5fd').font('Helvetica')
-    .text('SCMS by Preeti Infotech  |  scmsdigital.com  |  Support: WhatsApp', 60, y + 10, { align: 'left', width: doc.page.width - 120 })
-    .text(`Page ${pageNum}`, 0, y + 10, { align: 'right', width: doc.page.width - 60 });
+function spacer(doc, h = 10) {
+  doc.y += h;
 }
 
-// ─── GUIDE 1: Company Registration ─────────────────────────────────────────
-
+// ─── GUIDE 1: Company Registration ───────────────────────────────────────────
 function generateCompanyGuide() {
-  const { doc } = createDoc('company-registration-guide.pdf');
-  drawHeader(doc, 'Company Registration Guide', 'Naya account setup karne ka complete guide — Step by Step', 'For Owners / Directors');
+  _currentPage = 0;
+  const doc = createDoc('company-registration-guide.pdf', 'Company Registration Guide', 'SCMS Account Setup — Step by Step');
 
-  sectionTitle(doc, '1. SCMS Account Register Kaise Karein');
-  step(doc, '1', 'Website par jaayein', 'Browser mein scmsdigital.com kholein aur "Book Demo" button par click karein.');
-  step(doc, '2', 'WhatsApp par contact karein', 'Hamare team se WhatsApp par baat karein. Aapki company ka naam, state, aur center count batayein.');
-  step(doc, '3', 'Account activation', 'Team aapka company account activate karegi aur Super Admin credentials WhatsApp par bhejegi.');
-  step(doc, '4', 'Plan choose karein', 'Basic (10 staff), Standard (50 staff), ya Premium (unlimited) — apni zaroorat ke hisaab se plan choose karein.');
+  drawCoverPage(doc,
+    'Company Registration\nGuide',
+    'SCMS mein naya account kaise setup karein — Owner aur Director ke liye complete walkthrough.',
+    'For Owners / Directors',
+    C.navy
+  );
 
-  sectionTitle(doc, '2. Company Profile Setup');
-  step(doc, '1', 'Login karein', 'Super Admin panel par login karein: scmsdigital.com/super-admin');
-  step(doc, '2', 'Company details bharein', 'Company naam, address, state, district, registered mobile number aur email add karein.');
-  step(doc, '3', 'Logo upload karein', 'Company ka official logo upload karein — yeh PDF reports aur app mein dikh0ega.');
-  step(doc, '4', 'Subscription verify karein', 'Dashboard par subscription status aur expiry date check karein.');
+  addContentPage(doc);
 
-  sectionTitle(doc, '3. Pehla Admin Account Banana');
-  step(doc, '1', 'Admin tab kholein', 'Super Admin dashboard mein "Admins" section mein jaayein.');
-  step(doc, '2', 'Admin add karein', '"New Admin" button par click karein. Naam, phone number aur MPIN set karein.');
-  step(doc, '3', 'Admin ko batayein', 'Admin ko unka phone number aur MPIN share karein. Woh Admin Panel par login kar sakenge.');
-  step(doc, '4', 'Test login', 'Admin se verify karwayein ki woh scmsdigital.com/admin-panel par successfully login ho pa rahe hain.');
+  // Intro para
+  para(doc, 'Is guide mein aap seekhenge ki SCMS platform par apni company ka account kaise register karein, profile setup karein, aur pehla Admin account kaise banayein.');
 
-  note(doc, 'Account activation ke liye hamare WhatsApp support se zaroor sampark karein. Akele setup karne ki koshish na karein.');
+  spacer(doc, 8);
+  sectionHeader(doc, '1', 'Demo Book Karna & Account Activation');
 
-  sectionTitle(doc, '4. Subscription Plans');
-  bullet(doc, 'Basic Plan — ₹2,000/month: 10 staff tak, GPS attendance, basic reporting');
-  bullet(doc, 'Standard Plan — ₹5,000/month: 50 staff tak, AI face verification, offline app, Excel exports');
-  bullet(doc, 'Premium Plan — ₹10,000/month: Unlimited staff, multi-center, priority support, dedicated account manager');
-  bullet(doc, 'Sabhi plans mein 1 mahine ka FREE trial shamil hai');
-  bullet(doc, 'Annual payment par special discount available hai — team se poochein');
+  stepCard(doc, 1, 'Website par jaayein', 'Browser mein scmsdigital.com kholein aur "Book Demo" button par click karein.');
+  stepCard(doc, 2, 'WhatsApp par contact karein', 'Hamare team se WhatsApp par baat karein. Company ka naam, state, center count batayein.');
+  stepCard(doc, 3, 'Credentials receive karein', 'Team aapka account activate karegi aur Super Admin credentials WhatsApp par bhejegi.');
+  stepCard(doc, 4, 'Plan choose karein', 'Basic, Standard ya Premium — apni zaroorat ke hisaab se plan select karein (details neeche hain).');
 
-  drawFooter(doc, 1);
+  tipBox(doc, 'Account activation mein 24 hours lag sakte hain — weekdays mein. Team aapko WhatsApp par update degi.');
+
+  spacer(doc, 4);
+  sectionHeader(doc, '2', 'Company Profile Setup');
+
+  stepCard(doc, 1, 'Super Admin panel login karein', 'URL: scmsdigital.com/super-admin — apna phone number aur MPIN enter karein.');
+  stepCard(doc, 2, 'Company details bharein', 'Company naam, address, state, district, registered mobile aur email add karein.');
+  stepCard(doc, 3, 'Logo upload karein', 'Official company logo upload karein — yeh PDF reports aur app mein dikhega.');
+  stepCard(doc, 4, 'Subscription verify karein', 'Dashboard par subscription status aur expiry date confirm karein.');
+
+  spacer(doc, 4);
+  sectionHeader(doc, '3', 'Pehla Admin Account Banana');
+
+  stepCard(doc, 1, '"Admins" section mein jaayein', 'Super Admin dashboard → left menu → "Admins" tab par click karein.');
+  stepCard(doc, 2, 'New Admin add karein', '"Add Admin" button → naam, phone number, assigned center aur 4-digit MPIN set karein.');
+  stepCard(doc, 3, 'Credentials share karein', 'Admin ko unka phone number aur MPIN share karein securely.');
+  stepCard(doc, 4, 'Test login', 'Admin se verify karwayein: scmsdigital.com/admin-panel par successfully login ho pa rahe hain.');
+
+  infoBox(doc, 'Security Tip', 'MPIN kisi ke saath share na karein. Har Admin ka alag MPIN hona chahiye. Quarterly MPIN change ki sifarish hai.');
+
+  spacer(doc, 4);
+  sectionHeader(doc, '4', 'Subscription Plans — Overview');
+
+  subHeading(doc, 'Basic Plan — ₹2,000/month');
+  bulletPoint(doc, 'Upto 10 field staff');
+  bulletPoint(doc, 'GPS attendance tracking');
+  bulletPoint(doc, 'Basic attendance reports');
+  bulletPoint(doc, '1 Admin account');
+
+  subHeading(doc, 'Standard Plan — ₹5,000/month');
+  bulletPoint(doc, 'Upto 50 field staff');
+  bulletPoint(doc, 'AI face verification on check-in');
+  bulletPoint(doc, 'Offline mobile app with sync');
+  bulletPoint(doc, 'Excel + PDF exports');
+  bulletPoint(doc, '5 Admin accounts');
+
+  subHeading(doc, 'Premium Plan — ₹10,000/month');
+  bulletPoint(doc, 'Unlimited staff');
+  bulletPoint(doc, 'Multi-center management');
+  bulletPoint(doc, 'Priority WhatsApp support');
+  bulletPoint(doc, 'Dedicated account manager');
+  bulletPoint(doc, 'Custom branding on reports');
+  bulletPoint(doc, 'Annual discount available — team se poochein');
+
+  tipBox(doc, 'Sabhi plans mein pehla 1 mahina FREE trial shamil hai. Koi advance payment nahi.');
+
   doc.end();
   console.log('✅ Company Registration Guide generated');
 }
 
 // ─── GUIDE 2: Admin User Guide ───────────────────────────────────────────────
-
 function generateAdminGuide() {
-  const { doc } = createDoc('admin-user-guide.pdf');
-  drawHeader(doc, 'Admin User Guide', 'Admin panel ka poora walkthrough — Staff, Attendance, Reports, Notices', 'For Admins / Center Managers');
+  _currentPage = 0;
+  const doc = createDoc('admin-user-guide.pdf', 'Admin User Guide', 'Admin Panel Complete Walkthrough');
 
-  sectionTitle(doc, '1. Admin Panel Login');
-  step(doc, '1', 'URL kholein', 'Browser mein scmsdigital.com/admin-panel kholein.');
-  step(doc, '2', 'Phone number dalein', 'Apna registered mobile number enter karein aur OTP verify karein.');
-  step(doc, '3', 'MPIN enter karein', '4-digit MPIN enter karein jo aapko setup ke waqt diya gaya tha.');
-  step(doc, '4', 'Dashboard', 'Login hone par main dashboard dikhega — live stats, staff count, aaj ki attendance summary.');
+  drawCoverPage(doc,
+    'Admin User Guide',
+    'Staff management, attendance, reports, leave approval, notices broadcast — Admin Panel ka poora walkthrough.',
+    'For Admins / Center Managers',
+    C.navyLight
+  );
 
-  sectionTitle(doc, '2. Staff Management');
-  step(doc, '1', 'Naya staff add karein', '"Staff" section mein jaayein → "Add Staff" → naam, phone, role, assigned center bharein.');
-  step(doc, '2', 'Staff edit/remove', 'Kisi bhi staff ke naam par click karein → Edit ya Deactivate karein.');
-  step(doc, '3', 'MPIN reset', 'Staff MPIN bhool jaaye toh — Staff profile → "Reset MPIN" → naya MPIN set karein.');
-  step(doc, '4', 'Staff location', 'Live Map section mein jaayein — map par sab active staff ke GPS pins dikhenge.');
+  addContentPage(doc);
 
-  sectionTitle(doc, '3. Attendance Management');
-  step(doc, '1', 'Aaj ki attendance', 'Dashboard par ya Attendance tab mein aaj ke check-in/out records dekh sakte hain.');
-  step(doc, '2', 'Date filter', 'Kisi bhi date ki attendance dekhne ke liye date picker use karein.');
-  step(doc, '3', 'Manual correction', 'Agar koi galti ho — attendance record par click karein → Edit karein aur reason note karein.');
-  step(doc, '4', 'Selfie photos', 'Har check-in ki selfie photo click karke dekh sakte hain — verification ke liye.');
+  para(doc, 'Admin Panel ek powerful web dashboard hai jo aapko staff ki poori activity track karne, reports download karne, leave approve karne aur notices broadcast karne ki suvidha deta hai.');
 
-  sectionTitle(doc, '4. Reports Download');
-  step(doc, '1', 'Reports section', '"Reports" tab mein jaayein. Date range select karein.');
-  step(doc, '2', 'Excel report', '"Download Excel" par click karein — attendance, salary calculation, KM tracking sab ek file mein.');
-  step(doc, '3', 'PDF reports', 'Individual staff ya candidate ki PDF reports bhi download ho sakti hain.');
-  step(doc, '4', 'Schedule report', 'Monthly report automatically email par bhi schedule ki ja sakti hai — Settings mein.');
+  spacer(doc, 8);
+  sectionHeader(doc, '1', 'Admin Panel Login');
 
-  sectionTitle(doc, '5. Leave Management');
-  bullet(doc, 'Staff ki leave requests "Leave" tab mein aayengi');
-  bullet(doc, 'Approve ya Reject — ek click mein, staff ko automatically notification milega');
-  bullet(doc, 'Leave calendar mein poore mahine ka overview dekh sakte hain');
-  bullet(doc, 'Public holidays bhi admin panel se set kar sakte hain');
+  stepCard(doc, 1, 'URL kholein', 'Browser (Chrome recommended) mein jaayein: scmsdigital.com/admin-panel');
+  stepCard(doc, 2, 'Phone number dalein', 'Registered mobile number enter karein → "Send OTP" dabayein.');
+  stepCard(doc, 3, 'OTP verify karein', 'SMS par aaye 6-digit OTP enter karein. 5 minute mein expire ho jaata hai.');
+  stepCard(doc, 4, 'MPIN enter karein', '4-digit MPIN dalein jo setup ke waqt set kiya gaya tha.');
+  stepCard(doc, 5, 'Dashboard', 'Login hone par live stats — aaj ki attendance, total staff, active shifts dikhenge.');
 
-  sectionTitle(doc, '6. Notices Broadcast');
-  step(doc, '1', 'Notice likhein', '"Notices" tab → "New Notice" → title aur message likhein.');
-  step(doc, '2', 'Target choose karein', 'Sab staff ko ya kisi specific center ke staff ko notice bhej sakte hain.');
-  step(doc, '3', 'SMS + Push', 'Notice SMS aur push notification dono ke zariye jaata hai — internet nahi toh bhi SMS milega.');
+  tipBox(doc, 'Mobile browser mein bhi admin panel kaam karta hai — lekin desktop/laptop par zyada comfortable rahega.');
 
-  note(doc, 'Koi bhi report ya data delete karne se pehle hamare support se confirm zaroor karein. Deleted data restore nahi hota.');
+  spacer(doc, 4);
+  sectionHeader(doc, '2', 'Staff Management');
 
-  drawFooter(doc, 1);
+  stepCard(doc, 1, 'Naya staff add karein', '"Staff" → "Add Staff" → naam, phone, role (staff/admin), assigned center bharein.');
+  stepCard(doc, 2, 'Staff profile edit karein', 'Staff ke naam par click karein → "Edit" → details update karein → Save.');
+  stepCard(doc, 3, 'Staff deactivate karein', 'Staff profile → "Deactivate" → staff app use nahi kar payega (data safe rahega).');
+  stepCard(doc, 4, 'MPIN reset karein', 'Staff profile → "Reset MPIN" → naya 4-digit MPIN set karein → staff ko batayein.');
+  stepCard(doc, 5, 'Live location dekhin', '"Live Map" tab → map par sab active staff ke GPS pins real-time mein dikhenge.');
+
+  spacer(doc, 4);
+  sectionHeader(doc, '3', 'Attendance Management');
+
+  stepCard(doc, 1, 'Aaj ki attendance', 'Dashboard → ya "Attendance" tab → aaj ke saare check-in/out records.');
+  stepCard(doc, 2, 'Date filter use karein', 'Date picker se kisi bhi din ki attendance dekh sakte hain.');
+  stepCard(doc, 3, 'Selfie photo verify karein', 'Har check-in entry par click karein → selfie photo dekh sakte hain.');
+  stepCard(doc, 4, 'Manual correction', 'Attendance record → "Edit" → galat time ya location correct karein → reason note karein.');
+
+  infoBox(doc, 'Geo-fencing kya hai?', 'Staff sirf assigned center ke 100 meter ke andar rahne par check-in kar sakta hai. Yeh proxy attendance rokta hai.');
+
+  spacer(doc, 4);
+  sectionHeader(doc, '4', 'Reports Download');
+
+  stepCard(doc, 1, 'Reports tab kholein', '"Reports" section → date range select karein (daily/weekly/monthly).');
+  stepCard(doc, 2, 'Excel report', '"Download Excel" → attendance, salary, KM tracking — sab ek file mein.');
+  stepCard(doc, 3, 'PDF reports', 'Individual staff ya candidate ki PDF report bhi download kar sakte hain.');
+  stepCard(doc, 4, 'Candidate report', 'Candidate section → select karo → "Download PDF" → registration form PDF milega.');
+
+  spacer(doc, 4);
+  sectionHeader(doc, '5', 'Leave Management');
+
+  bulletPoint(doc, 'Staff ki leave requests "Leave" tab mein aayengi — pending, approved, rejected status dikhega.');
+  bulletPoint(doc, 'Approve ya Reject — ek click mein. Staff ko automatically push notification milega.');
+  bulletPoint(doc, 'Leave calendar mein poore mahine ka overview — green (present), red (absent), yellow (leave).');
+  bulletPoint(doc, 'Public holidays "Holiday" section se set kar sakte hain — sab staff ko auto-notify hoga.');
+
+  spacer(doc, 4);
+  sectionHeader(doc, '6', 'Notices Broadcast');
+
+  stepCard(doc, 1, 'New Notice likhein', '"Notices" → "New Notice" → title aur message likhein (Hindi ya English).');
+  stepCard(doc, 2, 'Target choose karein', 'Sab staff ko, ya kisi ek center ke staff ko, ya specific role ko notice bhej sakte hain.');
+  stepCard(doc, 3, 'SMS + Push', 'Notice automatically SMS aur push notification dono se jaata hai.');
+  stepCard(doc, 4, 'Notice history', 'Saare purane notices "Sent Notices" mein dekh sakte hain — read receipts bhi.');
+
+  warningCard(doc, '!', 'Data Delete Warning', 'Koi bhi report ya attendance data delete karne se pehle hamare support se confirm zaroor karein. Deleted data restore nahi hota.');
+
   doc.end();
   console.log('✅ Admin User Guide generated');
 }
 
 // ─── GUIDE 3: Center Staff Guide ─────────────────────────────────────────────
-
 function generateCenterStaffGuide() {
-  const { doc } = createDoc('center-staff-user-guide.pdf');
-  drawHeader(doc, 'Center Staff User Guide', 'Mobile app use karne ka complete guide — Login, Attendance, Leave', 'For Center Staff / Trainers');
+  _currentPage = 0;
+  const doc = createDoc('center-staff-user-guide.pdf', 'Center Staff User Guide', 'Mobile App Guide for Center Staff');
 
-  sectionTitle(doc, '1. App Download & Login');
-  step(doc, '1', 'App install karein', 'Apne Android phone par SCMS Field App install karein — link aapke admin se maangein.');
-  step(doc, '2', 'Phone number dalein', 'App kholein → apna registered mobile number enter karein → OTP verify karein.');
-  step(doc, '3', 'MPIN set karein', 'Pehli baar login par 4-digit MPIN set karein. Yeh MPIN yaad rakhein — baar baar kaam aayega.');
-  step(doc, '4', 'Dashboard', 'Login ke baad aapka dashboard dikhega — aaj ki shift status, notifications, leave balance.');
+  drawCoverPage(doc,
+    'Center Staff\nUser Guide',
+    'MPIN login, GPS check-in/out, leave apply, notices — center pe kaam karne wale staff ke liye complete mobile app guide.',
+    'For Center Staff / Trainers',
+    C.green
+  );
 
-  sectionTitle(doc, '2. Check-In / Check-Out');
-  step(doc, '1', 'Center par pahuncho', 'Pehle apne assigned training center ya work location par physically pahunchein.');
-  step(doc, '2', 'Check-In button', '"Check In" button par tap karein. App GPS location lega aur selfie maangega.');
-  step(doc, '3', 'Live selfie', 'Camera se apni live selfie kheenchein — gallery se photo nahi chalegi. Face clearly dikh0na chahiye.');
-  step(doc, '4', 'Confirmation', 'Green tick aane par check-in confirm ho jaata hai. Timer shuru ho jaata hai.');
-  step(doc, '5', 'Check-Out', 'Kaam khatam hone par "Check Out" button dabayein → phir se selfie → done.');
+  addContentPage(doc);
 
-  note(doc, 'Check-in tab hi hoga jab aap assigned location ke 100 meter ke andar honge. Location services ON rakhein.');
+  para(doc, 'SCMS Field App ek Android mobile application hai jo center staff ke daily kaam ko simple aur transparent banata hai — attendance, leave, notices sab ek jagah.');
 
-  sectionTitle(doc, '3. Leave Apply Karna');
-  step(doc, '1', 'Leave section', 'App mein "Leave" tab par jaayein.');
-  step(doc, '2', 'New request', '"Apply Leave" par tap karein → leave type chunein (casual/sick/other).');
-  step(doc, '3', 'Dates aur reason', 'Start date, end date aur leave ka reason likhein.');
-  step(doc, '4', 'Submit', 'Submit karein — admin ko notification jaayegi. Approval hone par aapko bhi notification milegi.');
+  spacer(doc, 8);
+  sectionHeader(doc, '1', 'App Download & First Time Login');
 
-  sectionTitle(doc, '4. Notices Dekhna');
-  bullet(doc, 'Admin jo bhi notice bhejega woh app ke "Notices" tab mein dikhega');
-  bullet(doc, 'SMS bhi aayega — internet nahi hone par bhi notice milega');
-  bullet(doc, 'Important notices ka jawab dena zarori hai — admin se confirm karein');
+  stepCard(doc, 1, 'App install karein', 'Apne Android phone par SCMS Field App install karein — APK link apne admin se maangein.');
+  stepCard(doc, 2, 'Phone number enter karein', 'App kholein → registered mobile number enter karein → "Send OTP" tap karein.');
+  stepCard(doc, 3, 'OTP verify karein', 'SMS par aaya 6-digit OTP enter karein.');
+  stepCard(doc, 4, 'MPIN set karein', 'Pehli baar 4-digit MPIN choose karein — ise yaad rakhein, har baar kaam aayega.');
+  stepCard(doc, 5, 'Dashboard', 'Aaj ki shift status, leave balance, notifications — sab ek screen par.');
 
-  sectionTitle(doc, '5. Attendance Calendar');
-  bullet(doc, '"Calendar" tab mein poore mahine ki attendance dekh sakte hain');
-  bullet(doc, 'Green = present, Red = absent, Yellow = half day, Blue = holiday');
-  bullet(doc, 'Kisi date par tap karein toh us din ki detail dikhegi — check-in time, check-out time, location');
+  tipBox(doc, 'MPIN bhoolne par admin se sampark karein — woh reset kar denge. MPIN kisi ke saath share na karein.');
 
-  sectionTitle(doc, '6. Common Problems & Solutions');
-  step(doc, '!', 'Check-in nahi ho raha', 'Location services aur internet check karein. App force close karke dobara try karein.');
-  step(doc, '!', 'MPIN bhool gaye', 'Admin se sampark karein — woh aapka MPIN reset kar denge.');
-  step(doc, '!', 'Selfie reject ho rahi hai', 'Achhi roshni mein chehra clear dikhayen. Mask ya cap nahi pehnen.');
+  spacer(doc, 4);
+  sectionHeader(doc, '2', 'Daily Check-In Process');
 
-  drawFooter(doc, 1);
+  stepCard(doc, 1, 'Center par pahunchein', 'Pehle physically apne assigned training center ya work location par aayein.');
+  stepCard(doc, 2, '"Check In" button dabayein', 'App home screen par bada "Check In" button dikhega — tap karein.');
+  stepCard(doc, 3, 'GPS location verify hogi', 'App GPS se verify karega ki aap assigned center ke 100 meter ke andar hain.');
+  stepCard(doc, 4, 'Live selfie kheenchein', 'Front camera se apni live selfie kheenchein. Face clearly dikhna chahiye — mask nahi.');
+  stepCard(doc, 5, 'Confirmation dekhein', 'Green tick = check-in successful. Live shift timer shuru ho jaata hai.');
+
+  warningCard(doc, '!', 'Location se bahar check-in nahi hoga', 'Agar aap assigned center se 100m se zyada door hain toh check-in button kaam nahi karega. Yeh policy hai.');
+
+  spacer(doc, 4);
+  sectionHeader(doc, '3', 'Check-Out Process');
+
+  stepCard(doc, 1, 'Kaam khatam hone par', 'App par wapas jaayein — home screen par "Check Out" button dikhega.');
+  stepCard(doc, 2, 'Check-Out tap karein', '"Check Out" button dabayein → GPS verify hogi → live selfie maangegi.');
+  stepCard(doc, 3, 'Daily summary', 'Check-out ke baad aaj ka total hours, location summary dikh jaata hai.');
+
+  spacer(doc, 4);
+  sectionHeader(doc, '4', 'Leave Apply Karna');
+
+  stepCard(doc, 1, 'Leave tab kholein', 'Bottom menu mein "Leave" icon tap karein.');
+  stepCard(doc, 2, '"Apply Leave" tap karein', 'Leave type chunein: Casual / Sick / Other.');
+  stepCard(doc, 3, 'Dates aur reason likhein', 'Start date, end date select karein aur leave ka reason briefly likhein.');
+  stepCard(doc, 4, 'Submit karein', 'Admin ko notification jaayegi. Approval ya rejection par aapko bhi notification milegi.');
+
+  tipBox(doc, '1 din pehle leave apply karein jab bhi possible ho — admin ko planning mein madad milti hai.');
+
+  spacer(doc, 4);
+  sectionHeader(doc, '5', 'Attendance Calendar');
+
+  bulletPoint(doc, '"Calendar" tab → poore mahine ki attendance ek nazar mein dikhai degi.');
+  bulletPoint(doc, 'Har din ka color code: Green = Present, Red = Absent, Yellow = Leave, Blue = Holiday.');
+  bulletPoint(doc, 'Kisi date par tap karein → us din ki detail: check-in time, check-out time, hours, GPS location.');
+  bulletPoint(doc, 'Agar galti dikh rahi ho — turant admin se sampark karein correction ke liye.');
+
+  spacer(doc, 4);
+  sectionHeader(doc, '6', 'Notices Dekhna');
+
+  bulletPoint(doc, '"Notices" tab mein admin ke saare broadcasts dikhenge — title aur message.');
+  bulletPoint(doc, 'Internet nahi hone par bhi SMS se notice milega — dono channels active hain.');
+  bulletPoint(doc, 'Important notices read karna mandatory hai — admin check kar sakta hai ki kisne padha.');
+
+  spacer(doc, 4);
+  sectionHeader(doc, '7', 'Common Problems & Solutions');
+
+  warningCard(doc, '!', 'Check-in nahi ho raha', 'Location services ON karein. Internet check karein. App force-close karein aur dobara try karein.');
+  warningCard(doc, '!', 'MPIN bhool gaye', 'Admin se sampark karein — woh aapka MPIN reset kar denge. Phone number ready rakhein.');
+  warningCard(doc, '!', 'Selfie reject ho rahi hai', 'Achhi roshni mein selfie kheenchein. Chehra poora frame mein aana chahiye. Mask ya cap nahi.');
+  warningCard(doc, '!', 'App crash ho raha hai', 'Phone restart karein. Agar phir bhi problem ho — admin se naya APK link maangein.');
+
   doc.end();
   console.log('✅ Center Staff User Guide generated');
 }
 
 // ─── GUIDE 4: Field Staff Guide ──────────────────────────────────────────────
-
 function generateFieldStaffGuide() {
-  const { doc } = createDoc('field-staff-user-guide.pdf');
-  drawHeader(doc, 'Field Staff (Mobilizer) User Guide', 'GPS tracking, Candidate registration, Document capture — Poora guide', 'For Field Mobilizers');
+  _currentPage = 0;
+  const doc = createDoc('field-staff-user-guide.pdf', 'Field Staff User Guide', 'GPS Tracking, Candidate Registration, Documents');
 
-  sectionTitle(doc, '1. App Login');
-  step(doc, '1', 'App install', 'SCMS Field App apne Android phone par install karein — admin se APK link maangein.');
-  step(doc, '2', 'Login', 'Phone number enter karein → OTP verify karein → MPIN set karein.');
-  step(doc, '3', 'Permissions', 'App Camera, Location aur Storage access maangegi — teeno ko ALLOW karein. Bina iske app kaam nahi karega.');
+  drawCoverPage(doc,
+    'Field Staff\n(Mobilizer) Guide',
+    'GPS tracking, candidate registration, 7 documents capture, offline mode — field mobilizers ke liye complete guide.',
+    'For Field Mobilizers',
+    C.saffron
+  );
 
-  sectionTitle(doc, '2. Field Check-In / Check-Out');
-  step(doc, '1', 'Location ON karein', 'Phone mein GPS location ON karein. Bina GPS ke check-in nahi hoga.');
-  step(doc, '2', 'Check-In', '"Check In" dabayein → GPS coordinates save honge → live selfie kheenchein.');
-  step(doc, '3', 'Shift timer', 'Check-in ke baad live timer chalega — kitne ghante field mein hain yeh track hota hai.');
-  step(doc, '4', 'KM tracking', 'Din bhar ka safar automatically track hota hai — petrol reimbursement ke liye useful.');
-  step(doc, '5', 'Check-Out', 'Field se wapas aane par "Check Out" dabayein → selfie → din ka report save.');
+  addContentPage(doc);
 
-  sectionTitle(doc, '3. Candidate Registration — Step by Step');
-  step(doc, '1', '"New Candidate" tab', 'App mein "Candidates" → "Register New" par tap karein.');
-  step(doc, '2', 'Personal details', 'Candidate ka poora naam, pita ka naam, mata ka naam, DOB, gender, category (ST/SC/OBC/General) bharein.');
-  step(doc, '3', 'Address details', 'Gaon/mohalla, post, block, district, state, pincode sab carefully bharein.');
-  step(doc, '4', 'Aadhaar details', '12-digit Aadhaar number enter karein. Aadhaar se match karna zaroori hai.');
-  step(doc, '5', 'Bank details', 'Bank account number, IFSC code, bank ka naam aur branch bharein.');
-  step(doc, '6', 'Document capture', 'Teeno required documents live camera se capture karein (gallery nahi chalegi).');
-  step(doc, '7', 'Submit', 'Sab details check karke Submit karein. Admin panel par turant dikh jaata hai.');
+  para(doc, 'Field Staff (Mobilizers) ka kaam candidates ko field mein visit karke register karna aur documents collect karna hai. Yeh guide aapko app ka poora use step-by-step sikhayegi.');
 
-  sectionTitle(doc, '4. Document Capture Rules');
-  bullet(doc, 'Passport Photo — 3.5×4.5 cm, white background, face clearly visible');
-  bullet(doc, 'Aadhaar Front — poora card frame mein, sabhi details readable');
-  bullet(doc, 'Aadhaar Back — poora card frame mein, address clearly visible');
-  bullet(doc, 'Jati Praman Patra — government issued, seal aur sign visible');
-  bullet(doc, 'Shaikshanik Praman Patra — highest qualification ka certificate');
-  bullet(doc, 'Bank Passbook — first page jisme naam, account number, IFSC clearly dikh rahe');
-  bullet(doc, 'Hastakshar — candidate ka signature white paper par kara karein aur capture karein');
+  spacer(doc, 8);
+  sectionHeader(doc, '1', 'App Setup & Login');
 
-  note(doc, 'Koi bhi document gallery se upload karna BAND hai. Sirf live camera capture allowed hai — audit ke liye.');
+  stepCard(doc, 1, 'App install karein', 'Admin se SCMS Field App ka APK link maangein → Android phone par install karein.');
+  stepCard(doc, 2, 'Permissions allow karein', 'Camera, Location aur Storage — teeno permissions ALLOW karein. Bina iske app kaam nahi karega.');
+  stepCard(doc, 3, 'Phone number enter karein', 'Registered mobile number → OTP verify karein.');
+  stepCard(doc, 4, 'MPIN set karein', 'Pehli baar 4-digit MPIN choose karein — ise yaad rakhein.');
 
-  sectionTitle(doc, '5. Offline Mode');
-  step(doc, '1', 'Internet nahi hai?', 'Koi dikkat nahi! App offline bhi kaam karta hai. Data phone mein save hota rehta hai.');
-  step(doc, '2', 'Auto sync', 'Jab bhi 4G ya WiFi milega, data automatically server par sync ho jaata hai.');
-  step(doc, '3', 'Sync status', 'App mein orange indicator dikhega jab data sync hona pending ho. Green = synced.');
+  infoBox(doc, 'Recommended Phone Settings', 'Location: High Accuracy mode ON karein. Battery Saver: OFF rakhein field duty par. Mobile Data: ON rakhein jab bhi available ho.');
 
-  sectionTitle(doc, '6. My Candidates List');
-  bullet(doc, '"My Candidates" tab mein apne registered saare candidates ki list dikhegi');
-  bullet(doc, 'Pending = admin ne abhi approve nahi kiya, Approved = batch assign ho gaya');
-  bullet(doc, 'Kisi candidate par tap karein → poori profile dekh sakte hain → PDF bhi share kar sakte hain');
+  spacer(doc, 4);
+  sectionHeader(doc, '2', 'Field Check-In / Check-Out');
 
-  sectionTitle(doc, '7. Common Problems');
-  step(doc, '!', 'Check-in nahi ho raha', 'GPS ON karein, internet check karein, app restart karein.');
-  step(doc, '!', 'Camera permission nahi', 'Phone Settings → Apps → SCMS → Permissions → Camera ON karein.');
-  step(doc, '!', 'Data sync nahi ho raha', 'Internet connection check karein. App close karke dobara kholein.');
-  step(doc, '!', 'MPIN bhool gaye', 'Admin se sampark karein — woh reset kar denge.');
+  stepCard(doc, 1, 'GPS ON karein', 'Phone mein GPS / Location ON karein. Bina GPS ke check-in nahi hoga.');
+  stepCard(doc, 2, '"Check In" dabayein', 'App home → "Check In" button → GPS coordinates save honge → live selfie kheenchein.');
+  stepCard(doc, 3, 'Shift timer', 'Check-in ke baad live timer chalega — kitne ghante field mein hain track hota hai.');
+  stepCard(doc, 4, 'KM tracking', 'Din bhar ki GPS movement se total distance calculate hoti hai — petrol reimbursement ke liye.');
+  stepCard(doc, 5, 'Check-Out', 'Field se wapas aane par "Check Out" → selfie → din ka summary save.');
 
-  drawFooter(doc, 1);
+  tipBox(doc, 'Agar internet nahi hai toh bhi check-in/out hoga — data phone mein save hoga aur internet aane par auto-sync karega.');
+
+  spacer(doc, 4);
+  sectionHeader(doc, '3', 'Candidate Registration — Step by Step');
+
+  stepCard(doc, 1, '"Register New Candidate" tap karein', 'App → "Candidates" tab → "+" button ya "Register New".');
+  stepCard(doc, 2, 'Personal details bharein', 'Poora naam, pita ka naam, mata ka naam, DOB, gender, category (ST/SC/OBC/General).');
+  stepCard(doc, 3, 'Address details', 'Gaon/mohalla, post, block, district, state, pincode — ek-ek field carefully bharein.');
+  stepCard(doc, 4, 'Aadhaar details', '12-digit Aadhaar number enter karein. Aadhaar card se milana zaroori hai — typo mat karna.');
+  stepCard(doc, 5, 'Bank details', 'Account number, IFSC code, bank ka naam, branch — double check karein.');
+  stepCard(doc, 6, 'Documents capture karein', '7 documents live camera se capture karein (neeche list hai).');
+  stepCard(doc, 7, 'Review & Submit', 'Sab details check karein → Submit. Admin panel par turant dikhega.');
+
+  spacer(doc, 4);
+  sectionHeader(doc, '4', '7 Required Documents — Capture Rules');
+
+  subHeading(doc, 'Documents ki list:');
+  bulletPoint(doc, '1. Passport Photo — 3.5×4.5 cm size, white background, face 80% frame mein, clearly visible');
+  bulletPoint(doc, '2. Aadhaar Card (Front) — poora card frame mein, naam, DOB, address, photo sab readable');
+  bulletPoint(doc, '3. Aadhaar Card (Back) — poora card, address clearly visible, barcode bhi capture ho');
+  bulletPoint(doc, '4. Jati Praman Patra — government issued certificate, official seal aur signature clearly visible');
+  bulletPoint(doc, '5. Shaikshanik Praman Patra — highest qualification ka certificate (10th/12th/graduation)');
+  bulletPoint(doc, '6. Bank Passbook (First Page) — naam, account number, IFSC sab clearly dikh rahe');
+  bulletPoint(doc, '7. Hastakshar (Signature) — candidate ka signature white plain paper par — frame mein poora aaye');
+
+  warningCard(doc, '!', 'Gallery se upload BAND hai', 'Koi bhi document gallery ya downloaded photo se submit karna ALLOWED NAHI hai. Sirf live camera capture hoga — audit requirement hai.');
+
+  spacer(doc, 4);
+  sectionHeader(doc, '5', 'Offline Mode — Internet Nahi Toh Bhi Kaam Karein');
+
+  stepCard(doc, 1, 'Internet nahi — koi baat nahi', 'App offline bhi poora kaam karta hai. Data phone mein local storage mein save hota hai.');
+  stepCard(doc, 2, 'Auto sync', 'Jab bhi 4G ya WiFi milega, sab pending data automatically server par sync ho jaata hai.');
+  stepCard(doc, 3, 'Sync indicator', 'Orange dot = sync pending, Green dot = sab synced. Din khatam hone se pehle sync zaroor verify karein.');
+
+  infoBox(doc, 'Daily Routine', 'Roz din khatam karne ke baad WiFi se connect karein aur green sync indicator confirm karein. Isse koi bhi data kabhi nahi khayega.');
+
+  spacer(doc, 4);
+  sectionHeader(doc, '6', 'My Candidates — List & Status');
+
+  bulletPoint(doc, '"My Candidates" tab → apne registered saare candidates ki list dikhegi.');
+  bulletPoint(doc, 'Status: Pending = admin ne abhi approve nahi kiya. Approved = batch assign ho gaya.');
+  bulletPoint(doc, 'Rejected = koi document ya detail galat thi — admin ka reason dekh sakte hain.');
+  bulletPoint(doc, 'Kisi candidate par tap → poori profile → "Share PDF" se candidate ko registration proof share karein.');
+
+  spacer(doc, 4);
+  sectionHeader(doc, '7', 'Common Problems & Solutions');
+
+  warningCard(doc, '!', 'Check-in fail ho raha hai', 'GPS High Accuracy ON karein. Internet check karein. App restart karein. Location clear karke retry karein.');
+  warningCard(doc, '!', 'Camera permission nahi', 'Phone Settings → Apps → SCMS → Permissions → Camera → Allow. Phir app restart karein.');
+  warningCard(doc, '!', 'Data sync nahi ho raha', 'WiFi ya mobile data ON karein. App close karke dobara kholein. Orange dot jaane tak wait karein.');
+  warningCard(doc, '!', 'MPIN bhool gaye', 'Admin se sampark karein — woh MPIN reset kar denge. Registered phone number ready rakhein.');
+  warningCard(doc, '!', 'Candidate submit nahi ho raha', 'Sabhi fields fill hain? Documents 7/7 captured hain? Internet check karein. Offline submit karo — baad mein sync hoga.');
+
   doc.end();
   console.log('✅ Field Staff User Guide generated');
 }
 
-// Run all
+// ── Run all ──────────────────────────────────────────────────────────────────
 generateCompanyGuide();
 generateAdminGuide();
 generateCenterStaffGuide();
