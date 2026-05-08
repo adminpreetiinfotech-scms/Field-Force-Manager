@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { CameraType, CameraView, useCameraPermissions } from "expo-camera";
+import * as FileSystem from "expo-file-system";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import * as Location from "expo-location";
@@ -22,6 +23,14 @@ import { Button } from "@/components/Button";
 import { GeoPoint, useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
 
+function getApiBase(): string {
+  if (Platform.OS === "web") return "";
+  const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "";
+  if (!domain) return "";
+  return domain.startsWith("http") ? domain : `https://${domain}`;
+}
+const API_BASE = getApiBase();
+
 function haversineM(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371000;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -31,6 +40,7 @@ function haversineM(lat1: number, lon1: number, lat2: number, lon2: number): num
 }
 
 type Phase = "selfie" | "vehicle" | "odometer" | "meter-capture";
+type FaceVerifyStatus = "idle" | "verifying" | "match" | "mismatch" | "no_reference" | "error";
 
 export default function CheckInScreen() {
   const colors = useColors();
@@ -46,6 +56,9 @@ export default function CheckInScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [facing, setFacing] = useState<CameraType>("front");
   const cameraRef = useRef<CameraView>(null);
+  const [faceStatus, setFaceStatus] = useState<FaceVerifyStatus>("idle");
+  const [faceScore, setFaceScore] = useState<number | null>(null);
+  const [facePhotoUrl, setFacePhotoUrl] = useState<string | null>(null);
   // Per-check-in vehicle type (can be changed even if profile has a default)
   const [selectedVehicleType, setSelectedVehicleType] = useState<"2-wheeler" | "4-wheeler" | null>(
     user?.vehicleType ?? null,
@@ -68,6 +81,42 @@ export default function CheckInScreen() {
     })();
   }, []);
 
+  const verifyFace = async (uri: string) => {
+    if (!user?.phone || Platform.OS === "web") {
+      setFaceStatus("no_reference");
+      return;
+    }
+    setFaceStatus("verifying");
+    try {
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const res = await fetch(`${API_BASE}/api/activity/verify-face`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-staff-phone": user.phone,
+        },
+        body: JSON.stringify({ base64, mimeType: "image/jpeg" }),
+      });
+      if (!res.ok) { setFaceStatus("error"); return; }
+      const data = (await res.json()) as {
+        score: number | null;
+        status: string;
+        matched: boolean | null;
+        checkinPhotoUrl?: string | null;
+      };
+      setFaceScore(data.score);
+      setFacePhotoUrl(data.checkinPhotoUrl ?? null);
+      if (data.status === "no_reference") setFaceStatus("no_reference");
+      else if (data.status === "match") setFaceStatus("match");
+      else if (data.status === "mismatch") setFaceStatus("mismatch");
+      else setFaceStatus("error");
+    } catch {
+      setFaceStatus("error");
+    }
+  };
+
   const capture = async () => {
     if (!cameraRef.current) return;
     try {
@@ -79,6 +128,8 @@ export default function CheckInScreen() {
           setPhase("odometer");
         } else {
           setPhoto(result.uri);
+          // Trigger face verification after selfie capture
+          verifyFace(result.uri);
         }
       }
     } catch {
@@ -94,6 +145,23 @@ export default function CheckInScreen() {
   })();
 
   const confirmSelfie = () => {
+    if (!photo) return;
+    // If face mismatch, warn but allow proceed (admin reviews via audit log)
+    if (faceStatus === "mismatch") {
+      Alert.alert(
+        "Face Mismatch Warning",
+        `Your selfie doesn't match the reference photo (score: ${faceScore ?? "—"}/100). You can still check in, but this will be flagged for admin review.`,
+        [
+          { text: "Retake Selfie", style: "cancel", onPress: () => { setPhoto(null); setFaceStatus("idle"); } },
+          { text: "Proceed Anyway", style: "destructive", onPress: () => _doConfirmSelfie() },
+        ],
+      );
+      return;
+    }
+    _doConfirmSelfie();
+  };
+
+  const _doConfirmSelfie = () => {
     if (!photo) return;
     // Center staff do not have vehicle / odometer — skip directly to submit
     if (user?.staffCategory === "center") {
@@ -415,10 +483,52 @@ export default function CheckInScreen() {
             </Text>
           </View>
         )}
+        {/* Face match result badge */}
+        {photo && faceStatus !== "idle" && (
+          <View style={[
+            styles.faceBadge,
+            faceStatus === "verifying" ? { backgroundColor: "rgba(99,102,241,0.18)", borderColor: "rgba(99,102,241,0.5)" }
+            : faceStatus === "match" ? { backgroundColor: "rgba(52,211,153,0.15)", borderColor: "#34D399" }
+            : faceStatus === "mismatch" ? { backgroundColor: "rgba(239,68,68,0.15)", borderColor: "#EF4444" }
+            : { backgroundColor: "rgba(107,114,128,0.15)", borderColor: "rgba(107,114,128,0.4)" },
+          ]}>
+            {faceStatus === "verifying" ? (
+              <>
+                <ActivityIndicator size="small" color="#818CF8" />
+                <Text style={[styles.faceText, { color: "#818CF8" }]}>Verifying face…</Text>
+              </>
+            ) : faceStatus === "match" ? (
+              <>
+                <Feather name="check-circle" size={14} color="#34D399" />
+                <Text style={[styles.faceText, { color: "#34D399" }]}>
+                  Face matched{faceScore != null ? ` (${faceScore}/100)` : ""}
+                </Text>
+              </>
+            ) : faceStatus === "mismatch" ? (
+              <>
+                <Feather name="alert-triangle" size={14} color="#EF4444" />
+                <Text style={[styles.faceText, { color: "#EF4444" }]}>
+                  Face mismatch{faceScore != null ? ` (${faceScore}/100)` : ""} — will be flagged
+                </Text>
+              </>
+            ) : faceStatus === "no_reference" ? (
+              <>
+                <Feather name="user" size={14} color="rgba(255,255,255,0.4)" />
+                <Text style={[styles.faceText, { color: "rgba(255,255,255,0.4)" }]}>No reference photo set</Text>
+              </>
+            ) : (
+              <>
+                <Feather name="wifi-off" size={14} color="rgba(255,255,255,0.4)" />
+                <Text style={[styles.faceText, { color: "rgba(255,255,255,0.4)" }]}>Face check skipped</Text>
+              </>
+            )}
+          </View>
+        )}
+
         {photo ? (
           <View style={styles.actions}>
             <Pressable
-              onPress={() => setPhoto(null)}
+              onPress={() => { setPhoto(null); setFaceStatus("idle"); setFaceScore(null); }}
               style={({ pressed }) => [styles.retake, { opacity: pressed ? 0.85 : 1 }]}
             >
               <Feather name="refresh-cw" size={16} color="#fff" />
@@ -427,10 +537,10 @@ export default function CheckInScreen() {
             <Button
               label={user?.staffCategory !== "center" ? "Next: Vehicle" : "Confirm check-in"}
               onPress={confirmSelfie}
-              disabled={!!(centerGeofenceWarning?.outside)}
+              disabled={!!(centerGeofenceWarning?.outside) || faceStatus === "verifying"}
               loading={submitting}
               size="lg"
-              style={{ flex: 1, opacity: centerGeofenceWarning?.outside ? 0.4 : 1 }}
+              style={{ flex: 1, opacity: (centerGeofenceWarning?.outside || faceStatus === "verifying") ? 0.4 : 1 }}
               icon={<Feather name={user?.staffCategory !== "center" ? "arrow-right" : "check"} size={18} color="#fff" />}
             />
           </View>
@@ -500,4 +610,6 @@ const styles = StyleSheet.create({
   },
   photoRow: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: 12, borderWidth: 1 },
   geofenceWarning: { flexDirection: "row", alignItems: "center", gap: 8, padding: 10, borderRadius: 10, borderWidth: 1 },
+  faceBadge: { flexDirection: "row", alignItems: "center", gap: 8, padding: 10, borderRadius: 10, borderWidth: 1 },
+  faceText: { fontSize: 12, fontFamily: "Inter_500Medium", flex: 1 },
 });

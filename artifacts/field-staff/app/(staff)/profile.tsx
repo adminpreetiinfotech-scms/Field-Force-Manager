@@ -1,7 +1,9 @@
 import { Feather } from "@expo/vector-icons";
+import { CameraType, CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
 import { router } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -79,6 +81,44 @@ export default function StaffProfile() {
   const [vehicleType, setVehicleType] = useState<VehicleType | null>(user?.vehicleType ?? null);
   const [vehicleNumber, setVehicleNumber] = useState(user?.vehicleNumber ?? "");
   const [savingVehicle, setSavingVehicle] = useState(false);
+
+  // ── Reference selfie / face match state ──
+  const [refCamPermission, requestRefCamPermission] = useCameraPermissions();
+  const [showRefCamera, setShowRefCamera] = useState(false);
+  const refCamRef = useRef<CameraView>(null);
+  const [refUploading, setRefUploading] = useState(false);
+  const [refPhotoSet, setRefPhotoSet] = useState<boolean>(!!user?.referencePhotoUrl);
+
+  const captureAndUploadReferenceSelfie = async () => {
+    if (!refCamRef.current || !user?.phone) return;
+    setRefUploading(true);
+    try {
+      const result = await refCamRef.current.takePictureAsync({ quality: 0.7, skipProcessing: true });
+      if (!result?.uri) { setRefUploading(false); return; }
+
+      setShowRefCamera(false);
+      const base64 = await FileSystem.readAsStringAsync(result.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      const phoneHeader: Record<string, string> = user.role === "admin"
+        ? { "x-admin-phone": user.phone }
+        : { "x-staff-phone": user.phone };
+
+      const res = await fetch(`${API_BASE}/api/staff/me/reference-selfie`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...phoneHeader },
+        body: JSON.stringify({ base64, mimeType: "image/jpeg" }),
+      });
+      if (!res.ok) throw new Error("Upload failed");
+      setRefPhotoSet(true);
+      Alert.alert("Done!", "Reference photo saved. It will be used to verify your identity at every check-in.");
+    } catch (e: unknown) {
+      Alert.alert("Error", (e as Error).message || "Could not save reference photo.");
+    } finally {
+      setRefUploading(false);
+    }
+  };
 
   // ── Documents state ──
   const [docs, setDocs] = useState<StaffDoc[]>([]);
@@ -471,6 +511,74 @@ export default function StaffProfile() {
               </Text>
             </View>
           )}
+        </View>
+      )}
+
+      {/* ── Face Match Setup ──────────────────────────────────────── */}
+      {showRefCamera ? (
+        <View style={[styles.section, { backgroundColor: "#000", borderColor: colors.border, borderRadius: colors.radius + 4, overflow: "hidden", padding: 0 }]}>
+          <CameraView ref={refCamRef} style={{ width: "100%", aspectRatio: 3/4 }} facing="front" />
+          <View style={{ flexDirection: "row", gap: 12, padding: 16, backgroundColor: "rgba(0,0,0,0.85)" }}>
+            <Pressable
+              onPress={() => setShowRefCamera(false)}
+              style={({ pressed }) => ({ flex: 1, alignItems: "center", padding: 14, borderRadius: 12, borderWidth: 1, borderColor: "rgba(255,255,255,0.3)", opacity: pressed ? 0.7 : 1 })}
+            >
+              <Text style={{ color: "#fff", fontSize: 14, fontFamily: "Inter_500Medium" }}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              onPress={captureAndUploadReferenceSelfie}
+              disabled={refUploading}
+              style={({ pressed }) => ({ flex: 2, alignItems: "center", padding: 14, borderRadius: 12, backgroundColor: colors.primary, opacity: pressed || refUploading ? 0.7 : 1 })}
+            >
+              {refUploading
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Text style={{ color: "#fff", fontSize: 14, fontFamily: "Inter_700Bold" }}>📸 Capture & Save</Text>
+              }
+            </Pressable>
+          </View>
+        </View>
+      ) : (
+        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border, borderRadius: colors.radius + 4 }]}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 }}>
+            <View style={{ width: 36, height: 36, borderRadius: 999, backgroundColor: refPhotoSet ? colors.success + "20" : colors.primary + "20", alignItems: "center", justifyContent: "center" }}>
+              <Feather name="user-check" size={16} color={refPhotoSet ? colors.success : colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.foreground, fontSize: 14, fontFamily: "Inter_700Bold" }}>Face Match Setup</Text>
+              <Text style={{ color: colors.mutedForeground, fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 1 }}>
+                {refPhotoSet
+                  ? "✓ Reference photo set — will verify identity at each check-in"
+                  : "Set a reference selfie to enable face verification at check-in"}
+              </Text>
+            </View>
+          </View>
+          <Pressable
+            onPress={async () => {
+              if (Platform.OS === "web") { Alert.alert("Not supported", "Camera not available on web."); return; }
+              if (!refCamPermission?.granted) {
+                const result = await requestRefCamPermission();
+                if (!result.granted) { Alert.alert("Permission required", "Camera access is needed to capture reference selfie."); return; }
+              }
+              setShowRefCamera(true);
+            }}
+            style={({ pressed }) => ({
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              padding: 12,
+              borderRadius: 10,
+              borderWidth: 1,
+              borderColor: refPhotoSet ? colors.success + "50" : colors.primary + "50",
+              backgroundColor: refPhotoSet ? colors.success + "10" : colors.primary + "10",
+              opacity: pressed ? 0.75 : 1,
+            })}
+          >
+            <Feather name="camera" size={16} color={refPhotoSet ? colors.success : colors.primary} />
+            <Text style={{ color: refPhotoSet ? colors.success : colors.primary, fontSize: 13, fontFamily: "Inter_600SemiBold" }}>
+              {refPhotoSet ? "Update Reference Photo" : "Set Reference Photo"}
+            </Text>
+          </Pressable>
         </View>
       )}
 

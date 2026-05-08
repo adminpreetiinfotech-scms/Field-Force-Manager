@@ -50,6 +50,8 @@ export type User = {
   companyCenterRadiusMeters?: number | null;
   /** Training center this staff member is linked to */
   centerId?: string | null;
+  /** GCS object path of staff's reference selfie (used for face match check-in) */
+  referencePhotoUrl?: string | null;
 };
 
 export type VehicleType = "2-wheeler" | "4-wheeler";
@@ -790,6 +792,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       companyCenterLng: dto.companyCenterLng ?? null,
       companyCenterRadiusMeters: dto.companyCenterRadiusMeters ?? null,
       centerId: dto.centerId ?? null,
+      referencePhotoUrl: (dto as any).referencePhotoUrl ?? null,
     };
     setState((s) => ({ ...s, user, pendingPhone: null, pendingCompanyName: null, pendingRegistration: null }));
     return user;

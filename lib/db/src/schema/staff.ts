@@ -68,6 +68,8 @@ export const staffTable = pgTable("staff", {
   dismissedHints: text("dismissed_hints"),
   /** Expo push token for in-app push notifications. Updated after each login. */
   expoPushToken: text("expo_push_token"),
+  /** GCS object path for staff reference selfie used for face match check-in. */
+  referencePhotoUrl: text("reference_photo_url"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

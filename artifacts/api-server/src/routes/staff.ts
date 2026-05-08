@@ -5,6 +5,8 @@ import path from "path";
 import { Router, type IRouter } from "express";
 import crypto from "node:crypto";
 import { requireAdmin } from "./admin";
+import { uploadReferenceSelfie, downloadSelfieBuffer, uploadCheckinSelfie } from "../lib/selfieStorage";
+import { compareFaces } from "../lib/faceCompare";
 
 const router: IRouter = Router();
 
@@ -36,6 +38,7 @@ export function toStaffDTO(r: typeof staffTable.$inferSelect) {
     designation: r.designation ?? null,
     block: r.block ?? null,
     staffPinCode: r.staffPinCode ?? null,
+    referencePhotoUrl: r.referencePhotoUrl ?? null,
   };
 }
 
@@ -1253,6 +1256,130 @@ router.get("/staff/documents", async (req, res, next) => {
       url: docFileUrl(d.filePath),
       uploadedAt: d.uploadedAt?.toISOString() ?? null,
     })));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── POST /api/staff/me/reference-selfie ─────────────────────────────────────
+// Upload a reference selfie for face-match check-in.
+// Auth: x-staff-phone or x-admin-phone header.
+// Body: { base64: string, mimeType?: string }
+
+router.post("/staff/me/reference-selfie", async (req, res, next) => {
+  try {
+    const phone = (
+      (req.headers["x-staff-phone"] as string | undefined) ??
+      (req.headers["x-admin-phone"] as string | undefined)
+    )?.trim();
+    if (!phone) {
+      res.status(401).json({ title: "x-staff-phone header required", status: 401 });
+      return;
+    }
+    const [staffRow] = await db
+      .select({ id: staffTable.id, deletedAt: staffTable.deletedAt })
+      .from(staffTable)
+      .where(eq(staffTable.phone, phone))
+      .limit(1);
+    if (!staffRow || staffRow.deletedAt) {
+      res.status(401).json({ title: "Staff not found", status: 401 });
+      return;
+    }
+
+    const { base64, mimeType = "image/jpeg" } = req.body as {
+      base64?: string;
+      mimeType?: string;
+    };
+    if (!base64) {
+      res.status(400).json({ title: "base64 image required", status: 400 });
+      return;
+    }
+
+    const buf = Buffer.from(base64, "base64");
+    if (buf.length < 1000) {
+      res.status(400).json({ title: "Image too small", status: 400 });
+      return;
+    }
+
+    const objectPath = await uploadReferenceSelfie(buf, mimeType, staffRow.id);
+    await db
+      .update(staffTable)
+      .set({ referencePhotoUrl: objectPath })
+      .where(eq(staffTable.id, staffRow.id));
+
+    res.json({ ok: true, referencePhotoUrl: objectPath });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── POST /api/activity/verify-face ──────────────────────────────────────────
+// Compare a check-in selfie against the staff's reference photo.
+// Auth: x-staff-phone header.
+// Body: { base64: string, mimeType?: string }
+// Returns: { score, status, matched, checkinPhotoUrl? }
+
+router.post("/activity/verify-face", async (req, res, next) => {
+  try {
+    const phone = (
+      (req.headers["x-staff-phone"] as string | undefined) ??
+      (req.headers["x-admin-phone"] as string | undefined)
+    )?.trim();
+    if (!phone) {
+      res.status(401).json({ title: "x-staff-phone header required", status: 401 });
+      return;
+    }
+    const [staffRow] = await db
+      .select({ id: staffTable.id, referencePhotoUrl: staffTable.referencePhotoUrl, deletedAt: staffTable.deletedAt })
+      .from(staffTable)
+      .where(eq(staffTable.phone, phone))
+      .limit(1);
+    if (!staffRow || staffRow.deletedAt) {
+      res.status(401).json({ title: "Staff not found", status: 401 });
+      return;
+    }
+
+    const { base64, mimeType = "image/jpeg" } = req.body as {
+      base64?: string;
+      mimeType?: string;
+    };
+    if (!base64) {
+      res.status(400).json({ title: "base64 image required", status: 400 });
+      return;
+    }
+
+    const checkBuf = Buffer.from(base64, "base64");
+
+    // If no reference photo, skip comparison — return no_reference status
+    if (!staffRow.referencePhotoUrl) {
+      // Upload check-in selfie for audit trail anyway
+      let checkinPhotoUrl: string | null = null;
+      try {
+        checkinPhotoUrl = await uploadCheckinSelfie(checkBuf, mimeType);
+      } catch { /* non-fatal */ }
+      res.json({ score: null, status: "no_reference", matched: null, checkinPhotoUrl });
+      return;
+    }
+
+    // Download reference and compare
+    const refBuf = await downloadSelfieBuffer(staffRow.referencePhotoUrl);
+    if (!refBuf) {
+      res.json({ score: null, status: "no_reference", matched: null, checkinPhotoUrl: null });
+      return;
+    }
+
+    // Upload check-in selfie (fire-and-forget) and compare in parallel
+    const [compareResult, checkinPhotoUrl] = await Promise.all([
+      compareFaces(refBuf, checkBuf),
+      uploadCheckinSelfie(checkBuf, mimeType).catch(() => null),
+    ]);
+
+    res.json({
+      score: compareResult.score,
+      status: compareResult.status,
+      matched: compareResult.matched,
+      checkinPhotoUrl,
+    });
   } catch (err) {
     next(err);
   }
