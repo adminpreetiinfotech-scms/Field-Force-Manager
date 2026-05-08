@@ -1211,7 +1211,7 @@ function UserGuides() {
       badgeColor: "bg-violet-100 text-violet-700 border-violet-200",
       cardBorder: "border-violet-200",
       iconBg: "bg-violet-100 text-violet-700",
-      msgText: "Hi, I need the Company Registration User Guide for SCMS."
+      pdfUrl: "/marketing-site/guides/company-registration-guide.pdf"
     },
     {
       icon: <FileSpreadsheet className="w-7 h-7" />,
@@ -1221,7 +1221,7 @@ function UserGuides() {
       badgeColor: "bg-blue-100 text-blue-700 border-blue-200",
       cardBorder: "border-blue-200",
       iconBg: "bg-blue-100 text-blue-700",
-      msgText: "Hi, I need the Admin Panel User Guide for SCMS."
+      pdfUrl: "/marketing-site/guides/admin-user-guide.pdf"
     },
     {
       icon: <Building2 className="w-7 h-7" />,
@@ -1231,7 +1231,7 @@ function UserGuides() {
       badgeColor: "bg-emerald-100 text-emerald-700 border-emerald-200",
       cardBorder: "border-emerald-200",
       iconBg: "bg-emerald-100 text-emerald-700",
-      msgText: "Hi, I need the Center Staff User Guide for SCMS."
+      pdfUrl: "/marketing-site/guides/center-staff-user-guide.pdf"
     },
     {
       icon: <MapPin className="w-7 h-7" />,
@@ -1241,7 +1241,7 @@ function UserGuides() {
       badgeColor: "bg-orange-100 text-orange-700 border-orange-200",
       cardBorder: "border-orange-200",
       iconBg: "bg-orange-100 text-orange-700",
-      msgText: "Hi, I need the Field Staff User Guide for SCMS."
+      pdfUrl: "/marketing-site/guides/field-staff-user-guide.pdf"
     }
   ];
 
@@ -1303,13 +1303,14 @@ function UserGuides() {
               <h3 className="text-base font-bold text-gray-900 mb-2 leading-tight">{guide.title}</h3>
               <p className="text-gray-500 text-sm leading-relaxed mb-6 flex-1">{guide.desc}</p>
               <a
-                href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(guide.msgText)}`}
+                href={guide.pdfUrl}
+                download
                 target="_blank"
                 rel="noreferrer"
                 className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl border ${guide.cardBorder} font-bold text-sm transition-all hover:scale-[1.02] ${guide.iconBg}`}
               >
                 <Download className="w-4 h-4" />
-                Guide Download Karo
+                PDF Download Karo
               </a>
             </motion.div>
           ))}
