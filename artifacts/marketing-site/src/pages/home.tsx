@@ -1200,7 +1200,7 @@ function Footer() {
           </div>
         </div>
         <p className="text-blue-300 text-sm mb-6 max-w-md mx-auto">
-          Empowering DDU-GKY & PMKVY training centers with technology built for Indian ground realities.
+          Empowering JSDMS, DDU-GKY & All State Skill Projects with technology built for Indian ground realities.
         </p>
         <div className="flex justify-center gap-6 text-sm font-medium text-blue-300 mb-4">
           <a href="#features" className="hover:text-white transition-colors">Features</a>
