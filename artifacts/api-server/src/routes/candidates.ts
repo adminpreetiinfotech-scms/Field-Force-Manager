@@ -16,7 +16,7 @@ import path from "path";
 import { sendSmsSilent } from "../lib/twilio";
 import { sendPushSilent } from "../lib/push";
 import { downloadLogoBuffer } from "../lib/logoStorage";
-import { generateCandidatePdf, type PdfReportOpts } from "../services/pdf";
+import { generateCandidatePdf, generateSwaghostPdf, type PdfReportOpts } from "../services/pdf";
 import { getAdminCompanyId, requireAdmin } from "./admin";
 
 const PDF_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"] as const;
@@ -1233,6 +1233,44 @@ router.get("/candidates/:id/pdf", async (req, res, next) => {
       "Content-Disposition",
       `attachment; filename="candidate_${safeName}.pdf"`,
     );
+    fs.createReadStream(pdfFilePath).pipe(res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── GET /api/candidates/:id/swaghost-pdf ─────────────────────────────────────
+
+router.get("/candidates/:id/swaghost-pdf", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (!id?.trim() || !isValidUUID(id)) {
+      res.status(400).json({ title: "Valid candidate id is required", status: 400 });
+      return;
+    }
+    const [candidate] = await db
+      .select()
+      .from(candidatesTable)
+      .where(eq(candidatesTable.id, id))
+      .limit(1);
+    if (!candidate) {
+      res.status(404).json({ title: "Candidate not found", status: 404 });
+      return;
+    }
+    const resolvedCompanyId = await resolveCompanyIdForBranding(candidate.companyId, candidate.submittedByPhone);
+    const branding = await fetchCompanyBranding(resolvedCompanyId);
+    const pdfOpts = buildPdfOpts(candidate, req.query as Record<string, string>, branding);
+    const pdfFilePath = path.join(CANDIDATES_DIR, candidate.id, "swaghost.pdf");
+    fs.mkdirSync(path.dirname(pdfFilePath), { recursive: true });
+    try {
+      await generateSwaghostPdf(candidate, pdfFilePath, pdfOpts);
+    } catch (pdfErr) {
+      next(pdfErr);
+      return;
+    }
+    const safeName = candidate.name.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase();
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="swaghost_${safeName}.pdf"`);
     fs.createReadStream(pdfFilePath).pipe(res);
   } catch (err) {
     next(err);

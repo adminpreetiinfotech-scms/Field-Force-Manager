@@ -1138,3 +1138,243 @@ export async function generateCandidatePdf(
     doc.end();
   });
 }
+
+// ─── Swaghost Patra (स्व-घोषणा पत्र) PDF generator ──────────────────────────
+
+export async function generateSwaghostPdf(
+  rawCandidate: Candidate,
+  pdfPath: string,
+  reportOpts?: PdfReportOpts,
+): Promise<void> {
+  const c = rawCandidate as Candidate & {
+    fatherName?: string | null;
+    motherName?: string | null;
+    dob?: string | null;
+    gender?: string | null;
+    address?: string | null;
+    village?: string | null;
+    district?: string | null;
+    state?: string | null;
+    pin?: string | null;
+    course?: string | null;
+    skillCentreName?: string | null;
+    aadhaarNumber?: string | null;
+    caste?: string | null;
+    religion?: string | null;
+    education?: string | null;
+    bpl?: string | null;
+    pwd?: string | null;
+    signaturePath?: string | null;
+    candidateIdCode?: string | null;
+    mobilizer?: string | null;
+    centerTcId?: string | null;
+  };
+
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: "A4", margin: 0, autoFirstPage: true });
+    doc.registerFont("NSR", FONT_NS_REG);
+    doc.registerFont("NSB", FONT_NS_BOL);
+    doc.registerFont("DVR", FONT_DV_REG);
+    doc.registerFont("DVB", FONT_DV_BOL);
+
+    const ws = fs.createWriteStream(pdfPath);
+    doc.pipe(ws);
+    ws.on("error", reject);
+    ws.on("finish", resolve);
+
+    const CW = A4_W - ML * 2;
+    const FX = ML + 4;
+    const FW = CW - 8;
+
+    // ── Outer border ─────────────────────────────────────────────────────────
+    box(doc, ML, MT, CW, A4_H - MT * 2, 1.0);
+
+    // ── Letterhead ───────────────────────────────────────────────────────────
+    const brandName   = reportOpts?.companyName?.trim() || "Jharkhand Skill Development Mission Society";
+    const brandHindi  = reportOpts?.companyNameHindi?.trim() || "झारखण्ड कौशल विकास मिशन सोसाइटी";
+    const isCustom    = !!(reportOpts?.companyName?.trim());
+    const brandLogoPath = reportOpts?.companyLogoPath || LOGO_PATH;
+    const brandLogoBuf  = reportOpts?.companyLogoBuffer ?? null;
+
+    const LGSZ   = 60;
+    const HW     = CW;
+    const logoGap = 8;
+    const colW   = (HW - LGSZ - logoGap * 2) / 2;
+    const hX     = ML + 4;
+    const logoX  = ML + colW + logoGap;
+    const rX     = logoX + LGSZ + logoGap;
+    const hY     = MT + 4;
+
+    // English left col
+    const np = brandName.split(/\s+/);
+    const mi = Math.ceil(np.length / 2);
+    doc.font("DVB").fontSize(8).fillColor(DARK)
+       .text(np.slice(0, mi).join(" "), hX, hY, { width: colW, lineBreak: false });
+    if (np.slice(mi).length)
+      doc.font("DVB").fontSize(8).fillColor(DARK)
+         .text(np.slice(mi).join(" "), hX, hY + 10, { width: colW, lineBreak: false });
+    if (!isCustom) {
+      doc.font("DVR").fontSize(7).fillColor(DARK)
+         .text("Labour, Employment & Skill Dev. Dept.", hX, hY + 21, { width: colW, lineBreak: false })
+         .text("Government of Jharkhand", hX, hY + 30, { width: colW, lineBreak: false });
+    }
+
+    // Logo centre
+    const logoY = MT + (62 - LGSZ) / 2 + 4;
+    const ll = safeImgBuf(doc, brandLogoBuf, logoX, logoY, { width: LGSZ, height: LGSZ, fit: [LGSZ, LGSZ] }) ||
+               safeImg(doc, brandLogoPath, logoX, logoY, { width: LGSZ, height: LGSZ, fit: [LGSZ, LGSZ] });
+    if (!ll) {
+      const cx2 = logoX + LGSZ / 2; const cy2 = logoY + LGSZ / 2;
+      doc.circle(cx2, cy2, 26).strokeColor(INK).lineWidth(0.8).stroke();
+      doc.circle(cx2, cy2, 4).fill(INK);
+    }
+
+    // Hindi right col
+    const hp = brandHindi.split(/\s+/);
+    const hmi = Math.ceil(hp.length / 2);
+    doc.font("NSB").fontSize(8).fillColor(DARK)
+       .text(hp.slice(0, hmi).join(" "), rX, hY, { width: colW, align: "right", lineBreak: false });
+    if (hp.slice(hmi).length)
+      doc.font("NSB").fontSize(8).fillColor(DARK)
+         .text(hp.slice(hmi).join(" "), rX, hY + 10, { width: colW, align: "right", lineBreak: false });
+    if (!isCustom) {
+      doc.font("NSR").fontSize(7).fillColor(DARK)
+         .text("श्रम, नियोजन एवं कौशल विकास विभाग", rX, hY + 21, { width: colW, align: "right", lineBreak: false })
+         .text("झारखण्ड सरकार", rX, hY + 30, { width: colW, align: "right", lineBreak: false });
+    }
+
+    let y = MT + 68;
+    hl(doc, ML, y, ML + CW, 1.0);
+    y += 6;
+
+    // ── Title ────────────────────────────────────────────────────────────────
+    doc.font("NSB").fontSize(18).fillColor(NAVY)
+       .text("स्व-घोषणा पत्र", ML, y, { width: CW, align: "center", lineBreak: false });
+    y += 22;
+    doc.font("DVB").fontSize(9).fillColor(DARK)
+       .text("SELF-DECLARATION FORM", ML, y, { width: CW, align: "center", lineBreak: false });
+    y += 8;
+
+    // Subtitle box
+    const tbW = 260; const tbX = ML + (CW - tbW) / 2;
+    box(doc, tbX, y, tbW, 13, 0.8);
+    doc.font("DVB").fontSize(7.5).fillColor(DARK)
+       .text("DDU-GKY / PMKVY Skill Training Programme", tbX, y + 2.5,
+             { width: tbW, align: "center", lineBreak: false });
+    y += 18;
+    hl(doc, ML, y, ML + CW, 0.8);
+    y += 8;
+
+    // ── Body salutation ──────────────────────────────────────────────────────
+    const tcName = c.skillCentreName?.trim() || "___________________________";
+    const tcId   = reportOpts?.tcId?.trim() || c.centerTcId?.trim() || "________";
+    doc.font("NSR").fontSize(9).fillColor(DARK)
+       .text(`सेवा में,`, FX, y, { width: FW, lineBreak: false });
+    y += 13;
+    doc.font("NSB").fontSize(9).fillColor(DARK)
+       .text(`प्रशिक्षण केंद्र प्रमुख`, FX, y, { width: FW, lineBreak: false });
+    y += 12;
+    t(doc, `${tcName}  (TC ID: ${tcId})`, FX, y, { size: 8.5, color: DARK, width: FW });
+    y += 20;
+
+    // ── Declaration body ─────────────────────────────────────────────────────
+    const gender = c.gender?.toLowerCase() === "female" ? "हूँ" : "हूँ";
+    const kartiHai = c.gender?.toLowerCase() === "female" ? "करती" : "करता";
+
+    const name      = c.name?.trim()       || "_______________";
+    const father    = c.fatherName?.trim() || "_______________";
+    const address   = [c.village, c.district, c.state].filter(Boolean).join(", ") || "_______________";
+    const aadhaar   = c.aadhaarNumber?.trim() || "____________";
+    const caste     = c.caste?.trim()     || "_______________";
+    const course    = c.course?.trim()    || "_______________";
+    const education = c.education?.trim() || "_______________";
+    const dob       = c.dob?.trim()       || "_______________";
+
+    const para1 = `मैं ${name}, पुत्र/पुत्री ${father}, ग्राम/मोहल्ला ${address} का/की स्थायी निवासी ${gender}, आधार संख्या ${aadhaar}, जाति ${caste}, शैक्षणिक योग्यता ${education}, जन्म तिथि ${dob} — स्वेच्छा से यह घोषणा ${kartiHai}/करता ${gender} कि:`;
+
+    doc.font("NSR").fontSize(9).fillColor(DARK)
+       .text(para1, FX, y, { width: FW, align: "justify" });
+    y = doc.y + 10;
+
+    // ── Clauses ──────────────────────────────────────────────────────────────
+    const clauses = [
+      `मैं "${course}" पाठ्यक्रम में प्रशिक्षण प्राप्त करना चाहता/चाहती हूँ और मैं इसके लिए पूर्णतः इच्छुक हूँ।`,
+      `मेरे द्वारा दी गई उपरोक्त सभी जानकारी पूर्णतः सत्य है। किसी भी जानकारी के असत्य पाए जाने पर मेरे प्रशिक्षण को रद्द किया जा सकता है और मेरे विरुद्ध कानूनी कार्रवाई की जा सकती है।`,
+      `मैंने पूर्व में कोई सरकारी कौशल प्रशिक्षण योजना (DDU-GKY / PMKVY) का लाभ नहीं लिया है।`,
+      `प्रशिक्षण के दौरान मैं केंद्र के सभी नियमों का पालन करूँगा/करूँगी और नियमित रूप से उपस्थित रहूँगा/रहूँगी।`,
+      `मेरे द्वारा प्रस्तुत सभी दस्तावेज़ (जाति प्रमाण पत्र, आधार कार्ड, शैक्षणिक प्रमाण पत्र आदि) असली एवं सत्यापित हैं।`,
+    ];
+
+    for (let i = 0; i < clauses.length; i++) {
+      t(doc, `${i + 1}.  ${clauses[i]!}`, FX, y, { size: 9, color: DARK, width: FW });
+      y = doc.y + 8;
+    }
+
+    y += 8;
+    hl(doc, ML, y, ML + CW, 0.6, LGRAY);
+    y += 12;
+
+    // ── BPL / PWD declaration ────────────────────────────────────────────────
+    y = band(doc, "अतिरिक्त घोषणा  /  Additional Declaration", ML, y, CW);
+    y += 6;
+
+    const bplChecked = c.bpl?.toLowerCase() === "yes";
+    const pwdChecked = c.pwd?.toLowerCase() === "yes";
+
+    chk(doc, FX,       y, bplChecked, "मैं BPL (गरीबी रेखा से नीचे) परिवार से सम्बन्धित हूँ।  /  I belong to a BPL (Below Poverty Line) household.");
+    y += 16;
+    chk(doc, FX,       y, pwdChecked, "मैं दिव्यांग (PwD) हूँ।  /  I am a Person with Disability (PwD).");
+    y += 20;
+
+    hl(doc, ML, y, ML + CW, 0.6, LGRAY);
+    y += 14;
+
+    // ── Signature area ───────────────────────────────────────────────────────
+    const colMid = ML + CW / 2;
+    const today  = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+
+    // Left: candidate signature
+    doc.font("DVR").fontSize(7.5).fillColor(GRAY)
+       .text("Candidate Signature  /  अभ्यर्थी के हस्ताक्षर", FX, y, { width: 200, lineBreak: false });
+    y += 10;
+
+    const sigOk = safeImg(doc, (c as any).signaturePath, FX, y, { width: 120, height: 50, fit: [120, 50] });
+    if (!sigOk) {
+      box(doc, FX, y, 140, 50, 0.6, LGRAY);
+      doc.font("DVR").fontSize(7).fillColor(LGRAY)
+         .text("(हस्ताक्षर / Signature)", FX, y + 18, { width: 140, align: "center", lineBreak: false });
+    }
+    hl(doc, FX, y + 54, FX + 160, 0.6);
+
+    // Right: date + place
+    const rx2 = colMid + 10;
+    doc.font("DVR").fontSize(7.5).fillColor(GRAY)
+       .text("Date  /  दिनांक :", rx2, y + 2, { lineBreak: false });
+    doc.font("DVB").fontSize(8.5).fillColor(DARK)
+       .text(today, rx2 + 80, y + 2, { lineBreak: false });
+    hl(doc, rx2 + 80, y + 13, ML + CW - 4, 0.5, LGRAY);
+
+    doc.font("DVR").fontSize(7.5).fillColor(GRAY)
+       .text("Place  /  स्थान :", rx2, y + 18, { lineBreak: false });
+    hl(doc, rx2 + 80, y + 30, ML + CW - 4, 0.5, LGRAY);
+
+    y += 62;
+
+    // ── Mobilizer / Staff certification strip ────────────────────────────────
+    fill(doc, ML, y, CW, 22, "#EEF2FF");
+    hl(doc, ML, y, ML + CW, 0.5, NAVY);
+    hl(doc, ML, y + 22, ML + CW, 0.5, NAVY);
+    const mobName = c.mobilizer?.trim() || "____________________";
+    t(doc, `Verified by Mobilizer: ${mobName}     |     Training Centre: ${tcName}`,
+      FX, y + 6, { size: 7.5, color: NAVY, bold: true, width: FW });
+
+    y += 30;
+
+    // ── Footer note ──────────────────────────────────────────────────────────
+    doc.font("NSR").fontSize(7.5).fillColor(GRAY)
+       .text("नोट: यह स्व-घोषणा पत्र SCMS प्रणाली द्वारा स्वतः भरा गया है। किसी भी संशोधन के लिए प्रशिक्षण केंद्र से संपर्क करें।",
+             FX, y, { width: FW, align: "center", lineBreak: false });
+
+    doc.end();
+  });
+}

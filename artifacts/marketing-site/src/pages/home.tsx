@@ -239,16 +239,16 @@ function CandidateSection() {
     {
       icon: <ClipboardList className="w-7 h-7" />,
       step: "01",
-      title: "Field mein registration",
-      desc: "Mobilizer candidate ke ghar jaata hai, mobile app par naam, address, DOB, caste, aadhar number — sab directly form mein bharta hai. Paper ki zaroorat nahi.",
+      title: "Field mein digital form",
+      desc: "Mobilizer candidate ke ghar jaata hai — mobile app par naam, pita ka naam, DOB, jati, address, Aadhaar, bank details sab directly bharta hai. Koi paper nahi.",
       color: "from-violet-500 to-purple-700",
       glow: "shadow-violet-500/30"
     },
     {
       icon: <ScanFace className="w-7 h-7" />,
       step: "02",
-      title: "Live photo & document capture",
-      desc: "Candidate ki live selfie, Aadhar card, aur certificates — sab phone camera se turant capture. Gallery se upload nahi hoga, fraud ka scope zero.",
+      title: "7 documents camera se capture",
+      desc: "Passport photo, Aadhaar front+back, Jati praman patra, Shaikshanik praman patra, Bank passbook, Hastakshar — sab live camera se. Gallery upload band.",
       color: "from-blue-500 to-indigo-600",
       glow: "shadow-blue-500/30"
     },
@@ -263,11 +263,20 @@ function CandidateSection() {
     {
       icon: <BadgeCheck className="w-7 h-7" />,
       step: "04",
-      title: "Approval & audit trail",
-      desc: "Har registration ka digital audit trail — kisne bhara, kab bhara, kahan se bhara. PMKVY/DDU-GKY audit ke liye perfect documented record.",
+      title: "PDF auto-generate & print",
+      desc: "Registration form aur Swaghost Patra (स्व-घोषणा पत्र) — dono ek click mein auto-fill hokar PDF ban jaate hain. WhatsApp se share ya seedha print.",
       color: "from-orange-400 to-amber-600",
       glow: "shadow-orange-400/30"
     }
+  ];
+
+  const docs = [
+    { label: "Passport Photo", sub: "3.5×4.5 cm, live camera only", color: "bg-violet-500/20 text-violet-300 border-violet-500/30" },
+    { label: "Aadhaar Card", sub: "Front + Back, auto-scan", color: "bg-blue-500/20 text-blue-300 border-blue-500/30" },
+    { label: "Jati Praman Patra", sub: "Caste certificate", color: "bg-amber-500/20 text-amber-300 border-amber-500/30" },
+    { label: "Shaikshanik Praman Patra", sub: "Education certificate", color: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" },
+    { label: "Bank Passbook", sub: "Account verification", color: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30" },
+    { label: "Hastakshar", sub: "Candidate signature", color: "bg-pink-500/20 text-pink-300 border-pink-500/30" },
   ];
 
   return (
@@ -276,6 +285,7 @@ function CandidateSection() {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[70vw] h-[30vw] bg-violet-600/10 rounded-full blur-[100px] pointer-events-none"></div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+
         {/* Header */}
         <div className="text-center max-w-4xl mx-auto mb-20">
           <motion.div
@@ -305,13 +315,13 @@ function CandidateSection() {
             transition={{ delay: 0.2 }}
             className="text-xl md:text-2xl text-gray-400 leading-relaxed"
           >
-            Koi printout nahi. Koi re-entry nahi. Mobilizer seedha field se candidate register karta hai — 
+            Koi printout nahi. Koi re-entry nahi. Mobilizer seedha field se register karta hai —
             real time mein admin panel par dikh jaata hai.
           </motion.p>
         </div>
 
         {/* Steps */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-20">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
           {steps.map((step, i) => (
             <motion.div
               key={i}
@@ -340,7 +350,74 @@ function CandidateSection() {
           ))}
         </div>
 
-        {/* Big highlight callout */}
+        {/* Document collection grid */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mb-10"
+        >
+          <p className="text-center text-xs font-bold uppercase tracking-widest text-gray-500 mb-6">Documents collected during registration</p>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {docs.map((doc, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.07 }}
+                className={`rounded-2xl border px-4 py-4 text-center ${doc.color}`}
+              >
+                <div className="text-sm font-bold leading-tight mb-1">{doc.label}</div>
+                <div className="text-xs opacity-70">{doc.sub}</div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* PDF & Swaghost Patra highlight */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="grid md:grid-cols-2 gap-6 mb-12"
+        >
+          {/* Registration form PDF */}
+          <div className="relative rounded-3xl overflow-hidden border border-blue-500/30 bg-gradient-to-br from-blue-950/60 to-indigo-950/60 backdrop-blur-xl p-8">
+            <div className="absolute top-0 right-0 w-40 h-40 bg-blue-500/10 rounded-full blur-[60px] pointer-events-none"></div>
+            <div className="w-12 h-12 rounded-2xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-300 mb-5">
+              <ClipboardList className="w-6 h-6" />
+            </div>
+            <h3 className="text-xl font-black text-white mb-3">Registration Form PDF</h3>
+            <p className="text-gray-400 text-sm leading-relaxed mb-5">
+              Submit hote hi system automatically ek complete registration form PDF banata hai — JSDMS / DDU-GKY format mein, candidate ki photo aur saare details ke saath.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {["Auto-generated", "WhatsApp share", "Direct print", "Audit-ready"].map((tag) => (
+                <span key={tag} className="text-xs font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-full px-3 py-1">{tag}</span>
+              ))}
+            </div>
+          </div>
+
+          {/* Swaghost Patra */}
+          <div className="relative rounded-3xl overflow-hidden border border-violet-500/30 bg-gradient-to-br from-violet-950/60 to-purple-950/60 backdrop-blur-xl p-8">
+            <div className="absolute top-0 right-0 w-40 h-40 bg-violet-500/10 rounded-full blur-[60px] pointer-events-none"></div>
+            <div className="w-12 h-12 rounded-2xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center text-violet-300 mb-5">
+              <BadgeCheck className="w-6 h-6" />
+            </div>
+            <h3 className="text-xl font-black text-white mb-3">Swaghost Patra — <span className="text-violet-300">स्व-घोषणा पत्र</span></h3>
+            <p className="text-gray-400 text-sm leading-relaxed mb-5">
+              Candidate ka self-declaration form ek click mein auto-fill hokar PDF ban jaata hai — naam, pita ka naam, Aadhaar, jati, course, BPL status sab pre-filled. Print karke sign karwao.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {["Auto-fill from form data", "Hindi + English", "Signature area", "Print & share"].map((tag) => (
+                <span key={tag} className="text-xs font-bold bg-violet-500/20 text-violet-300 border border-violet-500/30 rounded-full px-3 py-1">{tag}</span>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Stats callout */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -352,7 +429,7 @@ function CandidateSection() {
             {[
               { number: "5 min", label: "ek candidate register karne mein", sub: "Pehle 2 din lagte the" },
               { number: "Zero", label: "duplicate registrations", sub: "Aadhaar-based deduplication" },
-              { number: "100%", label: "paperless process", sub: "Audit-ready digital records" }
+              { number: "2 PDFs", label: "auto-generate hoti hain", sub: "Registration Form + Swaghost Patra" }
             ].map((stat, i) => (
               <motion.div
                 key={i}
@@ -369,6 +446,7 @@ function CandidateSection() {
             ))}
           </div>
         </motion.div>
+
       </div>
     </section>
   );
