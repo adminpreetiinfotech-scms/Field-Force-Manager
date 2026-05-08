@@ -313,15 +313,15 @@ function generateCompanyGuide() {
 
   spacer(doc, 4);
   sectionHeader(doc, '4', 'Subscription Plans');
-  subHeading(doc, 'Basic Plan — ₹2,000/month');
-  bulletPoint(doc, 'Upto 10 field staff');
+  subHeading(doc, 'Basic Plan — ₹1,999/month');
+  bulletPoint(doc, 'Upto 15 field staff');
   bulletPoint(doc, 'GPS attendance tracking');
   bulletPoint(doc, 'Basic attendance reports, 1 Admin account');
-  subHeading(doc, 'Standard Plan — ₹5,000/month');
-  bulletPoint(doc, 'Upto 50 field staff');
+  subHeading(doc, 'Standard Plan — ₹4,999/month');
+  bulletPoint(doc, 'Upto 40 field staff');
   bulletPoint(doc, 'AI face verification, offline app with sync');
   bulletPoint(doc, 'Excel + PDF exports, 5 Admin accounts');
-  subHeading(doc, 'Premium Plan — ₹10,000/month');
+  subHeading(doc, 'Premium Plan — ₹9,999/month');
   bulletPoint(doc, 'Unlimited staff + multi-center management');
   bulletPoint(doc, 'Priority support + dedicated account manager');
   bulletPoint(doc, 'Custom branding on reports, annual discount available');
