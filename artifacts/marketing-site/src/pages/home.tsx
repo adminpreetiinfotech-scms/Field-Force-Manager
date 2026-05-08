@@ -1036,7 +1036,7 @@ function Pricing() {
           >
             <h3 className="text-xl font-bold text-gray-900 mb-1">Basic</h3>
             <div className="flex items-baseline mb-5">
-              <span className="text-4xl font-black text-gray-900">₹2,000</span>
+              <span className="text-4xl font-black text-gray-900">₹1,999</span>
               <span className="text-gray-400 ml-1.5 text-sm">/mo</span>
             </div>
             <p className="text-gray-500 text-sm mb-6 pb-6 border-b border-gray-100">Perfect for single centers starting out.</p>
@@ -1063,7 +1063,7 @@ function Pricing() {
             </div>
             <h3 className="text-2xl font-black text-white mb-1">Standard</h3>
             <div className="flex items-baseline mb-5">
-              <span className="text-5xl font-black text-white">₹5,000</span>
+              <span className="text-5xl font-black text-white">₹4,999</span>
               <span className="text-blue-200 ml-1.5 text-sm">/mo</span>
             </div>
             <p className="text-blue-200 text-sm mb-6 pb-6 border-b border-white/20">For growing regional operations.</p>
@@ -1088,7 +1088,7 @@ function Pricing() {
           >
             <h3 className="text-xl font-bold text-gray-900 mb-1">Premium</h3>
             <div className="flex items-baseline mb-5">
-              <span className="text-4xl font-black text-gray-900">₹10,000</span>
+              <span className="text-4xl font-black text-gray-900">₹9,999</span>
               <span className="text-gray-400 ml-1.5 text-sm">/mo</span>
             </div>
             <p className="text-gray-500 text-sm mb-6 pb-6 border-b border-gray-100">For large-scale state deployments.</p>

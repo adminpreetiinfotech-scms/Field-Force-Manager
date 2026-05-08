@@ -43,7 +43,7 @@ const PLANS = [
   {
     id: "basic" as const,
     label: "Basic",
-    price: "₹5,000/month",
+    price: "₹1,999/month",
     features: ["Up to 50 staff", "Mobile app access", "Basic reports", "Email support"],
     color: "border-blue-200 bg-blue-50",
     badge: "text-blue-700 bg-blue-100",
@@ -51,7 +51,7 @@ const PLANS = [
   {
     id: "standard" as const,
     label: "Standard",
-    price: "₹10,000/month",
+    price: "₹4,999/month",
     features: ["Up to 200 staff", "All Basic features", "SMS notifications", "Live location tracking", "Priority support"],
     color: "border-violet-200 bg-violet-50",
     badge: "text-violet-700 bg-violet-100",
@@ -60,7 +60,7 @@ const PLANS = [
   {
     id: "premium" as const,
     label: "Premium",
-    price: "₹20,000/month",
+    price: "₹9,999/month",
     features: ["Unlimited staff", "All Standard features", "Custom branding", "Dedicated support", "Analytics dashboard"],
     color: "border-amber-200 bg-amber-50",
     badge: "text-amber-700 bg-amber-100",
