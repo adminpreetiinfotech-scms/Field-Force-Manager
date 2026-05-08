@@ -66,16 +66,16 @@ function Navbar() {
   return (
     <>
       {/* Scrolling offer ticker */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-primary text-white py-2 overflow-hidden">
+      <div className="fixed top-0 left-0 right-0 z-50 bg-primary text-white py-2.5 overflow-hidden">
         <div className="flex whitespace-nowrap animate-ticker">
           {Array.from({ length: 6 }).map((_, i) => (
-            <span key={i} className="inline-flex items-center gap-4 px-8 text-sm font-semibold">
-              <span>🎉 Pehla 1 Mahina BILKUL FREE — Koi Credit Card Nahi</span>
-              <span className="opacity-50">•</span>
-              <span>✅ 1 Month Free Trial — No Advance Payment</span>
-              <span className="opacity-50">•</span>
-              <span>🚀 Abhi Register Karein aur 30 Din Free Istemal Karein</span>
-              <span className="opacity-50">•</span>
+            <span key={i} className="inline-flex items-center gap-6 px-10 text-sm font-black uppercase tracking-wide">
+              <span>🎉 <span className="text-yellow-300">Pehla 1 Mahina BILKUL FREE</span> — Koi Credit Card Nahi</span>
+              <span className="text-white/40 text-lg">★</span>
+              <span>✅ <span className="text-yellow-300">1 Month Free Trial</span> — No Advance Payment</span>
+              <span className="text-white/40 text-lg">★</span>
+              <span>🚀 <span className="text-yellow-300">Abhi Register Karein</span> aur 30 Din Free Istemal Karein</span>
+              <span className="text-white/40 text-lg">★</span>
             </span>
           ))}
         </div>
