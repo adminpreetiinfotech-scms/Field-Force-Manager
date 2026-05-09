@@ -16,6 +16,9 @@ import { isValidUUID } from "../lib/validation";
 import { toCompanyDTO } from "./companies";
 
 const router: IRouter = Router();
+const noticeRecipientsTable: any = {};
+const sendSmsSilent = async () => {};
+const sendPushSilent = async () => {};
 
 // ─── Super admin auth helpers ──────────────────────────────────────────────────
 
