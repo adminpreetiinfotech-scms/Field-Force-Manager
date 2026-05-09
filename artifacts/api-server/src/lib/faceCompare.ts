@@ -22,7 +22,7 @@ const CROP_SIZE = THUMB - 2 * CROP_OFFSET; // 48
 const BINS = 256;
 const MATCH_THRESHOLD = 55; // score >= 55 → match (can be tuned)
 
-function buildHistogram(img: Jimp): Float64Array {
+function buildHistogram(img: any): Float64Array {
   const hist = new Float64Array(BINS);
   const { width, height } = img.bitmap;
   for (let y = 0; y < height; y++) {
@@ -47,7 +47,7 @@ function bhattacharyya(h1: Float64Array, h2: Float64Array): number {
   return Math.round(bc * 100);
 }
 
-async function prepareImage(buf: Buffer): Promise<Jimp> {
+async function prepareImage(buf: Buffer): Promise<any> {
   const img = await Jimp.read(buf);
   img
     .resize(THUMB, THUMB)
