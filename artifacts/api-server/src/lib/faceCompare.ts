@@ -48,7 +48,7 @@ function bhattacharyya(h1: Float64Array, h2: Float64Array): number {
 }
 
 async function prepareImage(buf: Buffer): Promise<any> {
-  const img = await Jimp.read(buf);
+  const img = await (Jimp as any).read(buf);
   img
     .resize(THUMB, THUMB)
     .greyscale()
