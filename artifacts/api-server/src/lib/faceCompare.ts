@@ -14,7 +14,7 @@
  * Threshold: 60 → flag as mismatch warning.
  */
 
-import Jimp from "Jimp";
+import * as Jimp from "jimp";
 
 const THUMB = 64;
 const CROP_OFFSET = 8;
