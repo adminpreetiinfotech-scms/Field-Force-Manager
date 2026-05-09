@@ -152,7 +152,7 @@ export default function StaffPage() {
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium truncate">{s.name}</span>
                     {s.isOnShift && (
-                      <RadioTower className="h-3 w-3 text-green-500 flex-shrink-0" title="On shift" />
+                      <RadioTower className="h-3 w-3 text-green-500 flex-shrink-0" />
                     )}
                     {s.disabledAt && (
                       <span className="text-xs text-red-500">Disabled</span>
