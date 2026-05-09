@@ -17,9 +17,8 @@ import { toCompanyDTO } from "./companies";
 
 const router: IRouter = Router();
 const noticeRecipientsTable: any = {};
-const sendSmsSilent = async () => {};
-const sendPushSilent = async () => {};
-
+const sendSmsSilent = async (...args: any[]) => {};
+const sendPushSilent = async (...args: any[]) => {};
 // ─── Super admin auth helpers ──────────────────────────────────────────────────
 
 export async function isSuperAdmin(phone: string): Promise<boolean> {
