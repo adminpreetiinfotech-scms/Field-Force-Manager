@@ -60,8 +60,21 @@ app.get(["/", "/manifest"], (req: Request, res: Response) => {
   res.redirect(301, "/admin-panel/");
 });
 
-// ─── Field-staff static assets (production only) ──────────────────────────────
+// ─── Static assets (production only) ─────────────────────────────────────────
 if (process.env.NODE_ENV === "production") {
+  // Admin Panel SPA — served under /admin-panel/
+  const adminRoot = path.join(process.cwd(), "artifacts/admin-panel/dist/public");
+  if (fs.existsSync(adminRoot)) {
+    app.use("/admin-panel", express.static(adminRoot));
+    // SPA fallback: any unmatched /admin-panel/* → index.html
+    app.get("/admin-panel/*splat", (_req, res) => {
+      const indexPath = path.join(adminRoot, "index.html");
+      if (fs.existsSync(indexPath)) res.sendFile(indexPath);
+      else res.status(404).send("Admin Panel not built.");
+    });
+  }
+
+  // Field-staff Expo static build
   const fieldRoot = path.join(process.cwd(), "artifacts/field-staff/static-build");
   if (fs.existsSync(fieldRoot)) {
     app.use(express.static(fieldRoot));
