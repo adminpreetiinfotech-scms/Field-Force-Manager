@@ -35,6 +35,7 @@ import { PillarsRow } from "@/components/PillarBadge";
 import { ReportContextBar } from "@/components/ReportContextBar";
 import { StatCard } from "@/components/StatCard";
 import { SyncBanner } from "@/components/SyncBanner";
+import { SyncStatusRow } from "@/components/SyncStatusRow";
 import {
   AttendanceRecord,
   GeoPoint,
@@ -407,6 +408,7 @@ export default function StaffHome() {
         </LinearGradient>
 
         <View style={{ padding: 18, gap: 14 }}>
+          <SyncStatusRow />
           <SyncBanner />
 
           {/* Today's stats */}
