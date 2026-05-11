@@ -2,6 +2,13 @@ import { centersTable, companiesTable, db, staffTable } from "@workspace/db";
 import { and, eq, isNull } from "drizzle-orm";
 import { Router } from "express";
 import crypto from "node:crypto";
+import { sendSmsSilent } from "../lib/twilio";
+
+// ─── In-memory OTP store for MPIN reset ──────────────────────────────────────
+// { phone → { otp, expiresAt, attempts } }
+const otpStore = new Map<string, { otp: string; expiresAt: number; attempts: number }>();
+const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const OTP_MAX_ATTEMPTS = 5;
 
 function toLogoUrl(filePath: string | null | undefined): string | null {
   if (!filePath) return null;
@@ -428,6 +435,106 @@ router.post("/auth/promote-super-admin", async (req, res, next) => {
       .where(eq(staffTable.phone, "9999999999"))
       .returning({ phone: staffTable.phone, role: staffTable.role, name: staffTable.name });
     res.json({ success: true, user: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── POST /api/auth/forgot-mpin/send-otp ─────────────────────────────────────
+// Sends a 6-digit OTP via Twilio SMS to verify admin identity before MPIN reset.
+router.post("/auth/forgot-mpin/send-otp", async (req, res, next) => {
+  try {
+    const { phone } = req.body as { phone?: string };
+    if (!phone || !/^\d{10}$/.test(phone.trim())) {
+      res.status(400).json({ title: "Valid 10-digit phone required", status: 400 });
+      return;
+    }
+
+    const [row] = await db
+      .select({ id: staffTable.id, role: staffTable.role, approvalStatus: staffTable.approvalStatus, deletedAt: staffTable.deletedAt, disabledAt: staffTable.disabledAt })
+      .from(staffTable)
+      .where(and(eq(staffTable.phone, phone.trim()), isNull(staffTable.deletedAt)))
+      .limit(1);
+
+    if (!row || (row.role !== "admin" && row.role !== "super_admin")) {
+      res.status(404).json({ title: "Admin account not found for this phone number.", status: 404 });
+      return;
+    }
+    if (row.disabledAt) {
+      res.status(403).json({ title: "Your account has been disabled. Contact support.", status: 403 });
+      return;
+    }
+
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    otpStore.set(phone.trim(), { otp, expiresAt: Date.now() + OTP_TTL_MS, attempts: 0 });
+
+    const msg = `Your SCMS MPIN reset OTP is: ${otp}. Valid for 10 minutes. Do not share with anyone.`;
+    await sendSmsSilent(phone.trim(), msg, (err) => req.log.warn({ err }, "OTP SMS failed"));
+
+    req.log.info({ phone }, "Forgot MPIN OTP sent");
+    res.json({ sent: true, maskedPhone: `XXXXXX${phone.trim().slice(-4)}` });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── POST /api/auth/forgot-mpin/verify-reset ─────────────────────────────────
+// Verifies the OTP and sets the new MPIN.
+router.post("/auth/forgot-mpin/verify-reset", async (req, res, next) => {
+  try {
+    const { phone, otp, newMpin } = req.body as { phone?: string; otp?: string; newMpin?: string };
+
+    if (!phone || !/^\d{10}$/.test(phone.trim())) {
+      res.status(400).json({ title: "Valid 10-digit phone required", status: 400 });
+      return;
+    }
+    if (!otp || !/^\d{6}$/.test(otp.trim())) {
+      res.status(400).json({ title: "OTP must be 6 digits", status: 400 });
+      return;
+    }
+    if (!newMpin || !/^\d{4,6}$/.test(newMpin.trim())) {
+      res.status(400).json({ title: "New MPIN must be 4–6 digits", status: 400 });
+      return;
+    }
+
+    const entry = otpStore.get(phone.trim());
+    if (!entry) {
+      res.status(400).json({ title: "No OTP found. Please request a new OTP.", status: 400 });
+      return;
+    }
+    if (Date.now() > entry.expiresAt) {
+      otpStore.delete(phone.trim());
+      res.status(400).json({ title: "OTP has expired. Please request a new one.", status: 400 });
+      return;
+    }
+    if (entry.attempts >= OTP_MAX_ATTEMPTS) {
+      otpStore.delete(phone.trim());
+      res.status(429).json({ title: "Too many incorrect attempts. Please request a new OTP.", status: 429 });
+      return;
+    }
+    if (entry.otp !== otp.trim()) {
+      entry.attempts += 1;
+      const remaining = OTP_MAX_ATTEMPTS - entry.attempts;
+      res.status(401).json({ title: `Incorrect OTP. ${remaining} attempt(s) remaining.`, status: 401 });
+      return;
+    }
+
+    otpStore.delete(phone.trim());
+
+    const mpinHash = hashMpin(newMpin.trim());
+    const updated = await db
+      .update(staffTable)
+      .set({ mpinHash, failedMpinAttempts: 0, mpinBlockedUntil: null })
+      .where(and(eq(staffTable.phone, phone.trim()), isNull(staffTable.deletedAt)))
+      .returning({ id: staffTable.id });
+
+    if (updated.length === 0) {
+      res.status(404).json({ title: "Account not found", status: 404 });
+      return;
+    }
+
+    req.log.info({ phone }, "MPIN reset via OTP verification");
+    res.json({ success: true });
   } catch (err) {
     next(err);
   }
