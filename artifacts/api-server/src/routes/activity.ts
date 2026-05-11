@@ -2,6 +2,7 @@ import { activityEventsTable, candidatesTable, centersTable, companiesTable, db,
 import { isCompanySubscriptionBlocked } from "./companies";
 import { requireAdmin } from "./admin";
 import { and, count, desc, eq, gt, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import { sendPushSilent } from "../lib/push";
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import {
   CreateActivityBody,
@@ -1335,6 +1336,104 @@ router.post("/activity", async (req, res, next) => {
         .update(staffTable)
         .set({ isOnShift: false })
         .where(eq(staffTable.id, input.staffId));
+
+      // ── Daily Outcome Summary push notification (fire-and-forget) ──────────
+      void (async () => {
+        try {
+          // Fetch push token + phone for this staff member
+          const [staffInfo] = await db
+            .select({ expoPushToken: staffTable.expoPushToken, phone: staffTable.phone, name: staffTable.name })
+            .from(staffTable)
+            .where(eq(staffTable.id, input.staffId))
+            .limit(1);
+
+          if (!staffInfo?.expoPushToken) return;
+
+          // IST window: today 00:00 → now (UTC+5:30 = 330 min ahead)
+          const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+          const nowMs = Date.now();
+          const todayISTMidnight = new Date(
+            Math.floor((nowMs + IST_OFFSET_MS) / 86_400_000) * 86_400_000- IST_OFFSET_MS,
+          );
+
+          // 1. Today's first check-in time
+          const [firstCheckin] = await db
+            .select({ occurredAt: activityEventsTable.occurredAt })
+            .from(activityEventsTable)
+            .where(
+              and(
+                eq(activityEventsTable.staffId, input.staffId),
+                eq(activityEventsTable.kind, "checkin"),
+                gte(activityEventsTable.occurredAt, todayISTMidnight),
+              ),
+            )
+            .orderBy(activityEventsTable.occurredAt)
+            .limit(1);
+
+          // 2. Total GPS KM today (sum of trip-end distanceKm)
+          const tripRows = await db
+            .select({ payload: activityEventsTable.payload })
+            .from(activityEventsTable)
+            .where(
+              and(
+                eq(activityEventsTable.staffId, input.staffId),
+                eq(activityEventsTable.kind, "trip-end"),
+                gte(activityEventsTable.occurredAt, todayISTMidnight),
+              ),
+            );
+          const totalKm = tripRows.reduce<number>((acc, r) => {
+            const p = (r.payload || {}) as ActivityPayload;
+            return acc + (typeof p.distanceKm === "number" ? p.distanceKm : 0);
+          }, 0);
+
+          // 3. Candidates registered today by this staff (via phone)
+          let candidateCount = 0;
+          if (staffInfo.phone) {
+            const [cRow] = await db
+              .select({ c: count() })
+              .from(candidatesTable)
+              .where(
+                and(
+                  eq(candidatesTable.submittedByPhone, staffInfo.phone),
+                  gte(candidatesTable.createdAt, todayISTMidnight),
+                ),
+              );
+            candidateCount = cRow?.c ?? 0;
+          }
+
+          // Format check-in time in IST (HH:MM AM/PM)
+          const checkinStr = firstCheckin?.occurredAt
+            ? new Date(firstCheckin.occurredAt).toLocaleTimeString("en-IN", {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true,
+                timeZone: "Asia/Kolkata",
+              })
+            : "—";
+
+          const kmStr = totalKm > 0 ? `${totalKm.toFixed(1)} km` : "0 km";
+          const candidateStr =
+            candidateCount > 0
+              ? `${candidateCount} candidate${candidateCount === 1 ? "" : "s"}`
+              : "No candidates";
+
+          const bodyLines = [
+            `🕐 Check-in: ${checkinStr}`,
+            `🚗 Distance: ${kmStr}`,
+            `👤 Candidates: ${candidateStr}`,
+          ].join("  ·  ");
+
+          await sendPushSilent(
+            [staffInfo.expoPushToken],
+            "✅ Shift Complete — Daily Summary",
+            bodyLines,
+            { kind: "daily-summary", staffId: input.staffId },
+            (...args) => req.log.warn({ args }, "[daily-summary-push]"),
+          );
+        } catch (err) {
+          req.log.warn({ err }, "[daily-summary-push] failed");
+        }
+      })();
     }
 
     req.log.info(
